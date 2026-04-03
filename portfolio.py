@@ -6,7 +6,12 @@ import threading
 from pathlib import Path
 from dotenv import load_dotenv
 
-from storage import get_all_positions, get_asset_state
+from storage import (
+    get_all_positions,
+    get_asset_state,
+    get_portfolio_history_since,
+    insert_portfolio_snapshot,
+)
 from execution import get_best_bid_ask, get_client
 from regime import get_market_regime
 
@@ -20,6 +25,8 @@ STABLECOIN_CURRENCIES = {"USDC", "USDT", "DAI"}
 
 PORTFOLIO_CACHE_TTL_SEC = float(os.getenv("PORTFOLIO_CACHE_TTL_SEC", "20"))
 PORTFOLIO_CACHE_STALE_SEC = float(os.getenv("PORTFOLIO_CACHE_STALE_SEC", "180"))
+PORTFOLIO_HISTORY_MIN_INTERVAL_SEC = float(os.getenv("PORTFOLIO_HISTORY_MIN_INTERVAL_SEC", "120"))
+PORTFOLIO_HISTORY_MIN_CHANGE_USD = float(os.getenv("PORTFOLIO_HISTORY_MIN_CHANGE_USD", "1.0"))
 
 _PORTFOLIO_CACHE_LOCK = threading.Lock()
 _PORTFOLIO_CACHE = {
@@ -688,6 +695,42 @@ def _get_cached_snapshot():
     with _PORTFOLIO_CACHE_LOCK:
         snap = _PORTFOLIO_CACHE.get("snapshot")
         return dict(snap) if isinstance(snap, dict) else snap
+
+
+def _snapshot_to_history_row(snapshot):
+    snapshot = snapshot or {}
+    total_value_usd = float(snapshot.get("total_value_usd", 0.0) or 0.0)
+    cash_value_usd = float(snapshot.get("usd_cash", 0.0) or 0.0)
+    positions_value_usd = max(0.0, total_value_usd - cash_value_usd)
+
+    return {
+        "ts": int(snapshot.get("timestamp") or time.time()),
+        "total_value_usd": total_value_usd,
+        "cash_value_usd": cash_value_usd,
+        "positions_value_usd": positions_value_usd,
+    }
+
+
+def persist_current_portfolio_snapshot(snapshot=None):
+    snapshot = snapshot or get_portfolio_snapshot()
+    row = _snapshot_to_history_row(snapshot)
+
+    try:
+        latest_rows = get_portfolio_history_since(limit=1)
+        latest = latest_rows[-1] if latest_rows else None
+
+        if latest:
+            age_sec = max(0, int(row["ts"]) - int(latest.get("ts") or 0))
+            total_delta = abs(float(row["total_value_usd"]) - float(latest.get("total_value_usd", 0.0) or 0.0))
+            cash_delta = abs(float(row["cash_value_usd"]) - float(latest.get("cash_value_usd", 0.0) or 0.0))
+
+            if age_sec < PORTFOLIO_HISTORY_MIN_INTERVAL_SEC and max(total_delta, cash_delta) < PORTFOLIO_HISTORY_MIN_CHANGE_USD:
+                return False
+
+        insert_portfolio_snapshot(**row)
+        return True
+    except Exception:
+        return False
 
 
 def force_refresh_portfolio_snapshot():

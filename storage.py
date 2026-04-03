@@ -83,12 +83,135 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS portfolio_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts INTEGER NOT NULL,
+        total_value_usd REAL NOT NULL,
+        cash_value_usd REAL NOT NULL DEFAULT 0,
+        positions_value_usd REAL NOT NULL DEFAULT 0
+    )
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_portfolio_history_ts
+    ON portfolio_history (ts)
+    """)
+
     conn.commit()
     conn.close()
 
 
 def init_user_table():
     init_db()
+
+
+def ensure_portfolio_history_table():
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS portfolio_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts INTEGER NOT NULL,
+        total_value_usd REAL NOT NULL,
+        cash_value_usd REAL NOT NULL DEFAULT 0,
+        positions_value_usd REAL NOT NULL DEFAULT 0
+    )
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_portfolio_history_ts
+    ON portfolio_history (ts)
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def insert_portfolio_snapshot(ts, total_value_usd, cash_value_usd=0.0, positions_value_usd=0.0):
+    ensure_portfolio_history_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO portfolio_history (
+            ts,
+            total_value_usd,
+            cash_value_usd,
+            positions_value_usd
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            int(ts or time.time()),
+            float(total_value_usd or 0.0),
+            float(cash_value_usd or 0.0),
+            float(positions_value_usd or 0.0),
+        ),
+    )
+
+    conn.commit()
+    row_id = cur.lastrowid
+    conn.close()
+    return row_id
+
+
+def get_portfolio_history_since(start_ts=None, limit=None):
+    ensure_portfolio_history_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    where = []
+    params = []
+
+    if start_ts is not None:
+        where.append("ts >= ?")
+        params.append(int(start_ts))
+
+    where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+
+    if limit is not None:
+        cur.execute(
+            f"""
+            SELECT ts, total_value_usd, cash_value_usd, positions_value_usd
+            FROM (
+                SELECT ts, total_value_usd, cash_value_usd, positions_value_usd
+                FROM portfolio_history
+                {where_sql}
+                ORDER BY ts DESC, id DESC
+                LIMIT ?
+            )
+            ORDER BY ts ASC
+            """,
+            params + [max(1, int(limit))],
+        )
+    else:
+        cur.execute(
+            f"""
+            SELECT ts, total_value_usd, cash_value_usd, positions_value_usd
+            FROM portfolio_history
+            {where_sql}
+            ORDER BY ts ASC, id ASC
+            """,
+            params,
+        )
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return [
+        {
+            "ts": int(row["ts"] or 0),
+            "total_value_usd": float(row["total_value_usd"] or 0.0),
+            "cash_value_usd": float(row["cash_value_usd"] or 0.0),
+            "positions_value_usd": float(row["positions_value_usd"] or 0.0),
+        }
+        for row in rows
+    ]
 
 
 def create_user(username, password, email=None, is_admin=0, is_active=1):

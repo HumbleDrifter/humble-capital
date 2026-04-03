@@ -17,9 +17,11 @@ from execution import (
 )
 from portfolio import (
     get_portfolio_snapshot,
+    persist_current_portfolio_snapshot,
     portfolio_summary,
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
+from storage import get_portfolio_history_since
 
 api_bp = Blueprint("api", __name__)
 
@@ -425,6 +427,14 @@ def _with_cache(name, builder, ttl_sec=30.0, stale_sec=300.0):
 
 def _build_status():
     state = get_cached_portfolio_state()
+    if state.get("ok"):
+        persist_current_portfolio_snapshot(
+            {
+                "timestamp": state.get("timestamp") or int(_now()),
+                "total_value_usd": state.get("total_value_usd", 0.0),
+                "usd_cash": state.get("usd_cash", 0.0),
+            }
+        )
     return {
         "ok": True,
         "service": "tradingbot",
@@ -436,6 +446,7 @@ def _build_status():
 
 def _build_portfolio():
     snapshot = get_portfolio_snapshot()
+    persist_current_portfolio_snapshot(snapshot)
     summary = portfolio_summary(snapshot)
     return {
         "ok": True,
@@ -704,6 +715,25 @@ def _build_portfolio_history():
 
     points = []
     series_type = "empty"
+
+    try:
+        history_rows = get_portfolio_history_since(start_ts=start_ts)
+        points = [
+            {
+                "ts": _safe_int(row.get("ts")),
+                "equity_usd": _safe_float(row.get("total_value_usd")),
+            }
+            for row in history_rows
+        ]
+        if points:
+            return {
+                "ok": True,
+                "range": range_name,
+                "series_type": "portfolio_value",
+                "points": points,
+            }
+    except Exception:
+        points = []
 
     def _table_exists(conn, table_name):
         row = conn.execute(

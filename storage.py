@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 import time
@@ -98,6 +99,34 @@ def init_db():
     ON portfolio_history (ts)
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS config_proposals (
+        id TEXT PRIMARY KEY,
+        proposal_type TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT,
+        status TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        proposal_json TEXT NOT NULL,
+        summary_text TEXT NOT NULL,
+        approved_at TEXT,
+        rejected_at TEXT,
+        applied_at TEXT,
+        expired_at TEXT,
+        superseded_at TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_config_proposals_status_created
+    ON config_proposals (status, created_at DESC)
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_config_proposals_fingerprint_status
+    ON config_proposals (fingerprint, status)
+    """)
+
     conn.commit()
     conn.close()
 
@@ -127,6 +156,289 @@ def ensure_portfolio_history_table():
 
     conn.commit()
     conn.close()
+
+
+def ensure_config_proposals_table():
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS config_proposals (
+        id TEXT PRIMARY KEY,
+        proposal_type TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT,
+        status TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        proposal_json TEXT NOT NULL,
+        summary_text TEXT NOT NULL,
+        approved_at TEXT,
+        rejected_at TEXT,
+        applied_at TEXT,
+        expired_at TEXT,
+        superseded_at TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_config_proposals_status_created
+    ON config_proposals (status, created_at DESC)
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_config_proposals_fingerprint_status
+    ON config_proposals (fingerprint, status)
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def _next_config_proposal_id():
+    ensure_config_proposals_table()
+    prefix = f"CFG-{datetime.utcnow().strftime('%Y%m%d')}-"
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id
+        FROM config_proposals
+        WHERE id LIKE ?
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (f"{prefix}%",),
+    )
+    row = cur.fetchone()
+    conn.close()
+
+    if not row or not row["id"]:
+        return f"{prefix}001"
+
+    last_id = str(row["id"])
+    try:
+        n = int(last_id.split("-")[-1])
+    except Exception:
+        n = 0
+    return f"{prefix}{n + 1:03d}"
+
+
+def save_config_proposal(proposal, summary_text, fingerprint, proposal_type="config_guardrail", expires_at=None, status="pending"):
+    ensure_config_proposals_table()
+
+    proposal_id = _next_config_proposal_id()
+    created_at = utcnow_iso()
+    payload = dict(proposal or {})
+    payload["proposal_id"] = proposal_id
+    payload["created_at"] = created_at
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO config_proposals (
+            id,
+            proposal_type,
+            created_at,
+            expires_at,
+            status,
+            fingerprint,
+            proposal_json,
+            summary_text,
+            approved_at,
+            rejected_at,
+            applied_at,
+            expired_at,
+            superseded_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL)
+        """,
+        (
+            proposal_id,
+            str(proposal_type or "config_guardrail"),
+            created_at,
+            str(expires_at or "").strip() or None,
+            str(status or "pending"),
+            str(fingerprint or "").strip(),
+            json.dumps(payload, ensure_ascii=False),
+            str(summary_text or "").strip(),
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return proposal_id
+
+
+def get_config_proposal_by_id(proposal_id):
+    ensure_config_proposals_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
+               proposal_json, summary_text, approved_at, rejected_at,
+               applied_at, expired_at, superseded_at
+        FROM config_proposals
+        WHERE id = ?
+        LIMIT 1
+        """,
+        (str(proposal_id or "").strip(),),
+    )
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    try:
+        payload = json.loads(row["proposal_json"] or "{}")
+    except Exception:
+        payload = {}
+
+    return {
+        "id": row["id"],
+        "proposal_type": row["proposal_type"],
+        "created_at": row["created_at"],
+        "expires_at": row["expires_at"],
+        "status": row["status"],
+        "fingerprint": row["fingerprint"],
+        "proposal": payload if isinstance(payload, dict) else {},
+        "summary_text": row["summary_text"],
+        "approved_at": row["approved_at"],
+        "rejected_at": row["rejected_at"],
+        "applied_at": row["applied_at"],
+        "expired_at": row["expired_at"],
+        "superseded_at": row["superseded_at"],
+    }
+
+
+def get_latest_pending_config_proposal(proposal_type="config_guardrail"):
+    ensure_config_proposals_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id
+        FROM config_proposals
+        WHERE status = 'pending'
+          AND proposal_type = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+        """,
+        (str(proposal_type or "config_guardrail"),),
+    )
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return get_config_proposal_by_id(row["id"])
+
+
+def find_pending_config_proposal_by_fingerprint(fingerprint, proposal_type="config_guardrail"):
+    ensure_config_proposals_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id
+        FROM config_proposals
+        WHERE status = 'pending'
+          AND proposal_type = ?
+          AND fingerprint = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+        """,
+        (
+            str(proposal_type or "config_guardrail"),
+            str(fingerprint or "").strip(),
+        ),
+    )
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return get_config_proposal_by_id(row["id"])
+
+
+def list_pending_config_proposals(proposal_type="config_guardrail"):
+    ensure_config_proposals_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id
+        FROM config_proposals
+        WHERE status = 'pending'
+          AND proposal_type = ?
+        ORDER BY created_at DESC, id DESC
+        """,
+        (str(proposal_type or "config_guardrail"),),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [get_config_proposal_by_id(row["id"]) for row in rows if row and row["id"]]
+
+
+def expire_pending_config_proposals(before_iso, proposal_type="config_guardrail"):
+    ensure_config_proposals_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE config_proposals
+        SET status = 'expired',
+            expired_at = ?
+        WHERE status = 'pending'
+          AND proposal_type = ?
+          AND expires_at IS NOT NULL
+          AND expires_at <= ?
+        """,
+        (
+            str(before_iso or "").strip() or utcnow_iso(),
+            str(proposal_type or "config_guardrail"),
+            str(before_iso or "").strip() or utcnow_iso(),
+        ),
+    )
+    count = cur.rowcount or 0
+    conn.commit()
+    conn.close()
+    return int(count)
+
+
+def supersede_pending_config_proposals(proposal_type="config_guardrail", exclude_id=None):
+    ensure_config_proposals_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    params = [utcnow_iso(), str(proposal_type or "config_guardrail")]
+    sql = """
+    UPDATE config_proposals
+    SET status = 'superseded',
+        superseded_at = ?
+    WHERE status = 'pending'
+      AND proposal_type = ?
+    """
+
+    if exclude_id:
+        sql += " AND id != ?"
+        params.append(str(exclude_id).strip())
+
+    cur.execute(sql, tuple(params))
+    count = cur.rowcount or 0
+    conn.commit()
+    conn.close()
+    return int(count)
 
 
 def insert_portfolio_snapshot(ts, total_value_usd, cash_value_usd=0.0, positions_value_usd=0.0):

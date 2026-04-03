@@ -1108,10 +1108,10 @@ tbody tr:last-child td {
   z-index: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle at 12% 8%, rgba(52, 211, 153, 0.2), transparent 20%),
-    radial-gradient(circle at 84% 18%, rgba(56, 189, 248, 0.08), transparent 18%),
-    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.12), transparent 26%),
-    linear-gradient(180deg, #07110c 0%, #08101a 55%, #070b11 100%);
+    radial-gradient(circle at 12% 8%, rgba(52, 211, 153, 0.14), transparent 28%),
+    radial-gradient(circle at 84% 18%, rgba(56, 189, 248, 0.05), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.08), transparent 34%),
+    linear-gradient(180deg, #07110c 0%, #08101a 52%, #070b11 100%);
 }
 
 .public-bg-glow {
@@ -1206,13 +1206,7 @@ tbody tr:last-child td {
 }
 
 .public-grid-lines {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-  background-size: 80px 80px;
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0.2));
+  display: none;
 }
 
 .public-noise {
@@ -1352,14 +1346,14 @@ tbody tr:last-child td {
   inset: 0;
   background:
     radial-gradient(circle at 74% 48%,
-      rgba(7, 11, 17, 0) 34%,
-      rgba(7, 11, 17, 0.1) 52%,
-      rgba(7, 11, 17, 0.26) 68%,
-      rgba(7, 11, 17, 0.56) 82%,
-      rgba(7, 11, 17, 0.86) 100%),
+      rgba(7, 11, 17, 0) 28%,
+      rgba(7, 11, 17, 0.06) 48%,
+      rgba(7, 11, 17, 0.18) 64%,
+      rgba(7, 11, 17, 0.38) 80%,
+      rgba(7, 11, 17, 0.7) 100%),
     radial-gradient(circle at 50% 112%,
-      rgba(7, 11, 17, 0) 42%,
-      rgba(7, 11, 17, 0.42) 100%);
+      rgba(7, 11, 17, 0) 38%,
+      rgba(7, 11, 17, 0.3) 100%);
 }
 
 .hero-bg-fade {
@@ -1368,21 +1362,27 @@ tbody tr:last-child td {
   z-index: 2;
   pointer-events: none;
   background:
-    radial-gradient(circle at 82% 24%, rgba(52, 211, 153, 0.08), transparent 20%),
-    radial-gradient(circle at 24% 14%, rgba(255, 255, 255, 0.03), transparent 18%),
-    radial-gradient(circle at center, rgba(7, 11, 17, 0), rgba(7, 11, 17, 0.14) 76%, rgba(7, 11, 17, 0.34) 100%),
-    linear-gradient(180deg,
-      rgba(7, 11, 17, 0.02) 0%,
-      rgba(7, 11, 17, 0.02) 10%,
-      rgba(7, 11, 17, 0.1) 34%,
+    radial-gradient(circle at 80% 22%, rgba(52, 211, 153, 0.06), transparent 22%),
+    radial-gradient(circle at 22% 12%, rgba(255, 255, 255, 0.02), transparent 22%),
+    radial-gradient(120% 110% at 18% 44%,
+      rgba(7, 11, 17, 0.84) 0%,
+      rgba(7, 11, 17, 0.68) 28%,
+      rgba(7, 11, 17, 0.34) 52%,
+      rgba(7, 11, 17, 0.1) 72%,
+      rgba(7, 11, 17, 0.03) 100%),
+    radial-gradient(90% 84% at 84% 50%,
+      rgba(7, 11, 17, 0) 42%,
+      rgba(7, 11, 17, 0.1) 70%,
       rgba(7, 11, 17, 0.28) 100%),
-    linear-gradient(90deg,
-      rgba(7, 11, 17, 0.94) 0%,
-      rgba(7, 11, 17, 0.86) 16%,
-      rgba(7, 11, 17, 0.56) 34%,
-      rgba(7, 11, 17, 0.12) 58%,
-      rgba(7, 11, 17, 0.06) 72%,
-      rgba(7, 11, 17, 0.24) 100%);
+    radial-gradient(120% 46% at 50% 100%,
+      rgba(7, 11, 17, 0) 24%,
+      rgba(7, 11, 17, 0.18) 72%,
+      rgba(7, 11, 17, 0.3) 100%),
+    linear-gradient(180deg,
+      rgba(7, 11, 17, 0.03) 0%,
+      rgba(7, 11, 17, 0.02) 18%,
+      rgba(7, 11, 17, 0.08) 52%,
+      rgba(7, 11, 17, 0.18) 100%);
 }
 
 .hero-inner {
@@ -2080,16 +2080,17 @@ tbody tr:last-child td {
 
   .hero-bg-fade {
     background:
-      radial-gradient(circle at 72% 20%, rgba(52, 211, 153, 0.08), transparent 18%),
-      linear-gradient(180deg,
-        rgba(7, 11, 17, 0.18) 0%,
-        rgba(7, 11, 17, 0.16) 18%,
-        rgba(7, 11, 17, 0.26) 58%,
-        rgba(7, 11, 17, 0.42) 100%),
-      linear-gradient(90deg,
-        rgba(7, 11, 17, 0.9) 0%,
-        rgba(7, 11, 17, 0.76) 44%,
-        rgba(7, 11, 17, 0.18) 100%);
+      radial-gradient(circle at 72% 20%, rgba(52, 211, 153, 0.06), transparent 18%),
+      radial-gradient(120% 110% at 30% 38%,
+        rgba(7, 11, 17, 0.88) 0%,
+        rgba(7, 11, 17, 0.72) 34%,
+        rgba(7, 11, 17, 0.34) 58%,
+        rgba(7, 11, 17, 0.12) 80%,
+        rgba(7, 11, 17, 0.04) 100%),
+      radial-gradient(120% 48% at 50% 100%,
+        rgba(7, 11, 17, 0) 24%,
+        rgba(7, 11, 17, 0.22) 76%,
+        rgba(7, 11, 17, 0.36) 100%);
   }
 
   .hero-inner {

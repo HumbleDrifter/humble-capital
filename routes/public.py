@@ -27,6 +27,20 @@ def home():
     return render_template("public/home.html", page_title="Home")
 
 
+@public_bp.route("/explore", methods=["GET"])
+def explore():
+
+    host = (request.host or "").split(":")[0].lower()
+
+    if host.startswith("app."):
+        return redirect(url_for("public.login"))
+
+    if host.startswith("webhook."):
+        return "Webhook endpoint active", 200
+
+    return render_template("public/explore.html", page_title="Explore the Console")
+
+
 @public_bp.route("/login", methods=["GET", "POST"])
 def login():
 

@@ -1,0 +1,167 @@
+{% extends "base_public.html" %}
+
+{% block content %}
+
+<section class="public-explore-hero">
+  <div class="public-section-shell explore-hero-shell">
+    <div class="public-section-heading">
+      <div class="hero-badge">Console Tour</div>
+      <h1 class="features-title">A product-led view of the Humble Capital operator console.</h1>
+      <p class="features-subtitle">
+        Explore the portfolio surface, trend visibility, and oversight tools that shape the day-to-day
+        operating experience without exposing private account data.
+      </p>
+    </div>
+
+    <div class="console-frame console-frame-large explore-console-stage">
+      <div class="console-topbar">
+        <span class="console-dot"></span>
+        <span class="console-dot"></span>
+        <span class="console-dot"></span>
+        <span class="console-title">Humble Capital Console</span>
+      </div>
+      <div class="console-screen">
+        <div class="console-kpi-row">
+          <div class="console-kpi-card">
+            <div class="console-kpi-label">Portfolio Value</div>
+            <div class="console-kpi-value">$148,420</div>
+          </div>
+          <div class="console-kpi-card">
+            <div class="console-kpi-label">Cash Reserve</div>
+            <div class="console-kpi-value">$24,180</div>
+          </div>
+          <div class="console-kpi-card">
+            <div class="console-kpi-label">Drawdown Guard</div>
+            <div class="console-kpi-value">Active</div>
+          </div>
+        </div>
+
+        <div class="explore-console-grid">
+          <div class="console-chart-card">
+            <div class="console-card-head">
+              <span>Portfolio Trend</span>
+              <span class="console-chip">90D View</span>
+            </div>
+            <svg class="console-chart" viewBox="0 0 720 320" role="img" aria-label="Portfolio trend visualization preview">
+              <defs>
+                <linearGradient id="exploreLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#34d399"></stop>
+                  <stop offset="100%" stop-color="#60a5fa"></stop>
+                </linearGradient>
+                <linearGradient id="exploreAreaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="rgba(52, 211, 153, 0.28)"></stop>
+                  <stop offset="100%" stop-color="rgba(52, 211, 153, 0)"></stop>
+                </linearGradient>
+              </defs>
+              <path d="M38 252 C98 240, 142 210, 192 196 S292 150, 338 164 S426 210, 486 176 S594 104, 682 76" fill="none" stroke="url(#exploreLineGradient)" stroke-width="7" stroke-linecap="round"></path>
+              <path d="M38 252 C98 240, 142 210, 192 196 S292 150, 338 164 S426 210, 486 176 S594 104, 682 76 L682 286 L38 286 Z" fill="url(#exploreAreaGradient)"></path>
+              <line x1="38" y1="286" x2="682" y2="286" stroke="rgba(255,255,255,0.08)"></line>
+              <text x="38" y="306" fill="rgba(236,243,255,0.48)" font-size="12">90d ago</text>
+              <text x="636" y="306" fill="rgba(236,243,255,0.48)" font-size="12">today</text>
+            </svg>
+          </div>
+
+          <div class="console-side-stack">
+            <div class="console-side-card">
+              <div class="console-card-head">
+                <span>Allocation / Risk</span>
+              </div>
+              <div class="console-allocation-bar">
+                <span class="console-alloc-core"></span>
+                <span class="console-alloc-sat"></span>
+                <span class="console-alloc-cash"></span>
+              </div>
+              <div class="console-legend">
+                <span>Core Exposure</span>
+                <span>Satellite Rotation</span>
+                <span>Cash Buffer</span>
+              </div>
+            </div>
+
+            <div class="console-side-card">
+              <div class="console-card-head">
+                <span>Operator Controls</span>
+              </div>
+              <div class="console-chip-row">
+                <span class="console-chip console-chip-good">Trading Enabled</span>
+                <span class="console-chip">Rebalance Review</span>
+                <span class="console-chip">System Healthy</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="console-table-card">
+          <div class="console-card-head">
+            <span>Execution / Rebalance Oversight</span>
+          </div>
+          <div class="console-table">
+            <div class="console-row console-row-head">
+              <span>Module</span>
+              <span>Purpose</span>
+              <span>View</span>
+            </div>
+            <div class="console-row">
+              <span>Portfolio Overview</span>
+              <span>Value, cash, and allocation posture</span>
+              <span>Live Summary</span>
+            </div>
+            <div class="console-row">
+              <span>Trend Visualization</span>
+              <span>Equity direction over time</span>
+              <span>Historical Lens</span>
+            </div>
+            <div class="console-row">
+              <span>Rebalance Oversight</span>
+              <span>Review allocation changes at a high level</span>
+              <span>Operator Context</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="public-features explore-feature-strip">
+  <div class="features-inner">
+    <div class="explore-feature-grid feature-grid">
+      <div class="feature-card">
+        <div class="feature-kicker">Overview</div>
+        <h3>Portfolio visibility</h3>
+        <p>Follow total value, cash, and core account state from one clean operator surface.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-kicker">Trend</div>
+        <h3>Equity context</h3>
+        <p>See how the account is moving over time with a trend panel built for quick directional reads.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-kicker">Risk</div>
+        <h3>Allocation awareness</h3>
+        <p>Keep exposure shape and cash posture visible while monitoring portfolio balance at a glance.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-kicker">Controls</div>
+        <h3>Operational oversight</h3>
+        <p>Keep system state, trading posture, and rebalance visibility within the same high-trust environment.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="public-cta">
+  <div class="cta-inner">
+    <h2>Explore the product, then step into the console.</h2>
+    <p>
+      The public tour shows the structure and experience. The private console is where live portfolio
+      monitoring and operator workflows come together.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-secondary hero-btn" href="/">Back Home</a>
+      <a class="btn btn-primary hero-btn" href="/login">Open Trading Console</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

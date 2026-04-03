@@ -5,10 +5,11 @@ import threading
 import time
 from functools import wraps
 
-from dotenv import load_dotenv
 from flask import Blueprint, jsonify, request, session
 
-load_dotenv('/root/tradingbot/.env', override=True)
+from env_runtime import load_runtime_env, preferred_env_path
+
+load_runtime_env(override=True)
 
 from execution import (
     clear_product_cache,
@@ -32,7 +33,7 @@ from storage import get_portfolio_history_since
 
 api_bp = Blueprint("api", __name__)
 
-BASE_DIR = "/root/tradingbot"
+BASE_DIR = str(preferred_env_path().parent.resolve())
 ASSET_CONFIG_PATH = os.path.join(BASE_DIR, "asset_config.json")
 MEME_ROTATION_PATH = os.path.join(BASE_DIR, "meme_rotation.json")
 TRADING_DB_PATH = os.getenv("TRADINGBOT_DB_PATH", os.path.join(BASE_DIR, "trading.db"))
@@ -47,7 +48,7 @@ def _log_api(msg):
 
 
 def get_api_secrets():
-    load_dotenv('/root/tradingbot/.env', override=True)
+    load_runtime_env(override=True)
 
     values = []
     seen = set()
@@ -767,6 +768,15 @@ def _build_portfolio_history():
         try:
             snapshot = get_portfolio_snapshot()
             summary = portfolio_summary(snapshot)
+            snapshot_total = float(snapshot.get("total_value_usd", 0.0) or 0.0)
+            summary_total = float(summary.get("total_value_usd", 0.0) or 0.0)
+            position_count = len(snapshot.get("positions", {}) or {})
+            _log_api(
+                "advisory live snapshot "
+                f"total={snapshot_total:.2f} "
+                f"summary_total={summary_total:.2f} "
+                f"positions={position_count}"
+            )
             live_risk_score = build_portfolio_risk_score(
                 snapshot=snapshot,
                 summary=summary,

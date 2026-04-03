@@ -4,8 +4,8 @@ import os
 import time
 import threading
 from pathlib import Path
-from dotenv import load_dotenv
 
+from env_runtime import load_runtime_env
 from storage import (
     get_all_positions,
     get_asset_state,
@@ -15,10 +15,11 @@ from storage import (
 from execution import get_best_bid_ask, get_client
 from regime import get_market_regime
 
-load_dotenv("/root/tradingbot/.env")
+_RUNTIME_ENV_PATH = load_runtime_env()
+_BASE_DIR = _RUNTIME_ENV_PATH.parent.resolve()
 
-CONFIG_PATH = "/root/tradingbot/asset_config.json"
-MEME_ROTATION_PATH = "/root/tradingbot/meme_rotation.json"
+CONFIG_PATH = str(_BASE_DIR / "asset_config.json")
+MEME_ROTATION_PATH = str(_BASE_DIR / "meme_rotation.json")
 
 STABLECOIN_PRODUCTS = {"USDC-USD", "USDT-USD", "DAI-USD"}
 STABLECOIN_CURRENCIES = {"USDC", "USDT", "DAI"}
@@ -611,6 +612,7 @@ def core_is_overweight(product_id, snapshot):
 
 
 def _build_portfolio_snapshot():
+    load_runtime_env()
     config = load_asset_config()
     positions = get_position_values()
     cash_breakdown = get_cash_breakdown()
@@ -668,6 +670,13 @@ def _build_portfolio_snapshot():
     snapshot["nontradable_value_usd"] = nontradable_value
     snapshot["nontradable_weight"] = nontradable_value / total_value
     snapshot["active_satellite_buy_universe"] = get_active_satellite_buy_universe(snapshot)
+    _log_portfolio(
+        "built live snapshot "
+        f"total={snapshot['total_value_usd']:.2f} "
+        f"cash={snapshot['usd_cash']:.2f} "
+        f"positions={len(positions)} "
+        f"config_dir={_BASE_DIR}"
+    )
     return snapshot
 
 

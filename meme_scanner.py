@@ -29,14 +29,33 @@ def log(msg):
     print(line, end="")
 
 
+def _response_preview(resp, max_len=220):
+    try:
+        text = (resp.text or "").strip()
+    except Exception:
+        text = ""
+
+    if not text:
+        return ""
+
+    text = " ".join(text.split())
+    return text[:max_len]
+
+
 def get_api_secret():
     load_dotenv("/root/tradingbot/.env", override=True)
-    return (
-        os.getenv("INTERNAL_API_SECRET")
-        or os.getenv("STATUS_SECRET")
-        or os.getenv("WEBHOOK_SHARED_SECRET")
-        or ""
-    )
+
+    internal_secret = str(os.getenv("INTERNAL_API_SECRET") or "").strip()
+    if internal_secret:
+        return internal_secret, "INTERNAL_API_SECRET"
+
+    status_secret = str(os.getenv("STATUS_SECRET") or "").strip()
+    if status_secret:
+        log("INTERNAL_API_SECRET missing; falling back to STATUS_SECRET for internal API auth")
+        return status_secret, "STATUS_SECRET"
+
+    log("internal API secret unavailable; expected INTERNAL_API_SECRET or STATUS_SECRET")
+    return "", ""
 
 def _watchlist():
     raw = str(os.getenv("MEME_SYMBOL_WATCHLIST", "") or "").strip()
@@ -138,9 +157,12 @@ def get_valid_products():
             "tradable_only": "true",
         }
 
-        secret = get_api_secret()
+        secret, secret_source = get_api_secret()
         if secret:
             params["secret"] = secret
+        else:
+            log("valid product lookup skipped: no usable internal API secret")
+            return None
 
         r = requests.get(
             f"{INTERNAL_API_BASE}/api/valid_products",
@@ -148,10 +170,17 @@ def get_valid_products():
             timeout=10,
         )
         if r.status_code != 200:
-            log(f"valid product lookup http {r.status_code}")
-            return set()
+            preview = _response_preview(r)
+            log(
+                f"valid product lookup http {r.status_code} via {secret_source or 'no-secret'}"
+                + (f" body={preview}" if preview else "")
+            )
+            return None
 
         data = r.json()
+        if not isinstance(data, dict) or not bool(data.get("ok", False)):
+            log(f"valid product lookup returned non-ok payload via {secret_source or 'unknown'}")
+            return None
 
         out = set()
         if isinstance(data, list):
@@ -167,10 +196,17 @@ def get_valid_products():
                 if pid:
                     out.add(pid)
 
+        if not out:
+            log(
+                f"valid product lookup returned 0 products via {secret_source or 'unknown'}; "
+                "keeping existing universe untouched"
+            )
+            return None
+
         return out
     except Exception as e:
         log(f"valid product lookup failed: {e}")
-        return set()
+        return None
 
 def compute_momentum_bonus(m):
     try:
@@ -296,6 +332,13 @@ def run():
     valid = get_valid_products()
     watchlist = _watchlist()
     core_assets = _load_core_assets()
+
+    if valid is None:
+        log(
+            f"valid product universe unavailable from {INTERNAL_API_BASE}/api/valid_products; "
+            "preserving existing meme rotation file to avoid degraded scan output"
+        )
+        return
 
     log(f"valid tradable USD products: {len(valid)}")
     log(f"configured core assets excluded: {len(core_assets)}")

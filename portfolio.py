@@ -36,6 +36,11 @@ _PORTFOLIO_CACHE = {
 }
 
 
+def _log_portfolio(msg):
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] [portfolio] {msg}")
+
+
 def _default_asset_config():
     return {
         "core_assets": {
@@ -674,6 +679,38 @@ def _cache_age_seconds():
     return max(0.0, time.time() - cached_at)
 
 
+def _snapshot_age_seconds(snapshot):
+    try:
+        snapshot_ts = float((snapshot or {}).get("timestamp") or 0.0)
+    except Exception:
+        snapshot_ts = 0.0
+
+    if snapshot_ts <= 0:
+        return None
+
+    return max(0.0, time.time() - snapshot_ts)
+
+
+def _cache_metadata(source, warning=None):
+    age = _cache_age_seconds()
+    snapshot = _get_cached_snapshot()
+    snapshot_age = _snapshot_age_seconds(snapshot)
+
+    meta = {
+        "source": source,
+        "ttl_sec": PORTFOLIO_CACHE_TTL_SEC,
+        "stale_sec": PORTFOLIO_CACHE_STALE_SEC,
+        "cached_at": float(_PORTFOLIO_CACHE.get("cached_at", 0.0) or 0.0),
+        "cache_age_sec": round(age, 2) if age is not None else None,
+        "snapshot_age_sec": round(snapshot_age, 2) if snapshot_age is not None else None,
+        "snapshot_timestamp": (snapshot or {}).get("timestamp"),
+        "last_error": _PORTFOLIO_CACHE.get("last_error"),
+    }
+    if warning:
+        meta["warning"] = warning
+    return meta
+
+
 def _cache_is_fresh():
     age = _cache_age_seconds()
     return age is not None and age <= PORTFOLIO_CACHE_TTL_SEC
@@ -729,7 +766,8 @@ def persist_current_portfolio_snapshot(snapshot=None):
 
         insert_portfolio_snapshot(**row)
         return True
-    except Exception:
+    except Exception as exc:
+        _log_portfolio(f"portfolio snapshot persistence skipped: {exc}")
         return False
 
 
@@ -744,26 +782,14 @@ def get_portfolio_snapshot(force_refresh=False):
         cached = _get_cached_snapshot()
         if cached:
             cached.setdefault("_cache", {})
-            cached["_cache"].update(
-                {
-                    "source": "fresh-cache",
-                    "ttl_sec": PORTFOLIO_CACHE_TTL_SEC,
-                    "stale_sec": PORTFOLIO_CACHE_STALE_SEC,
-                }
-            )
+            cached["_cache"].update(_cache_metadata("fresh-cache"))
             return cached
 
     try:
         snapshot = _build_portfolio_snapshot()
         _store_portfolio_cache(snapshot)
         snapshot.setdefault("_cache", {})
-        snapshot["_cache"].update(
-            {
-                "source": "live",
-                "ttl_sec": PORTFOLIO_CACHE_TTL_SEC,
-                "stale_sec": PORTFOLIO_CACHE_STALE_SEC,
-            }
-        )
+        snapshot["_cache"].update(_cache_metadata("live"))
         return snapshot
 
     except Exception as exc:
@@ -774,21 +800,17 @@ def get_portfolio_snapshot(force_refresh=False):
             cached = _get_cached_snapshot()
             if cached:
                 cached.setdefault("_cache", {})
-                cached["_cache"].update(
-                    {
-                        "source": "stale-cache",
-                        "ttl_sec": PORTFOLIO_CACHE_TTL_SEC,
-                        "stale_sec": PORTFOLIO_CACHE_STALE_SEC,
-                        "warning": str(exc),
-                    }
-                )
+                cached["_cache"].update(_cache_metadata("stale-cache", warning=str(exc)))
+                _log_portfolio(f"live portfolio refresh failed; serving stale cache: {exc}")
                 return cached
+        _log_portfolio(f"live portfolio refresh failed without usable cache: {exc}")
         raise
 
 
 def get_cached_portfolio_state():
     cached = _get_cached_snapshot()
     age = _cache_age_seconds()
+    snapshot_age = _snapshot_age_seconds(cached)
 
     if cached:
         cache_source = "fresh-cache" if _cache_is_fresh() else "stale-cache"
@@ -803,6 +825,12 @@ def get_cached_portfolio_state():
             "active_satellite_buy_universe": cached.get("active_satellite_buy_universe", []),
             "source": cache_source,
             "age_sec": round(age or 0.0, 2),
+            "cache_age_sec": round(age or 0.0, 2),
+            "snapshot_age_sec": round(snapshot_age, 2) if snapshot_age is not None else None,
+            "last_updated_ts": cached.get("timestamp"),
+            "cached_at": float(_PORTFOLIO_CACHE.get("cached_at", 0.0) or 0.0),
+            "ttl_sec": PORTFOLIO_CACHE_TTL_SEC,
+            "stale_sec": PORTFOLIO_CACHE_STALE_SEC,
             "last_error": _PORTFOLIO_CACHE.get("last_error"),
         }
 

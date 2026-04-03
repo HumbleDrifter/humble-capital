@@ -34,6 +34,11 @@ _API_CACHE_LOCK = threading.Lock()
 _API_CACHE = {}
 
 
+def _log_api(msg):
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] [api] {msg}")
+
+
 def get_api_secrets():
     load_dotenv('/root/tradingbot/.env', override=True)
 
@@ -379,45 +384,66 @@ def _cache_stale_ok(entry):
     return age <= float(entry.get("stale_sec", 0.0))
 
 
+def _cache_meta(entry, source, warning=None):
+    cached_at = float((entry or {}).get("cached_at", 0.0) or 0.0)
+    age = max(0.0, _now() - cached_at) if cached_at > 0 else None
+    meta = {
+        "source": source,
+        "cached_at": cached_at,
+        "age_sec": round(age, 2) if age is not None else None,
+        "ttl_sec": float((entry or {}).get("ttl_sec", 0.0) or 0.0),
+        "stale_sec": float((entry or {}).get("stale_sec", 0.0) or 0.0),
+        "is_stale": source == "stale-cache",
+    }
+    if warning:
+        meta["warning"] = warning
+    return meta
+
+
+def _freshness_from_payload(payload):
+    payload = payload if isinstance(payload, dict) else {}
+    cache = payload.get("_cache", {}) if isinstance(payload.get("_cache"), dict) else {}
+    freshness = {
+        "source": cache.get("source") or payload.get("source"),
+        "snapshot_timestamp": payload.get("timestamp") or payload.get("last_updated_ts"),
+        "cache_age_sec": cache.get("cache_age_sec", cache.get("age_sec", payload.get("cache_age_sec", payload.get("age_sec")))),
+        "snapshot_age_sec": cache.get("snapshot_age_sec", payload.get("snapshot_age_sec")),
+        "cached_at": cache.get("cached_at", payload.get("cached_at")),
+        "ttl_sec": cache.get("ttl_sec", payload.get("ttl_sec")),
+        "stale_sec": cache.get("stale_sec", payload.get("stale_sec")),
+        "last_error": cache.get("last_error", payload.get("last_error")),
+    }
+    warning = cache.get("warning", payload.get("warning"))
+    if warning:
+        freshness["warning"] = warning
+    return freshness
+
+
 def _with_cache(name, builder, ttl_sec=30.0, stale_sec=300.0):
     existing = _cache_get(name)
 
     if _cache_valid(existing):
         payload = dict(existing["data"])
         payload.setdefault("_cache", {})
-        payload["_cache"].update({
-            "source": "fresh-cache",
-            "cached_at": existing["cached_at"],
-            "ttl_sec": existing["ttl_sec"],
-            "stale_sec": existing["stale_sec"],
-        })
+        payload["_cache"].update(_cache_meta(existing, "fresh-cache"))
         return payload
 
     try:
         built = builder()
-        _cache_set(name, built, ttl_sec=ttl_sec, stale_sec=stale_sec)
+        entry = _cache_set(name, built, ttl_sec=ttl_sec, stale_sec=stale_sec)
         payload = dict(built)
         payload.setdefault("_cache", {})
-        payload["_cache"].update({
-            "source": "live",
-            "cached_at": _now(),
-            "ttl_sec": ttl_sec,
-            "stale_sec": stale_sec,
-        })
+        payload["_cache"].update(_cache_meta(entry, "live"))
         return payload
     except Exception as exc:
         if _cache_stale_ok(existing):
             payload = dict(existing["data"])
             payload.setdefault("_cache", {})
-            payload["_cache"].update({
-                "source": "stale-cache",
-                "cached_at": existing["cached_at"],
-                "ttl_sec": existing["ttl_sec"],
-                "stale_sec": existing["stale_sec"],
-                "warning": str(exc),
-            })
+            payload["_cache"].update(_cache_meta(existing, "stale-cache", warning=str(exc)))
             payload.setdefault("ok", True)
+            _log_api(f"serving stale API cache for {name}: {exc}")
             return payload
+        _log_api(f"cache build failed for {name} without stale fallback: {exc}")
         raise
 
 
@@ -441,6 +467,7 @@ def _build_status():
         "status": "online",
         "time": int(_now()),
         "portfolio_cache": state,
+        "freshness": _freshness_from_payload(state),
     }
 
 
@@ -452,6 +479,7 @@ def _build_portfolio():
         "ok": True,
         "snapshot": snapshot,
         "summary": summary,
+        "freshness": _freshness_from_payload(snapshot),
     }
 
 
@@ -466,6 +494,7 @@ def _build_rebalance_preview():
         "summary": summary,
         "plan": plan,
         "harvest": harvest,
+        "freshness": _freshness_from_payload(snapshot),
     }
 
 
@@ -494,6 +523,7 @@ def _build_heatmap():
             "market_regime": summary.get("market_regime"),
             "assets": assets,
         },
+        "freshness": _freshness_from_payload(snapshot),
     }
 
 
@@ -577,6 +607,7 @@ def _build_meme_rotation():
         "market_regime": summary.get("market_regime"),
         "active_satellite_buy_universe": sorted(active_buy_universe),
         "candidates": candidates,
+        "freshness": _freshness_from_payload(snapshot),
     }
 
 
@@ -611,12 +642,13 @@ def _build_portfolio_summary_v2():
         realized_pnl_total = _safe_float(row["total"])
 
         conn.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        _log_api(f"portfolio summary DB stats degraded: {exc}")
 
     try:
         snapshot = get_portfolio_snapshot()
         summary = portfolio_summary(snapshot)
+        freshness = _freshness_from_payload(snapshot)
 
         assets = list((summary.get("assets") or {}).values())
         assets.sort(key=lambda x: float(x.get("value_total_usd", 0.0) or 0.0), reverse=True)
@@ -646,6 +678,7 @@ def _build_portfolio_summary_v2():
                 "trade_count": trade_count,
                 "top_asset": top_asset,
                 "data_mode": "live",
+                "freshness": freshness,
             },
         }
 
@@ -672,6 +705,7 @@ def _build_portfolio_summary_v2():
                 "top_asset": None,
                 "data_mode": "degraded",
                 "warning": str(exc),
+                "freshness": {},
             },
         }
 
@@ -698,6 +732,7 @@ def _build_portfolio_allocations():
             "ok": True,
             "allocations": rows,
             "data_mode": "live",
+            "freshness": _freshness_from_payload(snapshot),
         }
 
     except Exception as exc:
@@ -706,6 +741,7 @@ def _build_portfolio_allocations():
             "allocations": [],
             "data_mode": "degraded",
             "warning": str(exc),
+            "freshness": {},
         }
 
 
@@ -732,7 +768,8 @@ def _build_portfolio_history():
                 "series_type": "portfolio_value",
                 "points": points,
             }
-    except Exception:
+    except Exception as exc:
+        _log_api(f"portfolio history snapshot source unavailable: {exc}")
         points = []
 
     def _table_exists(conn, table_name):
@@ -869,7 +906,8 @@ def _build_portfolio_history():
                 if points:
                     series_type = "realized_pnl"
 
-    except Exception:
+    except Exception as exc:
+        _log_api(f"portfolio history fallback degraded: {exc}")
         points = []
         series_type = "empty"
     finally:
@@ -1103,7 +1141,7 @@ def api_auth_bootstrap_status():
         "ok": True,
         "session_authenticated": _has_session_user(),
         "session_is_admin": _has_session_admin(),
-        "api_secret_enabled": bool(API_SECRETS),
+        "api_secret_enabled": bool(get_api_secrets()),
         "user_count": user_count,
         "needs_bootstrap": user_count == 0,
     })

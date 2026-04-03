@@ -3,40 +3,44 @@
 {% block content %}
 <section class="auth-shell">
   <div class="auth-card">
-    <div class="hero-badge">Secure Platform Access</div>
-    <h1 class="auth-title">Humble Capital</h1>
-    <p class="auth-text">
-      Sign in to access the Leprechaun trading console.
-      <br>
-      <strong>Where Luck Meets Momentum</strong>
-    </p>
+    <div class="auth-brand-lockup">
+      <div class="hero-badge">Secure Platform Access</div>
+      <h1 class="auth-title">Humble Capital Console</h1>
+      <p class="auth-text">
+        Sign in to access the Leprechaun trading console and portfolio operating environment.
+      </p>
+    </div>
 
     {% if error %}
       <div class="alert alert-error">{{ error }}</div>
     {% endif %}
 
     <form method="post" class="auth-form">
-      <label class="form-label" for="username">Username</label>
-      <input
-        class="form-input"
-        id="username"
-        name="username"
-        type="text"
-        placeholder="Enter username"
-        autocomplete="username"
-        required
-      >
+      <div class="auth-field">
+        <label class="form-label" for="username">Username</label>
+        <input
+          class="form-input"
+          id="username"
+          name="username"
+          type="text"
+          placeholder="Enter username"
+          autocomplete="username"
+          required
+        >
+      </div>
 
-      <label class="form-label" for="password">Password</label>
-      <input
-        class="form-input"
-        id="password"
-        name="password"
-        type="password"
-        placeholder="Enter password"
-        autocomplete="current-password"
-        required
-      >
+      <div class="auth-field">
+        <label class="form-label" for="password">Password</label>
+        <input
+          class="form-input"
+          id="password"
+          name="password"
+          type="password"
+          placeholder="Enter password"
+          autocomplete="current-password"
+          required
+        >
+      </div>
 
       <button class="btn btn-primary btn-block" type="submit">
         Launch Console
@@ -44,7 +48,7 @@
     </form>
 
     <div class="auth-note">
-      Secure sign-in now uses a stored account login instead of the dashboard shared secret.
+      Session-backed access keeps the console aligned with your authenticated account instead of a shared dashboard secret.
     </div>
   </div>
 </section>

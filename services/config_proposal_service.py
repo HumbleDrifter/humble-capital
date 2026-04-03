@@ -4,6 +4,7 @@ import os
 import time
 from datetime import datetime, timedelta
 
+from notify import notify_config_proposal
 from portfolio import (
     build_adaptive_suggestions,
     build_auto_adaptive_recommendation,
@@ -292,6 +293,12 @@ def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFA
         status="pending",
     )
     saved = get_config_proposal_by_id(proposal_id)
+    notification_sent = False
+    try:
+        if saved:
+            notification_sent = bool(notify_config_proposal(saved))
+    except Exception:
+        notification_sent = False
 
     return {
         "ok": True,
@@ -300,6 +307,7 @@ def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFA
         "superseded_count": superseded_count,
         "proposal_id": proposal_id,
         "proposal": saved,
+        "notification_sent": notification_sent,
     }
 
 

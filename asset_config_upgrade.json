@@ -1,0 +1,60 @@
+{
+  "core_assets": {
+    "BTC-USD": {"target_weight": 0.25, "rebalance_band": 0.03},
+    "ETH-USD": {"target_weight": 0.15, "rebalance_band": 0.02},
+    "XRP-USD": {"target_weight": 0.10, "rebalance_band": 0.02}
+  },
+  "satellite_mode": "rotation",
+  "satellite_defaults": {"max_weight": 0.12},
+  "volatility_buckets": {
+    "very_high": {"max_weight": 0.05},
+    "high": {"max_weight": 0.08},
+    "medium": {"max_weight": 0.12}
+  },
+  "satellite_volatility_map": {},
+  "satellite_allowed": ["DOGE-USD", "SHIB-USD", "PEPE-USD", "BONK-USD", "JASMY-USD"],
+  "satellite_blocked": ["ATOM-USD"],
+  "satellite_total_target": 0.50,
+  "satellite_total_max": 0.50,
+  "regime_satellite_caps": {
+    "bull": 0.50,
+    "neutral": 0.40,
+    "risk_off": 0.25
+  },
+  "dust_min_value_usd": 2.0,
+  "trade_min_value_usd": 10.0,
+  "min_cash_reserve": 0.05,
+  "core_buy_fraction_of_shortfall": 0.25,
+  "drawdown_controls": {
+    "warn_level": 0.10,
+    "reduce_level": 0.15,
+    "freeze_level": 0.20
+  },
+  "profit_harvest": {
+    "enabled": true,
+    "satellite_only": true,
+    "cooldown_hours": 24,
+    "min_harvest_usd": 15,
+    "routes": {"BTC-USD": 0.40, "ETH-USD": 0.40, "CASH": 0.20},
+    "tiers": [
+      {"gain_pct": 1.0, "trim_pct": 0.25},
+      {"gain_pct": 0.50, "trim_pct": 0.20},
+      {"gain_pct": 0.25, "trim_pct": 0.15}
+    ]
+  },
+  "meme_rotation": {
+    "enabled": true,
+    "min_score": 60,
+    "max_active": 8,
+    "update_source": "ui_or_external_feed"
+  },
+  "sell_policy_defaults": {
+    "core": {"preserve_tradable_remainder": true, "allow_full_exit_on_small_remainder": false, "min_meaningful_sell_usd": 5},
+    "satellite_active": {"preserve_tradable_remainder": true, "allow_full_exit_on_small_remainder": false, "min_meaningful_sell_usd": 5},
+    "satellite_blocked": {"preserve_tradable_remainder": false, "allow_full_exit_on_small_remainder": true, "min_meaningful_sell_usd": 5},
+    "nontradable": {"preserve_tradable_remainder": false, "allow_full_exit_on_small_remainder": true, "min_meaningful_sell_usd": 0},
+    "dust": {"preserve_tradable_remainder": false, "allow_full_exit_on_small_remainder": true, "min_meaningful_sell_usd": 0},
+    "unknown": {"preserve_tradable_remainder": false, "allow_full_exit_on_small_remainder": true, "min_meaningful_sell_usd": 5}
+  },
+  "sell_policy_overrides": {}
+}

@@ -1,0 +1,245 @@
+# execution.py
+import os
+import time
+import uuid
+from decimal import Decimal, ROUND_DOWN
+from typing import Any, Dict, Tuple
+
+from dotenv import load_dotenv
+from coinbase.rest import RESTClient
+
+load_dotenv("/root/tradingbot/.env")
+
+# Order statuses that mean "done"
+TERMINAL_STATUSES = {"FILLED", "CANCELED", "CANCELLED", "EXPIRED", "FAILED", "Rdef get_client() -> RESTClient:
+    """
+    Lazily create the Coinbase REST client AFTER .env has been loaded by app.py.
+    This prevents KeyError on import.
+    """
+    global _client
+    if _client is None:
+        api_key = os.getenv("organizations/456a9cae-bfa3-4118-a408-81f23862b617/apiKeys/e4ca3af6-ece7-4bae-bfe4-9004a26e7f53")
+        api_secret = os.getenv("-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIHN8ODHiIOx7XrhqtPv9jgfaFwUodHNuVVqE5r3u1FGgoAoGCCqGSM49\nAwEHoUQDQgAEmlN5zBrRMrQkrWibRvWIVf3J3LGRM3i43l5CjoPuOhvu7eRBA9Vx\n7FqfetnYadGoF5cZ7Wg+srcyGcuQghLl9Q==\n-----END EC PRIVATE KEY-----\n")
+        if not api_key or not api_secret:
+            raise RuntimeError(
+                "Missing COINBASE_API_KEY or COINBASE_API_SECRET. "
+                "Make sure app.py calls load_dotenv() before importing execution."
+            )
+        _client = RESTClient(api_key=api_key, api_secret=api_secret)
+    return _client
+
+
+def _to_dict(x: Any) -> Dict[str, Any]:
+    return x.to_dict() if hasattr(x, "to_dict") else x
+
+
+def _extract_order_id(resp_dict: Dict[str, Any]) -> str | None:
+    """
+    SDK response shapes can vary by version.
+    Try several common locations.
+    """
+    return (
+        resp_dict.get("success_response", {}).get("order_id")
+        or resp_dict.get("order_id")
+        or resp_dict.get("order", {}).get("order_id")
+    )
+
+
+def get_best_bid_ask(product_id: str) -> Tuple[Decimal, Decimal]:
+    resp = get_client().get_best_bid_ask(product_ids=[product_id])
+    d = _to_dict(resp)
+
+    pb = d["pricebooks"][0]
+    bid = Decimal(pb["bids"][0]["price"])
+    ask = Decimal(pb["asks"][0]["price"])
+    return bid, ask
+
+
+def get_quote_increment(product_id: str) -> Decimal:
+    """
+    Used to round limit_price to the allowed tick size for that product.
+    """
+    prod = _to_dict(get_client().get_product(product_id=product_id))
+    inc = prod.get("quote_increment") or prod.get("quote_increment_value") or "0.00000001"
+    return Decimal(str(inc))
+
+
+def round_to_increment(price: Decimal, inc: Decimal) -> Decimal:
+    """
+    Floors to tick size (quote_increment) to avoid 'invalid price increment' errors.
+    """
+    return (price / inc).to_integral_value(rounding=ROUND_DOWN) * inc
+
+
+def _calc_limit_price(product_id: str, side: str, offset_bps: int) -> Tuple[Decimal, Decimal, Decimal]:
+    """
+    side BUY: price slightly below best ask
+    side SELL: price slightly above best bid
+    """
+    side = side.upper()
+    bid, ask = get_best_bid_ask(product_id)
+    inc = get_quote_increment(product_id)
+
+    offset = Decimal(offset_bps) / Decimal(10_000)
+    raw = ask * (Decimal("1") - offset) if side == "BUY" else bid * (Decimal("1") + offset)
+    limit_price = round_to_increment(raw, inc)
+    return bid, ask, limit_price
+
+
+def _get_order_status(order_id: str) -> Tuple[str, float, float, Dict[str, Any]]:
+    """
+    Returns:
+      status (upper),
+      filled_base (float),
+      avg_fill_price (float),
+      raw_order_dict
+    """
+    gd = _to_dict(get_client().get_order(order_id=order_id))
+    order = gd.get("order", gd)
+
+    status = str(order.get("status", "")).upper()
+
+    # Common fields
+    filled_base = float(order.get("filled_size") or 0.0)          # base units
+    filled_value = float(order.get("filled_value") or 0.0)        # quote amount (USD) if present
+    avg_price = float(order.get("average_filled_price") or 0.0)   # USD/base if present
+
+    # Compute avg price if not provided
+    if avg_price == 0.0 and filled_base > 0.0 and filled_value > 0.0:
+        avg_price = filled_value / filled_base
+
+    return status, filled_base, avg_price, order
+
+
+def place_limit_quote_with_timeout(
+    product_id: str,
+    side: str,
+    quote_size_usd: float,
+    offset_bps: int = 8,
+    timeout_sec: int = 25,
+    post_only: bool = True,
+) -> Dict[str, Any]:
+    """
+    Place a GTC LIMIT order using QUOTE size (USD), then poll until filled or timeout, then cancel.
+    Good for BUY sizing.
+    """
+    side = side.upper()
+    bid, ask, limit_price = _calc_limit_price(product_id, side, offset_bps)
+
+    client_order_id = str(uuid.uuid4())
+
+    order_resp = get_client().limit_order_gtc(
+        client_order_id=client_order_id,
+        product_id=product_id,
+        side=side,
+        quote_size=str(quote_size_usd),
+        limit_price=str(limit_price),
+        post_only=bool(post_only),
+    )
+    od = _to_dict(order_resp)
+    order_id = _extract_order_id(od)
+
+    if not order_id:
+        return {"ok": False, "error": "no order_id returned", "raw": od}
+
+    deadline = time.time() + float(timeout_sec)
+
+    while time.time() < deadline:
+        status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+        if status in TERMINAL_STATUSES:
+            return {
+                "ok": True,
+                "coinbase_order_id": order_id,
+                "status": status,
+                "best_bid": str(bid),
+                "best_ask": str(ask),
+                "limit_price": str(limit_price),
+                "filled_base": filled_base,
+                "avg_fill_price": avg_price,
+                "raw": raw_order,
+            }
+        time.sleep(2)
+
+    cancel_resp = _to_dict(get_client().cancel_orders(order_ids=[order_id]))
+    status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+
+    return {
+        "ok": True,
+        "coinbase_order_id": order_id,
+        "status": status,
+        "result": "timeout_cancel",
+        "best_bid": str(bid),
+        "best_ask": str(ask),
+        "limit_price": str(limit_price),
+        "filled_base": filled_base,
+        "avg_fill_price": avg_price,
+        "cancel": cancel_resp,
+        "raw": raw_order,
+    }
+
+
+def place_limit_base_with_timeout(
+    product_id: str,
+    side: str,
+    base_size: float,
+    offset_bps: int = 8,
+    timeout_sec: int = 25,
+    post_only: bool = True,
+) -> Dict[str, Any]:
+    """
+    Place a GTC LIMIT order using BASE size (coins), then poll until filled or timeout, then cancel.
+    Good for SELL sizing when using sell_pct -> base_size.
+    """
+    side = side.upper()
+    bid, ask, limit_price = _calc_limit_price(product_id, side, offset_bps)
+
+    client_order_id = str(uuid.uuid4())
+
+    order_resp = get_client().limit_order_gtc(
+        client_order_id=client_order_id,
+        product_id=product_id,
+        side=side,
+        base_size=str(base_size),
+        limit_price=str(limit_price),
+        post_only=bool(post_only),
+    )
+    od = _to_dict(order_resp)
+    order_id = _extract_order_id(od)
+
+    if not order_id:
+        return {"ok": False, "error": "no order_id returned", "raw": od}
+
+    deadline = time.time() + float(timeout_sec)
+
+    while time.time() < deadline:
+        status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+        if status in TERMINAL_STATUSES:
+            return {
+                "ok": True,
+                "coinbase_order_id": order_id,
+                "status": status,
+                "best_bid": str(bid),
+                "best_ask": str(ask),
+                "limit_price": str(limit_price),
+                "filled_base": filled_base,
+                "avg_fill_price": avg_price,
+                "raw": raw_order,
+            }
+        time.sleep(2)
+
+    cancel_resp = _to_dict(get_client().cancel_orders(order_ids=[order_id]))
+    status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+
+    return {
+        "ok": True,
+        "coinbase_order_id": order_id,
+        "status": status,
+        "result": "timeout_cancel",
+        "best_bid": str(bid),
+        "best_ask": str(ask),
+        "limit_price": str(limit_price),
+        "filled_base": filled_base,
+        "avg_fill_price": avg_price,
+        "cancel": cancel_resp,
+        "raw": raw_order,
+    }

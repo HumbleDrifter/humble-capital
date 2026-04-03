@@ -1,0 +1,45 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<div class="grid cols-12 meme-rotation-grid">
+
+  <section class="panel span-12 meme-rotation-panel">
+
+    <div class="section-header">
+      <div>
+        <h2>Meme Hunter Heatmap</h2>
+        <p class="section-subtitle" id="heatmapMeta">
+          Loading meme candidates...
+        </p>
+      </div>
+
+      <div class="section-actions">
+        <label class="tiny" for="heatmapSort">Sort By</label>
+        <select id="heatmapSort" class="select" onchange="refreshMemeRotation()">
+          <option value="score">Score</option>
+          <option value="held_value">Held Value</option>
+          <option value="weight">Portfolio Weight</option>
+          <option value="change_24h">24H Change</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="heatmapStatus"></div>
+
+    <div class="divider"></div>
+
+    <div id="heatmapGrid" class="heatmap"></div>
+
+  </section>
+
+</div>
+
+<script>
+window.MEME_ROTATION_CONFIG = {
+  apiSecret: {{ api_secret|tojson }}
+};
+</script>
+
+<script src="{{ url_for('static', filename='js/meme_rotation.js') }}"></script>
+
+{% endblock %}

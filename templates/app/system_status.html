@@ -1,0 +1,81 @@
+{% extends "base_app.html" %}
+
+{% block topbar_actions %}
+<button class="btn btn-secondary" onclick="refreshSystemStatus()">Refresh</button>
+<button class="btn btn-primary" onclick="refreshCaches()">Refresh Caches</button>
+{% endblock %}
+
+{% block mobile_topbar_actions %}
+<button class="btn btn-secondary" onclick="refreshSystemStatus()">Refresh</button>
+<button class="btn btn-primary" onclick="refreshCaches()">Caches</button>
+{% endblock %}
+
+{% block content %}
+<div class="grid cols-12 system-status-grid">
+
+  <section class="panel span-12 system-status-controls">
+    <div class="section-header">
+      <div>
+        <h2>System Status</h2>
+        <p class="section-subtitle">
+          Operational state, service health, and cache management
+        </p>
+      </div>
+    </div>
+
+    <div id="statusBadges">
+      <span class="badge accent">manual controls</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="service-actions">
+      <button class="btn btn-secondary" onclick="refreshSystemStatus()">
+        Refresh Status
+      </button>
+
+      <button class="btn btn-primary" onclick="refreshCaches()">
+        Refresh Caches
+      </button>
+    </div>
+  </section>
+
+  <section class="panel span-6 system-status-service">
+    <div class="section-header">
+      <h2>Service Health</h2>
+    </div>
+
+    <div id="serviceHealth">
+      Loading...
+    </div>
+  </section>
+
+  <section class="panel span-6 system-status-cache">
+    <div class="section-header">
+      <h2>Cache Health</h2>
+    </div>
+
+    <div id="cacheHealth">
+      Ready.
+    </div>
+  </section>
+
+  <section class="panel span-12 system-status-diagnostics">
+    <div class="section-header">
+      <h2>Diagnostics</h2>
+    </div>
+
+    <pre id="diagnostics">Loading...</pre>
+  </section>
+
+</div>
+
+<script>
+window.SYSTEM_STATUS_CONFIG = {
+  apiSecret: "{{ api_secret }}"
+};
+</script>
+
+<script src="{{ url_for('static', filename='js/system_status.js') }}"></script>
+
+{% endblock %}

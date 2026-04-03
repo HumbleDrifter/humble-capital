@@ -1,0 +1,471 @@
+import os
+import time
+from dotenv import load_dotenv
+
+from execution import (
+    place_limit_quote_with_retries,
+    place_limit_base_with_retries,
+    get_quote_attempts,
+    get_base_attempts,
+)
+
+from positions import compute_sell_base, compute_full_liquid_base
+
+from portfolio import (
+    get_portfolio_snapshot,
+    portfolio_summary,
+    allowed_satellite_buy_usd,
+    allowed_core_buy_usd,
+    required_trim_usd,
+    get_profit_harvest_candidates,
+)
+
+from storage import record_buy_fill, record_sell_fill, mark_harvest
+
+load_dotenv("/root/tradingbot/.env")
+
+MAX_QUOTE_SIZE = float(os.getenv("MAX_QUOTE_PER_TRADE_USD", "25"))
+
+
+def get_max_quote_size(snapshot=None):
+    snapshot = snapshot or get_portfolio_snapshot()
+    cfg = snapshot.get("config", {}) or {}
+    return float(cfg.get("max_quote_per_trade_usd", MAX_QUOTE_SIZE) or MAX_QUOTE_SIZE)
+
+
+def _extract_fill(result_wrapper):
+    final_result = (result_wrapper or {}).get("final_result", {}) if isinstance(result_wrapper, dict) else {}
+    filled_base = float(final_result.get("filled_base", 0.0) or 0.0)
+    avg_fill_price = float(final_result.get("avg_fill_price", 0.0) or 0.0)
+    return filled_base, avg_fill_price
+
+
+def execute_satellite_signal(product_id, signal_type="SATELLITE_BUY"):
+    signal_type = str(signal_type or "SATELLITE_BUY").upper().strip()
+    snapshot = get_portfolio_snapshot()
+
+    if signal_type == "CORE_BUY_WINDOW":
+        buy_usd = min(
+            allowed_core_buy_usd(product_id, snapshot),
+            get_max_quote_size(snapshot),
+        )
+    else:
+        buy_usd = min(
+            allowed_satellite_buy_usd(product_id, snapshot),
+            get_max_quote_size(snapshot),
+        )
+
+    if buy_usd <= 0:
+        return {
+            "ok": False,
+            "reason": "buy_not_allowed",
+            "product_id": product_id,
+            "signal_type": signal_type,
+        }
+
+    return execute_buy(product_id, buy_usd, signal_type=signal_type)
+
+
+def execute_buy(product_id, buy_usd, signal_type="SATELLITE_BUY"):
+    snapshot = get_portfolio_snapshot()
+
+    buy_usd = min(float(buy_usd), get_max_quote_size(snapshot))
+
+    if buy_usd <= 0:
+        return {
+            "ok": False,
+            "product_id": product_id,
+            "reason": "buy_usd_zero",
+        }
+
+    asset = snapshot.get("positions", {}).get(product_id, {})
+    volatility_bucket = str(asset.get("volatility_bucket", "") or "")
+
+    result = place_limit_quote_with_retries(
+        product_id=product_id,
+        side="BUY",
+        quote_size_usd=buy_usd,
+        attempts=get_quote_attempts(
+            signal_type=signal_type,
+            volatility_bucket=volatility_bucket,
+        ),
+        signal_type=signal_type,
+        volatility_bucket=volatility_bucket,
+    )
+
+    filled_base, avg_fill_price = _extract_fill(result)
+
+    if filled_base > 0 and avg_fill_price > 0:
+        record_buy_fill(product_id, filled_base, avg_fill_price)
+
+    return {
+        "ok": True,
+        "product_id": product_id,
+        "side": "BUY",
+        "signal_type": signal_type,
+        "requested_buy_usd": buy_usd,
+        "result": result,
+    }
+
+
+def execute_trim(product_id, trim_usd, snapshot):
+    current_value = float(snapshot.get("positions", {}).get(product_id, {}).get("value_total_usd", 0.0) or 0.0)
+
+    if current_value <= 0:
+        return {
+            "ok": False,
+            "product_id": product_id,
+            "reason": "no_position_value",
+        }
+
+    requested_sell_pct = min(1.0, trim_usd / current_value)
+
+    base_size = (
+        compute_full_liquid_base(product_id)
+        if requested_sell_pct >= 1.0
+        else compute_sell_base(product_id, requested_sell_pct)
+    )
+
+    if base_size <= 0:
+        return {
+            "ok": False,
+            "product_id": product_id,
+            "reason": "no_liquid_balance",
+        }
+
+    asset = snapshot.get("positions", {}).get(product_id, {})
+    volatility_bucket = str(asset.get("volatility_bucket", "") or "")
+
+    result = place_limit_base_with_retries(
+        product_id=product_id,
+        side="SELL",
+        base_size=base_size,
+        attempts=get_base_attempts(
+            signal_type="SNIPER_EXIT",
+            volatility_bucket=volatility_bucket,
+        ),
+        signal_type="SNIPER_EXIT",
+        volatility_bucket=volatility_bucket,
+    )
+
+    filled_base, _ = _extract_fill(result)
+
+    if filled_base > 0:
+        record_sell_fill(product_id, filled_base)
+
+    return {
+        "ok": True,
+        "product_id": product_id,
+        "side": "SELL",
+        "requested_trim_usd": trim_usd,
+        "result": result,
+    }
+
+
+def get_profit_harvest_plan(snapshot=None):
+    snapshot = snapshot or get_portfolio_snapshot()
+
+    cfg = snapshot.get("config", {}).get("profit_harvest", {})
+    routes = cfg.get("routes", {"BTC-USD": 0.40, "ETH-USD": 0.40, "CASH": 0.20})
+
+    harvests = []
+
+    for item in get_profit_harvest_candidates(snapshot):
+        route_preview = []
+
+        for route_product, pct in routes.items():
+            pct = float(pct or 0.0)
+
+            route_preview.append({
+                "product_id": route_product,
+                "pct": pct,
+                "amount_usd": float(item.get("amount_usd", 0.0) or 0.0) * pct,
+            })
+
+        harvests.append({
+            **item,
+            "routes": route_preview,
+        })
+
+    return {
+        "ok": True,
+        "harvests": harvests,
+    }
+
+
+def route_harvest_proceeds(amount_usd, snapshot):
+    routes = snapshot.get("config", {}).get("profit_harvest", {}).get("routes", {})
+    out = []
+
+    for route_product, pct in routes.items():
+        pct = float(pct or 0.0)
+
+        if pct <= 0:
+            continue
+
+        route_usd = amount_usd * pct
+
+        if route_product == "CASH":
+            out.append({
+                "ok": True,
+                "product_id": "CASH",
+                "requested_buy_usd": route_usd,
+                "reason": "left_as_cash",
+            })
+            continue
+
+        out.append(execute_buy(route_product, route_usd, signal_type="HARVEST_ROUTE"))
+
+    return out
+
+
+def execute_profit_harvest_plan():
+    snapshot = get_portfolio_snapshot()
+    plan = get_profit_harvest_plan(snapshot)
+
+    report = {
+        "ok": True,
+        "harvest_results": [],
+        "plan": plan,
+    }
+
+    for item in plan.get("harvests", []):
+        trim_res = execute_trim(item["product_id"], item["amount_usd"], snapshot)
+
+        if trim_res.get("ok"):
+            mark_harvest(item["product_id"], int(time.time()))
+
+        refreshed = get_portfolio_snapshot()
+        route_res = route_harvest_proceeds(item["amount_usd"], refreshed)
+
+        report["harvest_results"].append({
+            "product_id": item["product_id"],
+            "gain_pct": item.get("gain_pct"),
+            "trim_pct": item.get("trim_pct"),
+            "amount_usd": item["amount_usd"],
+            "trim": trim_res,
+            "routes": route_res,
+        })
+
+    return report
+
+
+def dispatch_signal_action(payload=None, **kwargs):
+    if payload is None:
+        payload = {}
+
+    merged = dict(payload) if isinstance(payload, dict) else {}
+    merged.update(kwargs)
+    payload = merged
+
+    product_id = str(payload.get("product_id", "")).upper().strip()
+    action = str(payload.get("action", "")).upper().strip()
+    signal_type = str(payload.get("signal_type", "")).upper().strip()
+    trim_pct = float(payload.get("trim_pct", 0.50) or 0.50)
+
+    snapshot = get_portfolio_snapshot()
+    trading_enabled = os.getenv("TRADING_ENABLED", "false").strip().lower() == "true"
+
+    if not product_id:
+        return {
+            "ok": False,
+            "reason": "missing_product_id",
+            "product_id": product_id,
+            "action": action,
+            "signal_type": signal_type,
+        }
+
+    if action not in {"BUY", "TRIM", "EXIT"}:
+        return {
+            "ok": False,
+            "reason": "unsupported_action",
+            "product_id": product_id,
+            "action": action,
+            "signal_type": signal_type,
+        }
+
+    if action == "BUY":
+        core_buy_signals = {"CORE_BUY_WINDOW"}
+        satellite_buy_signals = {
+            "SATELLITE_BUY_EARLY",
+            "SATELLITE_BUY",
+            "SATELLITE_BUY_HEAVY",
+            "SNIPER_BUY",
+        }
+
+        if signal_type in core_buy_signals:
+            buy_usd = min(
+                allowed_core_buy_usd(product_id, snapshot),
+                get_max_quote_size(snapshot),
+            )
+            asset_class = "core"
+
+        elif signal_type in satellite_buy_signals:
+            buy_usd = min(
+                allowed_satellite_buy_usd(product_id, snapshot),
+                get_max_quote_size(snapshot),
+            )
+            asset_class = "satellite"
+
+        else:
+            return {
+                "ok": False,
+                "reason": "unsupported_signal_type",
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+            }
+
+        if buy_usd <= 0:
+            return {
+                "ok": False,
+                "reason": "buy_not_allowed",
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+                "asset_class": asset_class,
+            }
+
+        if not trading_enabled:
+            return {
+                "ok": False,
+                "reason": "trading_disabled",
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+                "asset_class": asset_class,
+                "requested_buy_usd": buy_usd,
+            }
+
+        return execute_buy(product_id, buy_usd, signal_type)
+
+    if action in {"TRIM", "EXIT"}:
+        position_value = float(
+            snapshot.get("positions", {}).get(product_id, {}).get("value_total_usd", 0.0) or 0.0
+        )
+
+        if position_value <= 0:
+            return {
+                "ok": False,
+                "reason": "no_position_value",
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+            }
+
+        if action == "EXIT":
+            trim_usd = position_value
+        else:
+            trim_usd = position_value * trim_pct
+
+        if trim_usd <= 0:
+            return {
+                "ok": False,
+                "reason": "trim_usd_zero",
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+            }
+
+        if not trading_enabled:
+            return {
+                "ok": False,
+                "reason": "trading_disabled",
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+                "requested_trim_usd": trim_usd,
+            }
+
+        return execute_trim(product_id, trim_usd, snapshot)
+
+    return {
+        "ok": False,
+        "reason": "unsupported_action",
+        "product_id": product_id,
+        "action": action,
+        "signal_type": signal_type,
+    }
+
+
+def get_rebalance_plan(snapshot=None, summary=None):
+    snapshot = snapshot or get_portfolio_snapshot()
+    summary = summary or portfolio_summary(snapshot)
+
+    plan = {
+        "ok": True,
+        "total_value_usd": snapshot.get("total_value_usd"),
+        "usd_cash": snapshot.get("usd_cash"),
+        "core_weight": snapshot.get("core_weight"),
+        "satellite_weight": snapshot.get("satellite_weight"),
+        "market_regime": summary.get("market_regime"),
+        "buys": [],
+        "trims": [],
+        "harvests": get_profit_harvest_plan(snapshot).get("harvests", []),
+        "notes": [],
+    }
+
+    for product_id in snapshot.get("config", {}).get("core_assets", {}).keys():
+        amount_usd = allowed_core_buy_usd(product_id, snapshot)
+
+        if amount_usd > 0:
+            plan["buys"].append({
+                "product_id": product_id,
+                "signal_type": "CORE_BUY_WINDOW",
+                "amount_usd": amount_usd,
+                "tier": "core",
+            })
+
+    for product_id, asset in summary.get("assets", {}).items():
+        amount_usd = required_trim_usd(product_id, snapshot)
+
+        if amount_usd <= 0:
+            continue
+
+        plan["trims"].append({
+            "product_id": product_id,
+            "amount_usd": amount_usd,
+        })
+
+    return plan
+
+
+def execute_rebalance_plan():
+    snapshot = get_portfolio_snapshot()
+    plan = get_rebalance_plan(snapshot=snapshot)
+
+    trim_results = []
+    buy_results = []
+
+    for item in plan.get("trims", []):
+        if not isinstance(item, dict):
+            continue
+
+        product_id = str(item.get("product_id") or "").upper().strip()
+        amount_usd = float(item.get("amount_usd", 0.0) or 0.0)
+
+        if not product_id or amount_usd <= 0:
+            continue
+
+        fresh_snapshot = get_portfolio_snapshot()
+        trim_results.append(execute_trim(product_id, amount_usd, fresh_snapshot))
+
+    for item in plan.get("buys", []):
+        if not isinstance(item, dict):
+            continue
+
+        product_id = str(item.get("product_id") or "").upper().strip()
+        amount_usd = float(item.get("amount_usd", 0.0) or 0.0)
+        signal_type = str(item.get("signal_type") or "REBALANCE").upper().strip()
+
+        if not product_id or amount_usd <= 0:
+            continue
+
+        buy_results.append(execute_buy(product_id, amount_usd, signal_type=signal_type))
+
+    return {
+        "ok": True,
+        "plan": plan,
+        "trim_results": trim_results,
+        "buy_results": buy_results,
+    }

@@ -1,0 +1,8 @@
+.env
+*.log
+*.db
+__pycache__/
+*.pyc
+gunicorn.ctl
+telegram_listener_state.json
+advisor_export/*.json

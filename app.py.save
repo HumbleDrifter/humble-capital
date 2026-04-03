@@ -1,0 +1,75 @@
+from flask import Flask, request, jsonify
+from dotenv import load_dotenv
+import os
+import time
+
+ENV_PATH = "/root/tradingbot/.env"
+load_dotenv(ENV_PATH)
+
+from execution import (
+    get_best_bid_ask,
+    place_limit_quote_with_timeout,
+    place_limit_base_with_timeout,
+)
+from storage import init_db
+from positions import compute_sell_base
+
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SHARED_SECRET")
+TRADING_ENABLED = os.getenv("TRADING_ENABLED", "false").lower() == "true"
+
+MAX_QUOTE_SIZE = float(os.getenv("MAX_QUOTE_PER_TRADE_USD", "25"))
+MAX_SPREAD_PCT = float(os.getenv("MAX_SPREAD_PCT", "0.35"))
+
+DEFAULT_OFFSET_BPS = int(os.getenv("DEFAULT_OFFSET_BPS", "8"))
+DEFAULT_TIMEOUT_SEC = int(os.getenv("DEFAULT_TIMEOU1T_SEC", "25"))
+DEFAULT_POST_ONLY = os.getenv("DEFAULT_POST_ONLY", "true").lower() == "true"
+
+ALLOWED_PRODUCTS = {
+    "BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD",
+    "DOGE-USD", "ATOM-USD", "PEPE-USD", "BONK-USD",
+}
+
+recent_orders = {}
+DUPLICATE_WINDOW_SEC = 60
+
+app = Flask(__name__)
+init_db()
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    data = request.get_json(force=True)
+
+    if data.get("secret") != WEBHOOK_SECRET:
+        return jsonify({"ok": False, "error": "invalid secret"}), 403
+
+    order_id = str(data.get("order_id", "")).strip()
+    action = str(data.get("action", "")).upper().strip()
+    product_id = str(data.get("product_id", "")).upper().strip()
+
+    if not order_id:
+        return jsonify({"ok": False, "error": "missing order_id"}), 400
+    if action not in {"BUY", "SELL"}:
+        return jsonify({"ok": False, "error": "action must be BUY or SELL"}), 400
+    if product_id not in ALLOWED_PRODUCTS:
+        return jsonify({"ok": False, "error": "product not allowed", "product_id": product_id}), 400
+
+    now = time.time()
+    if order_id in recent_orders and (now - recent_orders[order_id]) < DUPLICATE_WINDOW_SEC:
+        return jsonify({"ok": True, "status": "duplicate_blocked", "order_id": order_id}), 200
+    recent_orders[order_id] = now
+
+    return jsonify({
+        "ok": True,
+        "status": "paper_mode",
+        "order_id": order_id,
+        "action": action,
+        "product_id": product_id,
+        "payload": data
+    }), 200
+
+print("Loaded .env from:", ENV_PATH)
+print("Loaded webhook secret:", WEBHOOK_SECRET)
+print("Trading enabled:", TRADING_ENABLED)
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5000)

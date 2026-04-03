@@ -1,0 +1,150 @@
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/dist-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/usr/local/lib/python3.10/dist-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/usr/local/lib/python3.10/dist-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.10/dist-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "/root/tradingbot/routes/api.py", line 87, in heatmap
+    "ok": True,
+  File "/root/tradingbot/portfolio.py", line 359, in get_portfolio_snapshot
+    cash_breakdown = get_cash_breakdown()
+  File "/root/tradingbot/portfolio.py", line 87, in get_cash_breakdown
+    resp = _to_dict(client.get_accounts(cursor=cursor) if cursor else client.get_accounts())
+  File "/usr/local/lib/python3.10/dist-packages/coinbase/rest/accounts.py", line 37, in get_accounts
+    return ListAccountsResponse(self.get(endpoint, params=params, **kwargs))
+  File "/usr/local/lib/python3.10/dist-packages/coinbase/rest/rest_base.py", line 101, in get
+    return self.prepare_and_send_request(
+  File "/usr/local/lib/python3.10/dist-packages/coinbase/rest/rest_base.py", line 207, in prepare_and_send_request
+    return self.send_request(http_method, url_path, params, headers, data=data)
+  File "/usr/local/lib/python3.10/dist-packages/coinbase/rest/rest_base.py", line 228, in send_request
+    handle_exception(response)  # Raise an HTTPError for bad responses
+  File "/usr/local/lib/python3.10/dist-packages/coinbase/rest/rest_base.py", line 47, in handle_exception
+    raise HTTPError(http_error_msg, response=response)
+requests.exceptions.HTTPError: 429 Client Error: Too Many Requests 
+GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:47:21] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://159.89.182.183:5000
+Press CTRL+C to quit
+127.0.0.1 - - [10/Mar/2026 04:48:05] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:48:06] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:48:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:07 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:07] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:48:07 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:07] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:48:07] "GET /dashboard?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:48:07] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:48:07] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:08] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:08] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:08] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:08 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:08] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:48:33] "GET /dashboard?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:48:33] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:48:33] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:48:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:48:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:34] "2026-03-10 04:48:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:48:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:34] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:48:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:48:34] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:49:03] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:49:03] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:49:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:49:04] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:49:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:49:04] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:49:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:49:04] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:49:33] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:49:33] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:49:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:49:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:49:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:49:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:49:34] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:49:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:49:34] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:49:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:49:34] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:50:03] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:50:03] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:50:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:50:04] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:50:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:50:04] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:50:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:50:04] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+[2026-03-10 04:50:14] [meme_scanner] scanner run started
+[2026-03-10 04:50:14] [meme_scanner] fetched 45 raw trend rows
+127.0.0.1 - - [10/Mar/2026 04:50:14] "GET /api/valid_products?quote=USD&tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+[2026-03-10 04:50:14] [meme_scanner] valid product filter unavailable; continuing without strict filter
+[2026-03-10 04:50:15] [meme_scanner] wrote 20 candidates to /root/tradingbot/meme_rotation.json
+[2026-03-10 04:50:15] [meme_scanner] scanner run finished
+127.0.0.1 - - [10/Mar/2026 04:51:03] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:51:03] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:51:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:51:04] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:51:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:51:04] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:51:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:51:04] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:51:33] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:51:33] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:51:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:51:34] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:51:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:51:34] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:51:34 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:51:34] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:52:03] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:52:03] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:52:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:52:04] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:52:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:52:04] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:52:04 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:52:04] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:53:04] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:53:04] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:53:05 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:53:05 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:53:05] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:53:05 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:53:05] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:53:05 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:53:05] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+127.0.0.1 - - [10/Mar/2026 04:54:06] "GET /api/status?secret=spfHBNpEXEHf HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 04:54:06] "GET /api/valid_products?tradable_only=true&secret=spfHBNpEXEHf HTTP/1.1" 200 -
+2026-03-10 04:54:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:54:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:54:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:54:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:54:06] "GET /api/heatmap?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:54:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+2026-03-10 04:54:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:54:06] "GET /api/portfolio?secret=spfHBNpEXEHf HTTP/1.1" 500 -
+2026-03-10 04:54:06 - coinbase.RESTClient - ERROR - HTTP Error: 429 Client Error: Too Many Requests 
+127.0.0.1 - - [10/Mar/2026 04:54:06] "GET /api/rebalance/preview?secret=spfHBNpEXEHf HTTP/1.1" 500 -

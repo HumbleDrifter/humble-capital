@@ -1,0 +1,351 @@
+import json
+import math
+import os
+from typing import Dict, List, Tuple, Set, Any
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MEME_ROTATION_PATH = os.path.join(BASE_DIR, "meme_rotation.json")
+ASSET_CONFIG_PATH = os.path.join(BASE_DIR, "asset_config.json")
+
+
+# Stable assets you usually do NOT want in meme satellite rotation
+EXCLUDED_BASE_ASSETS = {
+    "USD", "USDC", "USDT", "DAI", "EUR", "GBP",
+    "BTC", "ETH"  # remove these if you want majors eligible too
+}
+
+
+def _safe_read_json(path: str, default):
+    try:
+        if not os.path.exists(path):
+            return default
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+
+def _safe_write_json(path: str, data) -> None:
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, sort_keys=True)
+    os.replace(tmp_path, path)
+
+
+def load_asset_config() -> Dict[str, Any]:
+    return _safe_read_json(ASSET_CONFIG_PATH, {})
+
+
+def save_asset_config(config: Dict[str, Any]) -> None:
+    _safe_write_json(ASSET_CONFIG_PATH, config)
+
+
+def load_meme_rotation() -> Dict[str, Any]:
+    return _safe_read_json(MEME_ROTATION_PATH, {})
+
+
+def normalize_symbol_to_base(symbol: str) -> str:
+    """
+    Converts:
+      BONK -> BONK
+      BONK-USD -> BONK
+      bonk-usd -> BONK
+      bonk -> BONK
+    """
+    if not symbol:
+        return ""
+    s = str(symbol).strip().upper()
+    if "-" in s:
+        return s.split("-")[0].strip()
+    return s
+
+
+def base_to_product_id(base_asset: str, quote: str = "USD") -> str:
+    return f"{base_asset.upper()}-{quote.upper()}"
+
+
+def product_to_base(product_id: str) -> str:
+    if not product_id:
+        return ""
+    return str(product_id).split("-")[0].upper()
+
+
+def get_valid_product_set(valid_products: List[str]) -> Set[str]:
+    return {str(p).strip().upper() for p in (valid_products or []) if p}
+
+
+def get_held_base_assets(snapshot: Dict[str, Any], min_usd_value: float = 5.0) -> Set[str]:
+    """
+    Reads currently held assets from portfolio snapshot.
+    Expects snapshot['positions'] to be a list of dicts with fields like:
+      asset / currency / symbol / product_id / value_usd / usd_value
+    """
+    held = set()
+
+    positions = snapshot.get("positions", []) or []
+    for pos in positions:
+        value_usd = (
+            pos.get("value_usd")
+            or pos.get("usd_value")
+            or pos.get("market_value_usd")
+            or 0.0
+        )
+        try:
+            value_usd = float(value_usd)
+        except Exception:
+            value_usd = 0.0
+
+        if value_usd < min_usd_value:
+            continue
+
+        asset = (
+            pos.get("asset")
+            or pos.get("currency")
+            or pos.get("symbol")
+            or pos.get("base_asset")
+        )
+
+        product_id = pos.get("product_id")
+
+        base = ""
+        if asset:
+            base = normalize_symbol_to_base(str(asset))
+        elif product_id:
+            base = product_to_base(str(product_id))
+
+        if base and base not in EXCLUDED_BASE_ASSETS:
+            held.add(base)
+
+    return held
+
+
+def extract_ranked_candidates(meme_rotation_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Supports several possible shapes of meme_rotation.json.
+
+    Accepted examples:
+    {
+      "ranked": [
+        {"symbol": "BONK", "score": 91.2},
+        {"symbol": "PEPE", "score": 87.0}
+      ]
+    }
+
+    or:
+    {
+      "coins": [
+        {"product_id": "BONK-USD", "score": 91.2}
+      ]
+    }
+
+    or:
+    {
+      "BONK": {"score": 91.2},
+      "PEPE": {"score": 87.0}
+    }
+    """
+    results = []
+
+    if not isinstance(meme_rotation_data, dict):
+        return results
+
+    if isinstance(meme_rotation_data.get("ranked"), list):
+        source = meme_rotation_data["ranked"]
+    elif isinstance(meme_rotation_data.get("coins"), list):
+        source = meme_rotation_data["coins"]
+    elif isinstance(meme_rotation_data.get("assets"), list):
+        source = meme_rotation_data["assets"]
+    else:
+        source = None
+
+    if source is not None:
+        for item in source:
+            if not isinstance(item, dict):
+                continue
+
+            raw_symbol = (
+                item.get("symbol")
+                or item.get("asset")
+                or item.get("base_asset")
+                or item.get("product_id")
+                or item.get("coin")
+            )
+            if not raw_symbol:
+                continue
+
+            base_asset = normalize_symbol_to_base(raw_symbol)
+
+            try:
+                score = float(item.get("score", 0.0))
+            except Exception:
+                score = 0.0
+
+            if not base_asset or base_asset in EXCLUDED_BASE_ASSETS:
+                continue
+
+            results.append({
+                "base_asset": base_asset,
+                "score": score,
+                "raw": item
+            })
+
+        return sorted(results, key=lambda x: x["score"], reverse=True)
+
+    # fallback: dict of symbol -> object
+    for k, v in meme_rotation_data.items():
+        if not isinstance(v, dict):
+            continue
+
+        base_asset = normalize_symbol_to_base(k)
+        if not base_asset or base_asset in EXCLUDED_BASE_ASSETS:
+            continue
+
+        try:
+            score = float(v.get("score", 0.0))
+        except Exception:
+            score = 0.0
+
+        results.append({
+            "base_asset": base_asset,
+            "score": score,
+            "raw": v
+        })
+
+    return sorted(results, key=lambda x: x["score"], reverse=True)
+
+
+def build_satellite_buy_universe(
+    meme_rotation_data: Dict[str, Any],
+    valid_products: List[str],
+    snapshot: Dict[str, Any],
+    target_count: int = 10,
+    min_score_to_enter: float = 20.0,
+    min_score_to_hold: float = 8.0,
+    held_asset_value_floor_usd: float = 5.0,
+) -> Dict[str, Any]:
+    """
+    Rules:
+    - rank assets from meme_rotation.json
+    - only include tradable Coinbase products
+    - held assets get stickiness if score >= min_score_to_hold
+    - new entries must score >= min_score_to_enter
+    - keep list capped at target_count
+    """
+    valid_product_set = get_valid_product_set(valid_products)
+    ranked = extract_ranked_candidates(meme_rotation_data)
+    held_base_assets = get_held_base_assets(snapshot, min_usd_value=held_asset_value_floor_usd)
+
+    approved: List[Tuple[str, float, str]] = []
+    rejected: List[Dict[str, Any]] = []
+
+    # First pass: held assets that are still acceptable
+    held_added = set()
+    for row in ranked:
+        base_asset = row["base_asset"]
+        score = row["score"]
+        product_id = base_to_product_id(base_asset)
+
+        if product_id not in valid_product_set:
+            rejected.append({
+                "asset": base_asset,
+                "product_id": product_id,
+                "score": score,
+                "reason": "not_tradable_on_coinbase"
+            })
+            continue
+
+        if base_asset in held_base_assets and score >= min_score_to_hold:
+            approved.append((base_asset, score, "held_sticky"))
+            held_added.add(base_asset)
+
+    # Second pass: new high-ranked entrants
+    for row in ranked:
+        base_asset = row["base_asset"]
+        score = row["score"]
+        product_id = base_to_product_id(base_asset)
+
+        if len(approved) >= target_count:
+            break
+
+        if product_id not in valid_product_set:
+            continue
+        if base_asset in held_added:
+            continue
+        if any(a == base_asset for a, _, _ in approved):
+            continue
+        if score < min_score_to_enter:
+            continue
+
+        approved.append((base_asset, score, "new_ranked"))
+
+    # Third pass: if underfilled, allow held assets even if below entry threshold,
+    # as long as they are above hold threshold
+    if len(approved) < target_count:
+        for row in ranked:
+            base_asset = row["base_asset"]
+            score = row["score"]
+            product_id = base_to_product_id(base_asset)
+
+            if len(approved) >= target_count:
+                break
+
+            if product_id not in valid_product_set:
+                continue
+            if base_asset not in held_base_assets:
+                continue
+            if any(a == base_asset for a, _, _ in approved):
+                continue
+            if score < min_score_to_hold:
+                continue
+
+            approved.append((base_asset, score, "held_fill"))
+
+    final_products = [base_to_product_id(a) for a, _, _ in approved][:target_count]
+
+    return {
+        "active_satellite_buy_universe": final_products,
+        "approved_detail": [
+            {"asset": a, "product_id": base_to_product_id(a), "score": s, "reason": r}
+            for a, s, r in approved[:target_count]
+        ],
+        "held_assets": sorted(list(held_base_assets)),
+        "target_count": target_count,
+        "thresholds": {
+            "min_score_to_enter": min_score_to_enter,
+            "min_score_to_hold": min_score_to_hold,
+            "held_asset_value_floor_usd": held_asset_value_floor_usd
+        },
+        "ranked_count": len(ranked),
+        "tradable_count": sum(
+            1 for row in ranked if base_to_product_id(row["base_asset"]) in valid_product_set
+        ),
+        "rejected": rejected[:200]
+    }
+
+
+def update_asset_config_with_rotation(
+    valid_products: List[str],
+    snapshot: Dict[str, Any],
+    target_count: int = 10,
+    min_score_to_enter: float = 20.0,
+    min_score_to_hold: float = 8.0,
+    held_asset_value_floor_usd: float = 5.0,
+) -> Dict[str, Any]:
+    meme_rotation_data = load_meme_rotation()
+    result = build_satellite_buy_universe(
+        meme_rotation_data=meme_rotation_data,
+        valid_products=valid_products,
+        snapshot=snapshot,
+        target_count=target_count,
+        min_score_to_enter=min_score_to_enter,
+        min_score_to_hold=min_score_to_hold,
+        held_asset_value_floor_usd=held_asset_value_floor_usd,
+    )
+
+    config = load_asset_config()
+    config["active_satellite_buy_universe"] = result["active_satellite_buy_universe"]
+    config["last_rotation_result"] = result
+    save_asset_config(config)
+
+    return result

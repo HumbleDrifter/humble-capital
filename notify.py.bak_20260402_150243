@@ -1,0 +1,266 @@
+import os
+from decimal import Decimal, InvalidOperation
+from typing import Any, Dict, Iterable
+
+import requests
+from dotenv import load_dotenv
+
+load_dotenv("/root/tradingbot/.env", override=True)
+
+TELEGRAM_TIMEOUT_SEC = float(os.getenv("TELEGRAM_TIMEOUT_SEC", "15") or "15")
+TELEGRAM_PARSE_MODE = os.getenv("TELEGRAM_PARSE_MODE", "").strip()
+
+def _env_bool(name: str, default: bool = False) -> bool:
+value = str(os.getenv(name, str(default)) or "").strip().lower()
+return value in {"1", "true", "yes", "on"}
+
+def _telegram_enabled() -> bool:
+return _env_bool("TELEGRAM_ENABLED", True)
+
+def _telegram_token() -> str:
+load_dotenv("/root/tradingbot/.env", override=True)
+return str(os.getenv("TELEGRAM_BOT_TOKEN", "") or "").strip()
+
+def _telegram_chat_id() -> str:
+load_dotenv("/root/tradingbot/.env", override=True)
+return str(os.getenv("TELEGRAM_CHAT_ID", "") or "").strip()
+
+def _fmt_decimal(value: Any, places: int = 8) -> str:
+try:
+d = Decimal(str(value))
+except (InvalidOperation, ValueError, TypeError):
+return "0"
+
+```
+q = Decimal("1").scaleb(-places)
+s = format(d.quantize(q).normalize(), "f")
+if "." in s:
+    s = s.rstrip("0").rstrip(".")
+return s
+```
+
+def _fmt_usd(value: Any) -> str:
+try:
+return f"${float(value):,.2f}"
+except Exception:
+return "$0.00"
+
+def _safe_text(value: Any) -> str:
+return str(value or "").strip()
+
+def _extract_attempts(result_wrapper: Dict[str, Any] | None) -> list[Dict[str, Any]]:
+if not isinstance(result_wrapper, dict):
+return []
+attempts = result_wrapper.get("attempts") or []
+return [a for a in attempts if isinstance(a, dict)]
+
+def _attempt_has_fill(attempt: Dict[str, Any]) -> bool:
+try:
+filled_base = float(attempt.get("filled_base", 0) or 0)
+except Exception:
+filled_base = 0.0
+
+```
+try:
+    avg_fill_price = float(attempt.get("avg_fill_price", 0) or 0)
+except Exception:
+    avg_fill_price = 0.0
+
+if filled_base > 0 or avg_fill_price > 0:
+    return True
+
+raw = attempt.get("raw") or {}
+status = str(raw.get("status") or attempt.get("status") or "").upper()
+return status == "FILLED"
+```
+
+def _best_fill_attempt(result_wrapper: Dict[str, Any] | None) -> Dict[str, Any] | None:
+attempts = _extract_attempts(result_wrapper)
+
+```
+filled = [a for a in attempts if _attempt_has_fill(a)]
+if filled:
+    # Prefer the attempt with the largest fill
+    def fill_key(a: Dict[str, Any]) -> float:
+        try:
+            return float(a.get("filled_base", 0) or 0)
+        except Exception:
+            return 0.0
+
+    return max(filled, key=fill_key)
+
+return None
+```
+
+def _extract_fill_summary(result_wrapper: Dict[str, Any] | None) -> Dict[str, Any]:
+attempt = _best_fill_attempt(result_wrapper)
+
+```
+if attempt is None:
+    return {
+        "filled": False,
+        "filled_base": 0.0,
+        "avg_fill_price": 0.0,
+        "order_id": "",
+        "limit_price": "",
+        "attempt_number": None,
+        "status": _safe_text((result_wrapper or {}).get("status")),
+    }
+
+try:
+    filled_base = float(attempt.get("filled_base", 0) or 0)
+except Exception:
+    filled_base = 0.0
+
+try:
+    avg_fill_price = float(attempt.get("avg_fill_price", 0) or 0)
+except Exception:
+    avg_fill_price = 0.0
+
+raw = attempt.get("raw") or {}
+status = _safe_text(raw.get("status") or attempt.get("status") or "FILLED")
+order_id = _safe_text(
+    attempt.get("coinbase_order_id")
+    or raw.get("order_id")
+    or raw.get("success_response", {}).get("order_id")
+)
+limit_price = _safe_text(attempt.get("limit_price"))
+attempt_number = attempt.get("attempt_number")
+
+return {
+    "filled": True,
+    "filled_base": filled_base,
+    "avg_fill_price": avg_fill_price,
+    "order_id": order_id,
+    "limit_price": limit_price,
+    "attempt_number": attempt_number,
+    "status": status,
+}
+```
+
+def _send_telegram(text: str) -> bool:
+if not _telegram_enabled():
+return False
+
+```
+token = _telegram_token()
+chat_id = _telegram_chat_id()
+
+if not token or not chat_id:
+    print("[notify] Telegram skipped: missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID")
+    return False
+
+url = f"https://api.telegram.org/bot{token}/sendMessage"
+payload: Dict[str, Any] = {
+    "chat_id": chat_id,
+    "text": text,
+    "disable_web_page_preview": True,
+}
+
+if TELEGRAM_PARSE_MODE:
+    payload["parse_mode"] = TELEGRAM_PARSE_MODE
+
+try:
+    resp = requests.post(url, json=payload, timeout=TELEGRAM_TIMEOUT_SEC)
+    resp.raise_for_status()
+    return True
+except Exception as exc:
+    print(f"Telegram error: {exc}")
+    return False
+```
+
+def _join_lines(lines: Iterable[str]) -> str:
+return "\n".join([line for line in lines if _safe_text(line)]).strip()
+
+def notify_execution_result(
+product_id: str,
+side: str,
+signal_type: str,
+requested_usd: float | None = None,
+requested_base: float | None = None,
+result_wrapper: Dict[str, Any] | None = None,
+) -> bool:
+summary = _extract_fill_summary(result_wrapper)
+
+```
+# Success-only behavior: skip non-fills quietly
+if not summary["filled"]:
+    return False
+
+product_id = _safe_text(product_id).upper()
+side = _safe_text(side).upper()
+signal_type = _safe_text(signal_type).upper()
+
+filled_base = summary["filled_base"]
+avg_fill_price = summary["avg_fill_price"]
+notional_usd = filled_base * avg_fill_price if filled_base > 0 and avg_fill_price > 0 else 0.0
+
+emoji = "🟢" if side == "BUY" else "🔴"
+title = f"{emoji} {side} FILLED"
+
+lines = [
+    title,
+    product_id,
+    f"Signal: {signal_type}",
+]
+
+if requested_usd is not None:
+    lines.append(f"Requested: {_fmt_usd(requested_usd)}")
+elif requested_base is not None:
+    lines.append(f"Requested Base: {_fmt_decimal(requested_base)}")
+
+if filled_base > 0:
+    lines.append(f"Filled Base: {_fmt_decimal(filled_base)}")
+
+if avg_fill_price > 0:
+    lines.append(f"Avg Fill: {_fmt_usd(avg_fill_price)}")
+
+if notional_usd > 0:
+    lines.append(f"Filled Notional: {_fmt_usd(notional_usd)}")
+
+if summary["limit_price"]:
+    try:
+        lines.append(f"Limit: {_fmt_usd(summary['limit_price'])}")
+    except Exception:
+        lines.append(f"Limit: {summary['limit_price']}")
+
+if summary["attempt_number"] is not None:
+    lines.append(f"Attempt: {summary['attempt_number']}")
+
+if summary["order_id"]:
+    short_order = summary["order_id"][:12]
+    lines.append(f"Order: {short_order}...")
+
+text = _join_lines(lines)
+return _send_telegram(text)
+```
+
+def notify_execution_error(
+product_id: str,
+action: str,
+signal_type: str,
+reason: str,
+) -> bool:
+# Intentionally quiet by default per your request.
+# Keep function for compatibility with existing imports/calls.
+return False
+
+def notify_signal_received(
+product_id: str,
+action: str,
+signal_type: str,
+timeframe: str | None = None,
+strategy: str | None = None,
+price: Any = None,
+) -> bool:
+# Intentionally quiet by default.
+return False
+
+def notify_signal_rejected(
+product_id: str,
+action: str,
+signal_type: str,
+reason: str,
+) -> bool:
+# Intentionally quiet by default.
+return False

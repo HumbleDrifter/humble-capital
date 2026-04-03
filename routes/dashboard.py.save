@@ -1,0 +1,1205 @@
+import os
+from flask import Blueprint, render_template_string, request, Response
+
+dashboard_bp = Blueprint("dashboard", __name__)
+
+API_SECRET = os.getenv("STATUS_SECRET") or os.getenv("WEBHOOK_SHARED_SECRET") or ""
+
+HTML = r"""
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Trading Bot Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#0f1115;
+      --panel:#171a21;
+      --panel2:#1d2330;
+      --text:#e8ecf3;
+      --muted:#9aa4b2;
+      --good:#19c37d;
+      --warn:#f5a524;
+      --bad:#f31260;
+      --accent:#4f8cff;
+      --accent2:#8b5cf6;
+      --cash:#64748b;
+      --core:#2563eb;
+      --sat:#7c3aed;
+      --border:#2a3140;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .topbar {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    .row {
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:16px;
+      margin-bottom:16px;
+    }
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-7 { grid-column: span 7; }
+    .span-6 { grid-column: span 6; }
+    .span-5 { grid-column: span 5; }
+    .span-4 { grid-column: span 4; }
+    .span-3 { grid-column: span 3; }
+
+    @media (max-width: 980px){
+      .span-8, .span-7, .span-6, .span-5, .span-4, .span-3 { grid-column: span 12; }
+    }
+
+    h2 {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+    }
+    h3 {
+      margin: 14px 0 8px 0;
+      font-size: 15px;
+    }
+    .kpis {
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:12px;
+    }
+    @media (max-width: 980px){
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+    }
+    .kpi {
+      background: rgba(255,255,255,0.03);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+    }
+    .kpi-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .muted { color: var(--muted); }
+    .good { color: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+
+    .badge {
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      border:1px solid var(--border);
+      margin-right:6px;
+      margin-bottom:6px;
+      background: rgba(255,255,255,0.04);
+    }
+    .badge.good { color: var(--good); }
+    .badge.warn { color: var(--warn); }
+    .badge.bad { color: var(--bad); }
+    .badge.accent { color: var(--accent); }
+    .badge.accent2 { color: var(--accent2); }
+
+    .microbadge {
+      display:inline-block;
+      padding:3px 7px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      margin:0 5px 5px 0;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+    }
+    .microbadge.core { background: rgba(37,99,235,0.20); color: #bfdbfe; }
+    .microbadge.allowed { background: rgba(124,58,237,0.20); color: #ddd6fe; }
+    .microbadge.blocked { background: rgba(243,18,96,0.18); color: #fda4af; }
+    .microbadge.held { background: rgba(25,195,125,0.18); color: #bbf7d0; }
+    .microbadge.active { background: rgba(79,140,255,0.18); color: #bfdbfe; }
+    .microbadge.sniper { background: rgba(245,165,36,0.18); color: #fde68a; }
+    .microbadge.pump { background: rgba(239,68,68,0.18); color: #fecaca; }
+    .microbadge.disabled { background: rgba(100,116,139,0.22); color: #cbd5e1; }
+
+    table {
+      width:100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px 8px;
+      border-bottom:1px solid var(--border);
+      text-align:left;
+      vertical-align:top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .heatmap {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap:12px;
+    }
+    .tile {
+      border-radius:16px;
+      padding:14px;
+      border:1px solid var(--border);
+      min-height:168px;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .tile:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.20);
+    }
+    .tile-top {
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      margin-bottom:8px;
+    }
+    .tile .sym {
+      font-weight:700;
+      font-size:17px;
+      line-height:1.2;
+    }
+    .tile .score {
+      font-size:22px;
+      font-weight:800;
+      text-align:right;
+      white-space:nowrap;
+    }
+    .tile .small {
+      font-size:12px;
+      color: var(--muted);
+      margin-top:4px;
+    }
+    .tile-grid {
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px 10px;
+      margin-top:10px;
+    }
+    .metric-label {
+      font-size:11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .metric-value {
+      font-size:13px;
+      font-weight:700;
+      margin-top:2px;
+    }
+    .controls {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+    input, select, button {
+      background:#10141d;
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:10px 12px;
+      font-size:14px;
+    }
+    input, select {
+      min-width: 140px;
+    }
+    button {
+      cursor:pointer;
+      background: #162033;
+    }
+    button:hover {
+      background:#1b2942;
+    }
+    .statusline {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      margin-top:10px;
+      color: var(--muted);
+      font-size:13px;
+    }
+    .mono {
+      font-family: Consolas, Menlo, monospace;
+      white-space: pre-wrap;
+    }
+    .hr {
+      height:1px;
+      background: var(--border);
+      margin:14px 0;
+    }
+    .tiny {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .right {
+      text-align:right;
+    }
+    .pill {
+      display:inline-block;
+      margin:4px 6px 0 0;
+      background:#312e81;
+      color:#e0e7ff;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+    }
+    .allocation-wrap {
+      background:#0f172a;
+      border-radius:999px;
+      overflow:hidden;
+      height:24px;
+      margin-top:10px;
+      border:1px solid var(--border);
+    }
+    .allocation-seg {
+      height:100%;
+      float:left;
+      text-align:center;
+      font-size:11px;
+      line-height:24px;
+      font-weight:bold;
+      color:white;
+      min-width: 0;
+      overflow:hidden;
+      white-space:nowrap;
+    }
+    .seg-cash { background: var(--cash); }
+    .seg-core { background: var(--core); }
+    .seg-sat { background: var(--sat); }
+
+    .section-head {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <div class="title">Crypto Trading Bot Dashboard</div>
+        <div class="subtitle">Portfolio, allocation, meme rotation, and admin controls</div>
+      </div>
+      <div class="controls">
+        <button onclick="refreshAll(true)">Refresh Now</button>
+        <button onclick="refreshCaches()">Refresh Caches</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card span-12">
+        <div id="statusBadges"></div>
+        <div class="statusline">
+          <div>Auto refresh: <span class="mono">60s</span></div>
+          <div>Secret mode: <span class="mono" id="secretMode"></span></div>
+          <div>Last UI refresh: <span class="mono" id="uiRefresh">never</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card span-12">
+        <h2>Overview</h2>
+        <div class="kpis">
+          <div class="kpi">
+            <div class="kpi-label">Total Portfolio</div>
+            <div class="kpi-value" id="kpiTotal">$0.00</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">USD Cash</div>
+            <div class="kpi-value" id="kpiCash">$0.00</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Core Weight</div>
+            <div class="kpi-value" id="kpiCore">0.00%</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Satellite Weight</div>
+            <div class="kpi-value" id="kpiSat">0.00%</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="tiny">Allocation Mix</div>
+        <div id="allocationText" class="tiny"></div>
+        <div class="allocation-wrap">
+          <div id="segCash" class="allocation-seg seg-cash" style="width:0%"></div>
+          <div id="segCore" class="allocation-seg seg-core" style="width:0%"></div>
+          <div id="segSat" class="allocation-seg seg-sat" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card span-7">
+        <h2>Portfolio</h2>
+        <div class="tiny" id="portfolioMeta"></div>
+        <div class="hr"></div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Class</th>
+                <th class="right">Value USD</th>
+                <th class="right">Weight</th>
+                <th class="right">Price</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="portfolioTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card span-5">
+        <h2>Rebalance Preview</h2>
+        <div class="tiny" id="rebalanceMeta"></div>
+        <div class="hr"></div>
+        <div id="rebalanceSummary"></div>
+
+        <div class="hr"></div>
+        <h3>Cash & Stablecoins</h3>
+        <div id="cashBreakdown" class="mono tiny">Loading...</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card span-12">
+        <h2>Active Satellite Buy Universe</h2>
+        <div id="activeBuyUniverse"></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card span-12">
+        <div class="section-head">
+          <div>
+            <h2 style="margin-bottom:4px;">Portfolio Heatmap</h2>
+            <div class="tiny" id="heatmapMeta"></div>
+            <div class="tiny">Legend: <span style="color:#93c5fd;">cold / low score</span> → <span style="color:#fde68a;">warm / medium score</span> → <span style="color:#fca5a5;">hot / high score</span></div>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div class="heatmap" id="heatmapGrid"></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card span-12">
+        <div class="section-head">
+          <div>
+            <h2 style="margin-bottom:4px;">Meme Scanner Heatmap</h2>
+            <div class="tiny" id="memeHeatmapMeta"></div>
+            <div class="tiny">Legend: <span style="color:#93c5fd;">cold / low score</span> → <span style="color:#fde68a;">warm / medium score</span> → <span style="color:#fca5a5;">hot / high score</span></div>
+          </div>
+          <div class="controls">
+            <select id="memeSort" onchange="refreshAll(false)">
+              <option value="score">Sort: Score</option>
+              <option value="held">Sort: Held Value</option>
+              <option value="move24h">Sort: 24h Move</option>
+              <option value="product">Sort: Product</option>
+            </select>
+          </div>
+        </div>
+        <div class="hr"></div>
+        <div class="heatmap" id="memeHeatmapGrid"></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card span-6">
+        <h2>Core Assets</h2>
+        <div class="tiny" id="configMeta"></div>
+        <div class="hr"></div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Target</th>
+                <th>Band</th>
+              </tr>
+            </thead>
+            <tbody id="coreAssetsTable"></tbody>
+          </table>
+        </div>
+
+        <h3>Add / Update Core</h3>
+        <div class="controls">
+          <select id="coreAction">
+            <option value="add_core">Add Core</option>
+            <option value="update_core">Update Core</option>
+            <option value="remove_core">Remove Core</option>
+          </select>
+          <input id="coreProductId" placeholder="BTC-USD">
+          <input id="coreTargetWeight" placeholder="0.10">
+          <input id="coreBand" placeholder="0.02">
+          <button onclick="saveCoreAsset()">Apply</button>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <h2>Satellite Controls</h2>
+        <div class="hr"></div>
+
+        <div class="row" style="margin-bottom:0;">
+          <div class="span-6">
+            <div class="tiny">Allowed Satellites</div>
+            <div id="allowedSatellites"></div>
+          </div>
+          <div class="span-6">
+            <div class="tiny">Blocked Satellites</div>
+            <div id="blockedSatellites"></div>
+          </div>
+        </div>
+
+	<div class="row" style="margin-top:10px;">
+	  <div class="span-12">
+	    <div class="tiny">Active Rotation Universe</div>
+	    <div id="activeSatelliteUniverse"></div>
+ 	 </div>
+	</div>
+
+        <h3>Add / Block Satellite</h3>
+        <div class="controls">
+          <select id="satAction">
+            <option value="add_satellite">Add Satellite</option>
+            <option value="remove_satellite">Remove Satellite</option>
+            <option value="block">Block Asset</option>
+            <option value="unblock">Unblock Asset</option>
+          </select>
+          <input id="satProductId" placeholder="DOGE-USD">
+          <button onclick="applySatelliteChange()">Apply</button>
+        </div>
+
+        <h3>Mode / Risk</h3>
+        <div class="controls">
+          <select id="satMode">
+            <option value="rotation">rotation</option>
+            <option value="dynamic">dynamic</option>
+            <option value="static">static</option>
+          </select>
+          <button onclick="setMode()">Set Mode</button>
+        </div>
+        <div class="controls" style="margin-top:10px;">
+          <input id="satTotalMax" placeholder="satellite_total_max">
+          <input id="satTotalTarget" placeholder="satellite_total_target">
+          <input id="minCashReserve" placeholder="min_cash_reserve">
+          <input id="tradeMinValueUsd" placeholder="trade_min_value_usd">
+          <input id="maxQuotePerTradeUsd" placeholder="max_quote_per_trade_usd">
+          <button onclick="setRisk()">Update Risk</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card span-6">
+        <h2>Meme Rotation Feed</h2>
+        <div class="tiny" id="memeRotationMeta"></div>
+        <div class="hr"></div>
+        <div style="overflow-x:auto; max-height:360px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Score</th>
+                <th>Enabled</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="memeRotationTable"></tbody>
+          </table>
+        </div>
+
+        <h3>Upsert / Remove Rotation Candidate</h3>
+        <div class="controls">
+          <input id="rotationProductId" placeholder="PEPE-USD">
+          <input id="rotationScore" placeholder="85">
+          <select id="rotationEnabled">
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+          <input id="rotationSource" placeholder="manual">
+          <button onclick="saveRotationCandidate(false)">Upsert</button>
+          <button onclick="saveRotationCandidate(true)">Remove</button>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <h2>Valid Products</h2>
+        <div class="controls" style="margin-bottom:10px;">
+          <select id="productQuote">
+            <option value="USD" selected>USD</option>
+            <option value="USDC">USDC</option>
+          </select>
+          <select id="productTradableOnly">
+            <option value="true" selected>Tradable only</option>
+            <option value="false">Include non-tradable</option>
+          </select>
+          <button onclick="loadProducts(true)">Load Products</button>
+        </div>
+        <div class="tiny" id="productsMeta"></div>
+        <div class="hr"></div>
+        <div style="max-height:360px; overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Base</th>
+                <th>Quote</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API_SECRET = {{ api_secret|tojson }};
+const secretModeEl = document.getElementById('secretMode');
+secretModeEl.textContent = API_SECRET ? 'configured' : 'not configured';
+
+let LAST_MEME_TILES = [];
+
+function authUrl(path) {
+  if (!API_SECRET) return path;
+  const sep = path.includes('?') ? '&' : '?';
+  return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
+}
+
+function fmtUsd(v) {
+  const n = Number(v || 0);
+  return n.toLocaleString(undefined, {style:'currency', currency:'USD', maximumFractionDigits:2});
+}
+function fmtPct(v) {
+  const n = Number(v || 0) * 100;
+  return `${n.toFixed(2)}%`;
+}
+function fmtPctDirect(v) {
+  const n = Number(v || 0);
+  return `${n.toFixed(2)}%`;
+}
+function setUiRefresh() {
+  document.getElementById('uiRefresh').textContent = new Date().toLocaleString();
+}
+function cacheBadge(cache) {
+  if (!cache) return '<span class="badge">no-cache-meta</span>';
+  const src = cache.source || 'unknown';
+  if (src === 'live') return `<span class="badge good">live</span>`;
+  if (src === 'fresh-cache') return `<span class="badge accent">fresh-cache</span>`;
+  if (src === 'stale-cache') return `<span class="badge warn">stale-cache</span>`;
+  return `<span class="badge">${src}</span>`;
+}
+async function fetchJson(path, opts={}) {
+  const res = await fetch(authUrl(path), opts);
+  const data = await res.json();
+  if (!res.ok || data.ok === false) {
+    const msg = data.error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+function scoreGradientColor(score) {
+  const s = Math.max(0, Math.min(100, Number(score || 0)));
+  const hue = 220 - (220 * (s / 100));
+  const bg = `hsla(${hue}, 85%, 55%, 0.24)`;
+  const border = `hsla(${hue}, 90%, 65%, 0.48)`;
+  return { bg, border };
+}
+
+function getPortfolioSentimentScore(productId, pnl) {
+  const match = (LAST_MEME_TILES || []).find(
+    x => String(x.product_id || '').toUpperCase() === String(productId || '').toUpperCase()
+  );
+
+  if (match) {
+    return Number(match.score || 0);
+  }
+
+  return Math.max(0, Math.min(100, ((Number(pnl || 0) + 20) / 40) * 100));
+}
+
+function renderStatusBadges(statusData, portfolioData, rebalanceData, heatmapData, memeHeatmapData, configData) {
+  const el = document.getElementById('statusBadges');
+  const badges = [];
+  badges.push(`<span class="badge ${statusData?.ok ? 'good' : 'bad'}">service ${statusData?.ok ? 'ok' : 'error'}</span>`);
+  if (portfolioData?._cache) badges.push(cacheBadge(portfolioData._cache));
+  if (rebalanceData?._cache) badges.push(cacheBadge(rebalanceData._cache));
+  if (heatmapData?._cache) badges.push(cacheBadge(heatmapData._cache));
+  if (memeHeatmapData?._cache) badges.push(cacheBadge(memeHeatmapData._cache));
+  if (configData?.config?.satellite_mode) {
+    badges.push(`<span class="badge accent2">mode ${configData.config.satellite_mode}</span>`);
+  }
+  if (rebalanceData?.summary?.market_regime) {
+    badges.push(`<span class="badge accent">regime ${rebalanceData.summary.market_regime}</span>`);
+  }
+  el.innerHTML = badges.join('');
+}
+
+function renderPortfolio(data) {
+  const snapshot = data.snapshot || {};
+  const summary = data.summary || {};
+  document.getElementById('kpiTotal').textContent = fmtUsd(snapshot.total_value_usd);
+  document.getElementById('kpiCash').textContent = fmtUsd(snapshot.usd_cash);
+  document.getElementById('kpiCore').textContent = fmtPct(snapshot.core_weight);
+  document.getElementById('kpiSat').textContent = fmtPct(snapshot.satellite_weight);
+
+  document.getElementById('portfolioMeta').innerHTML =
+    `${cacheBadge(data._cache)} <span class="tiny">positions: ${(summary.assets && Object.keys(summary.assets).length) || 0}</span>`;
+
+  const cashW = Number(summary.cash_weight ?? snapshot.cash_weight ?? 0);
+  const coreW = Number(summary.core_weight ?? snapshot.core_weight ?? 0);
+  const satW = Number(summary.satellite_weight ?? snapshot.satellite_weight ?? 0);
+
+  document.getElementById('allocationText').textContent =
+    `Cash ${fmtPct(cashW)} | Core ${fmtPct(coreW)} | Satellite ${fmtPct(satW)}`;
+
+  const segCash = document.getElementById('segCash');
+  const segCore = document.getElementById('segCore');
+  const segSat = document.getElementById('segSat');
+  segCash.style.width = `${Math.max(0, cashW * 100)}%`;
+  segCore.style.width = `${Math.max(0, coreW * 100)}%`;
+  segSat.style.width = `${Math.max(0, satW * 100)}%`;
+  segCash.textContent = cashW > 0.08 ? 'Cash' : '';
+  segCore.textContent = coreW > 0.08 ? 'Core' : '';
+  segSat.textContent = satW > 0.08 ? 'Satellite' : '';
+
+  const cashBreakdown = summary.cash_breakdown || snapshot.cash_breakdown || {};
+  document.getElementById('cashBreakdown').textContent =
+`USD : ${fmtUsd(cashBreakdown.USD || 0)}
+USDC: ${fmtUsd(cashBreakdown.USDC || 0)}
+USDT: ${fmtUsd(cashBreakdown.USDT || 0)}
+DAI : ${fmtUsd(cashBreakdown.DAI || 0)}
+TOTAL: ${fmtUsd(summary.usd_cash || snapshot.usd_cash || 0)}`;
+
+  const buyUniverse = snapshot.active_satellite_buy_universe || summary.active_satellite_buy_universe || [];
+  document.getElementById('activeBuyUniverse').innerHTML =
+    buyUniverse.length
+      ? buyUniverse.map(x => `<span class="pill">${x}</span>`).join('')
+      : '<span class="muted">None</span>';
+
+  const tbody = document.getElementById('portfolioTable');
+  const assets = Object.entries(summary.assets || {}).sort((a, b) =>
+    Number((b[1] || {}).value_total_usd || 0) - Number((a[1] || {}).value_total_usd || 0)
+  );
+
+  if (!assets.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="muted">No portfolio assets available.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = assets.map(([productId, row]) => {
+    const details = [];
+    if (row.is_locked_or_staked) details.push('locked/staked');
+    if (row.buy_eligible) details.push('buy-eligible');
+    if (row.target_weight != null) details.push(`target=${Number(row.target_weight).toFixed(3)}`);
+    if (row.max_weight != null) details.push(`max=${Number(row.max_weight).toFixed(3)}`);
+    if (row.avg_entry_price != null && Number(row.avg_entry_price || 0) > 0) details.push(`entry=${fmtUsd(row.avg_entry_price)}`);
+    if (row.unrealized_gain_pct != null) details.push(`gain=${fmtPctDirect(row.unrealized_gain_pct)}`);
+    if (row.allowed_buy_usd != null) details.push(`buy=${fmtUsd(row.allowed_buy_usd)}`);
+    if (row.required_trim_usd != null) details.push(`trim=${fmtUsd(row.required_trim_usd)}`);
+    if (row.harvest_candidate && row.harvest_candidate.amount_usd != null) details.push(`harvest=${fmtUsd(row.harvest_candidate.amount_usd)}`);
+    return `
+      <tr>
+        <td>${productId}</td>
+        <td>${row.class || ''}</td>
+        <td class="right">${fmtUsd(row.value_total_usd)}</td>
+        <td class="right">${fmtPct(row.weight_total)}</td>
+        <td class="right">${fmtUsd(row.price_usd || 0)}</td>
+        <td>${details.join(' | ') || '<span class="muted">—</span>'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderRebalance(data) {
+  document.getElementById('rebalanceMeta').innerHTML =
+    `${cacheBadge(data._cache)} <span class="tiny">preview</span>`;
+
+  const plan = data.plan || {};
+  const buys = plan.buys || [];
+  const trims = plan.trims || [];
+  const harvests = (data.harvest && data.harvest.harvests) || [];
+
+  const html = `
+    <div style="margin-bottom:10px;">
+      <span class="badge good">buys ${buys.length}</span>
+      <span class="badge warn">trims ${trims.length}</span>
+      <span class="badge accent">harvests ${harvests.length}</span>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <div class="tiny">Top buys</div>
+      ${buys.slice(0, 5).map(x => `<div>${x.product_id}: ${fmtUsd(x.amount_usd)}</div>`).join('') || '<div class="muted">None</div>'}
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <div class="tiny">Top trims</div>
+      ${trims.slice(0, 5).map(x => `<div>${x.product_id}: ${fmtUsd(x.amount_usd)}</div>`).join('') || '<div class="muted">None</div>'}
+    </div>
+
+    <div>
+      <div class="tiny">Harvest candidates</div>
+      ${harvests.slice(0, 5).map(x => `<div>${x.product_id}: ${fmtUsd(x.amount_usd)} @ ${fmtPctDirect(x.gain_pct || 0)}</div>`).join('') || '<div class="muted">None</div>'}
+    </div>
+  `;
+  document.getElementById('rebalanceSummary').innerHTML = html;
+}
+
+function renderHeatmap(data) {
+  document.getElementById('heatmapMeta').innerHTML =
+    `${cacheBadge(data._cache)} <span class="tiny">assets: ${(data.heatmap?.assets || []).length}</span>`;
+
+  const grid = document.getElementById('heatmapGrid');
+  const assets = data.heatmap?.assets || [];
+  if (!assets.length) {
+    grid.innerHTML = '<div class="muted">No heatmap assets available.</div>';
+    return;
+  }
+
+  grid.innerHTML = assets.map(a => {
+    const pnl = Number(a.unrealized_pnl_pct || 0);
+    const value = Number(a.value_total_usd || 0);
+    const weight = Number(a.weight_total || 0);
+
+    const sentimentScore = getPortfolioSentimentScore(a.product_id, pnl);
+    const colors = scoreGradientColor(sentimentScore);
+
+    const flags = [];
+    if (a.class === 'core') flags.push('<span class="microbadge core">core</span>');
+    if (a.class === 'satellite_active') flags.push('<span class="microbadge allowed">satellite</span>');
+    if (a.is_candidate) flags.push('<span class="microbadge active">candidate</span>');
+    if (a.is_blocked) flags.push('<span class="microbadge blocked">blocked</span>');
+    if (value > 0) flags.push('<span class="microbadge held">held</span>');
+
+    return `
+      <div class="tile" style="background:${colors.bg}; border-color:${colors.border};">
+        <div class="tile-top">
+          <div>
+            <div class="sym">${a.product_id}</div>
+            <div class="small">${a.class || 'unknown'}</div>
+          </div>
+          <div class="score">${fmtUsd(value)}</div>
+        </div>
+
+        <div style="margin:8px 0 4px 0;">${flags.join('') || '<span class="small">no flags</span>'}</div>
+
+        <div class="tile-grid">
+          <div>
+            <div class="metric-label">Weight</div>
+            <div class="metric-value">${fmtPct(weight)}</div>
+          </div>
+          <div>
+            <div class="metric-label">PnL</div>
+            <div class="metric-value ${pnl >= 0 ? 'good' : 'bad'}">${fmtPctDirect(pnl)}</div>
+          </div>
+          <div>
+            <div class="metric-label">Tier</div>
+            <div class="metric-value">${a.class || 'unknown'}</div>
+          </div>
+          <div>
+            <div class="metric-label">Score Driver</div>
+            <div class="metric-value">${sentimentScore.toFixed(1)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function sortMemeTiles(tiles) {
+  const sortMode = document.getElementById('memeSort')?.value || 'score';
+  const out = [...tiles];
+
+  if (sortMode === 'held') {
+    out.sort((a, b) => Number(b.value_total_usd || 0) - Number(a.value_total_usd || 0));
+  } else if (sortMode === 'move24h') {
+    out.sort((a, b) => Number(b.price_change_24h_pct || 0) - Number(a.price_change_24h_pct || 0));
+  } else if (sortMode === 'product') {
+    out.sort((a, b) => String(a.product_id || '').localeCompare(String(b.product_id || '')));
+  } else {
+    out.sort((a, b) => {
+      const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return Number(b.value_total_usd || 0) - Number(a.value_total_usd || 0);
+    });
+  }
+  return out;
+}
+
+function renderMemeHeatmap(data) {
+  const metaEl = document.getElementById('memeHeatmapMeta');
+  const grid = document.getElementById('memeHeatmapGrid');
+
+  let tiles = data?.meme_heatmap?.tiles || [];
+
+  if (tiles.length) {
+    LAST_MEME_TILES = tiles;
+  } else if (LAST_MEME_TILES.length) {
+    tiles = LAST_MEME_TILES;
+  }
+
+  tiles = sortMemeTiles(tiles);
+
+  metaEl.innerHTML =
+    `${cacheBadge(data._cache)} <span class="tiny">candidates: ${tiles.length}</span>` +
+    ((data?.meme_heatmap?.tiles || []).length === 0 && LAST_MEME_TILES.length
+      ? ` <span class="badge warn">showing last good data</span>`
+      : '');
+
+  if (!tiles.length) {
+    grid.innerHTML = '<div class="muted">No meme rotation candidates available.</div>';
+    return;
+  }
+
+  grid.innerHTML = tiles.map(t => {
+    const score = Number(t.score || 0);
+    const colors = scoreGradientColor(score);
+
+    const flags = [];
+    if (t.core) flags.push('<span class="microbadge core">core</span>');
+    if (t.allowed) flags.push('<span class="microbadge allowed">allowed</span>');
+    if (t.blocked) flags.push('<span class="microbadge blocked">blocked</span>');
+    if (t.held) flags.push('<span class="microbadge held">held</span>');
+    if (t.active_buy_universe) flags.push('<span class="microbadge active">active</span>');
+    if (t.sniper_eligible) flags.push('<span class="microbadge sniper">sniper</span>');
+    if (t.pump_protected) flags.push('<span class="microbadge pump">pump-protected</span>');
+    if (!t.enabled) flags.push('<span class="microbadge disabled">disabled</span>');
+
+    const move24 = Number(t.price_change_24h_pct || 0);
+    const move1h = Number(t.price_change_1h_pct || 0);
+
+    return `
+      <div class="tile" style="background:${colors.bg}; border-color:${colors.border};">
+        <div class="tile-top">
+          <div>
+            <div class="sym">${t.product_id}</div>
+            <div class="small">${t.name || t.symbol || t.source || 'manual'}</div>
+          </div>
+          <div class="score">${score.toFixed(1)}</div>
+        </div>
+
+        <div style="margin:8px 0 4px 0;">${flags.join('') || '<span class="small">no flags</span>'}</div>
+
+        <div class="tile-grid">
+          <div>
+            <div class="metric-label">Held Value</div>
+            <div class="metric-value">${fmtUsd(t.value_total_usd || 0)}</div>
+          </div>
+          <div>
+            <div class="metric-label">Weight</div>
+            <div class="metric-value">${fmtPct(t.weight_total || 0)}</div>
+          </div>
+          <div>
+            <div class="metric-label">1h Move</div>
+            <div class="metric-value ${move1h >= 0 ? 'good' : 'bad'}">${fmtPctDirect(move1h)}</div>
+          </div>
+          <div>
+            <div class="metric-label">24h Move</div>
+            <div class="metric-value ${move24 >= 0 ? 'good' : 'bad'}">${fmtPctDirect(move24)}</div>
+          </div>
+          <div>
+            <div class="metric-label">Source</div>
+            <div class="metric-value">${t.source || 'manual'}</div>
+          </div>
+          <div>
+            <div class="metric-label">Bucket</div>
+            <div class="metric-value">${t.volatility_bucket || 'n/a'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderConfig(data) {
+  const cfg = data.config || {};
+  document.getElementById('configMeta').innerHTML =
+    `${cacheBadge(data._cache)} <span class="tiny">mode: ${cfg.satellite_mode || 'rotation'}</span>`;
+
+  const coreAssets = cfg.core_assets || {};
+  const tbody = document.getElementById('coreAssetsTable');
+  const rows = Object.entries(coreAssets).sort((a,b) => a[0].localeCompare(b[0]));
+  tbody.innerHTML = rows.length
+    ? rows.map(([pid, v]) => `
+      <tr>
+        <td>${pid}</td>
+        <td>${Number(v.target_weight || 0).toFixed(3)}</td>
+        <td>${Number(v.rebalance_band || 0).toFixed(3)}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="3" class="muted">No core assets configured.</td></tr>';
+
+  document.getElementById('satMode').value = cfg.satellite_mode || 'rotation';
+  document.getElementById('satTotalMax').value = cfg.satellite_total_max ?? '';
+  document.getElementById('satTotalTarget').value = cfg.satellite_total_target ?? '';
+  document.getElementById('minCashReserve').value = cfg.min_cash_reserve ?? '';
+  document.getElementById('tradeMinValueUsd').value = cfg.trade_min_value_usd ?? '';
+  document.getElementById('maxQuotePerTradeUsd').value = cfg.max_quote_per_trade_usd ?? '';
+
+  const allowed = cfg.satellite_allowed || [];
+  const blocked = cfg.satellite_blocked || [];
+
+  document.getElementById('allowedSatellites').innerHTML =
+    allowed.length ? allowed.map(x => `<span class="pill">${x}</span>`).join('') : '<span class="muted">None</span>';
+
+  document.getElementById('blockedSatellites').innerHTML =
+    blocked.length ? blocked.map(x => `<span class="pill">${x}</span>`).join('') : '<span class="muted">None</span>';
+}
+
+function renderMemeRotation(data) {
+  document.getElementById('memeRotationMeta').innerHTML =
+    `${cacheBadge(data._cache)} <span class="tiny">updated: ${data.meme_rotation?.updated_at || 'n/a'}</span>`;
+
+  const tbody = document.getElementById('memeRotationTable');
+  const rows = data.meme_rotation?.candidates || [];
+  tbody.innerHTML = rows.length
+    ? rows.map(r => `
+      <tr>
+        <td>${r.product_id || ''}</td>
+        <td>${Number(r.score || 0).toFixed(1)}</td>
+        <td>${String(r.enabled ?? true)}</td>
+        <td>${r.source || ''}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="4" class="muted">No rotation candidates.</td></tr>';
+}
+
+function renderProducts(data) {
+  document.getElementById('productsMeta').innerHTML =
+    `<span class="badge accent">count ${data.count || 0}</span> <span class="tiny">quote: ${data.quote_currency || 'USD'}</span>`;
+
+  const tbody = document.getElementById('productsTable');
+  const rows = data.products || [];
+  tbody.innerHTML = rows.length
+    ? rows.map(r => `
+      <tr>
+        <td>${r.product_id || ''}</td>
+        <td>${r.base_currency || ''}</td>
+        <td>${r.quote_currency || ''}</td>
+        <td>${r.status || ''}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="4" class="muted">No products returned.</td></tr>';
+}
+
+async function saveCoreAsset() {
+  const payload = {
+    action: document.getElementById('coreAction').value,
+    product_id: document.getElementById('coreProductId').value,
+    target_weight: document.getElementById('coreTargetWeight').value,
+    rebalance_band: document.getElementById('coreBand').value,
+    secret: API_SECRET
+  };
+
+  await fetch(authUrl('/api/admin/asset'), {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  await refreshAll(true);
+}
+
+async function applySatelliteChange() {
+  const payload = {
+    action: document.getElementById('satAction').value,
+    product_id: document.getElementById('satProductId').value,
+    secret: API_SECRET
+  };
+
+  await fetch(authUrl('/api/admin/asset'), {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  await refreshAll(true);
+}
+
+async function setMode() {
+  const payload = {
+    action: 'set_mode',
+    satellite_mode: document.getElementById('satMode').value,
+    secret: API_SECRET
+  };
+
+  await fetch(authUrl('/api/admin/asset'), {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  await refreshAll(true);
+}
+
+async function setRisk() {
+  const payload = {
+    action: 'set_risk',
+    satellite_total_max: document.getElementById('satTotalMax').value,
+    satellite_total_target: document.getElementById('satTotalTarget').value,
+    min_cash_reserve: document.getElementById('minCashReserve').value,
+    trade_min_value_usd: document.getElementById('tradeMinValueUsd').value,
+    max_quote_per_trade_usd: document.getElementById('maxQuotePerTradeUsd').value,
+    secret: API_SECRET
+  };
+
+  await fetch(authUrl('/api/admin/asset'), {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  await refreshAll(true);
+}
+
+async function saveRotationCandidate(removeFlag) {
+  const payload = {
+    product_id: document.getElementById('rotationProductId').value,
+    score: document.getElementById('rotationScore').value,
+    enabled: document.getElementById('rotationEnabled').value,
+    source: document.getElementById('rotationSource').value,
+    remove: removeFlag ? 'true' : 'false',
+    secret: API_SECRET
+  };
+
+  await fetch(authUrl('/api/admin/meme_rotation/candidate'), {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  await refreshAll(true);
+}
+
+async function loadProducts(forceRefresh) {
+  const quote = document.getElementById('productQuote').value;
+  const tradableOnly = document.getElementById('productTradableOnly').value;
+  const data = await fetchJson(`/api/valid_products?quote=${encodeURIComponent(quote)}&tradable_only=${encodeURIComponent(tradableOnly)}&refresh=${forceRefresh ? 'true' : 'false'}`);
+  renderProducts(data);
+}
+
+async function refreshCaches() {
+  await fetch(authUrl('/api/admin/cache/refresh'), {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ secret: API_SECRET })
+  });
+
+  await refreshAll(true);
+}
+
+async function refreshAll(forceProducts) {
+  try {
+    const [
+      statusData,
+      portfolioData,
+      rebalanceData,
+      heatmapData,
+      memeHeatmapData,
+      configData,
+      memeRotationData
+    ] = await Promise.all([
+      fetchJson('/api/status'),
+      fetchJson('/api/portfolio'),
+      fetchJson('/api/rebalance/preview'),
+      fetchJson('/api/heatmap'),
+      fetchJson('/api/heatmap/meme'),
+      fetchJson('/api/config'),
+      fetchJson('/api/meme_rotation')
+    ]);
+
+    renderStatusBadges(statusData, portfolioData, rebalanceData, heatmapData, memeHeatmapData, configData);
+    renderPortfolio(portfolioData);
+    renderRebalance(rebalanceData);
+    renderHeatmap(heatmapData);
+    renderMemeHeatmap(memeHeatmapData);
+    renderConfig(configData);
+    renderMemeRotation(memeRotationData);
+
+    if (forceProducts) {
+      await loadProducts(false);
+    }
+
+    setUiRefresh();
+  } catch (err) {
+    console.error(err);
+    document.getElementById('statusBadges').innerHTML =
+      `<span class="badge bad">dashboard error: ${String(err.message || err)}</span>`;
+    setUiRefresh();
+  }
+}
+
+refreshAll(true);
+setInterval(() => refreshAll(false), 60000);
+</script>
+</body>
+</html>
+"""
+
+@dashboard_bp.route("/dashboard", methods=["GET"])
+def dashboard():
+    if API_SECRET:
+      provided = request.args.get("secret", "")
+      if provided != API_SECRET:
+        return Response("unauthorized", status=403)
+
+    return render_template_string(HTML, api_secret=API_SECRET)

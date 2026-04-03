@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>{{ page_title or "Leprechaun Console" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="theme-dark app-body">
+  {% set current_path = request.path %}
+  {% set secret_value = secret if secret is defined and secret else request.args.get('secret', '') %}
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark">☘</div>
+        <div>
+          <div class="brand-title">Leprechaun</div>
+          <div class="brand-subtitle">Humble Capital Trading Engine</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="nav-link {% if current_path == '/dashboard' %}active{% endif %}" href="{{ '/dashboard?secret=' ~ (secret_value|urlencode) if secret_value else '/dashboard' }}">Dashboard</a>
+        <a class="nav-link {% if current_path == '/analytics' %}active{% endif %}" href="{{ '/analytics?secret=' ~ (secret_value|urlencode) if secret_value else '/analytics' }}">Portfolio Analytics</a>
+        <a class="nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' }}">Meme Hunter</a>
+        <a class="nav-link {% if current_path == '/trade-history' %}active{% endif %}" href="{{ '/trade-history?secret=' ~ (secret_value|urlencode) if secret_value else '/trade-history' }}">Trade History</a>
+        <a class="nav-link {% if current_path == '/configuration' %}active{% endif %}" href="{{ '/configuration?secret=' ~ (secret_value|urlencode) if secret_value else '/configuration' }}">Bot Configuration</a>
+        <a class="nav-link {% if current_path == '/system-status' %}active{% endif %}" href="{{ '/system-status?secret=' ~ (secret_value|urlencode) if secret_value else '/system-status' }}">System Status</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        {% if session_username %}
+          <div class="sidebar-user">Signed in as {{ session_username }}</div>
+          <a class="nav-link" href="/logout">Logout</a>
+        {% endif %}
+        <a class="nav-link" href="/">Public Home</a>
+      </div>
+    </aside>
+
+    <main class="main-shell">
+      <header class="mobile-app-header" aria-label="Mobile app header">
+        <div class="mobile-app-header-row">
+          <div class="mobile-brand-lockup">
+            <div class="mobile-brand-mark">☘</div>
+            <div class="mobile-brand-copy">
+              <div class="mobile-brand-title">Leprechaun</div>
+              <div class="mobile-brand-subtitle">Humble Capital Console</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-page-head">
+          <h1 class="mobile-page-title">{{ page_title }}</h1>
+          <div class="mobile-page-subtitle">Where Luck Meets Momentum</div>
+        </div>
+
+        {% block mobile_topbar_actions %}
+        {% if self.topbar_actions()|trim %}
+        <div class="mobile-topbar-actions">
+          {{ self.topbar_actions() }}
+        </div>
+        {% endif %}
+        {% endblock %}
+      </header>
+
+      <header class="topbar">
+        <div>
+          <h1 class="page-title">{{ page_title }}</h1>
+          <div class="page-subtitle">Where Luck Meets Momentum</div>
+        </div>
+        <div class="topbar-actions">
+          {% if session_username %}
+            <span class="badge">{{ session_username }}</span>
+          {% endif %}
+          {% block topbar_actions %}{% endblock %}
+        </div>
+      </header>
+
+      <section class="page-content">
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+  </div>
+
+  <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+    <a class="mobile-nav-link {% if current_path == '/dashboard' %}active{% endif %}" href="{{ '/dashboard?secret=' ~ (secret_value|urlencode) if secret_value else '/dashboard' }}">
+      <span class="mobile-nav-icon">⌂</span>
+      <span class="mobile-nav-label">Dashboard</span>
+    </a>
+
+    <a class="mobile-nav-link {% if current_path == '/configuration' %}active{% endif %}" href="{{ '/configuration?secret=' ~ (secret_value|urlencode) if secret_value else '/configuration' }}">
+      <span class="mobile-nav-icon">⚙</span>
+      <span class="mobile-nav-label">Config</span>
+    </a>
+
+    <a class="mobile-nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' }}">
+      <span class="mobile-nav-icon">◈</span>
+      <span class="mobile-nav-label">Hunter</span>
+    </a>
+
+    <a class="mobile-nav-link {% if current_path == '/system-status' %}active{% endif %}" href="{{ '/system-status?secret=' ~ (secret_value|urlencode) if secret_value else '/system-status' }}">
+      <span class="mobile-nav-icon">●</span>
+      <span class="mobile-nav-label">System</span>
+    </a>
+  </nav>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "updated_at": 0,
+  "candidates": [
+    {"product_id": "DOGE-USD", "score": 90, "enabled": true, "source": "manual"},
+    {"product_id": "SHIB-USD", "score": 80, "enabled": true, "source": "manual"},
+    {"product_id": "PEPE-USD", "score": 78, "enabled": true, "source": "manual"},
+    {"product_id": "BONK-USD", "score": 72, "enabled": true, "source": "manual"},
+    {"product_id": "JASMY-USD", "score": 65, "enabled": true, "source": "manual"}
+  ]
+}

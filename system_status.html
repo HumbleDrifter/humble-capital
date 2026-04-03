@@ -1,0 +1,66 @@
+{% extends "base_app.html" %}
+
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+<div class="grid cols-12">
+
+  <section class="panel span-12">
+    <div class="section-header">
+      <div>
+        <h2>System Status</h2>
+        <p class="section-subtitle" id="statusMeta">Operational state and cache controls</p>
+      </div>
+    </div>
+
+    <div id="statusBadges">
+      <span class="badge accent">manual controls</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="service-actions">
+      <button class="btn btn-secondary" onclick="refreshSystemStatus()">Refresh Now</button>
+      <button class="btn btn-primary" onclick="refreshCaches()">Refresh Caches</button>
+    </div>
+  </section>
+
+  <section class="panel span-6">
+    <div class="section-header">
+      <div>
+        <h2>Service Health</h2>
+        <p class="section-subtitle">Current configuration and control readiness</p>
+      </div>
+    </div>
+    <div id="serviceHealth" class="status-console">Loading...</div>
+  </section>
+
+  <section class="panel span-6">
+    <div class="section-header">
+      <div>
+        <h2>Cache Health</h2>
+        <p class="section-subtitle">Last manual cache refresh result</p>
+      </div>
+    </div>
+    <div id="cacheHealth" class="status-console">Ready.</div>
+  </section>
+
+  <section class="panel span-12">
+    <div class="section-header">
+      <div>
+        <h2>Diagnostics</h2>
+        <p class="section-subtitle">Config and control diagnostics</p>
+      </div>
+    </div>
+    <div id="diagnostics" class="status-console mono">Loading...</div>
+  </section>
+
+</div>
+
+<script>
+  window.SYSTEM_STATUS_CONFIG = {
+    apiSecret: {{ api_secret|tojson }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/system_status.js') }}"></script>
+{% endblock %}

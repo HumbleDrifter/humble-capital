@@ -1,0 +1,178 @@
+{% extends "base_app.html" %}
+
+{% block topbar_actions %}
+<button class="btn btn-secondary" type="button" onclick="refreshAll(true)">Refresh</button>
+{% endblock %}
+
+{% block mobile_topbar_actions %}
+<button class="btn btn-secondary" type="button" onclick="refreshAll(true)">Refresh</button>
+{% endblock %}
+
+{% block content %}
+<div class="grid cols-12 dashboard-grid">
+
+  <section class="panel span-12 dashboard-status-panel">
+    <div class="section-header">
+      <div>
+        <h2>Console Status</h2>
+        <p class="section-subtitle">Live dashboard state, session mode, and refresh tracking</p>
+      </div>
+    </div>
+
+    <div id="statusBadges"></div>
+
+    <div class="divider"></div>
+
+    <div class="statusline">
+      <div>Auto refresh: <span class="mono">120s</span></div>
+      <div>Secret mode: <span class="mono" id="secretMode"></span></div>
+      <div>Last UI refresh: <span class="mono" id="uiRefresh">never</span></div>
+    </div>
+  </section>
+
+  <section class="panel span-12 dashboard-overview-panel">
+    <div class="section-header">
+      <div>
+        <h2>Overview</h2>
+        <p class="section-subtitle">Portfolio summary, allocation mix, and account value trend</p>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Portfolio</div>
+        <div class="kpi-value" id="kpiTotal">$0.00</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">USD Cash</div>
+        <div class="kpi-value" id="kpiCash">$0.00</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Core Weight</div>
+        <div class="kpi-value" id="kpiCore">0.00%</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">Satellite Weight</div>
+        <div class="kpi-value" id="kpiSat">0.00%</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-header compact-header">
+      <div>
+        <h3 style="margin:0;">Allocation Mix</h3>
+        <p class="section-subtitle" style="margin:4px 0 0 0;">Cash, core, and satellite exposure</p>
+      </div>
+    </div>
+
+    <div id="allocationText" class="tiny"></div>
+
+    <div class="allocation-wrap">
+      <div id="segCash" class="allocation-seg seg-cash" style="width:0%"></div>
+      <div id="segCore" class="allocation-seg seg-core" style="width:0%"></div>
+      <div id="segSat" class="allocation-seg seg-sat" style="width:0%"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-header compact-header">
+      <div>
+        <h3 style="margin:0;">Account Value Trend</h3>
+        <p class="section-subtitle" id="accountValueMeta">Loading history...</p>
+      </div>
+    </div>
+
+    <div id="accountValueChartHost"></div>
+  </section>
+
+  <section class="panel span-8 dashboard-portfolio-panel">
+    <div class="section-header">
+      <div>
+        <h2>Portfolio</h2>
+        <p class="section-subtitle" id="portfolioMeta"></p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th class="right">Units</th>
+            <th class="right">Price</th>
+            <th class="right">Value USD</th>
+            <th class="right">Weight</th>
+            <th>Class</th>
+          </tr>
+        </thead>
+        <tbody id="portfolioTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel span-4 dashboard-rebalance-panel">
+    <div class="section-header">
+      <div>
+        <h2>Rebalance Preview</h2>
+        <p class="section-subtitle" id="rebalanceMeta">Previewing next actions</p>
+      </div>
+    </div>
+
+    <div id="rebalanceSummary" class="rebalance-shell"></div>
+
+    <div class="divider"></div>
+
+    <div class="section-header compact-header">
+      <div>
+        <h3 style="margin:0;">Cash Breakdown</h3>
+        <p class="section-subtitle" style="margin:4px 0 0 0;">Available stable balances</p>
+      </div>
+    </div>
+
+    <div class="mini-stat-grid">
+      <div class="mini-stat-card">
+        <div class="mini-stat-label">USD</div>
+        <div class="mini-stat-value" id="cashUsd">$0.00</div>
+      </div>
+
+      <div class="mini-stat-card">
+        <div class="mini-stat-label">USDC</div>
+        <div class="mini-stat-value" id="cashUsdc">$0.00</div>
+      </div>
+
+      <div class="mini-stat-card">
+        <div class="mini-stat-label">USDT</div>
+        <div class="mini-stat-value" id="cashUsdt">$0.00</div>
+      </div>
+
+      <div class="mini-stat-card">
+        <div class="mini-stat-label">Total Cash</div>
+        <div class="mini-stat-value" id="cashTotal">$0.00</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel span-12 dashboard-universe-panel">
+    <div class="section-header">
+      <div>
+        <h2>Active Satellite Buy Universe</h2>
+        <p class="section-subtitle">Currently tradable rotation assets</p>
+      </div>
+    </div>
+
+    <div id="activeBuyUniverse"></div>
+  </section>
+
+</div>
+
+<script>
+  window.DASHBOARD_CONFIG = {
+    apiSecret: {{ api_secret|tojson }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

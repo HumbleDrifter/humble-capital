@@ -1,0 +1,312 @@
+import os
+import time
+import threading
+from flask import Blueprint, request, jsonify
+from dotenv import load_dotenv
+
+from execution import product_id_exists
+from rebalancer import dispatch_signal_action
+from notify import notify_execution_result
+
+load_dotenv("/root/tradingbot/.env", override=True)
+
+webhook_bp = Blueprint("webhook", **name**)
+
+_RECENT_ALERTS = {}
+_ALERTS_LOCK = threading.Lock()
+
+_PROCESSED_ORDER_IDS = {}
+_ORDER_LOCK = threading.Lock()
+ORDER_CACHE_SECONDS = 600
+
+def _norm(x):
+return str(x or "").strip()
+
+def _get_env_int(name, default):
+try:
+return int(str(os.getenv(name, str(default)) or str(default)).strip())
+except Exception:
+return int(default)
+
+def get_webhook_secrets():
+load_dotenv("/root/tradingbot/.env", override=True)
+
+```
+raw_values = []
+
+primary = os.getenv("WEBHOOK_SHARED_SECRET", "")
+extra = os.getenv("WEBHOOK_SHARED_SECRETS", "")
+
+if primary:
+    raw_values.extend(str(primary).split(","))
+
+if extra:
+    raw_values.extend(str(extra).split(","))
+
+cleaned = []
+seen = set()
+
+for s in raw_values:
+    s = str(s or "").strip().strip('"').strip("'")
+    if s and s not in seen:
+        cleaned.append(s)
+        seen.add(s)
+
+return cleaned
+```
+
+def get_alert_dedupe_seconds():
+load_dotenv("/root/tradingbot/.env", override=True)
+return _get_env_int("DUPLICATE_WINDOW_SEC", 60)
+
+def get_alert_max_age_sec():
+load_dotenv("/root/tradingbot/.env", override=True)
+return _get_env_int("MAX_ALERT_AGE_SEC", 120)
+
+def _alert_key(product_id, action, signal_type, timeframe):
+return f"{product_id}|{action}|{signal_type}|{timeframe}"
+
+def _is_duplicate(product_id, action, signal_type, timeframe):
+now = time.time()
+dedupe_seconds = get_alert_dedupe_seconds()
+key = _alert_key(product_id, action, signal_type, timeframe)
+
+```
+with _ALERTS_LOCK:
+    expired = [
+        k for k, ts in _RECENT_ALERTS.items()
+        if (now - ts) > dedupe_seconds
+    ]
+
+    for k in expired:
+        _RECENT_ALERTS.pop(k, None)
+
+    last_ts = _RECENT_ALERTS.get(key)
+
+    if last_ts and (now - last_ts) <= dedupe_seconds:
+        return True
+
+    _RECENT_ALERTS[key] = now
+    return False
+```
+
+def _order_already_processed(order_id):
+if not order_id:
+return False
+
+```
+now = time.time()
+
+with _ORDER_LOCK:
+    expired = [
+        k for k, ts in _PROCESSED_ORDER_IDS.items()
+        if (now - ts) > ORDER_CACHE_SECONDS
+    ]
+
+    for k in expired:
+        _PROCESSED_ORDER_IDS.pop(k, None)
+
+    if order_id in _PROCESSED_ORDER_IDS:
+        return True
+
+    _PROCESSED_ORDER_IDS[order_id] = now
+    return False
+```
+
+def _validate_timestamp(timestamp_value):
+timestamp = _norm(timestamp_value)
+max_age_sec = get_alert_max_age_sec()
+
+```
+if not timestamp:
+    return True, None, None
+
+try:
+    ts = int(timestamp) / 1000.0
+except Exception:
+    return False, "invalid_timestamp", None
+
+age_sec = time.time() - ts
+
+if age_sec > max_age_sec:
+    return False, "alert_expired", age_sec
+
+if age_sec < -30:
+    return False, "timestamp_in_future", age_sec
+
+return True, None, age_sec
+```
+
+def _attempt_has_fill(attempt: dict) -> bool:
+if not isinstance(attempt, dict):
+return False
+
+```
+try:
+    filled_base = float(attempt.get("filled_base", 0) or 0)
+except Exception:
+    filled_base = 0.0
+
+try:
+    avg_fill_price = float(attempt.get("avg_fill_price", 0) or 0)
+except Exception:
+    avg_fill_price = 0.0
+
+if filled_base > 0:
+    return True
+
+if avg_fill_price > 0:
+    return True
+
+raw = attempt.get("raw") or {}
+status = str(
+    raw.get("status")
+    or attempt.get("status")
+    or ""
+).upper()
+
+return status == "FILLED"
+```
+
+def _result_has_successful_fill(result_wrapper) -> bool:
+if not isinstance(result_wrapper, dict):
+return False
+
+```
+attempts = result_wrapper.get("attempts") or []
+for attempt in attempts:
+    if _attempt_has_fill(attempt):
+        return True
+
+try:
+    filled_base = float(result_wrapper.get("filled_base", 0) or 0)
+except Exception:
+    filled_base = 0.0
+
+if filled_base > 0:
+    return True
+
+status = str(result_wrapper.get("status", "") or "").upper()
+if status == "FILLED":
+    return True
+
+return False
+```
+
+@webhook_bp.route("/webhook", methods=["POST"])
+def webhook():
+load_dotenv("/root/tradingbot/.env", override=True)
+
+```
+data = request.get_json(silent=True) or {}
+
+secret = _norm(data.get("secret")).strip('"').strip("'")
+webhook_secrets = get_webhook_secrets()
+
+if not webhook_secrets or secret not in webhook_secrets:
+    return jsonify({"ok": False, "reason": "invalid_secret"}), 401
+
+timestamp = _norm(data.get("timestamp"))
+ts_ok, ts_reason, age_sec = _validate_timestamp(timestamp)
+
+if not ts_ok:
+    payload = {"ok": False, "reason": ts_reason}
+    if age_sec is not None:
+        payload["age_sec"] = age_sec
+    return jsonify(payload), 400
+
+product_id = _norm(data.get("product_id")).upper()
+action = _norm(data.get("action")).upper()
+signal_type = _norm(data.get("signal_type")).upper()
+timeframe = _norm(data.get("timeframe"))
+strategy = _norm(data.get("strategy"))
+price = data.get("price")
+order_id = _norm(data.get("order_id"))
+
+try:
+    trim_pct = float(data.get("trim_pct", 0.50) or 0.50)
+except Exception:
+    trim_pct = 0.50
+
+if not product_id:
+    return jsonify({"ok": False, "reason": "missing_product_id"}), 400
+
+if action not in {"BUY", "TRIM", "EXIT"}:
+    return jsonify({"ok": False, "reason": f"unsupported_action={action}"}), 400
+
+if action == "BUY" and signal_type not in {
+    "CORE_BUY_WINDOW",
+    "SATELLITE_BUY_EARLY",
+    "SATELLITE_BUY",
+    "SATELLITE_BUY_HEAVY",
+    "SNIPER_BUY",
+}:
+    return jsonify({"ok": False, "reason": f"unsupported_signal_type={signal_type}"}), 400
+
+if action == "TRIM" and not signal_type:
+    signal_type = "SNIPER_EXIT"
+
+if action == "EXIT" and not signal_type:
+    signal_type = "EXIT"
+
+if _order_already_processed(order_id):
+    return jsonify({"ok": False, "reason": "duplicate_order_id"}), 200
+
+exists = product_id_exists(product_id)
+if not exists:
+    print(f"[webhook] product validation skipped runtime miss: {product_id}")
+
+if _is_duplicate(product_id, action, signal_type, timeframe):
+    return jsonify({"ok": False, "reason": "duplicate_alert_window"}), 200
+
+try:
+    result = dispatch_signal_action(
+        product_id=product_id,
+        action=action,
+        signal_type=signal_type,
+        timeframe=timeframe,
+        strategy=strategy,
+        price=price,
+        order_id=order_id,
+        trim_pct=trim_pct,
+    )
+
+    result_wrapper = result.get("result") if isinstance(result, dict) else None
+
+    if _result_has_successful_fill(result_wrapper):
+        if action == "BUY":
+            notify_execution_result(
+                product_id=product_id,
+                side="BUY",
+                signal_type=signal_type,
+                requested_usd=result.get("requested_buy_usd"),
+                result_wrapper=result_wrapper,
+            )
+        else:
+            notify_execution_result(
+                product_id=product_id,
+                side="SELL",
+                signal_type=signal_type,
+                result_wrapper=result_wrapper,
+            )
+    else:
+        print(
+            f"[webhook] no successful fill for {product_id} "
+            f"action={action} signal_type={signal_type}"
+        )
+
+    return jsonify(result), 200
+
+except Exception as exc:
+    print(
+        f"[webhook] dispatch_exception product_id={product_id} "
+        f"action={action} signal_type={signal_type} error={exc}"
+    )
+    return jsonify(
+        {
+            "ok": False,
+            "reason": "dispatch_exception",
+            "error": str(exc),
+        }
+    ), 500
+```

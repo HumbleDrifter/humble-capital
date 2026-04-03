@@ -1,0 +1,389 @@
+{
+  "generated_at": 1775187465,
+  "candidate_count": 20,
+  "watchlist_mode": false,
+  "excluded_core_assets": [
+    "BTC-USD",
+    "ETH-USD",
+    "SOL-USD",
+    "XRP-USD"
+  ],
+  "manual_excluded_products": [
+    "ADA-USD",
+    "BNB-USD",
+    "DAI-USD",
+    "EURC-USD",
+    "LINK-USD",
+    "LTC-USD",
+    "PAXG-USD",
+    "PYUSD-USD",
+    "UNI-USD",
+    "USDC-USD",
+    "USDT-USD",
+    "WBTC-USD",
+    "XAUT-USD"
+  ],
+  "meme_bias_mode": "boosted",
+  "candidates": [
+    {
+      "product_id": "CTSI-USD",
+      "symbol": "CTSI",
+      "score": 25.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 8.0,
+        "liquidity_bonus": 6.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 69.20537626517752,
+      "market_cap": 34641688,
+      "total_volume": 164449989,
+      "pump_protected": false
+    },
+    {
+      "product_id": "ZEN-USD",
+      "symbol": "ZEN",
+      "score": 25.0,
+      "momentum_tag": "surging",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 12.0,
+        "liquidity_bonus": 2.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": -94.86549618134823,
+      "market_cap": 274750,
+      "total_volume": 12616859,
+      "pump_protected": false
+    },
+    {
+      "product_id": "MON-USD",
+      "symbol": "MON",
+      "score": 19.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 8.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 6.36987099537516,
+      "market_cap": 268242155,
+      "total_volume": 489623585,
+      "pump_protected": false
+    },
+    {
+      "product_id": "XPL-USD",
+      "symbol": "XPL",
+      "score": 19.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 8.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 8.563569014366273,
+      "market_cap": 269969790,
+      "total_volume": 385242308,
+      "pump_protected": false
+    },
+    {
+      "product_id": "WIF-USD",
+      "symbol": "WIF",
+      "score": 18.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "active",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 8.0,
+        "volume_surge_bonus": 3.0,
+        "meme_boost_bonus": 6.0
+      },
+      "price_change_24h": 2.4192315214321076,
+      "market_cap": 180562254,
+      "total_volume": 47939742,
+      "pump_protected": false
+    },
+    {
+      "product_id": "NMR-USD",
+      "symbol": "NMR",
+      "score": 17.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 6.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 6.436304227087483,
+      "market_cap": 52113154,
+      "total_volume": 80790770,
+      "pump_protected": false
+    },
+    {
+      "product_id": "KERNEL-USD",
+      "symbol": "KERNEL",
+      "score": 17.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 6.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 4.077870439934724,
+      "market_cap": 33518309,
+      "total_volume": 64008819,
+      "pump_protected": false
+    },
+    {
+      "product_id": "EDGE-USD",
+      "symbol": "EDGE",
+      "score": 17.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 6.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 23.280501717516895,
+      "market_cap": 28056475,
+      "total_volume": 32759746,
+      "pump_protected": false
+    },
+    {
+      "product_id": "DRIFT-USD",
+      "symbol": "DRIFT",
+      "score": 17.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 6.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 22.915789135542905,
+      "market_cap": 29793729,
+      "total_volume": 54506257,
+      "pump_protected": false
+    },
+    {
+      "product_id": "REZ-USD",
+      "symbol": "REZ",
+      "score": 17.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 6.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 9.215627446307849,
+      "market_cap": 29661170,
+      "total_volume": 33795674,
+      "pump_protected": false
+    },
+    {
+      "product_id": "DOGE-USD",
+      "symbol": "DOGE",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "normal",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 8.0,
+        "volume_surge_bonus": 0.0,
+        "meme_boost_bonus": 6.0
+      },
+      "price_change_24h": 0.1350526311433626,
+      "market_cap": 13895815249,
+      "total_volume": 751681698,
+      "pump_protected": false
+    },
+    {
+      "product_id": "PEPE-USD",
+      "symbol": "PEPE",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "normal",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 8.0,
+        "volume_surge_bonus": 0.0,
+        "meme_boost_bonus": 6.0
+      },
+      "price_change_24h": 1.7837769980615248,
+      "market_cap": 1415135023,
+      "total_volume": 235679512,
+      "pump_protected": false
+    },
+    {
+      "product_id": "NOM-USD",
+      "symbol": "NOM",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 4.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 14.559831101199352,
+      "market_cap": 19307170,
+      "total_volume": 219505885,
+      "pump_protected": false
+    },
+    {
+      "product_id": "KAT-USD",
+      "symbol": "KAT",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 4.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": -6.340898214941052,
+      "market_cap": 21268298,
+      "total_volume": 192012269,
+      "pump_protected": false
+    },
+    {
+      "product_id": "SHIB-USD",
+      "symbol": "SHIB",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "normal",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 8.0,
+        "volume_surge_bonus": 0.0,
+        "meme_boost_bonus": 6.0
+      },
+      "price_change_24h": 0.4978951107178064,
+      "market_cap": 3470117866,
+      "total_volume": 112528271,
+      "pump_protected": false
+    },
+    {
+      "product_id": "FIDA-USD",
+      "symbol": "FIDA",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 4.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 17.10920326709354,
+      "market_cap": 17560136,
+      "total_volume": 106015271,
+      "pump_protected": false
+    },
+    {
+      "product_id": "PENGU-USD",
+      "symbol": "PENGU",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "normal",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 8.0,
+        "volume_surge_bonus": 0.0,
+        "meme_boost_bonus": 6.0
+      },
+      "price_change_24h": 0.027499601814731375,
+      "market_cap": 396232744,
+      "total_volume": 79227747,
+      "pump_protected": false
+    },
+    {
+      "product_id": "BONK-USD",
+      "symbol": "BONK",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "normal",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 8.0,
+        "volume_surge_bonus": 0.0,
+        "meme_boost_bonus": 6.0
+      },
+      "price_change_24h": -1.1130511993045844,
+      "market_cap": 498499897,
+      "total_volume": 33890227,
+      "pump_protected": false
+    },
+    {
+      "product_id": "ARPA-USD",
+      "symbol": "ARPA",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 4.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 6.967908334335246,
+      "market_cap": 9424629,
+      "total_volume": 33075154,
+      "pump_protected": false
+    },
+    {
+      "product_id": "DOLO-USD",
+      "symbol": "DOLO",
+      "score": 15.0,
+      "momentum_tag": "neutral",
+      "volume_tag": "explosive",
+      "score_breakdown": {
+        "base_bonus": 1.0,
+        "momentum_bonus": 0.0,
+        "liquidity_bonus": 4.0,
+        "volume_surge_bonus": 10.0,
+        "meme_boost_bonus": 0.0
+      },
+      "price_change_24h": 3.3579134251473985,
+      "market_cap": 16298390,
+      "total_volume": 27034479,
+      "pump_protected": false
+    }
+  ]
+}

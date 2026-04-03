@@ -1,0 +1,441 @@
+import os
+import time
+import uuid
+from decimal import Decimal, ROUND_DOWN
+from typing import Any, Dict, Tuple
+
+from dotenv import load_dotenv
+from coinbase.rest import RESTClient
+
+load_dotenv("/root/tradingbot/.env")
+
+TERMINAL_STATUSES = {"FILLED", "CANCELED", "CANCELLED", "EXPIRED", "FAILED", "REJECTED"}
+
+_client = None
+
+
+def get_client() -> RESTClient:
+    global _client
+    if _client is None:
+        api_key = os.getenv("COINBASE_API_KEY")
+        api_secret = os.getenv("COINBASE_API_SECRET")
+
+        if api_secret:
+            api_secret = api_secret.replace("\\n", "\n")
+
+        if not api_key or not api_secret:
+            raise RuntimeError(
+                "Missing COINBASE_API_KEY or COINBASE_API_SECRET. "
+                "Check /root/tradingbot/.env formatting."
+            )
+
+        _client = RESTClient(api_key=api_key, api_secret=api_secret)
+
+    return _client
+
+
+def _to_dict(x: Any) -> Dict[str, Any]:
+    return x.to_dict() if hasattr(x, "to_dict") else x
+
+
+def _extract_order_id(resp_dict: Dict[str, Any]) -> str | None:
+    return (
+        resp_dict.get("success_response", {}).get("order_id")
+        or resp_dict.get("order_id")
+        or resp_dict.get("order", {}).get("order_id")
+    )
+
+
+def get_best_bid_ask(product_id: str) -> Tuple[Decimal, Decimal]:
+    resp = get_client().get_best_bid_ask(product_ids=[product_id])
+    d = _to_dict(resp)
+
+    pb = d["pricebooks"][0]
+    bid = Decimal(pb["bids"][0]["price"])
+    ask = Decimal(pb["asks"][0]["price"])
+    return bid, ask
+
+
+def get_quote_increment(product_id: str) -> Decimal:
+    prod = _to_dict(get_client().get_product(product_id=product_id))
+    inc = prod.get("quote_increment") or prod.get("quote_increment_value") or "0.00000001"
+    return Decimal(str(inc))
+
+
+def get_base_increment(product_id: str) -> Decimal:
+    prod = _to_dict(get_client().get_product(product_id=product_id))
+    inc = prod.get("base_increment") or prod.get("base_increment_value") or "0.00000001"
+    return Decimal(str(inc))
+
+
+def round_to_increment(value: Decimal, inc: Decimal) -> Decimal:
+    return (value / inc).to_integral_value(rounding=ROUND_DOWN) * inc
+
+
+def _calc_limit_price(product_id: str, side: str, offset_bps: int) -> Tuple[Decimal, Decimal, Decimal]:
+    side = side.upper()
+    bid, ask = get_best_bid_ask(product_id)
+    inc = get_quote_increment(product_id)
+
+    offset = Decimal(offset_bps) / Decimal(10_000)
+
+    if side == "BUY":
+        raw_price = ask * (Decimal("1") - offset)
+    else:
+        raw_price = bid * (Decimal("1") + offset)
+
+    limit_price = round_to_increment(raw_price, inc)
+    return bid, ask, limit_price
+
+
+def _get_order_status(order_id: str) -> Tuple[str, float, float, Dict[str, Any]]:
+    gd = _to_dict(get_client().get_order(order_id=order_id))
+    order = gd.get("order", gd)
+
+    status = str(order.get("status", "")).upper()
+
+    filled_base = float(order.get("filled_size") or 0.0)
+    filled_value = float(order.get("filled_value") or 0.0)
+    avg_price = float(order.get("average_filled_price") or 0.0)
+
+    if avg_price == 0.0 and filled_base > 0.0 and filled_value > 0.0:
+        avg_price = filled_value / filled_base
+
+    return status, filled_base, avg_price, order
+
+
+def place_limit_quote_with_timeout(
+    product_id: str,
+    side: str,
+    quote_size_usd: float,
+    offset_bps: int = 8,
+    timeout_sec: int = 25,
+    post_only: bool = True,
+) -> Dict[str, Any]:
+    """
+    Place a limit order using a USD quote amount by converting it to base_size.
+    """
+    side = side.upper()
+    bid, ask, limit_price = _calc_limit_price(product_id, side, offset_bps)
+
+    base_inc = get_base_increment(product_id)
+    raw_base_size = Decimal(str(quote_size_usd)) / limit_price
+    base_size = round_to_increment(raw_base_size, base_inc)
+
+    if base_size <= 0:
+        return {
+            "ok": False,
+            "error": "base_size_rounded_to_zero",
+            "requested_quote_usd": quote_size_usd,
+            "limit_price": str(limit_price),
+        }
+
+    client_order_id = str(uuid.uuid4())
+
+    order_resp = get_client().limit_order_gtc(
+        client_order_id=client_order_id,
+        product_id=product_id,
+        side=side,
+        base_size=str(base_size),
+        limit_price=str(limit_price),
+        post_only=bool(post_only),
+    )
+
+    od = _to_dict(order_resp)
+    order_id = _extract_order_id(od)
+
+    if not order_id:
+        return {"ok": False, "error": "no order_id returned", "raw": od}
+
+    deadline = time.time() + float(timeout_sec)
+
+    while time.time() < deadline:
+        status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+
+        if status in TERMINAL_STATUSES:
+            return {
+                "ok": True,
+                "coinbase_order_id": order_id,
+                "status": status,
+                "best_bid": str(bid),
+                "best_ask": str(ask),
+                "limit_price": str(limit_price),
+                "requested_quote_usd": quote_size_usd,
+                "requested_base_size": str(base_size),
+                "filled_base": filled_base,
+                "avg_fill_price": avg_price,
+                "raw": raw_order,
+            }
+
+        time.sleep(2)
+
+    cancel_resp = _to_dict(get_client().cancel_orders(order_ids=[order_id]))
+    status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+
+    return {
+        "ok": True,
+        "coinbase_order_id": order_id,
+        "status": status,
+        "result": "timeout_cancel",
+        "best_bid": str(bid),
+        "best_ask": str(ask),
+        "limit_price": str(limit_price),
+        "requested_quote_usd": quote_size_usd,
+        "requested_base_size": str(base_size),
+        "filled_base": filled_base,
+        "avg_fill_price": avg_price,
+        "cancel": cancel_resp,
+        "raw": raw_order,
+    }
+
+
+def place_limit_base_with_timeout(
+    product_id: str,
+    side: str,
+    base_size: float,
+    offset_bps: int = 8,
+    timeout_sec: int = 25,
+    post_only: bool = True,
+) -> Dict[str, Any]:
+    """
+    Place a limit order using base_size directly.
+    """
+    side = side.upper()
+    bid, ask, limit_price = _calc_limit_price(product_id, side, offset_bps)
+
+    base_inc = get_base_increment(product_id)
+    base_size_dec = round_to_increment(Decimal(str(base_size)), base_inc)
+
+    if base_size_dec <= 0:
+        return {
+            "ok": False,
+            "error": "base_size_rounded_to_zero",
+            "requested_base_size": str(base_size),
+            "limit_price": str(limit_price),
+        }
+
+    client_order_id = str(uuid.uuid4())
+
+    order_resp = get_client().limit_order_gtc(
+        client_order_id=client_order_id,
+        product_id=product_id,
+        side=side,
+        base_size=str(base_size_dec),
+        limit_price=str(limit_price),
+        post_only=bool(post_only),
+    )
+
+    od = _to_dict(order_resp)
+    order_id = _extract_order_id(od)
+
+    if not order_id:
+        return {"ok": False, "error": "no order_id returned", "raw": od}
+
+    deadline = time.time() + float(timeout_sec)
+
+    while time.time() < deadline:
+        status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+
+        if status in TERMINAL_STATUSES:
+            return {
+                "ok": True,
+                "coinbase_order_id": order_id,
+                "status": status,
+                "best_bid": str(bid),
+                "best_ask": str(ask),
+                "limit_price": str(limit_price),
+                "requested_base_size": str(base_size_dec),
+                "filled_base": filled_base,
+                "avg_fill_price": avg_price,
+                "raw": raw_order,
+            }
+
+        time.sleep(2)
+
+    cancel_resp = _to_dict(get_client().cancel_orders(order_ids=[order_id]))
+    status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+
+    return {
+        "ok": True,
+        "coinbase_order_id": order_id,
+        "status": status,
+        "result": "timeout_cancel",
+        "best_bid": str(bid),
+        "best_ask": str(ask),
+        "limit_price": str(limit_price),
+        "requested_base_size": str(base_size_dec),
+        "filled_base": filled_base,
+        "avg_fill_price": avg_price,
+        "cancel": cancel_resp,
+        "raw": raw_order,
+    }
+
+
+def place_limit_quote_with_retries(
+    product_id: str,
+    side: str,
+    quote_size_usd: float,
+    attempts=None,
+) -> Dict[str, Any]:
+    """
+    Retry a quote-sized order with progressively more aggressive settings.
+    """
+    if attempts is None:
+        attempts = [
+            {"offset_bps": 4, "timeout_sec": 25, "post_only": True},
+            {"offset_bps": 2, "timeout_sec": 20, "post_only": False},
+            {"offset_bps": 0, "timeout_sec": 15, "post_only": False},
+        ]
+
+    results = []
+
+    for idx, cfg in enumerate(attempts, start=1):
+        result = place_limit_quote_with_timeout(
+            product_id=product_id,
+            side=side,
+            quote_size_usd=quote_size_usd,
+            offset_bps=int(cfg["offset_bps"]),
+            timeout_sec=int(cfg["timeout_sec"]),
+            post_only=bool(cfg["post_only"]),
+        )
+
+        result["attempt_number"] = idx
+        result["attempt_config"] = cfg
+        results.append(result)
+
+        filled_base = float(result.get("filled_base", 0.0) or 0.0)
+        status = str(result.get("status", "")).upper()
+
+        if filled_base > 0 or status == "FILLED":
+            return {
+                "ok": True,
+                "mode": "retry_execution",
+                "filled": True,
+                "final_result": result,
+                "attempts": results,
+            }
+
+    return {
+        "ok": True,
+        "mode": "retry_execution",
+        "filled": False,
+        "final_result": results[-1] if results else {},
+        "attempts": results,
+    }
+
+
+def place_limit_base_with_retries(
+    product_id: str,
+    side: str,
+    base_size: float,
+    attempts=None,
+) -> Dict[str, Any]:
+    """
+    Retry a base-sized order with progressively more aggressive settings.
+    """
+    if attempts is None:
+        attempts = [
+            {"offset_bps": 4, "timeout_sec": 25, "post_only": True},
+            {"offset_bps": 2, "timeout_sec": 20, "post_only": False},
+            {"offset_bps": 0, "timeout_sec": 15, "post_only": False},
+        ]
+
+    results = []
+
+    for idx, cfg in enumerate(attempts, start=1):
+        result = place_limit_base_with_timeout(
+            product_id=product_id,
+            side=side,
+            base_size=base_size,
+            offset_bps=int(cfg["offset_bps"]),
+            timeout_sec=int(cfg["timeout_sec"]),
+            post_only=bool(cfg["post_only"]),
+        )
+
+        result["attempt_number"] = idx
+        result["attempt_config"] = cfg
+        results.append(result)
+
+        filled_base = float(result.get("filled_base", 0.0) or 0.0)
+        status = str(result.get("status", "")).upper()
+
+        if filled_base > 0 or status == "FILLED":
+            return {
+                "ok": True,
+                "mode": "retry_execution",
+                "filled": True,
+                "final_result": result,
+                "attempts": results,
+            }
+
+    return {
+        "ok": True,
+        "mode": "retry_execution",
+        "filled": False,
+        "final_result": results[-1] if results else {},
+        "attempts": results,
+    }
+
+
+_PRODUCT_CACHE = {"ts": 0.0, "products": []}
+
+
+def get_products_catalog(force_refresh: bool = False):
+    global _PRODUCT_CACHE
+    now = time.time()
+    if not force_refresh and _PRODUCT_CACHE["products"] and (now - float(_PRODUCT_CACHE["ts"] or 0)) < 300:
+        return list(_PRODUCT_CACHE["products"])
+
+    client = get_client()
+    products = []
+    cursor = None
+    while True:
+        resp = _to_dict(client.get_products(limit=250, cursor=cursor) if cursor else client.get_products(limit=250))
+        batch = resp.get("products", []) or resp.get("product_details", []) or []
+        products.extend(batch)
+        if not resp.get("has_next") or not resp.get("cursor"):
+            break
+        cursor = resp.get("cursor")
+
+    cleaned = []
+    for prod in products:
+        item = _to_dict(prod)
+        product_id = str(item.get("product_id") or item.get("id") or "").upper().strip()
+        if not product_id:
+            continue
+        cleaned.append({
+            "product_id": product_id,
+            "base_currency": str(item.get("base_currency") or "").upper(),
+            "quote_currency": str(item.get("quote_currency") or "").upper(),
+            "status": str(item.get("status") or item.get("trading_status") or "").upper(),
+            "trading_disabled": bool(item.get("trading_disabled", False)),
+            "is_disabled": bool(item.get("is_disabled", False)),
+            "new": bool(item.get("new", False)),
+            "raw": item,
+        })
+
+    cleaned.sort(key=lambda x: x["product_id"])
+    _PRODUCT_CACHE = {"ts": now, "products": cleaned}
+    return list(cleaned)
+
+
+def get_valid_products(quote_currency: str = "USD", tradable_only: bool = True):
+    quote_currency = str(quote_currency or "USD").upper().strip()
+    out = []
+    for item in get_products_catalog():
+        if quote_currency and item.get("quote_currency") != quote_currency:
+            continue
+        if tradable_only and (item.get("trading_disabled") or item.get("is_disabled")):
+            continue
+        out.append({k: v for k, v in item.items() if k != "raw"})
+    return out
+
+
+def product_exists(product_id: str) -> bool:
+    product_id = str(product_id or "").upper().strip()
+    if not product_id:
+        return False
+    for item in get_products_catalog():
+        if item.get("product_id") == product_id:
+            return True
+    return False

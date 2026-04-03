@@ -764,6 +764,7 @@ def _snapshot_to_history_row(snapshot):
 def build_portfolio_history_analytics(history_rows, source="portfolio_history", note=None):
     rows = []
     for row in history_rows or []:
+        row = row if isinstance(row, dict) else {}
         rows.append(
             {
                 "ts": int(row.get("ts") or 0),
@@ -832,8 +833,10 @@ def build_portfolio_history_analytics(history_rows, source="portfolio_history", 
 
 
 def build_portfolio_risk_score(snapshot=None, summary=None, history_analytics=None):
-    snapshot = snapshot or get_portfolio_snapshot()
+    snapshot = snapshot if isinstance(snapshot, dict) else get_portfolio_snapshot()
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
     summary = summary if isinstance(summary, dict) else portfolio_summary(snapshot)
+    summary = summary if isinstance(summary, dict) else {}
     history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
 
     cfg = snapshot.get("config", {}) or {}
@@ -1126,14 +1129,17 @@ def normalize_auto_adaptive_payload(payload=None, fallback_reason=None):
 
 
 def build_adaptive_suggestions(snapshot=None, summary=None, history_analytics=None, risk_score=None):
-    snapshot = snapshot or get_portfolio_snapshot()
+    snapshot = snapshot if isinstance(snapshot, dict) else get_portfolio_snapshot()
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
     summary = summary if isinstance(summary, dict) else portfolio_summary(snapshot)
+    summary = summary if isinstance(summary, dict) else {}
     history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
     risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
         snapshot=snapshot,
         summary=summary,
         history_analytics=history_analytics,
     )
+    risk_score = risk_score if isinstance(risk_score, dict) else {}
 
     inputs = risk_score.get("inputs", {}) if isinstance(risk_score.get("inputs"), dict) else {}
     band = str(risk_score.get("band", "Moderate Risk") or "Moderate Risk")
@@ -1311,14 +1317,17 @@ def get_config_preset_definitions():
 
 
 def build_preset_impact_simulation(snapshot=None, summary=None, history_analytics=None, risk_score=None, preset_name="balanced"):
-    snapshot = snapshot or get_portfolio_snapshot()
+    snapshot = snapshot if isinstance(snapshot, dict) else get_portfolio_snapshot()
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
     summary = summary if isinstance(summary, dict) else portfolio_summary(snapshot)
+    summary = summary if isinstance(summary, dict) else {}
     history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
     risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
         snapshot=snapshot,
         summary=summary,
         history_analytics=history_analytics,
     )
+    risk_score = risk_score if isinstance(risk_score, dict) else {}
 
     preset_key = str(preset_name or "balanced").strip().lower()
     presets = get_config_preset_definitions()
@@ -1415,14 +1424,17 @@ def build_preset_impact_simulation(snapshot=None, summary=None, history_analytic
 
 
 def build_auto_adaptive_recommendation(snapshot=None, summary=None, history_analytics=None, risk_score=None):
-    snapshot = snapshot or get_portfolio_snapshot()
+    snapshot = snapshot if isinstance(snapshot, dict) else get_portfolio_snapshot()
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
     summary = summary if isinstance(summary, dict) else portfolio_summary(snapshot)
+    summary = summary if isinstance(summary, dict) else {}
     history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
     risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
         snapshot=snapshot,
         summary=summary,
         history_analytics=history_analytics,
     )
+    risk_score = risk_score if isinstance(risk_score, dict) else {}
 
     inputs = risk_score.get("inputs", {}) if isinstance(risk_score.get("inputs"), dict) else {}
     score = int(risk_score.get("score", 0) or 0)

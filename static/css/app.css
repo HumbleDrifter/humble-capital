@@ -778,6 +778,75 @@ tbody tr:last-child td {
   height: auto;
 }
 
+.trend-range-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trend-range-btn {
+  min-width: 72px;
+  padding: 9px 12px;
+}
+
+.trend-chart-shell {
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(circle at top left, rgba(52, 211, 153, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(17, 25, 39, 0.92), rgba(12, 18, 27, 0.96));
+  padding: 14px;
+}
+
+.trend-chart-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.trend-stat {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.trend-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.trend-stat-value {
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.trend-stat-value.positive {
+  color: var(--good);
+}
+
+.trend-stat-value.negative {
+  color: var(--bad);
+}
+
+.trend-chart-empty {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
 #portfolioMeta,
 #rebalanceMeta,
 #accountValueMeta {
@@ -1460,6 +1529,19 @@ tbody tr:last-child td {
   .risk-form-grid,
   .rebalance-grid {
     grid-template-columns: 1fr;
+  }
+
+  .trend-chart-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .trend-range-row {
+    width: 100%;
+  }
+
+  .trend-range-btn {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .configuration-search-row,

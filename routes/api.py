@@ -703,43 +703,115 @@ def _build_portfolio_history():
     start_ts = _range_to_start_ts(range_name)
 
     points = []
-    series_type = "realized_pnl"
+    series_type = "portfolio_value"
 
+    def _table_exists(conn, table_name):
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (table_name,),
+        ).fetchone()
+        return bool(row)
+
+    def _table_columns(conn, table_name):
+        try:
+            rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        except Exception:
+            return set()
+        return {str(r["name"]).strip().lower() for r in rows}
+
+    conn = None
     try:
         conn = _trading_db_conn()
         cur = conn.cursor()
+        snapshot = get_portfolio_snapshot()
+        current_equity = _safe_float(snapshot.get("total_value_usd"))
 
-        if start_ts is None:
-            cur.execute(
-                """
-                SELECT ts, realized_pnl
-                FROM pnl_history
-                ORDER BY ts ASC
-                """
-            )
-        else:
-            cur.execute(
-                """
-                SELECT ts, realized_pnl
-                FROM pnl_history
-                WHERE ts >= ?
-                ORDER BY ts ASC
-                """,
-                (start_ts,),
-            )
+        if _table_exists(conn, "pnl_history"):
+            columns = _table_columns(conn, "pnl_history")
+            value_column = None
 
-        rows = cur.fetchall()
-        conn.close()
+            for candidate in ("equity_usd", "portfolio_value_usd", "total_value_usd"):
+                if candidate in columns:
+                    value_column = candidate
+                    break
 
-        points = [
-            {
-                "ts": _safe_int(r["ts"]),
-                "realized_pnl": _safe_float(r["realized_pnl"]),
-            }
-            for r in rows
-        ]
+            if value_column:
+                if start_ts is None:
+                    cur.execute(
+                        f"""
+                        SELECT ts, {value_column} AS equity_usd
+                        FROM pnl_history
+                        ORDER BY ts ASC
+                        """
+                    )
+                else:
+                    cur.execute(
+                        f"""
+                        SELECT ts, {value_column} AS equity_usd
+                        FROM pnl_history
+                        WHERE ts >= ?
+                        ORDER BY ts ASC
+                        """,
+                        (start_ts,),
+                    )
+
+                rows = cur.fetchall()
+                points = [
+                    {
+                        "ts": _safe_int(r["ts"]),
+                        "equity_usd": _safe_float(r["equity_usd"]),
+                    }
+                    for r in rows
+                ]
+            elif "realized_pnl" in columns:
+                if start_ts is None:
+                    cur.execute(
+                        """
+                        SELECT ts, realized_pnl
+                        FROM pnl_history
+                        ORDER BY ts ASC
+                        """
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT ts, realized_pnl
+                        FROM pnl_history
+                        WHERE ts >= ?
+                        ORDER BY ts ASC
+                        """,
+                        (start_ts,),
+                    )
+
+                rows = cur.fetchall()
+                realized_points = [
+                    {
+                        "ts": _safe_int(r["ts"]),
+                        "realized_pnl": _safe_float(r["realized_pnl"]),
+                    }
+                    for r in rows
+                ]
+
+                if realized_points:
+                    latest_realized = _safe_float(realized_points[-1]["realized_pnl"])
+                    base_equity = current_equity - latest_realized
+                    points = [
+                        {
+                            "ts": item["ts"],
+                            "equity_usd": _safe_float(base_equity + item["realized_pnl"]),
+                            "realized_pnl": item["realized_pnl"],
+                        }
+                        for item in realized_points
+                    ]
+
     except Exception:
         points = []
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     if points:
         return {

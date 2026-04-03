@@ -1,6 +1,7 @@
 const API_SECRET = (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.apiSecret) || "";
 let AUTO_REFRESH_MS = 120000;
 let refreshTimer = null;
+let selectedHistoryRange = "30d";
 
 function authUrl(path) {
   if (!API_SECRET) return path;
@@ -78,10 +79,25 @@ function fmtQty(v) {
   });
 }
 
+function fmtSignedUsd(v) {
+  const value = Number(v || 0);
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${fmtUsd(value)}`;
+}
+
 function formatUnixTime(ts) {
   const n = Number(ts || 0);
   if (!n) return "—";
   return new Date(n * 1000).toLocaleString();
+}
+
+function formatShortDate(ts) {
+  const n = Number(ts || 0);
+  if (!n) return "";
+  return new Date(n * 1000).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric"
+  });
 }
 
 function escapeHtml(value) {
@@ -166,6 +182,71 @@ function buildSvgLine(points, key, labelFormatter = fmtUsd) {
   `;
 }
 
+function rangeLabel(rangeName) {
+  if (rangeName === "7d") return "7D";
+  if (rangeName === "90d") return "90D";
+  return "30D";
+}
+
+function buildTrendSvg(points, key) {
+  const width = 960;
+  const height = 280;
+  const padTop = 24;
+  const padRight = 20;
+  const padBottom = 38;
+  const padLeft = 18;
+  const values = points.map((p) => Number(p[key] || 0));
+
+  if (!values.length) {
+    return `<div class="trend-chart-empty">No portfolio history available.</div>`;
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const spread = Math.max(1e-9, max - min);
+
+  const coords = points.map((p, i) => {
+    const x = padLeft + (i * (width - padLeft - padRight)) / Math.max(1, points.length - 1);
+    const y = padTop + (max - Number(p[key] || 0)) * ((height - padTop - padBottom) / spread);
+    return [x, y];
+  });
+
+  const linePath = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c[0]} ${c[1]}`).join(" ");
+  const areaPath = `${linePath} L ${coords[coords.length - 1][0]} ${height - padBottom} L ${coords[0][0]} ${height - padBottom} Z`;
+
+  const firstTs = points[0]?.ts || 0;
+  const lastTs = points[points.length - 1]?.ts || 0;
+
+  return `
+    <svg viewBox="0 0 ${width} ${height}" aria-label="Portfolio value trend chart">
+      <defs>
+        <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="rgba(52,211,153,0.42)"></stop>
+          <stop offset="100%" stop-color="rgba(52,211,153,0.02)"></stop>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${height}" rx="18" ry="18" fill="rgba(255,255,255,0.02)"></rect>
+      <line x1="${padLeft}" y1="${height - padBottom}" x2="${width - padRight}" y2="${height - padBottom}" stroke="rgba(147,160,184,0.18)"></line>
+      <line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${height - padBottom}" stroke="rgba(147,160,184,0.12)"></line>
+      <path d="${areaPath}" fill="url(#trendFill)"></path>
+      <path d="${linePath}" fill="none" stroke="rgba(52,211,153,1)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      <circle cx="${coords[coords.length - 1][0]}" cy="${coords[coords.length - 1][1]}" r="5" fill="rgba(52,211,153,1)"></circle>
+      <text x="${padLeft}" y="${padTop - 6}" fill="rgba(147,160,184,0.95)" font-size="12">Low ${fmtUsd(min)}</text>
+      <text x="${width - 142}" y="${padTop - 6}" fill="rgba(147,160,184,0.95)" font-size="12">High ${fmtUsd(max)}</text>
+      <text x="${padLeft}" y="${height - 12}" fill="rgba(147,160,184,0.8)" font-size="12">${escapeHtml(formatShortDate(firstTs))}</text>
+      <text x="${width - 92}" y="${height - 12}" fill="rgba(147,160,184,0.8)" font-size="12">${escapeHtml(formatShortDate(lastTs))}</text>
+    </svg>
+  `;
+}
+
+function setTrendRangeButtons(activeRange) {
+  document.querySelectorAll(".trend-range-btn").forEach((button) => {
+    const isActive = button.dataset.range === activeRange;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+
 function normalizeAssetRows(portfolioData) {
   const snapshot = portfolioData?.snapshot || {};
   const summary = portfolioData?.summary || {};
@@ -205,30 +286,72 @@ function renderAccountValueHistory(data) {
   if (!host) return;
 
   const points = Array.isArray(data?.points) ? data.points : [];
+  const rangeText = rangeLabel(data?.range || selectedHistoryRange);
+  const equityKey = points.some((p) => p && p.equity_usd != null) ? "equity_usd" : "realized_pnl";
+
+  if (!points.length) {
+    if (meta) meta.textContent = `${rangeText} view • no portfolio history available yet`;
+    host.innerHTML = `<div class="trend-chart-shell"><div class="trend-chart-empty">No portfolio history data found for this range.</div></div>`;
+    return;
+  }
 
   if (data?.series_type === "equity_fallback") {
-    if (meta) meta.textContent = "No history rows yet. Showing current account value.";
+    if (meta) meta.textContent = `${rangeText} view • no historical rows yet, showing current portfolio value`;
     host.innerHTML = `
-      <div class="kpi-card">
-        <div class="kpi-label">Current Account Value</div>
-        <div class="kpi-value">${fmtUsd((points[0] || {}).equity_usd || 0)}</div>
+      <div class="trend-chart-shell">
+        <div class="trend-chart-summary">
+          <div class="trend-stat">
+            <div class="trend-stat-label">Current Value</div>
+            <div class="trend-stat-value">${fmtUsd((points[0] || {}).equity_usd || 0)}</div>
+          </div>
+          <div class="trend-stat">
+            <div class="trend-stat-label">Range</div>
+            <div class="trend-stat-value">${rangeText}</div>
+          </div>
+          <div class="trend-stat">
+            <div class="trend-stat-label">Source</div>
+            <div class="trend-stat-value">Live Snapshot</div>
+          </div>
+        </div>
+        ${buildTrendSvg(points, "equity_usd")}
       </div>
     `;
     return;
   }
 
-  if (!points.length) {
-    if (meta) meta.textContent = "No account history available.";
-    host.innerHTML = `<div class="muted">No history data found.</div>`;
-    return;
+  const firstValue = Number(points[0]?.[equityKey] || 0);
+  const lastValue = Number(points[points.length - 1]?.[equityKey] || 0);
+  const deltaValue = lastValue - firstValue;
+  const sourceLabel =
+    data?.series_type === "portfolio_value"
+      ? "PnL History Anchored"
+      : data?.series_type === "realized_pnl"
+        ? "Realized PnL"
+        : "Portfolio History";
+
+  if (meta) {
+    meta.textContent = `${rangeText} view • ${points.length} point(s) • ${sourceLabel}`;
   }
 
-  if (meta) meta.textContent = `${points.length} point(s) over selected range`;
-  host.innerHTML = buildSvgLine(
-    points,
-    data.series_type === "realized_pnl" ? "realized_pnl" : "equity_usd",
-    fmtUsd
-  );
+  host.innerHTML = `
+    <div class="trend-chart-shell">
+      <div class="trend-chart-summary">
+        <div class="trend-stat">
+          <div class="trend-stat-label">Current Value</div>
+          <div class="trend-stat-value">${fmtUsd(lastValue)}</div>
+        </div>
+        <div class="trend-stat">
+          <div class="trend-stat-label">Range Change</div>
+          <div class="trend-stat-value ${deltaValue >= 0 ? "positive" : "negative"}">${fmtSignedUsd(deltaValue)}</div>
+        </div>
+        <div class="trend-stat">
+          <div class="trend-stat-label">Range</div>
+          <div class="trend-stat-value">${rangeText}</div>
+        </div>
+      </div>
+      ${buildTrendSvg(points, equityKey)}
+    </div>
+  `;
 }
 
 function renderPortfolio(data) {
@@ -504,7 +627,7 @@ async function refreshAll(showBadgeMessage = false) {
     fetchJsonSafe("/api/system_snapshot?recent_count=8"),
     fetchJsonSafe("/api/portfolio"),
     fetchJsonSafe("/api/rebalance/preview"),
-    fetchJsonSafe("/api/portfolio/history?range=30d")
+    fetchJsonSafe(`/api/portfolio/history?range=${encodeURIComponent(selectedHistoryRange)}`)
   ]);
 
   const failures = [systemRes, portfolioRes, rebalanceRes, historyRes].filter((x) => !x.ok);
@@ -577,6 +700,16 @@ function stopAutoRefresh() {
 
 window.refreshAll = refreshAll;
 
+document.querySelectorAll(".trend-range-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    const nextRange = String(button.dataset.range || "").trim();
+    if (!nextRange || nextRange === selectedHistoryRange) return;
+    selectedHistoryRange = nextRange;
+    setTrendRangeButtons(selectedHistoryRange);
+    refreshAll(false);
+  });
+});
+
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     stopAutoRefresh();
@@ -587,5 +720,6 @@ document.addEventListener("visibilitychange", () => {
 });
 
 setSecretMode();
+setTrendRangeButtons(selectedHistoryRange);
 refreshAll(false);
 startAutoRefresh();

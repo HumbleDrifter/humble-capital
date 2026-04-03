@@ -748,6 +748,76 @@ def _snapshot_to_history_row(snapshot):
     }
 
 
+def build_portfolio_history_analytics(history_rows, source="portfolio_history", note=None):
+    rows = []
+    for row in history_rows or []:
+        rows.append(
+            {
+                "ts": int(row.get("ts") or 0),
+                "total_value_usd": float(row.get("total_value_usd", 0.0) or 0.0),
+            }
+        )
+
+    rows = [row for row in rows if row["ts"] > 0]
+    rows.sort(key=lambda row: row["ts"])
+
+    analytics = {
+        "source": source,
+        "history_points": len(rows),
+        "sufficient_history": len(rows) >= 2,
+        "limited_history": len(rows) < 2,
+        "start_value_usd": None,
+        "end_value_usd": None,
+        "pnl_usd": None,
+        "pnl_pct": None,
+        "peak_value_usd": None,
+        "current_drawdown_pct": None,
+        "max_drawdown_pct": None,
+        "note": note or "",
+    }
+
+    if not rows:
+        analytics["note"] = analytics["note"] or "No persisted portfolio history is available for this range yet."
+        return analytics
+
+    start_value = float(rows[0]["total_value_usd"] or 0.0)
+    end_value = float(rows[-1]["total_value_usd"] or 0.0)
+    peak_value = max(float(row["total_value_usd"] or 0.0) for row in rows)
+
+    analytics["start_value_usd"] = start_value
+    analytics["end_value_usd"] = end_value
+    analytics["peak_value_usd"] = peak_value
+
+    if len(rows) < 2:
+        analytics["note"] = analytics["note"] or "At least two persisted portfolio snapshots are required for PnL and drawdown analytics."
+        return analytics
+
+    pnl_usd = end_value - start_value
+    pnl_pct = (pnl_usd / start_value) if start_value > 0 else None
+    current_drawdown_pct = ((peak_value - end_value) / peak_value) if peak_value > 0 else None
+
+    running_peak = 0.0
+    max_drawdown_pct = 0.0
+    for row in rows:
+        value = float(row["total_value_usd"] or 0.0)
+        running_peak = max(running_peak, value)
+        if running_peak > 0:
+            max_drawdown_pct = max(max_drawdown_pct, (running_peak - value) / running_peak)
+
+    analytics.update(
+        {
+            "limited_history": False,
+            "sufficient_history": True,
+            "pnl_usd": pnl_usd,
+            "pnl_pct": pnl_pct,
+            "current_drawdown_pct": current_drawdown_pct,
+            "max_drawdown_pct": max_drawdown_pct,
+        }
+    )
+    analytics["note"] = analytics["note"] or ""
+    return analytics
+
+
 def persist_current_portfolio_snapshot(snapshot=None):
     snapshot = snapshot or get_portfolio_snapshot()
     row = _snapshot_to_history_row(snapshot)

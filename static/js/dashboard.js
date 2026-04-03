@@ -85,6 +85,13 @@ function fmtSignedUsd(v) {
   return `${prefix}${fmtUsd(value)}`;
 }
 
+function fmtSignedPct(v, alreadyPercent = false) {
+  const raw = Number(v || 0);
+  const value = alreadyPercent ? raw : raw * 100;
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${value.toFixed(2)}%`;
+}
+
 function formatUnixTime(ts) {
   const n = Number(ts || 0);
   if (!n) return "—";
@@ -239,6 +246,20 @@ function buildTrendSvg(points, key) {
   `;
 }
 
+function buildTrendStat(label, value, tone = "") {
+  const toneClass = tone ? ` ${tone}` : "";
+  return `
+    <div class="trend-stat">
+      <div class="trend-stat-label">${label}</div>
+      <div class="trend-stat-value${toneClass}">${value}</div>
+    </div>
+  `;
+}
+
+function hasNumericValue(value) {
+  return value !== null && value !== undefined && Number.isFinite(Number(value));
+}
+
 function setTrendRangeButtons(activeRange) {
   document.querySelectorAll(".trend-range-btn").forEach((button) => {
     const isActive = button.dataset.range === activeRange;
@@ -286,6 +307,7 @@ function renderAccountValueHistory(data) {
   if (!host) return;
 
   const points = Array.isArray(data?.points) ? data.points : [];
+  const analytics = data?.analytics || {};
   const rangeText = rangeLabel(data?.range || selectedHistoryRange);
   const seriesType = data?.series_type === "realized_pnl" ? "realized_pnl" : data?.series_type === "portfolio_value" ? "portfolio_value" : "empty";
   const valueKey = seriesType === "realized_pnl" ? "realized_pnl" : "equity_usd";
@@ -293,6 +315,8 @@ function renderAccountValueHistory(data) {
   const currentLabel = seriesType === "realized_pnl" ? "Current Realized PnL" : "Current Value";
   const deltaLabel = seriesType === "realized_pnl" ? "Range PnL Change" : "Range Change";
   const sourceLabel = seriesType === "realized_pnl" ? "Realized PnL" : "Portfolio Value";
+  const analyticsLimited = Boolean(analytics?.limited_history);
+  const analyticsNote = String(analytics?.note || "").trim();
 
   if (!points.length || seriesType === "empty") {
     if (meta) meta.textContent = `${rangeText} view • no portfolio history available yet`;
@@ -302,29 +326,29 @@ function renderAccountValueHistory(data) {
 
   const firstValue = Number(points[0]?.[valueKey] || 0);
   const lastValue = Number(points[points.length - 1]?.[valueKey] || 0);
-  const deltaValue = lastValue - firstValue;
+  const deltaValue = hasNumericValue(analytics?.pnl_usd) ? Number(analytics.pnl_usd) : (lastValue - firstValue);
+  const pnlPctValue = hasNumericValue(analytics?.pnl_pct) ? Number(analytics.pnl_pct) : null;
+  const currentDrawdownPct = hasNumericValue(analytics?.current_drawdown_pct) ? Number(analytics.current_drawdown_pct) : null;
+  const maxDrawdownPct = hasNumericValue(analytics?.max_drawdown_pct) ? Number(analytics.max_drawdown_pct) : null;
+  const drawdownTone = (value) => (value == null ? "" : value > 0 ? "negative" : "positive");
 
   if (meta) {
-    meta.textContent = `${rangeText} view • ${points.length} point(s) • ${sourceLabel}`;
+    const metaSuffix = analyticsLimited && analyticsNote ? ` • ${analyticsNote}` : "";
+    meta.textContent = `${rangeText} view • ${points.length} point(s) • ${sourceLabel}${metaSuffix}`;
   }
 
   host.innerHTML = `
     <div class="trend-chart-shell">
       <div class="trend-chart-summary">
-        <div class="trend-stat">
-          <div class="trend-stat-label">${currentLabel}</div>
-          <div class="trend-stat-value">${valueFormatter(lastValue)}</div>
-        </div>
-        <div class="trend-stat">
-          <div class="trend-stat-label">${deltaLabel}</div>
-          <div class="trend-stat-value ${deltaValue >= 0 ? "positive" : "negative"}">${fmtSignedUsd(deltaValue)}</div>
-        </div>
-        <div class="trend-stat">
-          <div class="trend-stat-label">Range</div>
-          <div class="trend-stat-value">${rangeText}</div>
-        </div>
+        ${buildTrendStat(currentLabel, valueFormatter(lastValue))}
+        ${buildTrendStat(deltaLabel, fmtSignedUsd(deltaValue), deltaValue >= 0 ? "positive" : "negative")}
+        ${buildTrendStat("Range", rangeText)}
+        ${buildTrendStat("PnL %", pnlPctValue == null ? "Limited" : fmtSignedPct(pnlPctValue), pnlPctValue == null ? "" : (pnlPctValue >= 0 ? "positive" : "negative"))}
+        ${buildTrendStat("Current Drawdown", currentDrawdownPct == null ? "Limited" : fmtPct(currentDrawdownPct), drawdownTone(currentDrawdownPct))}
+        ${buildTrendStat("Max Drawdown", maxDrawdownPct == null ? "Limited" : fmtPct(maxDrawdownPct), drawdownTone(maxDrawdownPct))}
       </div>
       ${buildTrendSvg(points, valueKey)}
+      ${analyticsNote ? `<div class="trend-chart-note">${escapeHtml(analyticsNote)}</div>` : ""}
     </div>
   `;
 }

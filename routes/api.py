@@ -16,6 +16,7 @@ from execution import (
     get_valid_products,
 )
 from portfolio import (
+    build_portfolio_history_analytics,
     get_portfolio_snapshot,
     persist_current_portfolio_snapshot,
     portfolio_summary,
@@ -751,9 +752,11 @@ def _build_portfolio_history():
 
     points = []
     series_type = "empty"
+    analytics = build_portfolio_history_analytics([], source="empty")
 
     try:
         history_rows = get_portfolio_history_since(start_ts=start_ts)
+        analytics = build_portfolio_history_analytics(history_rows, source="portfolio_history")
         points = [
             {
                 "ts": _safe_int(row.get("ts")),
@@ -767,6 +770,7 @@ def _build_portfolio_history():
                 "range": range_name,
                 "series_type": "portfolio_value",
                 "points": points,
+                "analytics": analytics,
             }
     except Exception as exc:
         _log_api(f"portfolio history snapshot source unavailable: {exc}")
@@ -918,11 +922,18 @@ def _build_portfolio_history():
                 pass
 
     if points:
+        if series_type != "portfolio_value":
+            analytics = build_portfolio_history_analytics(
+                [],
+                source=series_type,
+                note="Persisted portfolio history is still building, so analytics are limited while the chart falls back to realized PnL history.",
+            )
         return {
             "ok": True,
             "range": range_name,
             "series_type": series_type,
             "points": points,
+            "analytics": analytics,
         }
 
     return {
@@ -930,6 +941,7 @@ def _build_portfolio_history():
         "range": range_name,
         "series_type": "empty",
         "points": [],
+        "analytics": analytics,
     }
 
 

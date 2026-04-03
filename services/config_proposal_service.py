@@ -11,7 +11,9 @@ from portfolio import (
     build_portfolio_history_analytics,
     build_portfolio_risk_score,
     get_portfolio_snapshot,
+    load_asset_config,
     portfolio_summary,
+    save_asset_config,
 )
 from storage import (
     expire_pending_config_proposals,
@@ -313,6 +315,122 @@ def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFA
 
 def get_latest_config_proposal():
     return get_latest_pending_config_proposal(PROPOSAL_TYPE)
+
+
+def _clear_config_apply_caches():
+    try:
+        from routes.api import _API_CACHE, _API_CACHE_LOCK
+
+        with _API_CACHE_LOCK:
+            _API_CACHE.pop("config", None)
+            _API_CACHE.pop("portfolio", None)
+            _API_CACHE.pop("rebalance_preview", None)
+            _API_CACHE.pop("heatmap", None)
+            _API_CACHE.pop("meme_heatmap", None)
+            _API_CACHE.pop("meme_rotation", None)
+            _API_CACHE.pop("portfolio_summary_v2", None)
+            _API_CACHE.pop("portfolio_allocations", None)
+    except Exception:
+        return
+
+
+def apply_config_proposal(proposal_id, applied_by=None):
+    expire_stale_proposals()
+    proposal_id = str(proposal_id or "").strip()
+    applied_by = str(applied_by or "").strip() or None
+
+    existing = get_config_proposal_by_id(proposal_id)
+    if not existing:
+        return {
+            "ok": False,
+            "reason": "not_found",
+            "proposal_id": proposal_id,
+            "current_status": None,
+        }
+
+    current_status = str(existing.get("status") or "").strip() or None
+    if current_status != "approved":
+        return {
+            "ok": False,
+            "reason": "not_approved",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
+    if proposal_is_stale(existing):
+        expire_stale_proposals()
+        refreshed = get_config_proposal_by_id(proposal_id) or existing
+        return {
+            "ok": False,
+            "reason": "expired",
+            "proposal_id": proposal_id,
+            "current_status": refreshed.get("status", "expired"),
+        }
+
+    proposal = _safe_dict(existing.get("proposal"))
+    changes = [item for item in _safe_list(proposal.get("changes")) if str(_safe_dict(item).get("key", "") or "").strip() in ALLOWED_CHANGE_KEYS]
+
+    if not changes:
+        return {
+            "ok": False,
+            "reason": "no_allowed_changes",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
+    config = _safe_dict(load_asset_config())
+    changed = False
+
+    for item in changes:
+        item = _safe_dict(item)
+        key = str(item.get("key", "") or "").strip()
+        kind = str(item.get("kind", "float") or "float").strip().lower()
+        proposed_value = item.get("proposed_value")
+
+        if key not in ALLOWED_CHANGE_KEYS:
+            continue
+
+        if kind == "int":
+            normalized_value = int(float(proposed_value or 0))
+        else:
+            normalized_value = float(proposed_value or 0.0)
+
+        current_value = config.get(key)
+        if current_value != normalized_value:
+            config[key] = normalized_value
+            changed = True
+
+    if changed:
+        save_asset_config(config)
+        _clear_config_apply_caches()
+
+    result = set_config_proposal_status(
+        proposal_id=proposal_id,
+        status="applied",
+        timestamp_field="applied_at",
+        actor_field="applied_by",
+        actor=applied_by,
+        expected_current_status="approved",
+    )
+
+    if not result.get("ok"):
+        updated = get_config_proposal_by_id(proposal_id)
+        return {
+            "ok": False,
+            "reason": "status_update_failed",
+            "proposal_id": proposal_id,
+            "current_status": (updated or {}).get("status"),
+        }
+
+    updated = get_config_proposal_by_id(proposal_id)
+    return {
+        "ok": True,
+        "proposal_id": proposal_id,
+        "status": (updated or {}).get("status", "applied"),
+        "applied_at": result.get("timestamp"),
+        "applied_by": applied_by,
+        "config_changed": changed,
+    }
 
 
 def approve_config_proposal(proposal_id, actor=None):

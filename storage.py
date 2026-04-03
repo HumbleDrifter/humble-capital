@@ -114,6 +114,7 @@ def init_db():
         rejected_at TEXT,
         rejected_by TEXT,
         applied_at TEXT,
+        applied_by TEXT,
         expired_at TEXT,
         superseded_at TEXT
     )
@@ -179,6 +180,7 @@ def ensure_config_proposals_table():
         rejected_at TEXT,
         rejected_by TEXT,
         applied_at TEXT,
+        applied_by TEXT,
         expired_at TEXT,
         superseded_at TEXT
     )
@@ -202,6 +204,9 @@ def ensure_config_proposals_table():
 
     if "rejected_by" not in columns:
         cur.execute("ALTER TABLE config_proposals ADD COLUMN rejected_by TEXT")
+
+    if "applied_by" not in columns:
+        cur.execute("ALTER TABLE config_proposals ADD COLUMN applied_by TEXT")
 
     conn.commit()
     conn.close()
@@ -292,7 +297,7 @@ def get_config_proposal_by_id(proposal_id):
         """
         SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
                proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
-               applied_at, expired_at, superseded_at
+               applied_at, applied_by, expired_at, superseded_at
         FROM config_proposals
         WHERE id = ?
         LIMIT 1
@@ -324,6 +329,7 @@ def get_config_proposal_by_id(proposal_id):
         "rejected_at": row["rejected_at"],
         "rejected_by": row["rejected_by"],
         "applied_at": row["applied_at"],
+        "applied_by": row["applied_by"],
         "expired_at": row["expired_at"],
         "superseded_at": row["superseded_at"],
     }
@@ -460,7 +466,7 @@ def set_config_proposal_status(proposal_id, status, timestamp_field, actor_field
     ensure_config_proposals_table()
 
     allowed_timestamp_fields = {"approved_at", "rejected_at", "applied_at", "expired_at", "superseded_at"}
-    allowed_actor_fields = {"approved_by", "rejected_by", None}
+    allowed_actor_fields = {"approved_by", "rejected_by", "applied_by", None}
 
     if timestamp_field not in allowed_timestamp_fields:
         raise ValueError("invalid timestamp field")

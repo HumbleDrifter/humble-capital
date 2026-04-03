@@ -20,6 +20,7 @@ from storage import (
     get_portfolio_history_since,
     list_pending_config_proposals,
     save_config_proposal,
+    set_config_proposal_status,
     supersede_pending_config_proposals,
     utcnow_iso,
 )
@@ -304,3 +305,143 @@ def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFA
 
 def get_latest_config_proposal():
     return get_latest_pending_config_proposal(PROPOSAL_TYPE)
+
+
+def approve_config_proposal(proposal_id, actor=None):
+    expire_stale_proposals()
+    proposal_id = str(proposal_id or "").strip()
+    actor = str(actor or "").strip() or None
+
+    existing = get_config_proposal_by_id(proposal_id)
+    if not existing:
+        return {
+            "ok": False,
+            "reason": "not_found",
+            "proposal_id": proposal_id,
+            "current_status": None,
+        }
+
+    current_status = str(existing.get("status") or "").strip() or None
+
+    if current_status == "superseded":
+        return {
+            "ok": False,
+            "reason": "superseded",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
+    if current_status != "pending":
+        return {
+            "ok": False,
+            "reason": "not_pending",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
+    if proposal_is_stale(existing):
+        expire_stale_proposals()
+        refreshed = get_config_proposal_by_id(proposal_id) or existing
+        return {
+            "ok": False,
+            "reason": "expired",
+            "proposal_id": proposal_id,
+            "current_status": refreshed.get("status", "expired"),
+        }
+
+    result = set_config_proposal_status(
+        proposal_id=proposal_id,
+        status="approved",
+        timestamp_field="approved_at",
+        actor_field="approved_by",
+        actor=actor,
+        expected_current_status="pending",
+    )
+
+    if not result.get("ok"):
+        updated = get_config_proposal_by_id(proposal_id)
+        return {
+            "ok": False,
+            "reason": "status_update_failed",
+            "proposal_id": proposal_id,
+            "current_status": (updated or {}).get("status"),
+        }
+
+    updated = get_config_proposal_by_id(proposal_id)
+    return {
+        "ok": True,
+        "proposal_id": proposal_id,
+        "status": (updated or {}).get("status", "approved"),
+        "approved_at": result.get("timestamp"),
+        "approved_by": actor,
+    }
+
+
+def reject_config_proposal(proposal_id, actor=None):
+    expire_stale_proposals()
+    proposal_id = str(proposal_id or "").strip()
+    actor = str(actor or "").strip() or None
+
+    existing = get_config_proposal_by_id(proposal_id)
+    if not existing:
+        return {
+            "ok": False,
+            "reason": "not_found",
+            "proposal_id": proposal_id,
+            "current_status": None,
+        }
+
+    current_status = str(existing.get("status") or "").strip() or None
+
+    if current_status == "superseded":
+        return {
+            "ok": False,
+            "reason": "superseded",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
+    if current_status != "pending":
+        return {
+            "ok": False,
+            "reason": "not_pending",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
+    if proposal_is_stale(existing):
+        expire_stale_proposals()
+        refreshed = get_config_proposal_by_id(proposal_id) or existing
+        return {
+            "ok": False,
+            "reason": "expired",
+            "proposal_id": proposal_id,
+            "current_status": refreshed.get("status", "expired"),
+        }
+
+    result = set_config_proposal_status(
+        proposal_id=proposal_id,
+        status="rejected",
+        timestamp_field="rejected_at",
+        actor_field="rejected_by",
+        actor=actor,
+        expected_current_status="pending",
+    )
+
+    if not result.get("ok"):
+        updated = get_config_proposal_by_id(proposal_id)
+        return {
+            "ok": False,
+            "reason": "status_update_failed",
+            "proposal_id": proposal_id,
+            "current_status": (updated or {}).get("status"),
+        }
+
+    updated = get_config_proposal_by_id(proposal_id)
+    return {
+        "ok": True,
+        "proposal_id": proposal_id,
+        "status": (updated or {}).get("status", "rejected"),
+        "rejected_at": result.get("timestamp"),
+        "rejected_by": actor,
+    }

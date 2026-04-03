@@ -110,7 +110,9 @@ def init_db():
         proposal_json TEXT NOT NULL,
         summary_text TEXT NOT NULL,
         approved_at TEXT,
+        approved_by TEXT,
         rejected_at TEXT,
+        rejected_by TEXT,
         applied_at TEXT,
         expired_at TEXT,
         superseded_at TEXT
@@ -173,7 +175,9 @@ def ensure_config_proposals_table():
         proposal_json TEXT NOT NULL,
         summary_text TEXT NOT NULL,
         approved_at TEXT,
+        approved_by TEXT,
         rejected_at TEXT,
+        rejected_by TEXT,
         applied_at TEXT,
         expired_at TEXT,
         superseded_at TEXT
@@ -189,6 +193,15 @@ def ensure_config_proposals_table():
     CREATE INDEX IF NOT EXISTS idx_config_proposals_fingerprint_status
     ON config_proposals (fingerprint, status)
     """)
+
+    cur.execute("PRAGMA table_info(config_proposals)")
+    columns = {str(row["name"]) for row in cur.fetchall() if row and row["name"]}
+
+    if "approved_by" not in columns:
+        cur.execute("ALTER TABLE config_proposals ADD COLUMN approved_by TEXT")
+
+    if "rejected_by" not in columns:
+        cur.execute("ALTER TABLE config_proposals ADD COLUMN rejected_by TEXT")
 
     conn.commit()
     conn.close()
@@ -278,7 +291,7 @@ def get_config_proposal_by_id(proposal_id):
     cur.execute(
         """
         SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
-               proposal_json, summary_text, approved_at, rejected_at,
+               proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
                applied_at, expired_at, superseded_at
         FROM config_proposals
         WHERE id = ?
@@ -307,7 +320,9 @@ def get_config_proposal_by_id(proposal_id):
         "proposal": payload if isinstance(payload, dict) else {},
         "summary_text": row["summary_text"],
         "approved_at": row["approved_at"],
+        "approved_by": row["approved_by"],
         "rejected_at": row["rejected_at"],
+        "rejected_by": row["rejected_by"],
         "applied_at": row["applied_at"],
         "expired_at": row["expired_at"],
         "superseded_at": row["superseded_at"],
@@ -439,6 +454,72 @@ def supersede_pending_config_proposals(proposal_type="config_guardrail", exclude
     conn.commit()
     conn.close()
     return int(count)
+
+
+def set_config_proposal_status(proposal_id, status, timestamp_field, actor_field=None, actor=None, expected_current_status="pending"):
+    ensure_config_proposals_table()
+
+    allowed_timestamp_fields = {"approved_at", "rejected_at", "applied_at", "expired_at", "superseded_at"}
+    allowed_actor_fields = {"approved_by", "rejected_by", None}
+
+    if timestamp_field not in allowed_timestamp_fields:
+        raise ValueError("invalid timestamp field")
+    if actor_field not in allowed_actor_fields:
+        raise ValueError("invalid actor field")
+
+    timestamp = utcnow_iso()
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    if actor_field:
+        cur.execute(
+            f"""
+            UPDATE config_proposals
+              SET status = ?,
+                  {timestamp_field} = ?,
+                  {actor_field} = ?
+              WHERE id = ?
+                AND status = ?
+                AND (expires_at IS NULL OR expires_at > ?)
+              """,
+              (
+                  str(status or "").strip(),
+                  timestamp,
+                  str(actor or "").strip() or None,
+                  str(proposal_id or "").strip(),
+                  str(expected_current_status or "pending").strip(),
+                  timestamp,
+              ),
+          )
+    else:
+        cur.execute(
+            f"""
+              UPDATE config_proposals
+              SET status = ?,
+                  {timestamp_field} = ?
+              WHERE id = ?
+                AND status = ?
+                AND (expires_at IS NULL OR expires_at > ?)
+              """,
+              (
+                  str(status or "").strip(),
+                  timestamp,
+                  str(proposal_id or "").strip(),
+                  str(expected_current_status or "pending").strip(),
+                  timestamp,
+              ),
+          )
+
+    updated = int(cur.rowcount or 0)
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": updated > 0,
+        "updated": updated,
+        "timestamp": timestamp,
+    }
 
 
 def insert_portfolio_snapshot(ts, total_value_usd, cash_value_usd=0.0, positions_value_usd=0.0):

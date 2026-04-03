@@ -3,30 +3,31 @@ import os
 import re
 import time
 from pathlib import Path
+
 from execute_rebalance import main as execute_rebalance_main
-from services.rebalance_proposal_service import approve_proposal, reject_proposal, get_proposal_by_id
 from execute_rebalance import execute_proposal_by_id
-
 import requests
-from dotenv import load_dotenv
-
+from env_runtime import load_runtime_env, preferred_env_path
 from daily_bot_report import _send_telegram
+from notify import render_config_proposal_status_text
+from services.config_proposal_service import approve_config_proposal, reject_config_proposal
 from services.rebalance_proposal_service import approve_proposal, reject_proposal, get_proposal_by_id
+from storage import get_config_proposal_by_id
 
-load_dotenv("/root/tradingbot/.env", override=True)
+load_runtime_env(override=True)
 
-STATE_PATH = Path("/root/tradingbot/telegram_listener_state.json")
+STATE_PATH = preferred_env_path().resolve().parent / "telegram_listener_state.json"
 POLL_TIMEOUT_SEC = 30
 SLEEP_SEC = 2
 
 
 def _telegram_token() -> str:
-    load_dotenv("/root/tradingbot/.env", override=True)
+    load_runtime_env(override=True)
     return str(os.getenv("TELEGRAM_BOT_TOKEN", "") or "").strip()
 
 
 def _telegram_chat_id() -> str:
-    load_dotenv("/root/tradingbot/.env", override=True)
+    load_runtime_env(override=True)
     return str(os.getenv("TELEGRAM_CHAT_ID", "") or "").strip()
 
 
@@ -81,7 +82,10 @@ def _normalize_text(text: str) -> str:
 
 def _extract_command(text: str):
     text = _normalize_text(text)
-    m = re.match(r"^(APPROVE|REJECT|EXECUTE)\s+(RB-\d{8}-\d{3})$", text, re.IGNORECASE)
+    m = re.match(r"^(APPROVE|REJECT|EXECUTE)\s+((?:RB|CFG)-\d{8}-\d{3})$", text, re.IGNORECASE)
+    if not m:
+        return None, None
+    return m.group(1).upper(), m.group(2).upper()
 
 
 def _chat_matches(update: dict) -> bool:
@@ -138,6 +142,20 @@ def _render_approval_result(proposal_id: str, result: dict) -> str:
     return "\n".join(lines).strip()
 
 
+def _telegram_actor(update: dict) -> str:
+    try:
+        msg = update.get("message") or {}
+        chat = msg.get("chat") or {}
+        user = msg.get("from") or {}
+        chat_id = str(chat.get("id") or "").strip()
+        username = str(user.get("username") or "").strip()
+        if username:
+            return f"telegram:{chat_id}:{username}"
+        return f"telegram:{chat_id}"
+    except Exception:
+        return "telegram:unknown"
+
+
 def _handle_update(update: dict) -> None:
     if not _chat_matches(update):
         return
@@ -150,6 +168,23 @@ def _handle_update(update: dict) -> None:
 
     command, proposal_id = _extract_command(text)
     if not command or not proposal_id:
+        return
+
+    if proposal_id.startswith("CFG-"):
+        if command not in {"APPROVE", "REJECT"}:
+            return
+
+        actor = _telegram_actor(update)
+
+        if command == "APPROVE":
+            result = approve_config_proposal(proposal_id, actor=actor)
+        else:
+            result = reject_config_proposal(proposal_id, actor=actor)
+
+        proposal = get_config_proposal_by_id(proposal_id)
+        text_out = render_config_proposal_status_text(proposal_id, result, proposal)
+        print(text_out)
+        _send_telegram(text_out)
         return
 
     if command == "APPROVE":

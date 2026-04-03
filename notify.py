@@ -4,9 +4,9 @@ from decimal import Decimal
 from typing import Optional
 
 import requests
-from dotenv import load_dotenv
+from env_runtime import load_runtime_env
 
-load_dotenv("/root/tradingbot/.env", override=True)
+load_runtime_env(override=True)
 
 DB_PATH = str(os.getenv("TRADINGBOT_DB_PATH", "/root/tradingbot/trading.db") or "").strip() or "/root/tradingbot/trading.db"
 TELEGRAM_TIMEOUT_SEC = float(os.getenv("TELEGRAM_TIMEOUT_SEC", "10") or "10")
@@ -27,12 +27,12 @@ def _legacy_enabled():
 
 
 def _token():
-    load_dotenv("/root/tradingbot/.env", override=True)
+    load_runtime_env(override=True)
     return str(os.getenv("TELEGRAM_BOT_TOKEN", "") or "").strip()
 
 
 def _chat():
-    load_dotenv("/root/tradingbot/.env", override=True)
+    load_runtime_env(override=True)
     return str(os.getenv("TELEGRAM_CHAT_ID", "") or "").strip()
 
 
@@ -51,6 +51,13 @@ def _fmt_num(v):
         return format(Decimal(str(v)), "f").rstrip("0").rstrip(".")
     except Exception:
         return "0"
+
+
+def _fmt_score(score, band):
+    try:
+        return f"{int(float(score or 0))} ({str(band or 'Moderate Risk').strip() or 'Moderate Risk'})"
+    except Exception:
+        return f"0 ({str(band or 'Moderate Risk').strip() or 'Moderate Risk'})"
 
 
 def _send(text):
@@ -224,6 +231,98 @@ def notify_signal_received(*args, **kwargs):
 
 def notify_signal_rejected(*args, **kwargs):
     return False
+
+
+def render_config_proposal_text(proposal_record):
+    proposal_record = proposal_record if isinstance(proposal_record, dict) else {}
+    proposal = proposal_record.get("proposal", {}) if isinstance(proposal_record.get("proposal"), dict) else {}
+    source = proposal.get("source", {}) if isinstance(proposal.get("source"), dict) else {}
+    simulation = proposal.get("simulation", {}) if isinstance(proposal.get("simulation"), dict) else {}
+    changes = proposal.get("changes", []) if isinstance(proposal.get("changes"), list) else []
+
+    proposal_id = str(proposal_record.get("id") or proposal.get("proposal_id") or "").strip() or "CFG-UNKNOWN"
+    summary = str(proposal.get("summary") or proposal_record.get("summary_text") or "Config proposal ready for review.").strip()
+    confidence = str(source.get("confidence", "low") or "low").strip().lower()
+    expires_at = str(proposal_record.get("expires_at", "") or "").strip() or "not set"
+
+    lines = [
+        "⚙️ Config Proposal",
+        f"ID: {proposal_id}",
+        summary,
+        "",
+        f"Confidence: {confidence}",
+        f"Current Risk: {_fmt_score(source.get('risk_score', 0), source.get('risk_band', 'Moderate Risk'))}",
+        f"Projected Risk: {_fmt_score(simulation.get('projected_score', 0), simulation.get('projected_band', 'Moderate Risk'))}",
+    ]
+
+    if changes:
+        lines.append("")
+        lines.append("Changed Controls")
+        for item in changes[:6]:
+            item = item if isinstance(item, dict) else {}
+            label = str(item.get("label", item.get("key", "Control")) or "Control").strip()
+            current_value = item.get("current_value")
+            proposed_value = item.get("proposed_value")
+            lines.append(f"• {label}: {_fmt_num(current_value)} → {_fmt_num(proposed_value)}")
+
+    lines.extend(
+        [
+            "",
+            f"Expires: {expires_at}",
+            f"APPROVE {proposal_id}",
+            f"REJECT {proposal_id}",
+        ]
+    )
+
+    return "\n".join(lines).strip()
+
+
+def notify_config_proposal(proposal_record):
+    return _send(render_config_proposal_text(proposal_record))
+
+
+def render_config_proposal_status_text(proposal_id, result, proposal_record=None):
+    result = result if isinstance(result, dict) else {}
+    proposal_record = proposal_record if isinstance(proposal_record, dict) else {}
+    proposal = proposal_record.get("proposal") if isinstance(proposal_record.get("proposal"), dict) else {}
+
+    if not result.get("ok"):
+        return (
+            f"❌ Config proposal command failed\n"
+            f"ID: {proposal_id}\n"
+            f"Reason: {result.get('reason')}\n"
+            f"Status: {result.get('current_status', 'n/a')}"
+        )
+
+    summary = str(
+        (proposal.get("summary"))
+        or proposal_record.get("summary_text")
+        or ""
+    ).strip()
+
+    if result.get("status") == "approved":
+        lines = [
+            "✅ Config Proposal Approved",
+            f"ID: {proposal_id}",
+            f"Approved At: {result.get('approved_at')}",
+        ]
+        if result.get("approved_by"):
+            lines.append(f"Approved By: {result.get('approved_by')}")
+    else:
+        lines = [
+            "🛑 Config Proposal Rejected",
+            f"ID: {proposal_id}",
+            f"Rejected At: {result.get('rejected_at')}",
+        ]
+        if result.get("rejected_by"):
+            lines.append(f"Rejected By: {result.get('rejected_by')}")
+
+    if summary:
+        lines.extend(["", summary])
+
+    lines.append("")
+    lines.append("No config changes have been applied yet.")
+    return "\n".join(lines).strip()
 
 
 def send_telegram(text):

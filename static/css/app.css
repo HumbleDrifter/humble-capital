@@ -829,6 +829,131 @@ tbody tr:last-child td {
   line-height: 1.4;
 }
 
+.adaptive-suggestions-card {
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.adaptive-suggestions-card.warn {
+  border-color: rgba(245, 158, 11, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.1), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.adaptive-suggestions-card.negative {
+  border-color: rgba(251, 113, 133, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(251, 113, 133, 0.1), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.adaptive-suggestions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adaptive-suggestions-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.adaptive-suggestions-priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adaptive-suggestions-priority.positive {
+  color: var(--good);
+  border-color: rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.adaptive-suggestions-priority.warn {
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.22);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.adaptive-suggestions-priority.negative {
+  color: var(--bad);
+  border-color: rgba(251, 113, 133, 0.22);
+  background: rgba(251, 113, 133, 0.1);
+}
+
+.adaptive-suggestions-summary {
+  margin-top: 12px;
+  color: #f4fbff;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.adaptive-suggestions-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.adaptive-suggestion-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.adaptive-suggestion-title {
+  font-size: 13px;
+  font-weight: 760;
+  color: #f4fbff;
+}
+
+.adaptive-suggestion-detail {
+  margin-top: 6px;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.adaptive-suggestions-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.adaptive-suggestion-note {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .performance-summary-metric {
   min-width: 0;
   padding: 14px 15px;
@@ -2603,6 +2728,10 @@ tbody tr:last-child td {
     grid-template-columns: 96px minmax(0, 1fr);
   }
 
+  .adaptive-suggestions-head {
+    align-items: flex-start;
+  }
+
   .performance-risk-score {
     font-size: 36px;
   }
@@ -2998,6 +3127,19 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
     gap: 12px;
     padding: 14px;
+  }
+
+  .adaptive-suggestions-card {
+    padding: 14px;
+  }
+
+  .adaptive-suggestions-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .adaptive-suggestions-priority {
+    width: fit-content;
   }
 
   .performance-risk-score {

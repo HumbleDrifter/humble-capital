@@ -947,6 +947,110 @@ def build_portfolio_risk_score(snapshot=None, summary=None, history_analytics=No
     }
 
 
+def build_adaptive_suggestions(snapshot=None, summary=None, history_analytics=None, risk_score=None):
+    snapshot = snapshot or get_portfolio_snapshot()
+    summary = summary or portfolio_summary(snapshot)
+    history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
+    risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
+        snapshot=snapshot,
+        summary=summary,
+        history_analytics=history_analytics,
+    )
+
+    inputs = risk_score.get("inputs", {}) if isinstance(risk_score.get("inputs"), dict) else {}
+    band = str(risk_score.get("band", "Moderate Risk") or "Moderate Risk")
+    market_regime = str(inputs.get("market_regime", "unknown") or "unknown").lower()
+    limited_history = bool(inputs.get("limited_history", False))
+
+    satellite_weight = float(inputs.get("satellite_weight", 0.0) or 0.0)
+    satellite_target = float(inputs.get("satellite_total_target", 0.0) or 0.0)
+    satellite_max = float(inputs.get("satellite_total_max", satellite_target or 0.0) or 0.0)
+    cash_weight = float(inputs.get("cash_weight", 0.0) or 0.0)
+    min_cash_reserve = float(inputs.get("min_cash_reserve", 0.0) or 0.0)
+    current_drawdown_pct = inputs.get("current_drawdown_pct")
+    max_drawdown_pct = inputs.get("max_drawdown_pct")
+
+    suggestions = []
+    notes = []
+
+    def add_suggestion(title, detail):
+        if len(suggestions) >= 3:
+            return
+        suggestions.append({"title": title, "detail": detail})
+
+    if satellite_max > 0 and satellite_weight >= satellite_max:
+        add_suggestion(
+            "Satellite Exposure Is Full",
+            "Satellite allocation is already at or above its configured maximum, so additional risk should wait for a reduction or rebalance review.",
+        )
+    elif satellite_target > 0 and satellite_weight > satellite_target:
+        add_suggestion(
+            "Satellite Exposure Is Running Hot",
+            "Satellite allocation is above target, so keep new risk selective until exposure rotates closer to plan.",
+        )
+
+    if min_cash_reserve > 0 and cash_weight < min_cash_reserve:
+        add_suggestion(
+            "Rebuild Cash Buffer",
+            "Cash reserve is below the configured floor, so the safer posture is to restore liquidity before adding fresh exposure.",
+        )
+
+    if current_drawdown_pct is not None and float(current_drawdown_pct) >= 0.10:
+        add_suggestion(
+            "Respect Current Drawdown",
+            "Current drawdown is elevated relative to recent peak equity, so review sizing and avoid forcing risk back into the book.",
+        )
+    elif max_drawdown_pct is not None and float(max_drawdown_pct) >= 0.18:
+        add_suggestion(
+            "Recent Volatility Calls For Patience",
+            "Recent max drawdown has been meaningful, so favor steadier exposure and tighter operator review.",
+        )
+
+    if market_regime == "risk_off":
+        add_suggestion(
+            "Keep A Defensive Bias",
+            "Market regime is risk-off, so preserving cash and waiting for cleaner conditions is the conservative operating stance.",
+        )
+    elif market_regime == "neutral" and len(suggestions) < 3:
+        add_suggestion(
+            "Stay Selective In Neutral Conditions",
+            "The regime is neutral, so new exposure should clear a higher bar than it would in a stronger trend environment.",
+        )
+
+    if not suggestions:
+        add_suggestion(
+            "Risk Posture Is Controlled",
+            "Exposure, reserve, and drawdown inputs are currently balanced enough that no urgent defensive action stands out.",
+        )
+
+    if limited_history:
+        notes.append("Drawdown-aware suggestions are using limited persisted history and should be treated as lower confidence.")
+    if market_regime not in {"bull", "neutral", "risk_off"}:
+        notes.append("Market regime is limited or unknown, so regime-based guidance is conservative.")
+    if min_cash_reserve <= 0:
+        notes.append("Minimum cash reserve is not configured, so liquidity guidance is intentionally neutral.")
+
+    if band == "High Risk":
+        priority = "high"
+        summary = "Risk posture is elevated enough to favor capital preservation and tighter operator review."
+    elif band == "Elevated Risk":
+        priority = "high"
+        summary = "Risk posture is elevated, so selective exposure and liquidity discipline should take priority."
+    elif band == "Moderate Risk":
+        priority = "moderate"
+        summary = "Risk posture is manageable, but the portfolio still benefits from deliberate sizing and reserve discipline."
+    else:
+        priority = "low"
+        summary = "Risk posture is relatively contained, so the current stance can remain measured and patient."
+
+    return {
+        "summary": summary,
+        "priority": priority,
+        "suggestions": suggestions[:3],
+        "notes": notes[:3],
+    }
+
+
 def persist_current_portfolio_snapshot(snapshot=None):
     snapshot = snapshot or get_portfolio_snapshot()
     row = _snapshot_to_history_row(snapshot)

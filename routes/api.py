@@ -16,6 +16,7 @@ from execution import (
     get_valid_products,
 )
 from portfolio import (
+    build_adaptive_suggestions,
     build_portfolio_history_analytics,
     build_portfolio_risk_score,
     get_portfolio_snapshot,
@@ -768,26 +769,48 @@ def _build_portfolio_history():
         },
         "components": {},
     }
+    adaptive_suggestions = {
+        "summary": "Adaptive suggestions are waiting for a live portfolio snapshot.",
+        "priority": "moderate",
+        "suggestions": [],
+        "notes": [],
+    }
 
-    def _risk_score_payload(history_analytics):
+    def _advisory_payload(history_analytics):
         try:
             snapshot = get_portfolio_snapshot()
             summary = portfolio_summary(snapshot)
-            return build_portfolio_risk_score(
+            live_risk_score = build_portfolio_risk_score(
                 snapshot=snapshot,
                 summary=summary,
                 history_analytics=history_analytics,
             )
+            return {
+                "risk_score": live_risk_score,
+                "adaptive_suggestions": build_adaptive_suggestions(
+                    snapshot=snapshot,
+                    summary=summary,
+                    history_analytics=history_analytics,
+                    risk_score=live_risk_score,
+                ),
+            }
         except Exception as exc:
-            _log_api(f"risk score degraded during history build: {exc}")
-            fallback = dict(risk_score)
-            fallback["notes"] = [str(exc)]
-            return fallback
+            _log_api(f"advisory payload degraded during history build: {exc}")
+            fallback_risk = dict(risk_score)
+            fallback_risk["notes"] = [str(exc)]
+            fallback_suggestions = dict(adaptive_suggestions)
+            fallback_suggestions["notes"] = [str(exc)]
+            return {
+                "risk_score": fallback_risk,
+                "adaptive_suggestions": fallback_suggestions,
+            }
 
     try:
         history_rows = get_portfolio_history_since(start_ts=start_ts)
         analytics = build_portfolio_history_analytics(history_rows, source="portfolio_history")
-        risk_score = _risk_score_payload(analytics)
+        advisory_payload = _advisory_payload(analytics)
+        risk_score = advisory_payload["risk_score"]
+        adaptive_suggestions = advisory_payload["adaptive_suggestions"]
         points = [
             {
                 "ts": _safe_int(row.get("ts")),
@@ -803,6 +826,7 @@ def _build_portfolio_history():
                 "points": points,
                 "analytics": analytics,
                 "risk_score": risk_score,
+                "adaptive_suggestions": adaptive_suggestions,
             }
     except Exception as exc:
         _log_api(f"portfolio history snapshot source unavailable: {exc}")
@@ -960,7 +984,9 @@ def _build_portfolio_history():
                 source=series_type,
                 note="Persisted portfolio history is still building, so analytics are limited while the chart falls back to realized PnL history.",
             )
-        risk_score = _risk_score_payload(analytics)
+        advisory_payload = _advisory_payload(analytics)
+        risk_score = advisory_payload["risk_score"]
+        adaptive_suggestions = advisory_payload["adaptive_suggestions"]
         return {
             "ok": True,
             "range": range_name,
@@ -968,9 +994,12 @@ def _build_portfolio_history():
             "points": points,
             "analytics": analytics,
             "risk_score": risk_score,
+            "adaptive_suggestions": adaptive_suggestions,
         }
 
-    risk_score = _risk_score_payload(analytics)
+    advisory_payload = _advisory_payload(analytics)
+    risk_score = advisory_payload["risk_score"]
+    adaptive_suggestions = advisory_payload["adaptive_suggestions"]
     return {
         "ok": True,
         "range": range_name,
@@ -978,6 +1007,7 @@ def _build_portfolio_history():
         "points": [],
         "analytics": analytics,
         "risk_score": risk_score,
+        "adaptive_suggestions": adaptive_suggestions,
     }
 
 

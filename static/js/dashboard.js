@@ -285,6 +285,14 @@ function riskBandTone(band) {
   return "";
 }
 
+function priorityTone(priority) {
+  const normalized = String(priority || "").toLowerCase();
+  if (normalized === "low") return "positive";
+  if (normalized === "moderate") return "warn";
+  if (normalized === "high") return "negative";
+  return "";
+}
+
 function renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData) {
   const card = document.getElementById("performanceSummaryCard");
   const grid = document.getElementById("performanceSummaryGrid");
@@ -294,6 +302,7 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const summary = portfolioData?.summary || {};
   const analytics = historyData?.analytics || {};
   const riskScore = historyData?.risk_score || {};
+  const adaptiveSuggestions = historyData?.adaptive_suggestions || {};
 
   const totalValue =
     Number(summary.total_value_usd || 0) ||
@@ -314,6 +323,14 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const scoreValue = hasNumericValue(riskScore?.score) ? Math.max(0, Math.min(100, Number(riskScore.score))) : null;
   const scoreBand = String(riskScore?.band || "Evaluating");
   const scoreNotes = Array.isArray(riskScore?.notes) ? riskScore.notes.filter(Boolean).slice(0, 3) : [];
+  const suggestionSummary = String(adaptiveSuggestions?.summary || "").trim();
+  const suggestionPriority = String(adaptiveSuggestions?.priority || "moderate").toLowerCase();
+  const suggestionItems = Array.isArray(adaptiveSuggestions?.suggestions)
+    ? adaptiveSuggestions.suggestions.filter((item) => item && (item.title || item.detail)).slice(0, 3)
+    : [];
+  const suggestionNotes = Array.isArray(adaptiveSuggestions?.notes)
+    ? adaptiveSuggestions.notes.filter(Boolean).slice(0, 2)
+    : [];
 
   const title = analyticsLimited
     ? "Performance view is live, with fuller metrics unlocking as history builds."
@@ -351,6 +368,47 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
     riskNotesEl.innerHTML = notes
       .map((note) => `<span class="performance-risk-note">${escapeHtml(note)}</span>`)
       .join("");
+  }
+
+  const adaptiveCard = document.getElementById("adaptiveSuggestionsCard");
+  const adaptivePriorityEl = document.getElementById("adaptiveSuggestionsPriority");
+  const adaptiveSummaryEl = document.getElementById("adaptiveSuggestionsSummary");
+  const adaptiveListEl = document.getElementById("adaptiveSuggestionsList");
+  const adaptiveNotesEl = document.getElementById("adaptiveSuggestionsNotes");
+
+  if (adaptiveCard) {
+    const tone = priorityTone(suggestionPriority);
+    adaptiveCard.className = `adaptive-suggestions-card${tone ? ` ${tone}` : ""}`;
+  }
+  if (adaptivePriorityEl) {
+    const label = suggestionPriority ? `${suggestionPriority} priority` : "reviewing";
+    adaptivePriorityEl.textContent = label;
+    adaptivePriorityEl.className = `adaptive-suggestions-priority${priorityTone(suggestionPriority) ? ` ${priorityTone(suggestionPriority)}` : ""}`;
+  }
+  if (adaptiveSummaryEl) {
+    adaptiveSummaryEl.textContent = suggestionSummary || "Advisory guidance is being assembled from the current portfolio and analytics inputs.";
+  }
+  if (adaptiveListEl) {
+    const fallbackItems = [
+      {
+        title: "Stay measured",
+        detail: analyticsLimited
+          ? "Persisted history is still building, so advisory guidance is intentionally conservative."
+          : "The advisory layer is read-only and highlights only the most defensible next considerations."
+      }
+    ];
+    const items = suggestionItems.length ? suggestionItems : fallbackItems;
+    adaptiveListEl.innerHTML = items.map((item) => `
+      <div class="adaptive-suggestion-item">
+        <div class="adaptive-suggestion-title">${escapeHtml(item.title || "Suggestion")}</div>
+        <div class="adaptive-suggestion-detail">${escapeHtml(item.detail || "")}</div>
+      </div>
+    `).join("");
+  }
+  if (adaptiveNotesEl) {
+    adaptiveNotesEl.innerHTML = suggestionNotes.map((note) => `
+      <span class="adaptive-suggestion-note">${escapeHtml(note)}</span>
+    `).join("");
   }
 
   const titleEl = card.querySelector(".performance-summary-title");

@@ -5,6 +5,43 @@ let BLOCKED_SATELLITES = [];
 let CORE_ASSETS = [];
 let HOLDINGS_BY_PRODUCT = {};
 let TOTAL_ASSET_VALUE_USD = 0;
+let ACTIVE_PRESET = "";
+
+const CONFIG_PRESETS = {
+  conservative: {
+    label: "Conservative",
+    values: {
+      satellite_total_target: 0.20,
+      satellite_total_max: 0.30,
+      min_cash_reserve: 0.20,
+      trade_min_value_usd: 50,
+      max_active_satellites: 4,
+      max_new_satellites_per_cycle: 1
+    }
+  },
+  balanced: {
+    label: "Balanced",
+    values: {
+      satellite_total_target: 0.35,
+      satellite_total_max: 0.45,
+      min_cash_reserve: 0.10,
+      trade_min_value_usd: 25,
+      max_active_satellites: 6,
+      max_new_satellites_per_cycle: 2
+    }
+  },
+  aggressive: {
+    label: "Aggressive",
+    values: {
+      satellite_total_target: 0.50,
+      satellite_total_max: 0.60,
+      min_cash_reserve: 0.05,
+      trade_min_value_usd: 15,
+      max_active_satellites: 10,
+      max_new_satellites_per_cycle: 4
+    }
+  }
+};
 
 const URL_PARAMS = new URLSearchParams(window.location.search);
 const API_SECRET =
@@ -78,6 +115,12 @@ function setStatus(message, isError = false) {
   el.className = isError ? "status-console error" : "status-console";
 }
 
+function setPresetStatus(message) {
+  const el = document.getElementById("presetStatus");
+  if (!el) return;
+  el.textContent = message;
+}
+
 function updateConfigurationSummary() {
   const modeEl = document.getElementById("assetModeSummary");
   if (!modeEl) return;
@@ -95,6 +138,15 @@ function setInputValue(id, value, percent = false) {
   el.value = Number.isFinite(n) && percent ? (n * 100).toFixed(2) : (value ?? "");
 }
 
+function setPresetActiveState(name) {
+  ACTIVE_PRESET = String(name || "");
+  document.querySelectorAll(".config-preset-btn").forEach((button) => {
+    const isActive = button.dataset.preset === ACTIVE_PRESET;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+
 function renderRiskConfig(cfg) {
   setInputValue("satellite_total_max", cfg.satellite_total_max, true);
   setInputValue("satellite_total_target", cfg.satellite_total_target, true);
@@ -102,6 +154,8 @@ function renderRiskConfig(cfg) {
   setInputValue("trade_min_value_usd", cfg.trade_min_value_usd, false);
   setInputValue("max_active_satellites", cfg.max_active_satellites, false);
   setInputValue("max_new_satellites_per_cycle", cfg.max_new_satellites_per_cycle, false);
+  setPresetActiveState("");
+  setPresetStatus("No preset staged. Manual edits remain available.");
 }
 
 function getAssetMode(productId) {
@@ -246,6 +300,23 @@ function normalizePercentInput(id) {
   return Number.isFinite(n) ? (n / 100) : "";
 }
 
+function applyConfigPreset(name) {
+  const preset = CONFIG_PRESETS[String(name || "").toLowerCase()];
+  if (!preset) return;
+
+  const values = preset.values || {};
+  setInputValue("satellite_total_target", values.satellite_total_target, true);
+  setInputValue("satellite_total_max", values.satellite_total_max, true);
+  setInputValue("min_cash_reserve", values.min_cash_reserve, true);
+  setInputValue("trade_min_value_usd", values.trade_min_value_usd, false);
+  setInputValue("max_active_satellites", values.max_active_satellites, false);
+  setInputValue("max_new_satellites_per_cycle", values.max_new_satellites_per_cycle, false);
+
+  setPresetActiveState(name);
+  setPresetStatus(`${preset.label} preset staged. Changes are not saved until you click Save Configuration.`);
+  setStatus(`${preset.label} preset applied to current fields. Review and save when ready.`);
+}
+
 async function postAdminAssetAction(payload, successMessage) {
   try {
     await fetchJson("/api/admin/asset", {
@@ -314,6 +385,7 @@ window.refreshAssets = loadConfiguration;
 window.renderAssetRows = applyAssetFilter;
 window.setAssetMode = setAssetMode;
 window.saveRiskControls = saveRiskControls;
+window.applyConfigPreset = applyConfigPreset;
 
 window.addEventListener("DOMContentLoaded", () => {
   const search = document.getElementById("assetSearch");

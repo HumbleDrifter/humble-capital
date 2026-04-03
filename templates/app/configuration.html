@@ -40,6 +40,22 @@
       </div>
     </div>
 
+    <div class="configuration-preset-panel">
+      <div class="configuration-preset-copy">
+        <div class="configuration-card-kicker">Config Presets</div>
+        <h3>Start from a broad risk profile.</h3>
+        <p class="section-subtitle">Presets stage values into the current fields only. Review and click Save Configuration to persist them.</p>
+      </div>
+      <div class="configuration-preset-actions" role="tablist" aria-label="Configuration presets">
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="conservative" onclick="applyConfigPreset('conservative')">Conservative</button>
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="balanced" onclick="applyConfigPreset('balanced')">Balanced</button>
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="aggressive" onclick="applyConfigPreset('aggressive')">Aggressive</button>
+      </div>
+      <div class="configuration-preset-status" id="presetStatus">No preset staged. Manual edits remain available.</div>
+    </div>
+
+    <div class="divider"></div>
+
     <div class="configuration-hero-grid">
       <div class="form-card configuration-focus-card">
         <div class="configuration-card-kicker">Allocation Target</div>

@@ -21,6 +21,9 @@ from portfolio import (
     build_portfolio_history_analytics,
     build_portfolio_risk_score,
     get_portfolio_snapshot,
+    normalize_adaptive_suggestions_payload,
+    normalize_auto_adaptive_payload,
+    normalize_risk_score_payload,
     persist_current_portfolio_snapshot,
     portfolio_summary,
 )
@@ -756,50 +759,9 @@ def _build_portfolio_history():
     points = []
     series_type = "empty"
     analytics = build_portfolio_history_analytics([], source="empty")
-    risk_score = {
-        "score": 0,
-        "band": "Moderate Risk",
-        "notes": ["Risk score is waiting for a live portfolio snapshot."],
-        "inputs": {},
-        "weights": {
-            "satellite_allocation": 30,
-            "cash_reserve": 25,
-            "current_drawdown": 20,
-            "max_drawdown": 15,
-            "market_regime": 10,
-        },
-        "components": {},
-    }
-    adaptive_suggestions = {
-        "summary": "Adaptive suggestions are waiting for a live portfolio snapshot.",
-        "priority": "moderate",
-        "suggestions": [],
-        "notes": [],
-    }
-    auto_adaptive = {
-        "mode": "recommendation_only",
-        "recommended_preset": "balanced",
-        "label": "Balanced",
-        "confidence": "low",
-        "summary": "Auto-Adaptive Mode is waiting for a live portfolio snapshot.",
-        "reasons": [],
-        "action": {
-            "label": "Stage Balanced Preset",
-            "target": "balanced",
-        },
-        "simulation": {
-            "preset": "balanced",
-            "label": "Balanced",
-            "current_score": 0,
-            "projected_score": 0,
-            "score_delta": 0,
-            "current_band": "Moderate Risk",
-            "projected_band": "Moderate Risk",
-            "summary": "Preset impact simulation is waiting for a live portfolio snapshot.",
-            "changed_controls": [],
-            "notes": [],
-        },
-    }
+    risk_score = normalize_risk_score_payload()
+    adaptive_suggestions = normalize_adaptive_suggestions_payload()
+    auto_adaptive = normalize_auto_adaptive_payload()
 
     def _advisory_payload(history_analytics):
         try:
@@ -810,7 +772,7 @@ def _build_portfolio_history():
                 summary=summary,
                 history_analytics=history_analytics,
             )
-            return {
+            advisory = {
                 "risk_score": live_risk_score,
                 "adaptive_suggestions": build_adaptive_suggestions(
                     snapshot=snapshot,
@@ -825,18 +787,20 @@ def _build_portfolio_history():
                     risk_score=live_risk_score,
                 ),
             }
+            return {
+                "risk_score": normalize_risk_score_payload(advisory.get("risk_score")),
+                "adaptive_suggestions": normalize_adaptive_suggestions_payload(advisory.get("adaptive_suggestions")),
+                "auto_adaptive": normalize_auto_adaptive_payload(advisory.get("auto_adaptive")),
+            }
         except Exception as exc:
             _log_api(f"advisory payload degraded during history build: {exc}")
-            fallback_risk = dict(risk_score)
-            fallback_risk["notes"] = [str(exc)]
-            fallback_suggestions = dict(adaptive_suggestions)
-            fallback_suggestions["notes"] = [str(exc)]
-            fallback_auto_adaptive = dict(auto_adaptive)
-            fallback_auto_adaptive["reasons"] = [str(exc)]
             return {
-                "risk_score": fallback_risk,
-                "adaptive_suggestions": fallback_suggestions,
-                "auto_adaptive": fallback_auto_adaptive,
+                "risk_score": normalize_risk_score_payload(risk_score, fallback_note=str(exc)),
+                "adaptive_suggestions": normalize_adaptive_suggestions_payload(
+                    adaptive_suggestions,
+                    fallback_note=str(exc),
+                ),
+                "auto_adaptive": normalize_auto_adaptive_payload(auto_adaptive, fallback_reason=str(exc)),
             }
 
     try:

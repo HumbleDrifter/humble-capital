@@ -349,7 +349,7 @@ async function loadConfiguration() {
     await Promise.all([loadTradableAssets(), loadConfigState(), loadPortfolioSnapshot()]);
     drawAssetRows();
     applyPresetFromUrlIfPresent();
-    setStatus(`Loaded ${ASSETS.length} tradable USD assets. Core controls and advanced sections are ready.`);
+    setStatus(`Loaded ${ASSETS.length} tradable USD assets. Portfolio guardrails and advanced sections are ready.`);
   } catch (err) {
     console.error(err);
     if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="bad">Asset load failed: ${escapeHtml(err.message)}</td></tr>`;

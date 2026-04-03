@@ -947,6 +947,171 @@ def build_portfolio_risk_score(snapshot=None, summary=None, history_analytics=No
     }
 
 
+def _clean_text_list(values, limit=4):
+    cleaned = []
+    for value in values if isinstance(values, (list, tuple)) else []:
+        text = str(value or "").strip()
+        if text and text not in cleaned:
+            cleaned.append(text)
+        if len(cleaned) >= limit:
+            break
+    return cleaned
+
+
+def _normalize_action_payload(action, default_label="Open Config"):
+    action = action if isinstance(action, dict) else {}
+    label = str(action.get("label", default_label) or default_label).strip()
+    target = str(action.get("target", "") or "").strip()
+    section = str(action.get("section", "") or "").strip()
+    payload = {"label": label, "target": target}
+    if section:
+        payload["section"] = section
+    return payload
+
+
+def normalize_risk_score_payload(payload=None, fallback_note=None):
+    payload = payload if isinstance(payload, dict) else {}
+    fallback_note = str(fallback_note or "Risk score is waiting for a live portfolio snapshot.").strip()
+
+    score = int(round(float(payload.get("score", 0) or 0)))
+    score = max(0, min(100, score))
+
+    band = str(payload.get("band", "Moderate Risk") or "Moderate Risk").strip() or "Moderate Risk"
+    notes = _clean_text_list(payload.get("notes"), limit=4)
+    if not notes:
+        notes = [fallback_note]
+
+    inputs = payload.get("inputs", {}) if isinstance(payload.get("inputs"), dict) else {}
+    weights = payload.get("weights", {}) if isinstance(payload.get("weights"), dict) else {}
+    components = payload.get("components", {}) if isinstance(payload.get("components"), dict) else {}
+
+    return {
+        "score": score,
+        "band": band,
+        "notes": notes,
+        "inputs": inputs,
+        "weights": weights,
+        "components": components,
+    }
+
+
+def normalize_adaptive_suggestions_payload(payload=None, fallback_note=None):
+    payload = payload if isinstance(payload, dict) else {}
+    fallback_note = str(
+        fallback_note or "Adaptive suggestions are waiting for a live portfolio snapshot."
+    ).strip()
+
+    priority = str(payload.get("priority", "moderate") or "moderate").strip().lower()
+    if priority not in {"low", "moderate", "high"}:
+        priority = "moderate"
+
+    summary = str(payload.get("summary", fallback_note) or fallback_note).strip() or fallback_note
+    suggestions = []
+    for item in payload.get("suggestions") if isinstance(payload.get("suggestions"), list) else []:
+        item = item if isinstance(item, dict) else {}
+        title = str(item.get("title", "") or "").strip()
+        detail = str(item.get("detail", "") or "").strip()
+        if not title and not detail:
+            continue
+        normalized = {
+            "title": title or "Suggestion",
+            "detail": detail or "Review the current portfolio posture in configuration before making manual changes.",
+        }
+        if item.get("action") is not None:
+            action = _normalize_action_payload(item.get("action"), default_label="Adjust In Config")
+            if action.get("target"):
+                normalized["action"] = action
+        suggestions.append(normalized)
+        if len(suggestions) >= 3:
+            break
+
+    notes = _clean_text_list(payload.get("notes"), limit=3)
+
+    return {
+        "summary": summary,
+        "priority": priority,
+        "suggestions": suggestions,
+        "notes": notes,
+    }
+
+
+def normalize_auto_adaptive_payload(payload=None, fallback_reason=None):
+    payload = payload if isinstance(payload, dict) else {}
+    fallback_reason = str(
+        fallback_reason or "Auto-Adaptive Mode is waiting for a live portfolio snapshot."
+    ).strip()
+
+    mode = str(payload.get("mode", "recommendation_only") or "recommendation_only").strip() or "recommendation_only"
+    recommended_preset = str(payload.get("recommended_preset", "balanced") or "balanced").strip().lower()
+    if recommended_preset not in {"conservative", "balanced", "aggressive"}:
+        recommended_preset = "balanced"
+
+    presets = get_config_preset_definitions()
+    preset_meta = presets.get(recommended_preset, presets["balanced"])
+    label = str(payload.get("label", preset_meta.get("label", "Balanced")) or preset_meta.get("label", "Balanced")).strip()
+
+    confidence = str(payload.get("confidence", "low") or "low").strip().lower()
+    if confidence not in {"low", "medium", "high"}:
+        confidence = "low"
+
+    summary = str(payload.get("summary", fallback_reason) or fallback_reason).strip() or fallback_reason
+    reasons = _clean_text_list(payload.get("reasons"), limit=3)
+    if not reasons:
+        reasons = [fallback_reason]
+
+    action = _normalize_action_payload(payload.get("action"), default_label=f"Stage {label} Preset")
+    if not action.get("target"):
+        action["target"] = recommended_preset
+
+    simulation = payload.get("simulation", {}) if isinstance(payload.get("simulation"), dict) else {}
+    changed_controls = []
+    for item in simulation.get("changed_controls") if isinstance(simulation.get("changed_controls"), list) else []:
+        item = item if isinstance(item, dict) else {}
+        changed_controls.append(
+            {
+                "key": str(item.get("key", "") or "").strip(),
+                "label": str(item.get("label", "Control") or "Control").strip(),
+                "current_value": item.get("current_value"),
+                "projected_value": item.get("projected_value"),
+                "format": str(item.get("format", "text") or "text").strip(),
+                "affects_score": bool(item.get("affects_score", False)),
+            }
+        )
+        if len(changed_controls) >= 6:
+            break
+
+    simulation_notes = _clean_text_list(simulation.get("notes"), limit=3)
+    simulation_payload = {
+        "preset": str(simulation.get("preset", recommended_preset) or recommended_preset).strip().lower(),
+        "label": str(simulation.get("label", label) or label).strip(),
+        "current_score": int(round(float(simulation.get("current_score", 0) or 0))),
+        "projected_score": int(round(float(simulation.get("projected_score", 0) or 0))),
+        "score_delta": int(round(float(simulation.get("score_delta", 0) or 0))),
+        "current_band": str(simulation.get("current_band", "Moderate Risk") or "Moderate Risk").strip(),
+        "projected_band": str(simulation.get("projected_band", "Moderate Risk") or "Moderate Risk").strip(),
+        "summary": str(
+            simulation.get("summary", "Preset impact simulation is waiting for a live portfolio snapshot.")
+            or "Preset impact simulation is waiting for a live portfolio snapshot."
+        ).strip(),
+        "changed_controls": changed_controls,
+        "notes": simulation_notes,
+    }
+
+    simulation_payload["current_score"] = max(0, min(100, simulation_payload["current_score"]))
+    simulation_payload["projected_score"] = max(0, min(100, simulation_payload["projected_score"]))
+
+    return {
+        "mode": mode,
+        "recommended_preset": recommended_preset,
+        "label": label,
+        "confidence": confidence,
+        "summary": summary,
+        "reasons": reasons,
+        "action": action,
+        "simulation": simulation_payload,
+    }
+
+
 def build_adaptive_suggestions(snapshot=None, summary=None, history_analytics=None, risk_score=None):
     snapshot = snapshot or get_portfolio_snapshot()
     summary = summary or portfolio_summary(snapshot)

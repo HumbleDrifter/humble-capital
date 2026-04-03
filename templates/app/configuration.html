@@ -35,8 +35,8 @@
   <section class="panel span-12 configuration-core-panel" id="config-section-core-controls" data-config-section="core-controls">
     <div class="section-header">
       <div>
-        <h2>Core Controls</h2>
-        <p class="section-subtitle">These are the broad portfolio settings most operators adjust during routine tuning</p>
+        <h2>Portfolio Guardrails</h2>
+        <p class="section-subtitle">Use this as the primary surface for top-level risk parameters. Dashboard recommendations land here for review, staging, and manual save.</p>
       </div>
     </div>
 
@@ -52,6 +52,13 @@
         <button class="btn btn-secondary config-preset-btn" type="button" data-preset="aggressive" onclick="applyConfigPreset('aggressive')">Aggressive</button>
       </div>
       <div class="configuration-preset-status" id="presetStatus">No preset staged. Manual edits remain available.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="configuration-primary-note">
+      <div class="configuration-primary-note-title">Risk Parameters</div>
+      <div class="configuration-primary-note-copy">These guardrails shape overall portfolio pressure: satellite target, hard max, liquidity reserve, trade floor, and advanced capacity limits below.</div>
     </div>
 
     <div class="divider"></div>
@@ -89,7 +96,7 @@
     <div class="divider"></div>
 
     <div class="configuration-action-row">
-      <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Core Controls</button>
+      <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Guardrails</button>
       <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Reload Current Values</button>
     </div>
   </section>
@@ -98,7 +105,7 @@
     <div class="section-header">
       <div>
         <h2>Advanced Configuration</h2>
-        <p class="section-subtitle">Detailed controls for satellite capacity and asset-universe management remain fully available below</p>
+        <p class="section-subtitle">Detailed controls for satellite capacity and asset-universe management remain fully available below after the top-level guardrails.</p>
       </div>
     </div>
 

@@ -335,17 +335,124 @@ function fmtControlValue(value, format = "text") {
   return String(value);
 }
 
+function safeObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function cleanTextList(value, limit = 3) {
+  const out = [];
+  const items = Array.isArray(value) ? value : [];
+  for (const item of items) {
+    const text = String(item || "").trim();
+    if (text && !out.includes(text)) out.push(text);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function normalizeActionPayload(action, fallbackLabel = "Open Config") {
+  const source = safeObject(action);
+  const label = String(source.label || fallbackLabel).trim() || fallbackLabel;
+  const target = String(source.target || "").trim();
+  const section = String(source.section || "").trim();
+  return {
+    label,
+    target,
+    section
+  };
+}
+
+function normalizeRiskScorePayload(value) {
+  const source = safeObject(value);
+  return {
+    score: hasNumericValue(source.score) ? Math.max(0, Math.min(100, Number(source.score))) : null,
+    band: String(source.band || "Moderate Risk").trim() || "Moderate Risk",
+    notes: cleanTextList(source.notes, 3),
+    inputs: safeObject(source.inputs)
+  };
+}
+
+function normalizeAdaptiveSuggestionsPayload(value) {
+  const source = safeObject(value);
+  const priorityRaw = String(source.priority || "moderate").trim().toLowerCase();
+  const priority = ["low", "moderate", "high"].includes(priorityRaw) ? priorityRaw : "moderate";
+  const suggestions = [];
+
+  for (const item of Array.isArray(source.suggestions) ? source.suggestions : []) {
+    const raw = safeObject(item);
+    const title = String(raw.title || "").trim();
+    const detail = String(raw.detail || "").trim();
+    if (!title && !detail) continue;
+    const normalized = {
+      title: title || "Suggestion",
+      detail: detail || "Review the current portfolio posture in configuration before making manual changes."
+    };
+    const action = normalizeActionPayload(raw.action, "Adjust In Config");
+    if (action.target) normalized.action = action;
+    suggestions.push(normalized);
+    if (suggestions.length >= 3) break;
+  }
+
+  return {
+    summary: String(source.summary || "").trim(),
+    priority,
+    suggestions,
+    notes: cleanTextList(source.notes, 2)
+  };
+}
+
+function normalizeAutoAdaptivePayload(value) {
+  const source = safeObject(value);
+  const confidenceRaw = String(source.confidence || "low").trim().toLowerCase();
+  const confidence = ["low", "medium", "high"].includes(confidenceRaw) ? confidenceRaw : "low";
+  const action = normalizeActionPayload(source.action, "Stage Recommended Preset");
+  const simulationRaw = safeObject(source.simulation);
+  const changedControls = [];
+
+  for (const item of Array.isArray(simulationRaw.changed_controls) ? simulationRaw.changed_controls : []) {
+    const raw = safeObject(item);
+    const label = String(raw.label || "").trim();
+    if (!label) continue;
+    changedControls.push({
+      key: String(raw.key || "").trim(),
+      label,
+      current_value: raw.current_value,
+      projected_value: raw.projected_value,
+      format: String(raw.format || "text").trim() || "text",
+      affects_score: Boolean(raw.affects_score)
+    });
+    if (changedControls.length >= 4) break;
+  }
+
+  return {
+    label: String(source.label || "Balanced").trim() || "Balanced",
+    confidence,
+    summary: String(source.summary || "").trim(),
+    reasons: cleanTextList(source.reasons, 3),
+    action,
+    simulation: {
+      current_score: hasNumericValue(simulationRaw.current_score) ? Number(simulationRaw.current_score) : null,
+      projected_score: hasNumericValue(simulationRaw.projected_score) ? Number(simulationRaw.projected_score) : null,
+      score_delta: hasNumericValue(simulationRaw.score_delta) ? Number(simulationRaw.score_delta) : null,
+      projected_band: String(simulationRaw.projected_band || "Projected band pending").trim() || "Projected band pending",
+      summary: String(simulationRaw.summary || "").trim(),
+      changed_controls: changedControls,
+      notes: cleanTextList(simulationRaw.notes, 2)
+    }
+  };
+}
+
 function renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData) {
   const card = document.getElementById("performanceSummaryCard");
   const grid = document.getElementById("performanceSummaryGrid");
   if (!card || !grid) return;
 
-  const snapshot = portfolioData?.snapshot || {};
-  const summary = portfolioData?.summary || {};
-  const analytics = historyData?.analytics || {};
-  const riskScore = historyData?.risk_score || {};
-  const adaptiveSuggestions = historyData?.adaptive_suggestions || {};
-  const autoAdaptive = historyData?.auto_adaptive || {};
+  const snapshot = safeObject(portfolioData?.snapshot);
+  const summary = safeObject(portfolioData?.summary);
+  const analytics = safeObject(historyData?.analytics);
+  const riskScore = normalizeRiskScorePayload(historyData?.risk_score);
+  const adaptiveSuggestions = normalizeAdaptiveSuggestionsPayload(historyData?.adaptive_suggestions);
+  const autoAdaptive = normalizeAutoAdaptivePayload(historyData?.auto_adaptive);
 
   const totalValue =
     Number(summary.total_value_usd || 0) ||
@@ -363,35 +470,29 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const maxDrawdownPct = hasNumericValue(analytics?.max_drawdown_pct) ? Number(analytics.max_drawdown_pct) : null;
   const analyticsLimited = Boolean(analytics?.limited_history);
   const analyticsNote = String(analytics?.note || "").trim();
-  const scoreValue = hasNumericValue(riskScore?.score) ? Math.max(0, Math.min(100, Number(riskScore.score))) : null;
-  const scoreBand = String(riskScore?.band || "Evaluating");
-  const scoreNotes = Array.isArray(riskScore?.notes) ? riskScore.notes.filter(Boolean).slice(0, 3) : [];
-  const suggestionSummary = String(adaptiveSuggestions?.summary || "").trim();
-  const suggestionPriority = String(adaptiveSuggestions?.priority || "moderate").toLowerCase();
-  const suggestionItems = Array.isArray(adaptiveSuggestions?.suggestions)
-    ? adaptiveSuggestions.suggestions.filter((item) => item && (item.title || item.detail)).slice(0, 3)
+  const scoreValue = riskScore.score;
+  const scoreBand = riskScore.band || "Evaluating";
+  const scoreNotes = riskScore.notes;
+  const suggestionSummary = adaptiveSuggestions.summary;
+  const suggestionPriority = adaptiveSuggestions.priority;
+  const suggestionItems = adaptiveSuggestions.suggestions.slice(0, 2);
+  const suggestionNotes = adaptiveSuggestions.notes;
+  const recommendedPreset = autoAdaptive.label || "Balanced";
+  const adaptiveConfidence = autoAdaptive.confidence || "low";
+  const adaptiveSummary = autoAdaptive.summary;
+  const adaptiveReasons = autoAdaptive.reasons.slice(0, 2);
+  const adaptiveAction = autoAdaptive.action;
+  const adaptiveSimulation = safeObject(autoAdaptive.simulation);
+  const simulatedCurrentScore = adaptiveSimulation.current_score;
+  const simulatedProjectedScore = adaptiveSimulation.projected_score;
+  const simulatedScoreDelta = adaptiveSimulation.score_delta;
+  const simulatedProjectedBand = adaptiveSimulation.projected_band || "Projected band pending";
+  const simulatedSummary = adaptiveSimulation.summary;
+  const simulatedChangedControls = Array.isArray(adaptiveSimulation.changed_controls)
+    ? adaptiveSimulation.changed_controls.slice(0, 3)
     : [];
-  const suggestionNotes = Array.isArray(adaptiveSuggestions?.notes)
-    ? adaptiveSuggestions.notes.filter(Boolean).slice(0, 2)
-    : [];
-  const recommendedPreset = String(autoAdaptive?.label || "Balanced");
-  const adaptiveConfidence = String(autoAdaptive?.confidence || "low").toLowerCase();
-  const adaptiveSummary = String(autoAdaptive?.summary || "").trim();
-  const adaptiveReasons = Array.isArray(autoAdaptive?.reasons)
-    ? autoAdaptive.reasons.filter(Boolean).slice(0, 3)
-    : [];
-  const adaptiveAction = autoAdaptive?.action || null;
-  const adaptiveSimulation = autoAdaptive?.simulation || {};
-  const simulatedCurrentScore = hasNumericValue(adaptiveSimulation?.current_score) ? Number(adaptiveSimulation.current_score) : null;
-  const simulatedProjectedScore = hasNumericValue(adaptiveSimulation?.projected_score) ? Number(adaptiveSimulation.projected_score) : null;
-  const simulatedScoreDelta = hasNumericValue(adaptiveSimulation?.score_delta) ? Number(adaptiveSimulation.score_delta) : null;
-  const simulatedProjectedBand = String(adaptiveSimulation?.projected_band || "Projected band pending");
-  const simulatedSummary = String(adaptiveSimulation?.summary || "").trim();
-  const simulatedChangedControls = Array.isArray(adaptiveSimulation?.changed_controls)
-    ? adaptiveSimulation.changed_controls.filter((item) => item && item.label).slice(0, 4)
-    : [];
-  const simulatedNotes = Array.isArray(adaptiveSimulation?.notes)
-    ? adaptiveSimulation.notes.filter(Boolean).slice(0, 3)
+  const simulatedNotes = Array.isArray(adaptiveSimulation.notes)
+    ? adaptiveSimulation.notes.slice(0, 2)
     : [];
 
   const title = analyticsLimited
@@ -487,9 +588,7 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const autoAdaptiveReasonsEl = document.getElementById("autoAdaptiveReasons");
   const autoAdaptiveSimulationEl = document.getElementById("autoAdaptiveSimulation");
   const autoAdaptiveSimulationBandEl = document.getElementById("autoAdaptiveSimulationBand");
-  const autoAdaptiveCurrentScoreEl = document.getElementById("autoAdaptiveCurrentScore");
-  const autoAdaptiveProjectedScoreEl = document.getElementById("autoAdaptiveProjectedScore");
-  const autoAdaptiveScoreDeltaEl = document.getElementById("autoAdaptiveScoreDelta");
+  const autoAdaptiveProjectionLineEl = document.getElementById("autoAdaptiveProjectionLine");
   const autoAdaptiveSimulationSummaryEl = document.getElementById("autoAdaptiveSimulationSummary");
   const autoAdaptiveChangedControlsEl = document.getElementById("autoAdaptiveChangedControls");
   const autoAdaptiveSimulationNotesEl = document.getElementById("autoAdaptiveSimulationNotes");
@@ -523,21 +622,14 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
     autoAdaptiveSimulationBandEl.textContent = simulatedProjectedBand;
     autoAdaptiveSimulationBandEl.className = `auto-adaptive-simulation-band${riskBandTone(simulatedProjectedBand) ? ` ${riskBandTone(simulatedProjectedBand)}` : ""}`;
   }
-  if (autoAdaptiveCurrentScoreEl) {
-    autoAdaptiveCurrentScoreEl.textContent = simulatedCurrentScore == null ? "--" : String(Math.round(simulatedCurrentScore));
-  }
-  if (autoAdaptiveProjectedScoreEl) {
-    autoAdaptiveProjectedScoreEl.textContent = simulatedProjectedScore == null ? "--" : String(Math.round(simulatedProjectedScore));
-  }
-  if (autoAdaptiveScoreDeltaEl) {
-    const deltaTone =
-      simulatedScoreDelta == null ? "" : simulatedScoreDelta < 0 ? "positive" : simulatedScoreDelta > 0 ? "negative" : "";
+  if (autoAdaptiveProjectionLineEl) {
     const deltaText =
-      simulatedScoreDelta == null ? "No projection yet" :
-      simulatedScoreDelta === 0 ? "No score change" :
-      `${simulatedScoreDelta > 0 ? "+" : ""}${Math.round(simulatedScoreDelta)} points`;
-    autoAdaptiveScoreDeltaEl.textContent = deltaText;
-    autoAdaptiveScoreDeltaEl.className = `auto-adaptive-simulation-delta${deltaTone ? ` ${deltaTone}` : ""}`;
+      simulatedScoreDelta == null ? "no score change projected" :
+      simulatedScoreDelta === 0 ? "no score change projected" :
+      `${simulatedScoreDelta > 0 ? "+" : ""}${Math.round(simulatedScoreDelta)} points projected`;
+    const currentText = simulatedCurrentScore == null ? "--" : Math.round(simulatedCurrentScore);
+    const projectedText = simulatedProjectedScore == null ? "--" : Math.round(simulatedProjectedScore);
+    autoAdaptiveProjectionLineEl.textContent = `Current score ${currentText} → projected score ${projectedText} • ${deltaText}`;
   }
   if (autoAdaptiveSimulationSummaryEl) {
     autoAdaptiveSimulationSummaryEl.textContent =

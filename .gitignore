@@ -1,4 +1,5 @@
 .env
+*.env
 *.log
 *.db
 __pycache__/
@@ -6,4 +7,8 @@ __pycache__/
 gunicorn.ctl
 telegram_listener_state.json
 advisor_export/*.json
+meme_rotation.json
+*.bak
+*_backup*/
+archive_*/
 env_runtime.py

@@ -450,17 +450,119 @@ function normalizeAutoAdaptivePayload(value) {
   };
 }
 
-function renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData) {
+function derivePostureLabel(riskBand) {
+  const normalized = String(riskBand || "").toLowerCase();
+  if (normalized === "high risk" || normalized === "elevated risk") return "Defensive";
+  if (normalized === "moderate risk") return "Balanced";
+  if (normalized === "low risk") return "Risk-On";
+  return "Reviewing";
+}
+
+function deriveCashContext(summary, snapshot, riskInputs) {
+  const cashWeight =
+    hasNumericValue(summary?.cash_weight) ? Number(summary.cash_weight) :
+    hasNumericValue(snapshot?.cash_weight) ? Number(snapshot.cash_weight) :
+    hasNumericValue(riskInputs?.cash_weight) ? Number(riskInputs.cash_weight) :
+    null;
+
+  const configuredReserve =
+    hasNumericValue(snapshot?.config?.min_cash_reserve) ? Number(snapshot.config.min_cash_reserve) :
+    hasNumericValue(riskInputs?.min_cash_reserve) ? Number(riskInputs.min_cash_reserve) :
+    null;
+
+  if (cashWeight == null || configuredReserve == null || configuredReserve <= 0) return "Reviewing";
+  if (cashWeight < configuredReserve) return "Below Reserve";
+  if (cashWeight <= configuredReserve + 0.03) return "Near Reserve";
+  return "Above Reserve";
+}
+
+function deriveAdvisoryLabel(autoAdaptive) {
+  const label = String(autoAdaptive?.label || "").trim();
+  return label || "Reviewing";
+}
+
+function buildNeedsAttentionItems(analytics, systemData, adaptiveSuggestions, autoAdaptive) {
+  const items = [];
+  const analyticsNote = String(analytics?.note || "").trim();
+  const adaptiveSummary = String(adaptiveSuggestions?.summary || "").trim();
+  const autoAdaptiveSummary = String(autoAdaptive?.summary || "").trim();
+  const cache = safeObject(systemData?.status?.portfolio_cache);
+  const snapshotAgeSec = hasNumericValue(cache.snapshot_age_sec)
+    ? Number(cache.snapshot_age_sec)
+    : (hasNumericValue(cache.age_sec) ? Number(cache.age_sec) : null);
+  const lastError = String(cache.last_error || "").trim();
+  const degradedText = `${analyticsNote} ${adaptiveSummary} ${autoAdaptiveSummary}`.toLowerCase();
+
+  if (analytics?.limited_history) {
+    items.push("History incomplete");
+  }
+
+  if (
+    degradedText.includes("fallback") ||
+    degradedText.includes("degraded") ||
+    degradedText.includes("waiting") ||
+    degradedText.includes("unavailable")
+  ) {
+    items.push("Advisory degraded");
+  }
+
+  if (snapshotAgeSec != null && snapshotAgeSec > 300) {
+    items.push("Snapshot stale");
+  }
+
+  if (lastError) {
+    items.push("Portfolio cache error");
+  }
+
+  return items.filter((item, index, list) => list.indexOf(item) === index).slice(0, 3);
+}
+
+function renderPortfolioPosture(summary, snapshot, riskScore, autoAdaptive) {
+  const lineEl = document.getElementById("portfolioPostureLine");
+  if (!lineEl) return;
+
+  const regime =
+    String(summary?.market_regime || snapshot?.market_regime || "Reviewing")
+      .replaceAll("_", " ")
+      .trim() || "Reviewing";
+
+  const posture = derivePostureLabel(riskScore?.band);
+  const cash = deriveCashContext(summary, snapshot, riskScore?.inputs);
+  const advisory = deriveAdvisoryLabel(autoAdaptive);
+
+  lineEl.textContent = `Posture: ${posture} • Cash: ${cash} • Regime: ${regime} • Advisory: ${advisory}`;
+}
+
+function renderNeedsAttention(items) {
+  const host = document.getElementById("needsAttentionStrip");
+  if (!host) return;
+
+  if (!Array.isArray(items) || !items.length) {
+    host.hidden = true;
+    host.innerHTML = "";
+    return;
+  }
+
+  host.hidden = false;
+  host.innerHTML = items
+    .map((item) => `<span class="needs-attention-item">${escapeHtml(item)}</span>`)
+    .join("");
+}
+
+function renderPerformanceSummary(portfolioData, historyData, history7Data, history30Data, rebalanceData, systemData) {
   const card = document.getElementById("performanceSummaryCard");
   const grid = document.getElementById("performanceSummaryGrid");
   if (!card || !grid) return;
 
   const snapshot = safeObject(portfolioData?.snapshot);
   const summary = safeObject(portfolioData?.summary);
-  const analytics = safeObject(historyData?.analytics);
-  const riskScore = normalizeRiskScorePayload(historyData?.risk_score);
-  const adaptiveSuggestions = normalizeAdaptiveSuggestionsPayload(historyData?.adaptive_suggestions);
-  const autoAdaptive = normalizeAutoAdaptivePayload(historyData?.auto_adaptive);
+  const analyticsSelected = safeObject(historyData?.analytics);
+  const analytics7 = safeObject(history7Data?.analytics);
+  const analytics30 = safeObject(history30Data?.analytics);
+  const advisoryHistory = history30Data || historyData || {};
+  const riskScore = normalizeRiskScorePayload(advisoryHistory?.risk_score);
+  const adaptiveSuggestions = normalizeAdaptiveSuggestionsPayload(advisoryHistory?.adaptive_suggestions);
+  const autoAdaptive = normalizeAutoAdaptivePayload(advisoryHistory?.auto_adaptive);
 
   const totalValue =
     Number(summary.total_value_usd || 0) ||
@@ -473,11 +575,13 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
     systemData?.portfolio_summary?.market_regime ||
     "unknown";
 
-  const pnlPctValue = hasNumericValue(analytics?.pnl_pct) ? Number(analytics.pnl_pct) : null;
-  const currentDrawdownPct = hasNumericValue(analytics?.current_drawdown_pct) ? Number(analytics.current_drawdown_pct) : null;
-  const maxDrawdownPct = hasNumericValue(analytics?.max_drawdown_pct) ? Number(analytics.max_drawdown_pct) : null;
-  const analyticsLimited = Boolean(analytics?.limited_history);
-  const analyticsNote = String(analytics?.note || "").trim();
+  const pnl7dValue = hasNumericValue(analytics7?.pnl_usd) ? Number(analytics7.pnl_usd) : null;
+  const pnl30dValue = hasNumericValue(analytics30?.pnl_usd) ? Number(analytics30.pnl_usd) : null;
+  const currentDrawdownPct = hasNumericValue(analytics30?.current_drawdown_pct)
+    ? Number(analytics30.current_drawdown_pct)
+    : (hasNumericValue(analyticsSelected?.current_drawdown_pct) ? Number(analyticsSelected.current_drawdown_pct) : null);
+  const analyticsLimited = Boolean(analytics30?.limited_history || analyticsSelected?.limited_history);
+  const analyticsNote = String(analytics30?.note || analyticsSelected?.note || "").trim();
   const scoreValue = riskScore.score;
   const scoreBand = riskScore.band || "Evaluating";
   const scoreNotes = riskScore.notes;
@@ -493,6 +597,7 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const simulatedProjectedScore = adaptiveSimulation.projected_score;
   const simulatedScoreDelta = adaptiveSimulation.score_delta;
   const simulatedSummary = adaptiveSimulation.summary;
+  const attentionItems = buildNeedsAttentionItems(analytics30, systemData, adaptiveSuggestions, autoAdaptive);
 
   const title = analyticsLimited
     ? "Performance view is live, with fuller metrics unlocking as history builds."
@@ -569,16 +674,7 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
     dashboardGuidanceConfidenceEl.className = `dashboard-guidance-badge${confidenceTone(adaptiveConfidence) ? ` ${confidenceTone(adaptiveConfidence)}` : ""}`;
   }
   if (dashboardGuidanceSummaryEl) {
-    const deltaText =
-      simulatedScoreDelta == null ? "" :
-      simulatedScoreDelta === 0 ? "Projected score unchanged." :
-      simulatedScoreDelta < 0 ? `Projected score improves by ${Math.abs(Math.round(simulatedScoreDelta))} points.` :
-      `Projected score rises by ${Math.round(simulatedScoreDelta)} points.`;
-    const projectionText =
-      simulatedSummary && simulatedCurrentScore != null && simulatedProjectedScore != null
-        ? ` Current ${Math.round(simulatedCurrentScore)} to projected ${Math.round(simulatedProjectedScore)}. ${deltaText}`.trim()
-        : "";
-    dashboardGuidanceSummaryEl.textContent = `${compactGuidanceSummary}${projectionText ? ` ${projectionText}` : ""}`;
+    dashboardGuidanceSummaryEl.textContent = compactGuidanceSummary;
   }
   if (dashboardGuidanceActionsEl) {
     const href =
@@ -595,22 +691,21 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const titleEl = card.querySelector(".performance-summary-title");
   if (titleEl) titleEl.textContent = title;
 
+  renderPortfolioPosture(summary, snapshot, riskScore, autoAdaptive);
+  renderNeedsAttention(attentionItems);
+
   grid.innerHTML = `
-    <div class="performance-summary-metric primary">
-      <div class="performance-summary-label">Portfolio Value</div>
-      <div class="performance-summary-value">${fmtUsd(totalValue)}</div>
+    <div class="performance-summary-metric">
+      <div class="performance-summary-label">7D PnL</div>
+      <div class="performance-summary-value ${pnl7dValue == null ? "" : (pnl7dValue >= 0 ? "positive" : "negative")}">${pnl7dValue == null ? "Limited" : fmtSignedUsd(pnl7dValue)}</div>
     </div>
     <div class="performance-summary-metric">
-      <div class="performance-summary-label">Range PnL %</div>
-      <div class="performance-summary-value ${pnlPctValue == null ? "" : (pnlPctValue >= 0 ? "positive" : "negative")}">${pnlPctValue == null ? "Limited" : fmtSignedPct(pnlPctValue)}</div>
+      <div class="performance-summary-label">30D PnL</div>
+      <div class="performance-summary-value ${pnl30dValue == null ? "" : (pnl30dValue >= 0 ? "positive" : "negative")}">${pnl30dValue == null ? "Limited" : fmtSignedUsd(pnl30dValue)}</div>
     </div>
     <div class="performance-summary-metric">
       <div class="performance-summary-label">Current Drawdown</div>
       <div class="performance-summary-value ${drawdownTone(currentDrawdownPct)}">${currentDrawdownPct == null ? "Limited" : fmtPct(currentDrawdownPct)}</div>
-    </div>
-    <div class="performance-summary-metric">
-      <div class="performance-summary-label">Max Drawdown</div>
-      <div class="performance-summary-value ${drawdownTone(maxDrawdownPct)}">${maxDrawdownPct == null ? "Limited" : fmtPct(maxDrawdownPct)}</div>
     </div>
   `;
 }
@@ -924,23 +1019,38 @@ function renderRebalance(data) {
   `;
 }
 
-function renderTradePreview(snapshotData) {
-  const body = document.getElementById("recentTradesPreview");
-  if (!body) return;
+function renderExecutionActivity(systemData) {
+  const host = document.getElementById("executionActivity");
+  if (!host) return;
 
-  const rows = Array.isArray(snapshotData?.recent_trades) ? snapshotData.recent_trades : [];
+  const rows = Array.isArray(systemData?.recent_trades) ? systemData.recent_trades.slice() : [];
+  const lastRow = rows
+    .filter((row) => row && (row.product_id || row.side || row.status || row.created_at))
+    .sort((a, b) => Number(b?.created_at || 0) - Number(a?.created_at || 0))[0];
 
-  body.innerHTML = rows.length
-    ? rows.slice(0, 8).map((row) => `
-      <tr>
-        <td>${formatUnixTime(row.created_at)}</td>
-        <td>${escapeHtml(row.product_id || "—")}</td>
-        <td>${escapeHtml(row.side || "—")}</td>
-        <td class="right">${fmtUsd(row.notional_usd || 0)}</td>
-        <td>${escapeHtml(row.status || "—")}</td>
-      </tr>
-    `).join("")
-    : `<tr><td colspan="5" class="muted">No recent trades found.</td></tr>`;
+  if (!lastRow) {
+    host.innerHTML = `<div class="execution-activity-fallback">No recent execution activity available.</div>`;
+    return;
+  }
+
+  host.innerHTML = `
+    <div class="execution-activity-row">
+      <span class="execution-activity-key">Product</span>
+      <span class="execution-activity-value">${escapeHtml(lastRow.product_id || "—")}</span>
+    </div>
+    <div class="execution-activity-row">
+      <span class="execution-activity-key">Side</span>
+      <span class="execution-activity-value">${escapeHtml(String(lastRow.side || "—").toUpperCase())}</span>
+    </div>
+    <div class="execution-activity-row">
+      <span class="execution-activity-key">Status</span>
+      <span class="execution-activity-value">${escapeHtml(lastRow.status || "—")}</span>
+    </div>
+    <div class="execution-activity-row">
+      <span class="execution-activity-key">Time</span>
+      <span class="execution-activity-value">${escapeHtml(formatUnixTime(lastRow.created_at))}</span>
+    </div>
+  `;
 }
 
 function renderDashboardStatus(systemData, portfolioData, rebalanceData, failures = []) {
@@ -977,19 +1087,31 @@ function renderDashboardErrorState(failures) {
 }
 
 async function refreshAll(showBadgeMessage = false) {
-  const [systemRes, portfolioRes, rebalanceRes, historyRes] = await Promise.all([
+  const selectedHistoryPath = `/api/portfolio/history?range=${encodeURIComponent(selectedHistoryRange)}`;
+  const history7Path = "/api/portfolio/history?range=7d";
+  const history30Path = "/api/portfolio/history?range=30d";
+  const historyPaths = Array.from(new Set([selectedHistoryPath, history7Path, history30Path]));
+
+  const [systemRes, portfolioRes, rebalanceRes, ...historyResults] = await Promise.all([
     fetchJsonSafe("/api/system_snapshot?recent_count=8"),
     fetchJsonSafe("/api/portfolio"),
     fetchJsonSafe("/api/rebalance/preview"),
-    fetchJsonSafe(`/api/portfolio/history?range=${encodeURIComponent(selectedHistoryRange)}`)
+    ...historyPaths.map((path) => fetchJsonSafe(path))
   ]);
 
-  const failures = [systemRes, portfolioRes, rebalanceRes, historyRes].filter((x) => !x.ok);
+  const historyByPath = Object.fromEntries(historyResults.map((result) => [result.path, result]));
+  const historyRes = historyByPath[selectedHistoryPath] || { ok: false, data: null };
+  const history7Res = historyByPath[history7Path] || historyRes;
+  const history30Res = historyByPath[history30Path] || historyRes;
+
+  const failures = [systemRes, portfolioRes, rebalanceRes, ...historyResults].filter((x) => !x.ok);
 
   const systemData = systemRes.data || {};
   const portfolioData = portfolioRes.data || {};
   const rebalanceData = rebalanceRes.data || {};
   const historyData = historyRes.data || {};
+  const history7Data = history7Res.data || {};
+  const history30Data = history30Res.data || {};
 
   if (portfolioRes.ok) {
     renderPortfolio(portfolioData);
@@ -1010,11 +1132,13 @@ async function refreshAll(showBadgeMessage = false) {
   }
 
   if (portfolioRes.ok || historyRes.ok || rebalanceRes.ok || systemRes.ok) {
-    renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData);
+    renderPerformanceSummary(portfolioData, historyData, history7Data, history30Data, rebalanceData, systemData);
   }
 
   if (systemRes.ok) {
-    renderTradePreview(systemData);
+    renderExecutionActivity(systemData);
+  } else {
+    renderExecutionActivity({});
   }
 
   renderDashboardStatus(systemData, portfolioData, rebalanceData, failures);

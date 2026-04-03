@@ -732,7 +732,7 @@ tbody tr:last-child td {
 
 .performance-summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1240,6 +1240,41 @@ tbody tr:last-child td {
   line-height: 1.6;
 }
 
+.portfolio-posture-strip {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.portfolio-posture-line {
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.needs-attention-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.needs-attention-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fde68a;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .dashboard-guidance-card {
   margin-bottom: 14px;
   padding: 14px 16px;
@@ -1337,6 +1372,45 @@ tbody tr:last-child td {
 .dashboard-guidance-link {
   min-height: 36px;
   padding-inline: 12px;
+}
+
+.execution-activity-shell {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.execution-activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.execution-activity-key {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.execution-activity-value {
+  text-align: right;
+  color: #f4fbff;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.execution-activity-fallback {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .dashboard-status-panel-bottom {
@@ -3141,6 +3215,10 @@ tbody tr:last-child td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .portfolio-posture-line {
+    font-size: 11px;
+  }
+
   .performance-risk-strip {
     grid-template-columns: 96px minmax(0, 1fr);
   }
@@ -3544,6 +3622,18 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .portfolio-posture-strip {
+    padding: 10px 12px;
+  }
+
+  .portfolio-posture-line {
+    font-size: 11px;
+  }
+
+  .needs-attention-strip {
+    gap: 7px;
+  }
+
   .dashboard-guidance-head {
     flex-direction: column;
     align-items: stretch;
@@ -3556,6 +3646,20 @@ tbody tr:last-child td {
 
   .configuration-advisory-grid {
     grid-template-columns: 1fr;
+  }
+
+  .execution-activity-shell {
+    padding: 13px 14px;
+  }
+
+  .execution-activity-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .execution-activity-value {
+    text-align: left;
   }
 
   .performance-risk-strip {

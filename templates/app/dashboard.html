@@ -1,11 +1,11 @@
 {% extends "base_app.html" %}
 
 {% block topbar_actions %}
-<button class="btn btn-secondary" type="button" onclick="refreshAll(true)">Refresh</button>
+<button class="btn btn-secondary dashboard-refresh-btn" type="button" onclick="refreshAll(true)">Refresh Console</button>
 {% endblock %}
 
 {% block mobile_topbar_actions %}
-<button class="btn btn-secondary" type="button" onclick="refreshAll(true)">Refresh</button>
+<button class="btn btn-secondary dashboard-refresh-btn" type="button" onclick="refreshAll(true)">Refresh Console</button>
 {% endblock %}
 
 {% block content %}
@@ -24,9 +24,9 @@
     <div class="divider"></div>
 
     <div class="statusline">
-      <div>Auto refresh: <span class="mono">120s</span></div>
-      <div>Secret mode: <span class="mono" id="secretMode"></span></div>
-      <div>Last UI refresh: <span class="mono" id="uiRefresh">never</span></div>
+      <div class="statusline-item"><span class="statusline-label">Auto refresh</span><span class="mono statusline-value">120s</span></div>
+      <div class="statusline-item"><span class="statusline-label">Secret mode</span><span class="mono statusline-value" id="secretMode"></span></div>
+      <div class="statusline-item"><span class="statusline-label">Last UI refresh</span><span class="mono statusline-value" id="uiRefresh">never</span></div>
     </div>
   </section>
 
@@ -39,7 +39,7 @@
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi-card">
+      <div class="kpi-card kpi-card-primary">
         <div class="kpi-label">Total Portfolio</div>
         <div class="kpi-value" id="kpiTotal">$0.00</div>
       </div>
@@ -91,7 +91,7 @@
       </div>
     </div>
 
-    <div id="accountValueChartHost"></div>
+    <div id="accountValueChartHost" class="trend-panel-stage"></div>
   </section>
 
   <section class="panel span-8 dashboard-portfolio-panel">

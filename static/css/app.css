@@ -661,7 +661,7 @@ tbody tr:last-child td {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -783,6 +783,22 @@ tbody tr:last-child td {
   color: var(--text-dim);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.dashboard-status-panel-bottom {
+  background:
+    linear-gradient(180deg, rgba(14, 21, 31, 0.96) 0%, rgba(10, 16, 25, 0.98) 100%);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.dashboard-status-panel-bottom .section-subtitle {
+  color: var(--text-dim);
+}
+
+.dashboard-status-panel-bottom .statusline-item {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 .kpi-card,

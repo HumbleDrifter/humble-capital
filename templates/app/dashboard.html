@@ -11,30 +11,11 @@
 {% block content %}
 <div class="grid cols-12 dashboard-grid">
 
-  <section class="panel span-12 dashboard-status-panel">
-    <div class="section-header">
-      <div>
-        <h2>Console Status</h2>
-        <p class="section-subtitle">Live dashboard state, session mode, and refresh tracking</p>
-      </div>
-    </div>
-
-    <div id="statusBadges"></div>
-
-    <div class="divider"></div>
-
-    <div class="statusline">
-      <div class="statusline-item"><span class="statusline-label">Auto refresh</span><span class="mono statusline-value">120s</span></div>
-      <div class="statusline-item"><span class="statusline-label">Secret mode</span><span class="mono statusline-value" id="secretMode"></span></div>
-      <div class="statusline-item"><span class="statusline-label">Last UI refresh</span><span class="mono statusline-value" id="uiRefresh">never</span></div>
-    </div>
-  </section>
-
   <section class="panel span-12 dashboard-overview-panel">
     <div class="section-header">
       <div>
         <h2>Overview</h2>
-        <p class="section-subtitle">Portfolio summary, allocation mix, and account value trend</p>
+        <p class="section-subtitle">Performance-first view of portfolio value, allocation, and trend</p>
       </div>
     </div>
 
@@ -68,23 +49,18 @@
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi-card kpi-card-primary">
-        <div class="kpi-label">Total Portfolio</div>
-        <div class="kpi-value" id="kpiTotal">$0.00</div>
-      </div>
-
       <div class="kpi-card">
-        <div class="kpi-label">USD Cash</div>
+        <div class="kpi-label">Cash Reserve</div>
         <div class="kpi-value" id="kpiCash">$0.00</div>
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-label">Core Weight</div>
+        <div class="kpi-label">Core Allocation</div>
         <div class="kpi-value" id="kpiCore">0.00%</div>
       </div>
 
       <div class="kpi-card">
-        <div class="kpi-label">Satellite Weight</div>
+        <div class="kpi-label">Satellite Allocation</div>
         <div class="kpi-value" id="kpiSat">0.00%</div>
       </div>
     </div>
@@ -199,6 +175,25 @@
     </div>
 
     <div id="activeBuyUniverse"></div>
+  </section>
+
+  <section class="panel span-12 dashboard-status-panel dashboard-status-panel-bottom">
+    <div class="section-header">
+      <div>
+        <h2>Console Status</h2>
+        <p class="section-subtitle">Session mode, refresh health, and live dashboard state</p>
+      </div>
+    </div>
+
+    <div id="statusBadges"></div>
+
+    <div class="divider"></div>
+
+    <div class="statusline">
+      <div class="statusline-item"><span class="statusline-label">Auto refresh</span><span class="mono statusline-value">120s</span></div>
+      <div class="statusline-item"><span class="statusline-label">Secret mode</span><span class="mono statusline-value" id="secretMode"></span></div>
+      <div class="statusline-item"><span class="statusline-label">Last UI refresh</span><span class="mono statusline-value" id="uiRefresh">never</span></div>
+    </div>
   </section>
 
 </div>

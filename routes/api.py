@@ -644,10 +644,21 @@ def _build_portfolio_summary_v2():
         cur.execute("SELECT COUNT(*) AS c FROM orders")
         trade_count = _safe_int(cur.fetchone()["c"])
 
-        cur.execute("SELECT COUNT(*) AS c, COALESCE(SUM(realized_pnl), 0) AS total FROM pnl_history")
-        row = cur.fetchone()
-        realized_pnl_points = _safe_int(row["c"])
-        realized_pnl_total = _safe_float(row["total"])
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('realized_pnl', 'pnl_history')"
+        )
+        available_tables = {str(row["name"]) for row in cur.fetchall() if row and row["name"]}
+
+        if "realized_pnl" in available_tables:
+            cur.execute("SELECT COUNT(*) AS c, COALESCE(SUM(pnl_usd), 0) AS total FROM realized_pnl")
+            row = cur.fetchone()
+            realized_pnl_points = _safe_int(row["c"])
+            realized_pnl_total = _safe_float(row["total"])
+        elif "pnl_history" in available_tables:
+            cur.execute("SELECT COUNT(*) AS c, COALESCE(SUM(realized_pnl), 0) AS total FROM pnl_history")
+            row = cur.fetchone()
+            realized_pnl_points = _safe_int(row["c"])
+            realized_pnl_total = _safe_float(row["total"])
 
         conn.close()
     except Exception as exc:

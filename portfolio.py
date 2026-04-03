@@ -833,7 +833,7 @@ def build_portfolio_history_analytics(history_rows, source="portfolio_history", 
 
 def build_portfolio_risk_score(snapshot=None, summary=None, history_analytics=None):
     snapshot = snapshot or get_portfolio_snapshot()
-    summary = summary or portfolio_summary(snapshot)
+    summary = summary if isinstance(summary, dict) else portfolio_summary(snapshot)
     history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
 
     cfg = snapshot.get("config", {}) or {}
@@ -1127,7 +1127,7 @@ def normalize_auto_adaptive_payload(payload=None, fallback_reason=None):
 
 def build_adaptive_suggestions(snapshot=None, summary=None, history_analytics=None, risk_score=None):
     snapshot = snapshot or get_portfolio_snapshot()
-    summary = summary or portfolio_summary(snapshot)
+    summary = summary if isinstance(summary, dict) else portfolio_summary(snapshot)
     history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
     risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
         snapshot=snapshot,
@@ -1312,7 +1312,7 @@ def get_config_preset_definitions():
 
 def build_preset_impact_simulation(snapshot=None, summary=None, history_analytics=None, risk_score=None, preset_name="balanced"):
     snapshot = snapshot or get_portfolio_snapshot()
-    summary = summary or portfolio_summary(snapshot)
+    summary = summary if isinstance(summary, dict) else portfolio_summary(snapshot)
     history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
     risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
         snapshot=snapshot,
@@ -1416,7 +1416,7 @@ def build_preset_impact_simulation(snapshot=None, summary=None, history_analytic
 
 def build_auto_adaptive_recommendation(snapshot=None, summary=None, history_analytics=None, risk_score=None):
     snapshot = snapshot or get_portfolio_snapshot()
-    summary = summary or portfolio_summary(snapshot)
+    summary = summary if isinstance(summary, dict) else portfolio_summary(snapshot)
     history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
     risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
         snapshot=snapshot,
@@ -1499,7 +1499,7 @@ def build_auto_adaptive_recommendation(snapshot=None, summary=None, history_anal
     else:
         confidence = "low"
 
-    summary = (
+    recommendation_summary = (
         f"Auto-Adaptive Mode recommends the {label} preset based on the current risk, reserve, exposure, and regime picture."
     )
 
@@ -1513,7 +1513,7 @@ def build_auto_adaptive_recommendation(snapshot=None, summary=None, history_anal
         "recommended_preset": recommended_preset,
         "label": label,
         "confidence": confidence,
-        "summary": summary,
+        "summary": recommendation_summary,
         "reasons": deduped_reasons[:3],
         "action": {
             "label": f"Stage {label} Preset",

@@ -787,6 +787,18 @@ def _build_portfolio_history():
             "label": "Stage Balanced Preset",
             "target": "balanced",
         },
+        "simulation": {
+            "preset": "balanced",
+            "label": "Balanced",
+            "current_score": 0,
+            "projected_score": 0,
+            "score_delta": 0,
+            "current_band": "Moderate Risk",
+            "projected_band": "Moderate Risk",
+            "summary": "Preset impact simulation is waiting for a live portfolio snapshot.",
+            "changed_controls": [],
+            "notes": [],
+        },
     }
 
     def _advisory_payload(history_analytics):

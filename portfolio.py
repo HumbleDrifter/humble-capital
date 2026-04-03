@@ -1094,6 +1094,148 @@ def build_adaptive_suggestions(snapshot=None, summary=None, history_analytics=No
     }
 
 
+def get_config_preset_definitions():
+    return {
+        "conservative": {
+            "label": "Conservative",
+            "values": {
+                "satellite_total_target": 0.20,
+                "satellite_total_max": 0.30,
+                "min_cash_reserve": 0.20,
+                "trade_min_value_usd": 50,
+                "max_active_satellites": 4,
+                "max_new_satellites_per_cycle": 1,
+            },
+        },
+        "balanced": {
+            "label": "Balanced",
+            "values": {
+                "satellite_total_target": 0.35,
+                "satellite_total_max": 0.45,
+                "min_cash_reserve": 0.10,
+                "trade_min_value_usd": 25,
+                "max_active_satellites": 6,
+                "max_new_satellites_per_cycle": 2,
+            },
+        },
+        "aggressive": {
+            "label": "Aggressive",
+            "values": {
+                "satellite_total_target": 0.50,
+                "satellite_total_max": 0.60,
+                "min_cash_reserve": 0.05,
+                "trade_min_value_usd": 15,
+                "max_active_satellites": 10,
+                "max_new_satellites_per_cycle": 4,
+            },
+        },
+    }
+
+
+def build_preset_impact_simulation(snapshot=None, summary=None, history_analytics=None, risk_score=None, preset_name="balanced"):
+    snapshot = snapshot or get_portfolio_snapshot()
+    summary = summary or portfolio_summary(snapshot)
+    history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
+    risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
+        snapshot=snapshot,
+        summary=summary,
+        history_analytics=history_analytics,
+    )
+
+    preset_key = str(preset_name or "balanced").strip().lower()
+    presets = get_config_preset_definitions()
+    preset = presets.get(preset_key, presets["balanced"])
+    preset_key = preset_key if preset_key in presets else "balanced"
+    preset_label = preset.get("label", "Balanced")
+    preset_values = dict(preset.get("values") or {})
+
+    current_inputs = risk_score.get("inputs", {}) if isinstance(risk_score.get("inputs"), dict) else {}
+    current_cfg = dict(snapshot.get("config", {}) or {})
+    projected_cfg = dict(current_cfg)
+    projected_cfg.update(preset_values)
+
+    projected_snapshot = dict(snapshot)
+    projected_snapshot["config"] = projected_cfg
+    projected_risk_score = build_portfolio_risk_score(
+        snapshot=projected_snapshot,
+        summary=summary,
+        history_analytics=history_analytics,
+    )
+
+    changed_controls = []
+
+    def add_changed_control(key, label, format_type="percent", affects_score=True):
+        current_value = current_cfg.get(key)
+        projected_value = projected_cfg.get(key)
+        if current_value is None and projected_value is None:
+            return
+        if current_value == projected_value:
+            return
+        changed_controls.append(
+            {
+                "key": key,
+                "label": label,
+                "current_value": current_value,
+                "projected_value": projected_value,
+                "format": format_type,
+                "affects_score": affects_score,
+            }
+        )
+
+    add_changed_control("satellite_total_target", "Satellite Target", "percent", True)
+    add_changed_control("satellite_total_max", "Satellite Max", "percent", True)
+    add_changed_control("min_cash_reserve", "Minimum Cash Reserve", "percent", True)
+    add_changed_control("trade_min_value_usd", "Minimum Trade Value", "usd", False)
+    add_changed_control("max_active_satellites", "Max Active Satellites", "integer", False)
+    add_changed_control("max_new_satellites_per_cycle", "Max New Satellites Per Cycle", "integer", False)
+
+    current_score = int(risk_score.get("score", 0) or 0)
+    projected_score = int(projected_risk_score.get("score", 0) or 0)
+    score_delta = projected_score - current_score
+    current_band = str(risk_score.get("band", "Moderate Risk") or "Moderate Risk")
+    projected_band = str(projected_risk_score.get("band", "Moderate Risk") or "Moderate Risk")
+
+    if score_delta <= -8:
+        summary_text = f"The {preset_label} preset would materially reduce current guardrail pressure under the existing portfolio state."
+    elif score_delta < 0:
+        summary_text = f"The {preset_label} preset would modestly reduce current guardrail pressure without changing live exposure."
+    elif score_delta >= 8:
+        summary_text = f"The {preset_label} preset would materially widen current guardrails and increase the modeled risk posture."
+    elif score_delta > 0:
+        summary_text = f"The {preset_label} preset would slightly widen current guardrails and raise the modeled risk posture."
+    else:
+        summary_text = f"The {preset_label} preset keeps the modeled risk posture broadly similar while changing top-level guardrails."
+
+    notes = [
+        "This is a configuration-pressure simulation only and does not apply or save any changes.",
+        "Projected score uses the current portfolio exposures and drawdown inputs with virtual preset guardrails layered on top.",
+    ]
+
+    if bool(current_inputs.get("limited_history", False)):
+        notes.append("Persisted history is still limited, so drawdown-sensitive parts of the projection carry lower confidence.")
+
+    score_affecting_changes = [item["label"] for item in changed_controls if item.get("affects_score")]
+    if score_affecting_changes:
+        notes.append(
+            "The projected score is driven most directly by "
+            + ", ".join(score_affecting_changes[:3]).lower()
+            + "."
+        )
+
+    return {
+        "preset": preset_key,
+        "label": preset_label,
+        "current_score": current_score,
+        "projected_score": projected_score,
+        "score_delta": score_delta,
+        "current_band": current_band,
+        "projected_band": projected_band,
+        "summary": summary_text,
+        "changed_controls": changed_controls[:6],
+        "notes": notes[:3],
+    }
+
+
 def build_auto_adaptive_recommendation(snapshot=None, summary=None, history_analytics=None, risk_score=None):
     snapshot = snapshot or get_portfolio_snapshot()
     summary = summary or portfolio_summary(snapshot)
@@ -1199,6 +1341,13 @@ def build_auto_adaptive_recommendation(snapshot=None, summary=None, history_anal
             "label": f"Stage {label} Preset",
             "target": recommended_preset,
         },
+        "simulation": build_preset_impact_simulation(
+            snapshot=snapshot,
+            summary=summary,
+            history_analytics=history_analytics,
+            risk_score=risk_score,
+            preset_name=recommended_preset,
+        ),
     }
 
 

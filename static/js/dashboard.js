@@ -327,6 +327,14 @@ function confidenceTone(confidence) {
   return "";
 }
 
+function fmtControlValue(value, format = "text") {
+  if (value === null || value === undefined || value === "") return "—";
+  if (format === "percent") return fmtPct(Number(value || 0));
+  if (format === "usd") return fmtUsd(Number(value || 0));
+  if (format === "integer") return Number(value || 0).toLocaleString();
+  return String(value);
+}
+
 function renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData) {
   const card = document.getElementById("performanceSummaryCard");
   const grid = document.getElementById("performanceSummaryGrid");
@@ -373,6 +381,18 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
     ? autoAdaptive.reasons.filter(Boolean).slice(0, 3)
     : [];
   const adaptiveAction = autoAdaptive?.action || null;
+  const adaptiveSimulation = autoAdaptive?.simulation || {};
+  const simulatedCurrentScore = hasNumericValue(adaptiveSimulation?.current_score) ? Number(adaptiveSimulation.current_score) : null;
+  const simulatedProjectedScore = hasNumericValue(adaptiveSimulation?.projected_score) ? Number(adaptiveSimulation.projected_score) : null;
+  const simulatedScoreDelta = hasNumericValue(adaptiveSimulation?.score_delta) ? Number(adaptiveSimulation.score_delta) : null;
+  const simulatedProjectedBand = String(adaptiveSimulation?.projected_band || "Projected band pending");
+  const simulatedSummary = String(adaptiveSimulation?.summary || "").trim();
+  const simulatedChangedControls = Array.isArray(adaptiveSimulation?.changed_controls)
+    ? adaptiveSimulation.changed_controls.filter((item) => item && item.label).slice(0, 4)
+    : [];
+  const simulatedNotes = Array.isArray(adaptiveSimulation?.notes)
+    ? adaptiveSimulation.notes.filter(Boolean).slice(0, 3)
+    : [];
 
   const title = analyticsLimited
     ? "Performance view is live, with fuller metrics unlocking as history builds."
@@ -465,6 +485,14 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const autoAdaptiveConfidenceEl = document.getElementById("autoAdaptiveConfidence");
   const autoAdaptiveSummaryEl = document.getElementById("autoAdaptiveSummary");
   const autoAdaptiveReasonsEl = document.getElementById("autoAdaptiveReasons");
+  const autoAdaptiveSimulationEl = document.getElementById("autoAdaptiveSimulation");
+  const autoAdaptiveSimulationBandEl = document.getElementById("autoAdaptiveSimulationBand");
+  const autoAdaptiveCurrentScoreEl = document.getElementById("autoAdaptiveCurrentScore");
+  const autoAdaptiveProjectedScoreEl = document.getElementById("autoAdaptiveProjectedScore");
+  const autoAdaptiveScoreDeltaEl = document.getElementById("autoAdaptiveScoreDelta");
+  const autoAdaptiveSimulationSummaryEl = document.getElementById("autoAdaptiveSimulationSummary");
+  const autoAdaptiveChangedControlsEl = document.getElementById("autoAdaptiveChangedControls");
+  const autoAdaptiveSimulationNotesEl = document.getElementById("autoAdaptiveSimulationNotes");
   const autoAdaptiveActionsEl = document.getElementById("autoAdaptiveActions");
 
   if (autoAdaptiveCard) {
@@ -485,6 +513,50 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
     const reasons = adaptiveReasons.length ? adaptiveReasons : ["Recommendation confidence is conservative until more portfolio context is available."];
     autoAdaptiveReasonsEl.innerHTML = reasons.map((reason) => `
       <div class="auto-adaptive-reason">${escapeHtml(reason)}</div>
+    `).join("");
+  }
+  if (autoAdaptiveSimulationEl) {
+    const tone = riskBandTone(simulatedProjectedBand);
+    autoAdaptiveSimulationEl.className = `auto-adaptive-simulation${tone ? ` ${tone}` : ""}`;
+  }
+  if (autoAdaptiveSimulationBandEl) {
+    autoAdaptiveSimulationBandEl.textContent = simulatedProjectedBand;
+    autoAdaptiveSimulationBandEl.className = `auto-adaptive-simulation-band${riskBandTone(simulatedProjectedBand) ? ` ${riskBandTone(simulatedProjectedBand)}` : ""}`;
+  }
+  if (autoAdaptiveCurrentScoreEl) {
+    autoAdaptiveCurrentScoreEl.textContent = simulatedCurrentScore == null ? "--" : String(Math.round(simulatedCurrentScore));
+  }
+  if (autoAdaptiveProjectedScoreEl) {
+    autoAdaptiveProjectedScoreEl.textContent = simulatedProjectedScore == null ? "--" : String(Math.round(simulatedProjectedScore));
+  }
+  if (autoAdaptiveScoreDeltaEl) {
+    const deltaTone =
+      simulatedScoreDelta == null ? "" : simulatedScoreDelta < 0 ? "positive" : simulatedScoreDelta > 0 ? "negative" : "";
+    const deltaText =
+      simulatedScoreDelta == null ? "No projection yet" :
+      simulatedScoreDelta === 0 ? "No score change" :
+      `${simulatedScoreDelta > 0 ? "+" : ""}${Math.round(simulatedScoreDelta)} points`;
+    autoAdaptiveScoreDeltaEl.textContent = deltaText;
+    autoAdaptiveScoreDeltaEl.className = `auto-adaptive-simulation-delta${deltaTone ? ` ${deltaTone}` : ""}`;
+  }
+  if (autoAdaptiveSimulationSummaryEl) {
+    autoAdaptiveSimulationSummaryEl.textContent =
+      simulatedSummary || "This is a projected guardrail simulation only. Nothing is applied automatically.";
+  }
+  if (autoAdaptiveChangedControlsEl) {
+    const controls = simulatedChangedControls.length ? simulatedChangedControls : [];
+    autoAdaptiveChangedControlsEl.innerHTML = controls.map((item) => `
+      <div class="auto-adaptive-control-chip">
+        <span class="auto-adaptive-control-label">${escapeHtml(item.label || "Control")}</span>
+        <span class="auto-adaptive-control-values">
+          ${escapeHtml(fmtControlValue(item.current_value, item.format))} → ${escapeHtml(fmtControlValue(item.projected_value, item.format))}
+        </span>
+      </div>
+    `).join("");
+  }
+  if (autoAdaptiveSimulationNotesEl) {
+    autoAdaptiveSimulationNotesEl.innerHTML = simulatedNotes.map((note) => `
+      <span class="auto-adaptive-note">${escapeHtml(note)}</span>
     `).join("");
   }
   if (autoAdaptiveActionsEl) {

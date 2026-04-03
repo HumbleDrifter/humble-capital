@@ -665,6 +665,126 @@ tbody tr:last-child td {
   gap: 14px;
 }
 
+.performance-summary-card {
+  margin-bottom: 18px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(52, 211, 153, 0.12);
+  background:
+    radial-gradient(circle at top left, rgba(52, 211, 153, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(16, 25, 38, 0.98), rgba(10, 16, 25, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 40px rgba(0, 0, 0, 0.18);
+}
+
+.performance-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.performance-summary-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.performance-summary-title {
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 730;
+  line-height: 1.4;
+  color: #f4fbff;
+}
+
+.performance-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.performance-summary-badge.positive {
+  border-color: rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.12);
+  color: #b7f7dd;
+}
+
+.performance-summary-badge.negative {
+  border-color: rgba(251, 113, 133, 0.22);
+  background: rgba(251, 113, 133, 0.12);
+  color: #fecdd3;
+}
+
+.performance-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.performance-summary-metric {
+  min-width: 0;
+  padding: 14px 15px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.performance-summary-metric.primary {
+  background:
+    radial-gradient(circle at top left, rgba(52, 211, 153, 0.12), transparent 52%),
+    linear-gradient(180deg, rgba(23, 37, 53, 0.98), rgba(14, 22, 34, 0.98));
+  border-color: rgba(52, 211, 153, 0.16);
+}
+
+.performance-summary-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.performance-summary-value {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 780;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.performance-summary-value.positive {
+  color: var(--good);
+}
+
+.performance-summary-value.negative {
+  color: var(--bad);
+}
+
+.performance-summary-note {
+  margin-top: 12px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .kpi-card,
 .mini-stat-card,
 .form-card {
@@ -2226,6 +2346,10 @@ tbody tr:last-child td {
     gap: 12px;
   }
 
+  .performance-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .kpi-value {
     font-size: 24px;
   }
@@ -2549,6 +2673,28 @@ tbody tr:last-child td {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
+  }
+
+  .performance-summary-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .performance-summary-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .performance-summary-badge {
+    width: fit-content;
+  }
+
+  .performance-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .performance-summary-value {
+    font-size: 20px;
   }
 
   .kpi-card,

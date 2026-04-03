@@ -260,6 +260,83 @@ function hasNumericValue(value) {
   return value !== null && value !== undefined && Number.isFinite(Number(value));
 }
 
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function regimeTone(regime) {
+  const normalized = String(regime || "").toLowerCase();
+  if (normalized === "bull") return "positive";
+  if (normalized === "risk_off") return "negative";
+  return "";
+}
+
+function drawdownTone(value) {
+  return value == null ? "" : value > 0 ? "negative" : "positive";
+}
+
+function renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData) {
+  const card = document.getElementById("performanceSummaryCard");
+  const grid = document.getElementById("performanceSummaryGrid");
+  if (!card || !grid) return;
+
+  const snapshot = portfolioData?.snapshot || {};
+  const summary = portfolioData?.summary || {};
+  const analytics = historyData?.analytics || {};
+
+  const totalValue =
+    Number(summary.total_value_usd || 0) ||
+    Number(snapshot.total_value_usd || 0) ||
+    0;
+
+  const regime =
+    summary.market_regime ||
+    rebalanceData?.summary?.market_regime ||
+    systemData?.portfolio_summary?.market_regime ||
+    "unknown";
+
+  const pnlPctValue = hasNumericValue(analytics?.pnl_pct) ? Number(analytics.pnl_pct) : null;
+  const currentDrawdownPct = hasNumericValue(analytics?.current_drawdown_pct) ? Number(analytics.current_drawdown_pct) : null;
+  const maxDrawdownPct = hasNumericValue(analytics?.max_drawdown_pct) ? Number(analytics.max_drawdown_pct) : null;
+  const analyticsLimited = Boolean(analytics?.limited_history);
+  const analyticsNote = String(analytics?.note || "").trim();
+
+  const title = analyticsLimited
+    ? "Performance view is live, with fuller metrics unlocking as history builds."
+    : "Persisted equity history is powering the current performance and drawdown view.";
+
+  setText("performanceSummaryNote", analyticsNote || "Using persisted portfolio history and the current portfolio snapshot.");
+  setText("performanceSummaryRegime", String(regime || "unknown").replaceAll("_", " "));
+
+  const regimeBadge = document.getElementById("performanceSummaryRegime");
+  if (regimeBadge) {
+    regimeBadge.className = `performance-summary-badge${regimeTone(regime) ? ` ${regimeTone(regime)}` : ""}`;
+  }
+
+  const titleEl = card.querySelector(".performance-summary-title");
+  if (titleEl) titleEl.textContent = title;
+
+  grid.innerHTML = `
+    <div class="performance-summary-metric primary">
+      <div class="performance-summary-label">Portfolio Value</div>
+      <div class="performance-summary-value">${fmtUsd(totalValue)}</div>
+    </div>
+    <div class="performance-summary-metric">
+      <div class="performance-summary-label">Range PnL %</div>
+      <div class="performance-summary-value ${pnlPctValue == null ? "" : (pnlPctValue >= 0 ? "positive" : "negative")}">${pnlPctValue == null ? "Limited" : fmtSignedPct(pnlPctValue)}</div>
+    </div>
+    <div class="performance-summary-metric">
+      <div class="performance-summary-label">Current Drawdown</div>
+      <div class="performance-summary-value ${drawdownTone(currentDrawdownPct)}">${currentDrawdownPct == null ? "Limited" : fmtPct(currentDrawdownPct)}</div>
+    </div>
+    <div class="performance-summary-metric">
+      <div class="performance-summary-label">Max Drawdown</div>
+      <div class="performance-summary-value ${drawdownTone(maxDrawdownPct)}">${maxDrawdownPct == null ? "Limited" : fmtPct(maxDrawdownPct)}</div>
+    </div>
+  `;
+}
+
 function setTrendRangeButtons(activeRange) {
   document.querySelectorAll(".trend-range-btn").forEach((button) => {
     const isActive = button.dataset.range === activeRange;
@@ -652,6 +729,10 @@ async function refreshAll(showBadgeMessage = false) {
     renderAccountValueHistory(historyData);
   } else {
     renderAccountValueHistory({ points: [], series_type: "empty" });
+  }
+
+  if (portfolioRes.ok || historyRes.ok || rebalanceRes.ok || systemRes.ok) {
+    renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData);
   }
 
   if (systemRes.ok) {

@@ -1108,8 +1108,9 @@ tbody tr:last-child td {
   z-index: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle at top left, rgba(52, 211, 153, 0.18), transparent 22%),
-    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.14), transparent 26%),
+    radial-gradient(circle at 12% 8%, rgba(52, 211, 153, 0.2), transparent 20%),
+    radial-gradient(circle at 84% 18%, rgba(56, 189, 248, 0.08), transparent 18%),
+    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.12), transparent 26%),
     linear-gradient(180deg, #07110c 0%, #08101a 55%, #070b11 100%);
 }
 
@@ -1242,6 +1243,11 @@ tbody tr:last-child td {
   align-items: center;
   gap: 12px;
   text-decoration: none;
+  padding: 10px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(10, 16, 25, 0.38);
+  backdrop-filter: blur(12px);
 }
 
 .public-brand-mark {
@@ -1264,7 +1270,8 @@ tbody tr:last-child td {
 
 .public-brand-title {
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   color: #f3fbff;
 }
 
@@ -1281,8 +1288,11 @@ tbody tr:last-child td {
   padding: 6px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(10, 16, 25, 0.46);
+  background: linear-gradient(180deg, rgba(12, 19, 29, 0.76), rgba(10, 16, 25, 0.58));
   backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 18px 40px rgba(0, 0, 0, 0.16);
 }
 
 .public-nav-link {
@@ -1302,6 +1312,12 @@ tbody tr:last-child td {
   color: #ffffff;
 }
 
+.public-nav-cta {
+  background: rgba(52, 211, 153, 0.08);
+  border-color: rgba(52, 211, 153, 0.16);
+  color: #d9fff0;
+}
+
 /* =========================================================
    PUBLIC HERO
 ========================================================= */
@@ -1309,23 +1325,40 @@ tbody tr:last-child td {
 .public-hero {
   position: relative;
   overflow: hidden;
-  min-height: 760px;
-  padding: 72px 32px 52px;
+  min-height: 820px;
+  padding: 88px 32px 72px;
 }
 
 .hero-bg-art {
   position: absolute;
-  inset: 0;
+  top: -2%;
+  right: -2%;
+  bottom: -2%;
+  left: 36%;
   z-index: 1;
   pointer-events: none;
   background-image: url("/static/img/leprechaun-hero.png?v=7");
   background-repeat: no-repeat;
-  background-position: right 4% center;
-  background-size: min(62vw, 980px);
-  opacity: 0.92;
+  background-position: right center;
+  background-size: min(62vw, 1040px);
+  opacity: 0.9;
   filter:
-    drop-shadow(0 40px 120px rgba(0, 0, 0, 0.55))
-    drop-shadow(0 0 70px rgba(34, 197, 94, 0.18));
+    drop-shadow(0 48px 124px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 0 112px rgba(34, 197, 94, 0.2))
+    drop-shadow(0 0 42px rgba(56, 189, 248, 0.08));
+}
+
+.hero-bg-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 62% 50%,
+      rgba(7, 11, 17, 0) 42%,
+      rgba(7, 11, 17, 0.08) 58%,
+      rgba(7, 11, 17, 0.28) 74%,
+      rgba(7, 11, 17, 0.62) 88%,
+      rgba(7, 11, 17, 0.92) 100%);
 }
 
 .hero-bg-fade {
@@ -1334,13 +1367,19 @@ tbody tr:last-child td {
   z-index: 2;
   pointer-events: none;
   background:
+    radial-gradient(circle at top center, rgba(52, 211, 153, 0.08), transparent 26%),
+    linear-gradient(180deg,
+      rgba(7, 11, 17, 0.08) 0%,
+      rgba(7, 11, 17, 0.04) 10%,
+      rgba(7, 11, 17, 0.12) 28%,
+      rgba(7, 11, 17, 0.24) 100%),
     linear-gradient(90deg,
-      rgba(7, 11, 17, 0.96) 0%,
+      rgba(7, 11, 17, 0.95) 0%,
       rgba(7, 11, 17, 0.88) 18%,
-      rgba(7, 11, 17, 0.62) 34%,
-      rgba(7, 11, 17, 0.14) 58%,
-      rgba(7, 11, 17, 0.04) 76%,
-      rgba(7, 11, 17, 0.18) 100%);
+      rgba(7, 11, 17, 0.58) 38%,
+      rgba(7, 11, 17, 0.14) 60%,
+      rgba(7, 11, 17, 0.06) 78%,
+      rgba(7, 11, 17, 0.22) 100%);
 }
 
 .hero-inner {
@@ -1348,9 +1387,9 @@ tbody tr:last-child td {
   z-index: 3;
   max-width: 1380px;
   margin: 0 auto;
-  min-height: 650px;
+  min-height: 680px;
   display: grid;
-  grid-template-columns: minmax(0, 760px);
+  grid-template-columns: minmax(0, 760px) minmax(280px, 1fr);
   align-items: center;
 }
 
@@ -1358,14 +1397,15 @@ tbody tr:last-child td {
   position: relative;
   z-index: 3;
   max-width: 660px;
-  padding: 32px;
-  border-radius: 30px;
+  padding: 36px;
+  border-radius: 34px;
   border: 1px solid rgba(255,255,255,0.08);
   background:
-    linear-gradient(180deg, rgba(8, 14, 22, 0.78), rgba(8, 14, 22, 0.46));
+    radial-gradient(circle at top left, rgba(52, 211, 153, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(8, 14, 22, 0.84), rgba(8, 14, 22, 0.48));
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.04),
-    0 28px 72px rgba(0, 0, 0, 0.28);
+    0 34px 90px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
 }
 
@@ -1391,8 +1431,8 @@ tbody tr:last-child td {
 }
 
 .hero-title {
-  font-size: 96px;
-  line-height: 0.9;
+  font-size: 92px;
+  line-height: 0.92;
   letter-spacing: -0.045em;
   font-weight: 800;
   color: #f5fbff;
@@ -1410,7 +1450,7 @@ tbody tr:last-child td {
 
 .hero-subtitle {
   margin-top: 24px;
-  max-width: 560px;
+  max-width: 580px;
   font-size: 19px;
   line-height: 1.7;
   color: rgba(236, 243, 255, 0.82);
@@ -1430,8 +1470,10 @@ tbody tr:last-child td {
   border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.08);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 12px 30px rgba(0, 0, 0, 0.14);
 }
 
 .hero-stat-label {
@@ -1458,8 +1500,21 @@ tbody tr:last-child td {
 
 .hero-btn {
   min-width: 170px;
+  min-height: 48px;
   justify-content: center;
   text-decoration: none;
+}
+
+.public-body .hero-btn.btn-primary {
+  min-width: 188px;
+}
+
+.hero-footnote {
+  margin-top: 18px;
+  max-width: 560px;
+  color: rgba(236, 243, 255, 0.56);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .hero-art,
@@ -1518,7 +1573,7 @@ tbody tr:last-child td {
   border-radius: 22px;
   border: 1px solid rgba(255,255,255,0.07);
   background:
-    linear-gradient(180deg, rgba(13, 20, 30, 0.92), rgba(13, 20, 30, 0.72));
+    linear-gradient(180deg, rgba(13, 20, 30, 0.96), rgba(13, 20, 30, 0.78));
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.03),
     0 16px 40px rgba(0,0,0,0.16);
@@ -1574,11 +1629,14 @@ tbody tr:last-child td {
 
 .feature-card {
   text-align: left;
-  padding: 24px;
+  padding: 22px;
   border-radius: 22px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02));
-  box-shadow: 0 16px 42px rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.07);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.042), rgba(255,255,255,0.018));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    0 16px 42px rgba(0,0,0,0.16);
   backdrop-filter: blur(10px);
 }
 
@@ -1770,6 +1828,7 @@ tbody tr:last-child td {
   }
 
   .hero-bg-art {
+    left: 42%;
     background-size: min(68vw, 860px);
     background-position: right -2% center;
     opacity: 0.88;
@@ -2079,6 +2138,11 @@ tbody tr:last-child td {
     max-width: none;
   }
 
+  .hero-footnote {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .auth-shell {
     min-height: auto;
     padding: 28px 18px 56px;
@@ -2155,6 +2219,10 @@ tbody tr:last-child td {
 
   .hero-btn {
     width: 100%;
+  }
+
+  .hero-footnote {
+    font-size: 12px;
   }
 
   .auth-shell {

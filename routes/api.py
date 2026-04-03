@@ -703,7 +703,7 @@ def _build_portfolio_history():
     start_ts = _range_to_start_ts(range_name)
 
     points = []
-    series_type = "portfolio_value"
+    series_type = "empty"
 
     def _table_exists(conn, table_name):
         row = conn.execute(
@@ -719,15 +719,23 @@ def _build_portfolio_history():
             return set()
         return {str(r["name"]).strip().lower() for r in rows}
 
+    def _timestamp_expr(columns):
+        if "ts" in columns:
+            return "CAST(ts AS INTEGER)"
+        if "timestamp" in columns:
+            return "CAST(timestamp AS INTEGER)"
+        if "created_at" in columns:
+            return "CAST(strftime('%s', created_at) AS INTEGER)"
+        return None
+
     conn = None
     try:
         conn = _trading_db_conn()
         cur = conn.cursor()
-        snapshot = get_portfolio_snapshot()
-        current_equity = _safe_float(snapshot.get("total_value_usd"))
 
         if _table_exists(conn, "pnl_history"):
             columns = _table_columns(conn, "pnl_history")
+            ts_expr = _timestamp_expr(columns)
             value_column = None
 
             for candidate in ("equity_usd", "portfolio_value_usd", "total_value_usd"):
@@ -735,11 +743,11 @@ def _build_portfolio_history():
                     value_column = candidate
                     break
 
-            if value_column:
+            if value_column and ts_expr:
                 if start_ts is None:
                     cur.execute(
                         f"""
-                        SELECT ts, {value_column} AS equity_usd
+                        SELECT {ts_expr} AS ts, {value_column} AS equity_usd
                         FROM pnl_history
                         ORDER BY ts ASC
                         """
@@ -747,9 +755,9 @@ def _build_portfolio_history():
                 else:
                     cur.execute(
                         f"""
-                        SELECT ts, {value_column} AS equity_usd
+                        SELECT {ts_expr} AS ts, {value_column} AS equity_usd
                         FROM pnl_history
-                        WHERE ts >= ?
+                        WHERE {ts_expr} >= ?
                         ORDER BY ts ASC
                         """,
                         (start_ts,),
@@ -763,49 +771,77 @@ def _build_portfolio_history():
                     }
                     for r in rows
                 ]
-            elif "realized_pnl" in columns:
+                if points:
+                    series_type = "portfolio_value"
+            elif "realized_pnl" in columns and ts_expr:
                 if start_ts is None:
                     cur.execute(
-                        """
-                        SELECT ts, realized_pnl
+                        f"""
+                        SELECT {ts_expr} AS ts, realized_pnl
                         FROM pnl_history
                         ORDER BY ts ASC
                         """
                     )
                 else:
                     cur.execute(
-                        """
-                        SELECT ts, realized_pnl
+                        f"""
+                        SELECT {ts_expr} AS ts, realized_pnl
                         FROM pnl_history
-                        WHERE ts >= ?
+                        WHERE {ts_expr} >= ?
                         ORDER BY ts ASC
                         """,
                         (start_ts,),
                     )
 
-                rows = cur.fetchall()
-                realized_points = [
+                points = [
                     {
                         "ts": _safe_int(r["ts"]),
                         "realized_pnl": _safe_float(r["realized_pnl"]),
                     }
-                    for r in rows
+                    for r in cur.fetchall()
                 ]
+                if points:
+                    series_type = "realized_pnl"
 
-                if realized_points:
-                    latest_realized = _safe_float(realized_points[-1]["realized_pnl"])
-                    base_equity = current_equity - latest_realized
-                    points = [
+        if not points and _table_exists(conn, "realized_pnl"):
+            columns = _table_columns(conn, "realized_pnl")
+            ts_expr = _timestamp_expr(columns)
+            if ts_expr and "pnl_usd" in columns:
+                if start_ts is None:
+                    cur.execute(
+                        f"""
+                        SELECT {ts_expr} AS ts, pnl_usd
+                        FROM realized_pnl
+                        ORDER BY ts ASC, id ASC
+                        """
+                    )
+                else:
+                    cur.execute(
+                        f"""
+                        SELECT {ts_expr} AS ts, pnl_usd
+                        FROM realized_pnl
+                        WHERE {ts_expr} >= ?
+                        ORDER BY ts ASC, id ASC
+                        """,
+                        (start_ts,),
+                    )
+
+                running_pnl = 0.0
+                for row in cur.fetchall():
+                    running_pnl += _safe_float(row["pnl_usd"])
+                    points.append(
                         {
-                            "ts": item["ts"],
-                            "equity_usd": _safe_float(base_equity + item["realized_pnl"]),
-                            "realized_pnl": item["realized_pnl"],
+                            "ts": _safe_int(row["ts"]),
+                            "realized_pnl": running_pnl,
                         }
-                        for item in realized_points
-                    ]
+                    )
+
+                if points:
+                    series_type = "realized_pnl"
 
     except Exception:
         points = []
+        series_type = "empty"
     finally:
         if conn is not None:
             try:
@@ -821,27 +857,12 @@ def _build_portfolio_history():
             "points": points,
         }
 
-    try:
-        snapshot = get_portfolio_snapshot()
-        return {
-            "ok": True,
-            "range": range_name,
-            "series_type": "equity_fallback",
-            "points": [
-                {
-                    "ts": _safe_int(snapshot.get("timestamp")),
-                    "equity_usd": _safe_float(snapshot.get("total_value_usd")),
-                }
-            ],
-        }
-    except Exception as exc:
-        return {
-            "ok": True,
-            "range": range_name,
-            "series_type": "empty",
-            "points": [],
-            "warning": str(exc),
-        }
+    return {
+        "ok": True,
+        "range": range_name,
+        "series_type": "empty",
+        "points": [],
+    }
 
 
 def _build_trade_history():

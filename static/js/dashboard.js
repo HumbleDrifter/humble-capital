@@ -287,47 +287,22 @@ function renderAccountValueHistory(data) {
 
   const points = Array.isArray(data?.points) ? data.points : [];
   const rangeText = rangeLabel(data?.range || selectedHistoryRange);
-  const equityKey = points.some((p) => p && p.equity_usd != null) ? "equity_usd" : "realized_pnl";
+  const seriesType = data?.series_type === "realized_pnl" ? "realized_pnl" : data?.series_type === "portfolio_value" ? "portfolio_value" : "empty";
+  const valueKey = seriesType === "realized_pnl" ? "realized_pnl" : "equity_usd";
+  const valueFormatter = seriesType === "realized_pnl" ? fmtSignedUsd : fmtUsd;
+  const currentLabel = seriesType === "realized_pnl" ? "Current Realized PnL" : "Current Value";
+  const deltaLabel = seriesType === "realized_pnl" ? "Range PnL Change" : "Range Change";
+  const sourceLabel = seriesType === "realized_pnl" ? "Realized PnL" : "Portfolio Value";
 
-  if (!points.length) {
+  if (!points.length || seriesType === "empty") {
     if (meta) meta.textContent = `${rangeText} view • no portfolio history available yet`;
     host.innerHTML = `<div class="trend-chart-shell"><div class="trend-chart-empty">No portfolio history data found for this range.</div></div>`;
     return;
   }
 
-  if (data?.series_type === "equity_fallback") {
-    if (meta) meta.textContent = `${rangeText} view • no historical rows yet, showing current portfolio value`;
-    host.innerHTML = `
-      <div class="trend-chart-shell">
-        <div class="trend-chart-summary">
-          <div class="trend-stat">
-            <div class="trend-stat-label">Current Value</div>
-            <div class="trend-stat-value">${fmtUsd((points[0] || {}).equity_usd || 0)}</div>
-          </div>
-          <div class="trend-stat">
-            <div class="trend-stat-label">Range</div>
-            <div class="trend-stat-value">${rangeText}</div>
-          </div>
-          <div class="trend-stat">
-            <div class="trend-stat-label">Source</div>
-            <div class="trend-stat-value">Live Snapshot</div>
-          </div>
-        </div>
-        ${buildTrendSvg(points, "equity_usd")}
-      </div>
-    `;
-    return;
-  }
-
-  const firstValue = Number(points[0]?.[equityKey] || 0);
-  const lastValue = Number(points[points.length - 1]?.[equityKey] || 0);
+  const firstValue = Number(points[0]?.[valueKey] || 0);
+  const lastValue = Number(points[points.length - 1]?.[valueKey] || 0);
   const deltaValue = lastValue - firstValue;
-  const sourceLabel =
-    data?.series_type === "portfolio_value"
-      ? "PnL History Anchored"
-      : data?.series_type === "realized_pnl"
-        ? "Realized PnL"
-        : "Portfolio History";
 
   if (meta) {
     meta.textContent = `${rangeText} view • ${points.length} point(s) • ${sourceLabel}`;
@@ -337,11 +312,11 @@ function renderAccountValueHistory(data) {
     <div class="trend-chart-shell">
       <div class="trend-chart-summary">
         <div class="trend-stat">
-          <div class="trend-stat-label">Current Value</div>
-          <div class="trend-stat-value">${fmtUsd(lastValue)}</div>
+          <div class="trend-stat-label">${currentLabel}</div>
+          <div class="trend-stat-value">${valueFormatter(lastValue)}</div>
         </div>
         <div class="trend-stat">
-          <div class="trend-stat-label">Range Change</div>
+          <div class="trend-stat-label">${deltaLabel}</div>
           <div class="trend-stat-value ${deltaValue >= 0 ? "positive" : "negative"}">${fmtSignedUsd(deltaValue)}</div>
         </div>
         <div class="trend-stat">
@@ -349,7 +324,7 @@ function renderAccountValueHistory(data) {
           <div class="trend-stat-value">${rangeText}</div>
         </div>
       </div>
-      ${buildTrendSvg(points, equityKey)}
+      ${buildTrendSvg(points, valueKey)}
     </div>
   `;
 }

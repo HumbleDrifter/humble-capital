@@ -36,52 +36,21 @@
           <div class="performance-risk-band" id="performanceRiskBand">Evaluating risk posture...</div>
           <div class="performance-risk-notes" id="performanceRiskNotes">
             <span class="performance-risk-note">Waiting for portfolio and history inputs.</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="adaptive-suggestions-card" id="adaptiveSuggestionsCard">
-        <div class="adaptive-suggestions-head">
-          <div class="adaptive-suggestions-eyebrow">Adaptive Suggestions</div>
-          <div class="adaptive-suggestions-priority" id="adaptiveSuggestionsPriority">Reviewing</div>
-        </div>
-        <div class="adaptive-suggestions-summary" id="adaptiveSuggestionsSummary">
-          Advisory guidance will appear once analytics and risk inputs are available.
-        </div>
-        <div class="adaptive-suggestions-list" id="adaptiveSuggestionsList">
-          <div class="adaptive-suggestion-item">
-            <div class="adaptive-suggestion-title">Waiting for inputs</div>
-            <div class="adaptive-suggestion-detail">Suggestions are read-only and will use the current portfolio, drawdown, reserve, and regime picture.</div>
-          </div>
-        </div>
-        <div class="adaptive-suggestions-notes" id="adaptiveSuggestionsNotes"></div>
-      </div>
-      <div class="auto-adaptive-card" id="autoAdaptiveCard">
-        <div class="auto-adaptive-head">
+      <div class="dashboard-guidance-card" id="dashboardGuidanceCard">
+        <div class="dashboard-guidance-head">
           <div>
-            <div class="auto-adaptive-eyebrow">Auto-Adaptive Mode</div>
-            <div class="auto-adaptive-preset" id="autoAdaptivePreset">Reviewing current preset fit...</div>
+            <div class="dashboard-guidance-eyebrow">Configuration Guidance</div>
+            <div class="dashboard-guidance-title" id="dashboardGuidanceTitle">Reviewing the current guardrail posture...</div>
           </div>
-          <div class="auto-adaptive-confidence" id="autoAdaptiveConfidence">low confidence</div>
+          <div class="dashboard-guidance-badge" id="dashboardGuidanceConfidence">low confidence</div>
         </div>
-        <div class="auto-adaptive-summary" id="autoAdaptiveSummary">
-          Recommendation-only intelligence is evaluating the current portfolio posture.
+        <div class="dashboard-guidance-summary" id="dashboardGuidanceSummary">
+          The dashboard keeps the live risk snapshot here and sends detailed recommendations to Configuration.
         </div>
-        <div class="auto-adaptive-reasons" id="autoAdaptiveReasons"></div>
-        <div class="auto-adaptive-simulation" id="autoAdaptiveSimulation">
-          <div class="auto-adaptive-simulation-head">
-            <div class="auto-adaptive-simulation-eyebrow">Preset Impact Simulation</div>
-            <div class="auto-adaptive-simulation-band" id="autoAdaptiveSimulationBand">Projected band pending</div>
-          </div>
-          <div class="auto-adaptive-simulation-line" id="autoAdaptiveProjectionLine">
-            Current score -- → projected score --
-          </div>
-          <div class="auto-adaptive-simulation-summary" id="autoAdaptiveSimulationSummary">
-            Projected guardrail pressure will appear once the recommended preset is available.
-          </div>
-          <div class="auto-adaptive-simulation-controls" id="autoAdaptiveChangedControls"></div>
-          <div class="auto-adaptive-simulation-notes" id="autoAdaptiveSimulationNotes"></div>
-        </div>
-        <div class="auto-adaptive-actions" id="autoAdaptiveActions"></div>
+        <div class="dashboard-guidance-actions" id="dashboardGuidanceActions"></div>
       </div>
       <div class="performance-summary-grid" id="performanceSummaryGrid">
         <div class="performance-summary-metric">

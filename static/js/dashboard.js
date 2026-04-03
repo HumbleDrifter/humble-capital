@@ -350,6 +350,14 @@ function cleanTextList(value, limit = 3) {
   return out;
 }
 
+function compactSentence(value, fallback = "") {
+  const text = String(value || "").trim();
+  if (!text) return fallback;
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const match = normalized.match(/^[^.!?]+[.!?]?/);
+  return (match ? match[0] : normalized).trim();
+}
+
 function normalizeActionPayload(action, fallbackLabel = "Open Config") {
   const source = safeObject(action);
   const label = String(source.label || fallbackLabel).trim() || fallbackLabel;
@@ -474,9 +482,7 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const scoreBand = riskScore.band || "Evaluating";
   const scoreNotes = riskScore.notes;
   const suggestionSummary = adaptiveSuggestions.summary;
-  const suggestionPriority = adaptiveSuggestions.priority;
   const suggestionItems = adaptiveSuggestions.suggestions.slice(0, 2);
-  const suggestionNotes = adaptiveSuggestions.notes;
   const recommendedPreset = autoAdaptive.label || "Balanced";
   const adaptiveConfidence = autoAdaptive.confidence || "low";
   const adaptiveSummary = autoAdaptive.summary;
@@ -486,14 +492,7 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const simulatedCurrentScore = adaptiveSimulation.current_score;
   const simulatedProjectedScore = adaptiveSimulation.projected_score;
   const simulatedScoreDelta = adaptiveSimulation.score_delta;
-  const simulatedProjectedBand = adaptiveSimulation.projected_band || "Projected band pending";
   const simulatedSummary = adaptiveSimulation.summary;
-  const simulatedChangedControls = Array.isArray(adaptiveSimulation.changed_controls)
-    ? adaptiveSimulation.changed_controls.slice(0, 3)
-    : [];
-  const simulatedNotes = Array.isArray(adaptiveSimulation.notes)
-    ? adaptiveSimulation.notes.slice(0, 2)
-    : [];
 
   const title = analyticsLimited
     ? "Performance view is live, with fuller metrics unlocking as history builds."
@@ -529,134 +528,68 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
       : "Risk score is blending allocation, reserve, drawdown, and regime inputs.";
     const notes = scoreNotes.length ? scoreNotes : [fallbackNote];
     riskNotesEl.innerHTML = notes
-      .map((note) => `<span class="performance-risk-note">${escapeHtml(note)}</span>`)
-      .join("");
+        .map((note) => `<span class="performance-risk-note">${escapeHtml(note)}</span>`)
+        .join("");
   }
 
-  const adaptiveCard = document.getElementById("adaptiveSuggestionsCard");
-  const adaptivePriorityEl = document.getElementById("adaptiveSuggestionsPriority");
-  const adaptiveSummaryEl = document.getElementById("adaptiveSuggestionsSummary");
-  const adaptiveListEl = document.getElementById("adaptiveSuggestionsList");
-  const adaptiveNotesEl = document.getElementById("adaptiveSuggestionsNotes");
+  const dashboardGuidanceCard = document.getElementById("dashboardGuidanceCard");
+  const dashboardGuidanceTitleEl = document.getElementById("dashboardGuidanceTitle");
+  const dashboardGuidanceConfidenceEl = document.getElementById("dashboardGuidanceConfidence");
+  const dashboardGuidanceSummaryEl = document.getElementById("dashboardGuidanceSummary");
+  const dashboardGuidanceActionsEl = document.getElementById("dashboardGuidanceActions");
+  const guidanceAction =
+    adaptiveAction && adaptiveAction.target
+      ? {
+          label: "Open Configuration",
+          target: adaptiveAction.target,
+          section: adaptiveAction.section || "core-controls"
+        }
+      : (suggestionItems.find((item) => item.action && item.action.target)?.action || {
+          label: "Open Configuration",
+          target: "satellite_total_target",
+          section: "core-controls"
+        });
+  const compactGuidanceSummary = compactSentence(
+    adaptiveSummary ||
+    suggestionSummary ||
+    adaptiveReasons[0] ||
+    "Open Configuration for detailed adaptive guidance and manual guardrail review.",
+    "Open Configuration for detailed adaptive guidance and manual guardrail review."
+  );
 
-  if (adaptiveCard) {
-    const tone = priorityTone(suggestionPriority);
-    adaptiveCard.className = `adaptive-suggestions-card${tone ? ` ${tone}` : ""}`;
-  }
-  if (adaptivePriorityEl) {
-    const label = suggestionPriority ? `${suggestionPriority} priority` : "reviewing";
-    adaptivePriorityEl.textContent = label;
-    adaptivePriorityEl.className = `adaptive-suggestions-priority${priorityTone(suggestionPriority) ? ` ${priorityTone(suggestionPriority)}` : ""}`;
-  }
-  if (adaptiveSummaryEl) {
-    adaptiveSummaryEl.textContent = suggestionSummary || "Advisory guidance is being assembled from the current portfolio and analytics inputs.";
-  }
-  if (adaptiveListEl) {
-    const fallbackItems = [
-      {
-        title: "Stay measured",
-        detail: analyticsLimited
-          ? "Persisted history is still building, so advisory guidance is intentionally conservative."
-          : "The advisory layer is read-only and highlights only the most defensible next considerations."
-      }
-    ];
-    const items = suggestionItems.length ? suggestionItems : fallbackItems;
-    adaptiveListEl.innerHTML = items.map((item) => `
-      <div class="adaptive-suggestion-item">
-        <div class="adaptive-suggestion-title">${escapeHtml(item.title || "Suggestion")}</div>
-        <div class="adaptive-suggestion-detail">${escapeHtml(item.detail || "")}</div>
-        ${item.action && item.action.target ? `
-          <div class="adaptive-suggestion-actions">
-            <a class="btn btn-secondary adaptive-suggestion-link" href="${escapeHtml(configFocusUrl(item.action))}">
-              ${escapeHtml(item.action.label || "Adjust In Config")}
-            </a>
-          </div>
-        ` : ""}
-      </div>
-    `).join("");
-  }
-  if (adaptiveNotesEl) {
-    adaptiveNotesEl.innerHTML = suggestionNotes.map((note) => `
-      <span class="adaptive-suggestion-note">${escapeHtml(note)}</span>
-    `).join("");
-  }
-
-  const autoAdaptiveCard = document.getElementById("autoAdaptiveCard");
-  const autoAdaptivePresetEl = document.getElementById("autoAdaptivePreset");
-  const autoAdaptiveConfidenceEl = document.getElementById("autoAdaptiveConfidence");
-  const autoAdaptiveSummaryEl = document.getElementById("autoAdaptiveSummary");
-  const autoAdaptiveReasonsEl = document.getElementById("autoAdaptiveReasons");
-  const autoAdaptiveSimulationEl = document.getElementById("autoAdaptiveSimulation");
-  const autoAdaptiveSimulationBandEl = document.getElementById("autoAdaptiveSimulationBand");
-  const autoAdaptiveProjectionLineEl = document.getElementById("autoAdaptiveProjectionLine");
-  const autoAdaptiveSimulationSummaryEl = document.getElementById("autoAdaptiveSimulationSummary");
-  const autoAdaptiveChangedControlsEl = document.getElementById("autoAdaptiveChangedControls");
-  const autoAdaptiveSimulationNotesEl = document.getElementById("autoAdaptiveSimulationNotes");
-  const autoAdaptiveActionsEl = document.getElementById("autoAdaptiveActions");
-
-  if (autoAdaptiveCard) {
+  if (dashboardGuidanceCard) {
     const tone = confidenceTone(adaptiveConfidence);
-    autoAdaptiveCard.className = `auto-adaptive-card${tone ? ` ${tone}` : ""}`;
+    dashboardGuidanceCard.className = `dashboard-guidance-card${tone ? ` ${tone}` : ""}`;
   }
-  if (autoAdaptivePresetEl) {
-    autoAdaptivePresetEl.textContent = `${recommendedPreset} preset recommended`;
+  if (dashboardGuidanceTitleEl) {
+    dashboardGuidanceTitleEl.textContent = `${recommendedPreset} preset recommended`;
   }
-  if (autoAdaptiveConfidenceEl) {
-    autoAdaptiveConfidenceEl.textContent = `${adaptiveConfidence} confidence`;
-    autoAdaptiveConfidenceEl.className = `auto-adaptive-confidence${confidenceTone(adaptiveConfidence) ? ` ${confidenceTone(adaptiveConfidence)}` : ""}`;
+  if (dashboardGuidanceConfidenceEl) {
+    dashboardGuidanceConfidenceEl.textContent = `${adaptiveConfidence} confidence`;
+    dashboardGuidanceConfidenceEl.className = `dashboard-guidance-badge${confidenceTone(adaptiveConfidence) ? ` ${confidenceTone(adaptiveConfidence)}` : ""}`;
   }
-  if (autoAdaptiveSummaryEl) {
-    autoAdaptiveSummaryEl.textContent = adaptiveSummary || "Recommendation-only intelligence is evaluating the current portfolio posture.";
-  }
-  if (autoAdaptiveReasonsEl) {
-    const reasons = adaptiveReasons.length ? adaptiveReasons : ["Recommendation confidence is conservative until more portfolio context is available."];
-    autoAdaptiveReasonsEl.innerHTML = reasons.map((reason) => `
-      <div class="auto-adaptive-reason">${escapeHtml(reason)}</div>
-    `).join("");
-  }
-  if (autoAdaptiveSimulationEl) {
-    const tone = riskBandTone(simulatedProjectedBand);
-    autoAdaptiveSimulationEl.className = `auto-adaptive-simulation${tone ? ` ${tone}` : ""}`;
-  }
-  if (autoAdaptiveSimulationBandEl) {
-    autoAdaptiveSimulationBandEl.textContent = simulatedProjectedBand;
-    autoAdaptiveSimulationBandEl.className = `auto-adaptive-simulation-band${riskBandTone(simulatedProjectedBand) ? ` ${riskBandTone(simulatedProjectedBand)}` : ""}`;
-  }
-  if (autoAdaptiveProjectionLineEl) {
+  if (dashboardGuidanceSummaryEl) {
     const deltaText =
-      simulatedScoreDelta == null ? "no score change projected" :
-      simulatedScoreDelta === 0 ? "no score change projected" :
-      `${simulatedScoreDelta > 0 ? "+" : ""}${Math.round(simulatedScoreDelta)} points projected`;
-    const currentText = simulatedCurrentScore == null ? "--" : Math.round(simulatedCurrentScore);
-    const projectedText = simulatedProjectedScore == null ? "--" : Math.round(simulatedProjectedScore);
-    autoAdaptiveProjectionLineEl.textContent = `Current score ${currentText} → projected score ${projectedText} • ${deltaText}`;
+      simulatedScoreDelta == null ? "" :
+      simulatedScoreDelta === 0 ? "Projected score unchanged." :
+      simulatedScoreDelta < 0 ? `Projected score improves by ${Math.abs(Math.round(simulatedScoreDelta))} points.` :
+      `Projected score rises by ${Math.round(simulatedScoreDelta)} points.`;
+    const projectionText =
+      simulatedSummary && simulatedCurrentScore != null && simulatedProjectedScore != null
+        ? ` Current ${Math.round(simulatedCurrentScore)} to projected ${Math.round(simulatedProjectedScore)}. ${deltaText}`.trim()
+        : "";
+    dashboardGuidanceSummaryEl.textContent = `${compactGuidanceSummary}${projectionText ? ` ${projectionText}` : ""}`;
   }
-  if (autoAdaptiveSimulationSummaryEl) {
-    autoAdaptiveSimulationSummaryEl.textContent =
-      simulatedSummary || "This is a projected guardrail simulation only. Nothing is applied automatically.";
-  }
-  if (autoAdaptiveChangedControlsEl) {
-    const controls = simulatedChangedControls.length ? simulatedChangedControls : [];
-    autoAdaptiveChangedControlsEl.innerHTML = controls.map((item) => `
-      <div class="auto-adaptive-control-chip">
-        <span class="auto-adaptive-control-label">${escapeHtml(item.label || "Control")}</span>
-        <span class="auto-adaptive-control-values">
-          ${escapeHtml(fmtControlValue(item.current_value, item.format))} → ${escapeHtml(fmtControlValue(item.projected_value, item.format))}
-        </span>
-      </div>
-    `).join("");
-  }
-  if (autoAdaptiveSimulationNotesEl) {
-    autoAdaptiveSimulationNotesEl.innerHTML = simulatedNotes.map((note) => `
-      <span class="auto-adaptive-note">${escapeHtml(note)}</span>
-    `).join("");
-  }
-  if (autoAdaptiveActionsEl) {
-    autoAdaptiveActionsEl.innerHTML = adaptiveAction && adaptiveAction.target ? `
-      <a class="btn btn-secondary auto-adaptive-link" href="${escapeHtml(configPresetUrl(adaptiveAction, "Auto-Adaptive Mode"))}">
-        ${escapeHtml(adaptiveAction.label || "Stage Recommended Preset")}
+  if (dashboardGuidanceActionsEl) {
+    const href =
+      adaptiveAction && adaptiveAction.target
+        ? configPresetUrl(adaptiveAction, "Auto-Adaptive Mode")
+        : configFocusUrl(guidanceAction);
+    dashboardGuidanceActionsEl.innerHTML = `
+      <a class="btn btn-secondary dashboard-guidance-link" href="${escapeHtml(href)}">
+        Open Configuration
       </a>
-    ` : "";
+    `;
   }
 
   const titleEl = card.querySelector(".performance-summary-title");

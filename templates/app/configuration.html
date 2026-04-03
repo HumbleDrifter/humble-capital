@@ -101,6 +101,70 @@
     </div>
   </section>
 
+  <section class="panel span-12 configuration-advisory-panel">
+    <div class="section-header">
+      <div>
+        <h2>Risk Intelligence</h2>
+        <p class="section-subtitle">Detailed read-only guidance now lives here so the dashboard can stay focused on live portfolio state and trend clarity.</p>
+      </div>
+    </div>
+
+    <div class="configuration-advisory-note">
+      <div class="configuration-advisory-note-title">Advisory Workspace</div>
+      <div class="configuration-advisory-note-copy">Adaptive suggestions, preset recommendations, and projected guardrail impact are reviewed here. Presets can be staged from this section, but nothing is applied until you save manually.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="configuration-advisory-grid">
+      <div class="adaptive-suggestions-card" id="configAdaptiveSuggestionsCard">
+        <div class="adaptive-suggestions-head">
+          <div class="adaptive-suggestions-eyebrow">Adaptive Suggestions</div>
+          <div class="adaptive-suggestions-priority" id="configAdaptiveSuggestionsPriority">Reviewing</div>
+        </div>
+        <div class="adaptive-suggestions-summary" id="configAdaptiveSuggestionsSummary">
+          Advisory guidance will appear once analytics and risk inputs are available.
+        </div>
+        <div class="adaptive-suggestions-list" id="configAdaptiveSuggestionsList">
+          <div class="adaptive-suggestion-item">
+            <div class="adaptive-suggestion-title">Waiting for inputs</div>
+            <div class="adaptive-suggestion-detail">Suggestions remain read-only and use the current portfolio, reserve, drawdown, and regime picture.</div>
+          </div>
+        </div>
+        <div class="adaptive-suggestions-notes" id="configAdaptiveSuggestionsNotes"></div>
+      </div>
+
+      <div class="auto-adaptive-card" id="configAutoAdaptiveCard">
+        <div class="auto-adaptive-head">
+          <div>
+            <div class="auto-adaptive-eyebrow">Auto-Adaptive Mode</div>
+            <div class="auto-adaptive-preset" id="configAutoAdaptivePreset">Reviewing current preset fit...</div>
+          </div>
+          <div class="auto-adaptive-confidence" id="configAutoAdaptiveConfidence">low confidence</div>
+        </div>
+        <div class="auto-adaptive-summary" id="configAutoAdaptiveSummary">
+          Recommendation-only intelligence is evaluating the current portfolio posture.
+        </div>
+        <div class="auto-adaptive-reasons" id="configAutoAdaptiveReasons"></div>
+        <div class="auto-adaptive-simulation" id="configAutoAdaptiveSimulation">
+          <div class="auto-adaptive-simulation-head">
+            <div class="auto-adaptive-simulation-eyebrow">Preset Impact Simulation</div>
+            <div class="auto-adaptive-simulation-band" id="configAutoAdaptiveSimulationBand">Projected band pending</div>
+          </div>
+          <div class="auto-adaptive-simulation-line" id="configAutoAdaptiveProjectionLine">
+            Current score -- → projected score --
+          </div>
+          <div class="auto-adaptive-simulation-summary" id="configAutoAdaptiveSimulationSummary">
+            Projected guardrail pressure will appear once the recommended preset is available.
+          </div>
+          <div class="auto-adaptive-simulation-controls" id="configAutoAdaptiveChangedControls"></div>
+          <div class="auto-adaptive-simulation-notes" id="configAutoAdaptiveSimulationNotes"></div>
+        </div>
+        <div class="auto-adaptive-actions" id="configAutoAdaptiveActions"></div>
+      </div>
+    </div>
+  </section>
+
   <section class="panel span-12 configuration-advanced-panel">
     <div class="section-header">
       <div>

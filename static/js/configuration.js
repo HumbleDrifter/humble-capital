@@ -109,6 +109,16 @@ function formatPct(v) {
   return `${n.toFixed(2)}%`;
 }
 
+function formatSignedPct(v) {
+  const n = Number(v || 0) * 100;
+  const prefix = n > 0 ? "+" : "";
+  return `${prefix}${n.toFixed(2)}%`;
+}
+
+function hasNumericValue(value) {
+  return value !== null && value !== undefined && Number.isFinite(Number(value));
+}
+
 function setStatus(message, isError = false) {
   const el = document.getElementById("configStatus");
   if (!el) return;
@@ -120,6 +130,270 @@ function setPresetStatus(message) {
   const el = document.getElementById("presetStatus");
   if (!el) return;
   el.textContent = message;
+}
+
+function safeObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function cleanTextList(value, limit = 3) {
+  const out = [];
+  for (const item of Array.isArray(value) ? value : []) {
+    const text = String(item || "").trim();
+    if (text && !out.includes(text)) out.push(text);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function normalizeActionPayload(action, fallbackLabel = "Open Config") {
+  const source = safeObject(action);
+  const label = String(source.label || fallbackLabel).trim() || fallbackLabel;
+  const target = String(source.target || "").trim();
+  const section = String(source.section || "").trim();
+  return { label, target, section };
+}
+
+function normalizeAdaptiveSuggestionsPayload(value) {
+  const source = safeObject(value);
+  const priorityRaw = String(source.priority || "moderate").trim().toLowerCase();
+  const priority = ["low", "moderate", "high"].includes(priorityRaw) ? priorityRaw : "moderate";
+  const suggestions = [];
+
+  for (const item of Array.isArray(source.suggestions) ? source.suggestions : []) {
+    const raw = safeObject(item);
+    const title = String(raw.title || "").trim();
+    const detail = String(raw.detail || "").trim();
+    if (!title && !detail) continue;
+    const normalized = {
+      title: title || "Suggestion",
+      detail: detail || "Review the current portfolio posture in configuration before making manual changes."
+    };
+    const action = normalizeActionPayload(raw.action, "Adjust In Config");
+    if (action.target) normalized.action = action;
+    suggestions.push(normalized);
+    if (suggestions.length >= 3) break;
+  }
+
+  return {
+    summary: String(source.summary || "").trim(),
+    priority,
+    suggestions,
+    notes: cleanTextList(source.notes, 2)
+  };
+}
+
+function normalizeAutoAdaptivePayload(value) {
+  const source = safeObject(value);
+  const confidenceRaw = String(source.confidence || "low").trim().toLowerCase();
+  const confidence = ["low", "medium", "high"].includes(confidenceRaw) ? confidenceRaw : "low";
+  const action = normalizeActionPayload(source.action, "Stage Recommended Preset");
+  const simulationRaw = safeObject(source.simulation);
+  const changedControls = [];
+
+  for (const item of Array.isArray(simulationRaw.changed_controls) ? simulationRaw.changed_controls : []) {
+    const raw = safeObject(item);
+    const label = String(raw.label || "").trim();
+    if (!label) continue;
+    changedControls.push({
+      label,
+      current_value: raw.current_value,
+      projected_value: raw.projected_value,
+      format: String(raw.format || "text").trim() || "text"
+    });
+    if (changedControls.length >= 4) break;
+  }
+
+  return {
+    label: String(source.label || "Balanced").trim() || "Balanced",
+    confidence,
+    summary: String(source.summary || "").trim(),
+    reasons: cleanTextList(source.reasons, 3),
+    action,
+    simulation: {
+      current_score: hasNumericValue(simulationRaw.current_score) ? Number(simulationRaw.current_score) : null,
+      projected_score: hasNumericValue(simulationRaw.projected_score) ? Number(simulationRaw.projected_score) : null,
+      score_delta: hasNumericValue(simulationRaw.score_delta) ? Number(simulationRaw.score_delta) : null,
+      projected_band: String(simulationRaw.projected_band || "Projected band pending").trim() || "Projected band pending",
+      summary: String(simulationRaw.summary || "").trim(),
+      changed_controls: changedControls,
+      notes: cleanTextList(simulationRaw.notes, 2)
+    }
+  };
+}
+
+function priorityTone(priority) {
+  if (priority === "low") return "positive";
+  if (priority === "high") return "negative";
+  return "warn";
+}
+
+function confidenceTone(confidence) {
+  if (confidence === "high") return "positive";
+  if (confidence === "medium") return "warn";
+  return "negative";
+}
+
+function riskBandTone(band) {
+  const normalized = String(band || "").toLowerCase();
+  if (normalized === "low risk") return "positive";
+  if (normalized === "elevated risk") return "warn";
+  if (normalized === "high risk") return "negative";
+  return "";
+}
+
+function fmtControlValue(value, format = "text") {
+  if (value === null || value === undefined || value === "") return "—";
+  if (format === "percent") return formatPct(Number(value || 0));
+  if (format === "usd") return formatUsd(Number(value || 0));
+  if (format === "integer") return Number(value || 0).toLocaleString();
+  return String(value);
+}
+
+function configFocusUrl(action) {
+  const params = new URLSearchParams();
+  if (action?.target) params.set("focus", action.target);
+  if (action?.section) params.set("section", action.section);
+  if (action?.label) params.set("source_action", action.label);
+  if (API_SECRET) params.set("secret", API_SECRET);
+  const query = params.toString();
+  return `/configuration${query ? `?${query}` : ""}`;
+}
+
+function configPresetUrl(action, label) {
+  const params = new URLSearchParams();
+  if (action?.target) params.set("preset", action.target);
+  params.set("preset_source", String(label || "Auto-Adaptive Mode"));
+  params.set("section", "core-controls");
+  params.set("focus", "satellite_total_target");
+  if (API_SECRET) params.set("secret", API_SECRET);
+  const query = params.toString();
+  return `/configuration${query ? `?${query}` : ""}`;
+}
+
+function renderConfigurationAdvisory(data) {
+  const adaptiveSuggestions = normalizeAdaptiveSuggestionsPayload(data?.adaptive_suggestions);
+  const autoAdaptive = normalizeAutoAdaptivePayload(data?.auto_adaptive);
+
+  const adaptiveCard = document.getElementById("configAdaptiveSuggestionsCard");
+  const adaptivePriorityEl = document.getElementById("configAdaptiveSuggestionsPriority");
+  const adaptiveSummaryEl = document.getElementById("configAdaptiveSuggestionsSummary");
+  const adaptiveListEl = document.getElementById("configAdaptiveSuggestionsList");
+  const adaptiveNotesEl = document.getElementById("configAdaptiveSuggestionsNotes");
+
+  if (adaptiveCard) {
+    adaptiveCard.className = `adaptive-suggestions-card${priorityTone(adaptiveSuggestions.priority) ? ` ${priorityTone(adaptiveSuggestions.priority)}` : ""}`;
+  }
+  if (adaptivePriorityEl) {
+    adaptivePriorityEl.textContent = `${adaptiveSuggestions.priority} priority`;
+    adaptivePriorityEl.className = `adaptive-suggestions-priority${priorityTone(adaptiveSuggestions.priority) ? ` ${priorityTone(adaptiveSuggestions.priority)}` : ""}`;
+  }
+  if (adaptiveSummaryEl) {
+    adaptiveSummaryEl.textContent = adaptiveSuggestions.summary || "Advisory guidance is being assembled from the current portfolio and analytics inputs.";
+  }
+  if (adaptiveListEl) {
+    const fallbackItems = [
+      {
+        title: "Stay measured",
+        detail: "The advisory layer is read-only and highlights only the most defensible next considerations."
+      }
+    ];
+    const items = adaptiveSuggestions.suggestions.length ? adaptiveSuggestions.suggestions : fallbackItems;
+    adaptiveListEl.innerHTML = items.map((item) => `
+      <div class="adaptive-suggestion-item">
+        <div class="adaptive-suggestion-title">${escapeHtml(item.title || "Suggestion")}</div>
+        <div class="adaptive-suggestion-detail">${escapeHtml(item.detail || "")}</div>
+        ${item.action && item.action.target ? `
+          <div class="adaptive-suggestion-actions">
+            <a class="btn btn-secondary adaptive-suggestion-link" href="${escapeHtml(configFocusUrl(item.action))}">
+              ${escapeHtml(item.action.label || "Adjust In Config")}
+            </a>
+          </div>
+        ` : ""}
+      </div>
+    `).join("");
+  }
+  if (adaptiveNotesEl) {
+    adaptiveNotesEl.innerHTML = adaptiveSuggestions.notes.map((note) => `
+      <span class="adaptive-suggestion-note">${escapeHtml(note)}</span>
+    `).join("");
+  }
+
+  const autoAdaptiveCard = document.getElementById("configAutoAdaptiveCard");
+  const autoAdaptivePresetEl = document.getElementById("configAutoAdaptivePreset");
+  const autoAdaptiveConfidenceEl = document.getElementById("configAutoAdaptiveConfidence");
+  const autoAdaptiveSummaryEl = document.getElementById("configAutoAdaptiveSummary");
+  const autoAdaptiveReasonsEl = document.getElementById("configAutoAdaptiveReasons");
+  const autoAdaptiveSimulationEl = document.getElementById("configAutoAdaptiveSimulation");
+  const autoAdaptiveSimulationBandEl = document.getElementById("configAutoAdaptiveSimulationBand");
+  const autoAdaptiveProjectionLineEl = document.getElementById("configAutoAdaptiveProjectionLine");
+  const autoAdaptiveSimulationSummaryEl = document.getElementById("configAutoAdaptiveSimulationSummary");
+  const autoAdaptiveChangedControlsEl = document.getElementById("configAutoAdaptiveChangedControls");
+  const autoAdaptiveSimulationNotesEl = document.getElementById("configAutoAdaptiveSimulationNotes");
+  const autoAdaptiveActionsEl = document.getElementById("configAutoAdaptiveActions");
+
+  if (autoAdaptiveCard) {
+    autoAdaptiveCard.className = `auto-adaptive-card${confidenceTone(autoAdaptive.confidence) ? ` ${confidenceTone(autoAdaptive.confidence)}` : ""}`;
+  }
+  if (autoAdaptivePresetEl) {
+    autoAdaptivePresetEl.textContent = `${autoAdaptive.label} preset recommended`;
+  }
+  if (autoAdaptiveConfidenceEl) {
+    autoAdaptiveConfidenceEl.textContent = `${autoAdaptive.confidence} confidence`;
+    autoAdaptiveConfidenceEl.className = `auto-adaptive-confidence${confidenceTone(autoAdaptive.confidence) ? ` ${confidenceTone(autoAdaptive.confidence)}` : ""}`;
+  }
+  if (autoAdaptiveSummaryEl) {
+    autoAdaptiveSummaryEl.textContent = autoAdaptive.summary || "Recommendation-only intelligence is evaluating the current portfolio posture.";
+  }
+  if (autoAdaptiveReasonsEl) {
+    const reasons = autoAdaptive.reasons.length ? autoAdaptive.reasons : ["Recommendation confidence is conservative until more portfolio context is available."];
+    autoAdaptiveReasonsEl.innerHTML = reasons.map((reason) => `
+      <div class="auto-adaptive-reason">${escapeHtml(reason)}</div>
+    `).join("");
+  }
+  if (autoAdaptiveSimulationEl) {
+    autoAdaptiveSimulationEl.className = `auto-adaptive-simulation${riskBandTone(autoAdaptive.simulation.projected_band) ? ` ${riskBandTone(autoAdaptive.simulation.projected_band)}` : ""}`;
+  }
+  if (autoAdaptiveSimulationBandEl) {
+    autoAdaptiveSimulationBandEl.textContent = autoAdaptive.simulation.projected_band;
+    autoAdaptiveSimulationBandEl.className = `auto-adaptive-simulation-band${riskBandTone(autoAdaptive.simulation.projected_band) ? ` ${riskBandTone(autoAdaptive.simulation.projected_band)}` : ""}`;
+  }
+  if (autoAdaptiveProjectionLineEl) {
+    const currentText = autoAdaptive.simulation.current_score == null ? "--" : Math.round(autoAdaptive.simulation.current_score);
+    const projectedText = autoAdaptive.simulation.projected_score == null ? "--" : Math.round(autoAdaptive.simulation.projected_score);
+    const delta = autoAdaptive.simulation.score_delta;
+    const deltaText =
+      delta == null ? "no score change projected" :
+      delta === 0 ? "no score change projected" :
+      `${delta > 0 ? "+" : ""}${Math.round(delta)} points projected`;
+    autoAdaptiveProjectionLineEl.textContent = `Current score ${currentText} → projected score ${projectedText} • ${deltaText}`;
+  }
+  if (autoAdaptiveSimulationSummaryEl) {
+    autoAdaptiveSimulationSummaryEl.textContent =
+      autoAdaptive.simulation.summary || "This is a projected guardrail simulation only. Nothing is applied automatically.";
+  }
+  if (autoAdaptiveChangedControlsEl) {
+    autoAdaptiveChangedControlsEl.innerHTML = autoAdaptive.simulation.changed_controls.map((item) => `
+      <div class="auto-adaptive-control-chip">
+        <span class="auto-adaptive-control-label">${escapeHtml(item.label || "Control")}</span>
+        <span class="auto-adaptive-control-values">
+          ${escapeHtml(fmtControlValue(item.current_value, item.format))} → ${escapeHtml(fmtControlValue(item.projected_value, item.format))}
+        </span>
+      </div>
+    `).join("");
+  }
+  if (autoAdaptiveSimulationNotesEl) {
+    autoAdaptiveSimulationNotesEl.innerHTML = autoAdaptive.simulation.notes.map((note) => `
+      <span class="auto-adaptive-note">${escapeHtml(note)}</span>
+    `).join("");
+  }
+  if (autoAdaptiveActionsEl) {
+    autoAdaptiveActionsEl.innerHTML = autoAdaptive.action && autoAdaptive.action.target ? `
+      <a class="btn btn-secondary auto-adaptive-link" href="${escapeHtml(configPresetUrl(autoAdaptive.action, "Auto-Adaptive Mode"))}">
+        ${escapeHtml(autoAdaptive.action.label || "Stage Recommended Preset")}
+      </a>
+    ` : "";
+  }
 }
 
 function clearConfigFocusState() {
@@ -322,6 +596,16 @@ async function loadPortfolioSnapshot() {
   }
 }
 
+async function loadAdvisoryState() {
+  try {
+    const data = await fetchJson("/api/portfolio/history?range=30d", {}, 30000);
+    renderConfigurationAdvisory(data || {});
+  } catch (err) {
+    console.warn("Advisory load failed:", err.message);
+    renderConfigurationAdvisory({});
+  }
+}
+
 async function loadConfigState() {
   const cfgData = await fetchJson("/api/config", {}, 20000);
   const cfg = cfgData.config || {};
@@ -347,6 +631,7 @@ async function loadConfiguration() {
 
   try {
     await Promise.all([loadTradableAssets(), loadConfigState(), loadPortfolioSnapshot()]);
+    await loadAdvisoryState();
     drawAssetRows();
     applyPresetFromUrlIfPresent();
     setStatus(`Loaded ${ASSETS.length} tradable USD assets. Portfolio guardrails and advanced sections are ready.`);

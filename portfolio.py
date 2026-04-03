@@ -6,6 +6,8 @@ import threading
 from pathlib import Path
 
 from env_runtime import load_runtime_env
+
+_RUNTIME_ENV = load_runtime_env()
 from storage import (
     get_all_positions,
     get_asset_state,
@@ -16,7 +18,9 @@ from execution import get_best_bid_ask, get_client
 from regime import get_market_regime
 
 _RUNTIME_ENV_PATH = load_runtime_env()
-_BASE_DIR = _RUNTIME_ENV_PATH.parent.resolve()
+
+from pathlib import Path
+_BASE_DIR = Path(_RUNTIME_ENV["BASE_PATH"]).resolve()
 
 CONFIG_PATH = str(_BASE_DIR / "asset_config.json")
 MEME_ROTATION_PATH = str(_BASE_DIR / "meme_rotation.json")

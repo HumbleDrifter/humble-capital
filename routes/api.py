@@ -17,6 +17,7 @@ from execution import (
 )
 from portfolio import (
     build_adaptive_suggestions,
+    build_auto_adaptive_recommendation,
     build_portfolio_history_analytics,
     build_portfolio_risk_score,
     get_portfolio_snapshot,
@@ -775,6 +776,18 @@ def _build_portfolio_history():
         "suggestions": [],
         "notes": [],
     }
+    auto_adaptive = {
+        "mode": "recommendation_only",
+        "recommended_preset": "balanced",
+        "label": "Balanced",
+        "confidence": "low",
+        "summary": "Auto-Adaptive Mode is waiting for a live portfolio snapshot.",
+        "reasons": [],
+        "action": {
+            "label": "Stage Balanced Preset",
+            "target": "balanced",
+        },
+    }
 
     def _advisory_payload(history_analytics):
         try:
@@ -793,6 +806,12 @@ def _build_portfolio_history():
                     history_analytics=history_analytics,
                     risk_score=live_risk_score,
                 ),
+                "auto_adaptive": build_auto_adaptive_recommendation(
+                    snapshot=snapshot,
+                    summary=summary,
+                    history_analytics=history_analytics,
+                    risk_score=live_risk_score,
+                ),
             }
         except Exception as exc:
             _log_api(f"advisory payload degraded during history build: {exc}")
@@ -800,9 +819,12 @@ def _build_portfolio_history():
             fallback_risk["notes"] = [str(exc)]
             fallback_suggestions = dict(adaptive_suggestions)
             fallback_suggestions["notes"] = [str(exc)]
+            fallback_auto_adaptive = dict(auto_adaptive)
+            fallback_auto_adaptive["reasons"] = [str(exc)]
             return {
                 "risk_score": fallback_risk,
                 "adaptive_suggestions": fallback_suggestions,
+                "auto_adaptive": fallback_auto_adaptive,
             }
 
     try:
@@ -811,6 +833,7 @@ def _build_portfolio_history():
         advisory_payload = _advisory_payload(analytics)
         risk_score = advisory_payload["risk_score"]
         adaptive_suggestions = advisory_payload["adaptive_suggestions"]
+        auto_adaptive = advisory_payload["auto_adaptive"]
         points = [
             {
                 "ts": _safe_int(row.get("ts")),
@@ -827,6 +850,7 @@ def _build_portfolio_history():
                 "analytics": analytics,
                 "risk_score": risk_score,
                 "adaptive_suggestions": adaptive_suggestions,
+                "auto_adaptive": auto_adaptive,
             }
     except Exception as exc:
         _log_api(f"portfolio history snapshot source unavailable: {exc}")
@@ -987,6 +1011,7 @@ def _build_portfolio_history():
         advisory_payload = _advisory_payload(analytics)
         risk_score = advisory_payload["risk_score"]
         adaptive_suggestions = advisory_payload["adaptive_suggestions"]
+        auto_adaptive = advisory_payload["auto_adaptive"]
         return {
             "ok": True,
             "range": range_name,
@@ -995,11 +1020,13 @@ def _build_portfolio_history():
             "analytics": analytics,
             "risk_score": risk_score,
             "adaptive_suggestions": adaptive_suggestions,
+            "auto_adaptive": auto_adaptive,
         }
 
     advisory_payload = _advisory_payload(analytics)
     risk_score = advisory_payload["risk_score"]
     adaptive_suggestions = advisory_payload["adaptive_suggestions"]
+    auto_adaptive = advisory_payload["auto_adaptive"]
     return {
         "ok": True,
         "range": range_name,
@@ -1008,6 +1035,7 @@ def _build_portfolio_history():
         "analytics": analytics,
         "risk_score": risk_score,
         "adaptive_suggestions": adaptive_suggestions,
+        "auto_adaptive": auto_adaptive,
     }
 
 

@@ -6,6 +6,7 @@ let CORE_ASSETS = [];
 let HOLDINGS_BY_PRODUCT = {};
 let TOTAL_ASSET_VALUE_USD = 0;
 let ACTIVE_PRESET = "";
+let URL_PRESET_APPLIED = false;
 
 const CONFIG_PRESETS = {
   conservative: {
@@ -347,6 +348,7 @@ async function loadConfiguration() {
   try {
     await Promise.all([loadTradableAssets(), loadConfigState(), loadPortfolioSnapshot()]);
     drawAssetRows();
+    applyPresetFromUrlIfPresent();
     setStatus(`Loaded ${ASSETS.length} tradable USD assets. Core controls and advanced sections are ready.`);
   } catch (err) {
     console.error(err);
@@ -361,7 +363,7 @@ function normalizePercentInput(id) {
   return Number.isFinite(n) ? (n / 100) : "";
 }
 
-function applyConfigPreset(name) {
+function applyConfigPreset(name, options = {}) {
   const preset = CONFIG_PRESETS[String(name || "").toLowerCase()];
   if (!preset) return;
 
@@ -374,8 +376,29 @@ function applyConfigPreset(name) {
   setInputValue("max_new_satellites_per_cycle", values.max_new_satellites_per_cycle, false);
 
   setPresetActiveState(name);
-  setPresetStatus(`${preset.label} preset staged. Changes are not saved until you click Save Configuration.`);
-  setStatus(`${preset.label} preset applied to current fields. Review and save when ready.`);
+  const sourceLabel = String(options.sourceLabel || "").trim();
+  if (sourceLabel) {
+    setPresetStatus(`${sourceLabel} recommended the ${preset.label} preset. It has been staged in the form but not saved.`);
+  } else {
+    setPresetStatus(`${preset.label} preset staged. Changes are not saved until you click Save Configuration.`);
+  }
+  if (!options.silentStatus) {
+    const statusLead = sourceLabel ? `${sourceLabel} staged the ${preset.label} preset.` : `${preset.label} preset applied to current fields.`;
+    setStatus(`${statusLead} Review and save when ready.`);
+  }
+}
+
+function applyPresetFromUrlIfPresent() {
+  if (URL_PRESET_APPLIED) return;
+
+  const preset = String(URL_PARAMS.get("preset") || "").trim().toLowerCase();
+  if (!preset || !CONFIG_PRESETS[preset]) return;
+
+  URL_PRESET_APPLIED = true;
+  applyConfigPreset(preset, {
+    sourceLabel: String(URL_PARAMS.get("preset_source") || "Auto-Adaptive Mode").trim(),
+    silentStatus: false
+  });
 }
 
 async function postAdminAssetAction(payload, successMessage) {

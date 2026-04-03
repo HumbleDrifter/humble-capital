@@ -1094,6 +1094,114 @@ def build_adaptive_suggestions(snapshot=None, summary=None, history_analytics=No
     }
 
 
+def build_auto_adaptive_recommendation(snapshot=None, summary=None, history_analytics=None, risk_score=None):
+    snapshot = snapshot or get_portfolio_snapshot()
+    summary = summary or portfolio_summary(snapshot)
+    history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
+    risk_score = risk_score if isinstance(risk_score, dict) else build_portfolio_risk_score(
+        snapshot=snapshot,
+        summary=summary,
+        history_analytics=history_analytics,
+    )
+
+    inputs = risk_score.get("inputs", {}) if isinstance(risk_score.get("inputs"), dict) else {}
+    score = int(risk_score.get("score", 0) or 0)
+    band = str(risk_score.get("band", "Moderate Risk") or "Moderate Risk")
+    market_regime = str(inputs.get("market_regime", "unknown") or "unknown").lower()
+    limited_history = bool(inputs.get("limited_history", False))
+
+    satellite_weight = float(inputs.get("satellite_weight", 0.0) or 0.0)
+    satellite_target = float(inputs.get("satellite_total_target", 0.0) or 0.0)
+    satellite_max = float(inputs.get("satellite_total_max", satellite_target or 0.0) or 0.0)
+    cash_weight = float(inputs.get("cash_weight", 0.0) or 0.0)
+    min_cash_reserve = float(inputs.get("min_cash_reserve", 0.0) or 0.0)
+    current_drawdown_pct = inputs.get("current_drawdown_pct")
+    max_drawdown_pct = inputs.get("max_drawdown_pct")
+
+    reasons = []
+    confidence_points = 0
+
+    if band in {"High Risk", "Elevated Risk"} or market_regime == "risk_off":
+        recommended_preset = "conservative"
+        label = "Conservative"
+        reasons.append("Current risk posture is elevated enough to favor stronger guardrails.")
+        confidence_points += 2
+        if min_cash_reserve > 0 and cash_weight < min_cash_reserve:
+            reasons.append("Cash reserve is below the configured floor, which supports a more defensive preset.")
+            confidence_points += 1
+        if satellite_max > 0 and satellite_weight >= satellite_max:
+            reasons.append("Satellite exposure is already at or above the configured maximum.")
+            confidence_points += 1
+        if current_drawdown_pct is not None and float(current_drawdown_pct) >= 0.10:
+            reasons.append("Current drawdown is elevated versus recent peak equity.")
+            confidence_points += 1
+    elif (
+        score <= 24
+        and market_regime == "bull"
+        and (min_cash_reserve <= 0 or cash_weight >= min_cash_reserve)
+        and (satellite_target <= 0 or satellite_weight <= satellite_target)
+        and (current_drawdown_pct is None or float(current_drawdown_pct) < 0.05)
+    ):
+        recommended_preset = "aggressive"
+        label = "Aggressive"
+        reasons.append("Risk score and drawdown are both contained enough to support a wider operating envelope.")
+        confidence_points += 2
+        reasons.append("Satellite exposure is still at or below target, leaving room inside the current structure.")
+        confidence_points += 1
+        if market_regime == "bull":
+            reasons.append("Market regime is supportive rather than defensive.")
+            confidence_points += 1
+    else:
+        recommended_preset = "balanced"
+        label = "Balanced"
+        reasons.append("Current inputs favor a middle posture between capital preservation and opportunity capture.")
+        confidence_points += 1
+        if band == "Moderate Risk":
+            reasons.append("Risk score is moderate rather than extreme, which fits a balanced preset.")
+            confidence_points += 1
+        if min_cash_reserve > 0 and cash_weight >= min_cash_reserve:
+            reasons.append("Cash reserve is at or above minimum, so the portfolio is not forced into a defensive preset.")
+            confidence_points += 1
+        if satellite_target > 0 and satellite_weight <= satellite_max:
+            reasons.append("Satellite exposure remains inside configured limits.")
+            confidence_points += 1
+
+    if max_drawdown_pct is not None and float(max_drawdown_pct) >= 0.18 and recommended_preset != "conservative":
+        reasons.append("Recent max drawdown argues for keeping the recommendation measured rather than fully aggressive.")
+
+    if limited_history:
+        confidence = "low"
+        reasons.append("Persisted history is still limited, so this recommendation is intentionally conservative.")
+    elif confidence_points >= 4:
+        confidence = "high"
+    elif confidence_points >= 2:
+        confidence = "medium"
+    else:
+        confidence = "low"
+
+    summary = (
+        f"Auto-Adaptive Mode recommends the {label} preset based on the current risk, reserve, exposure, and regime picture."
+    )
+
+    deduped_reasons = []
+    for reason in reasons:
+        if reason and reason not in deduped_reasons:
+            deduped_reasons.append(reason)
+
+    return {
+        "mode": "recommendation_only",
+        "recommended_preset": recommended_preset,
+        "label": label,
+        "confidence": confidence,
+        "summary": summary,
+        "reasons": deduped_reasons[:3],
+        "action": {
+            "label": f"Stage {label} Preset",
+            "target": recommended_preset,
+        },
+    }
+
+
 def persist_current_portfolio_snapshot(snapshot=None):
     snapshot = snapshot or get_portfolio_snapshot()
     row = _snapshot_to_history_row(snapshot)

@@ -10,13 +10,26 @@ function authUrl(path) {
 }
 
 function configFocusUrl(action) {
-  const target = encodeURIComponent(String(action?.target || "").trim());
-  const section = encodeURIComponent(String(action?.section || "").trim());
-  const label = encodeURIComponent(String(action?.label || "").trim());
+  const target = String(action?.target || "").trim();
+  const section = String(action?.section || "").trim();
+  const label = String(action?.label || "").trim();
   const params = new URLSearchParams();
   if (target) params.set("focus", target);
   if (section) params.set("section", section);
   if (label) params.set("source_action", label);
+  if (API_SECRET) params.set("secret", API_SECRET);
+  const query = params.toString();
+  return `/configuration${query ? `?${query}` : ""}`;
+}
+
+function configPresetUrl(action, label) {
+  const preset = String(action?.target || "").trim();
+  const source = String(label || "Auto-Adaptive Mode").trim();
+  const params = new URLSearchParams();
+  if (preset) params.set("preset", preset);
+  params.set("preset_source", source);
+  params.set("section", "core-controls");
+  params.set("focus", "satellite_total_target");
   if (API_SECRET) params.set("secret", API_SECRET);
   const query = params.toString();
   return `/configuration${query ? `?${query}` : ""}`;
@@ -306,6 +319,14 @@ function priorityTone(priority) {
   return "";
 }
 
+function confidenceTone(confidence) {
+  const normalized = String(confidence || "").toLowerCase();
+  if (normalized === "high") return "positive";
+  if (normalized === "medium") return "warn";
+  if (normalized === "low") return "negative";
+  return "";
+}
+
 function renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData) {
   const card = document.getElementById("performanceSummaryCard");
   const grid = document.getElementById("performanceSummaryGrid");
@@ -316,6 +337,7 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const analytics = historyData?.analytics || {};
   const riskScore = historyData?.risk_score || {};
   const adaptiveSuggestions = historyData?.adaptive_suggestions || {};
+  const autoAdaptive = historyData?.auto_adaptive || {};
 
   const totalValue =
     Number(summary.total_value_usd || 0) ||
@@ -344,6 +366,13 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const suggestionNotes = Array.isArray(adaptiveSuggestions?.notes)
     ? adaptiveSuggestions.notes.filter(Boolean).slice(0, 2)
     : [];
+  const recommendedPreset = String(autoAdaptive?.label || "Balanced");
+  const adaptiveConfidence = String(autoAdaptive?.confidence || "low").toLowerCase();
+  const adaptiveSummary = String(autoAdaptive?.summary || "").trim();
+  const adaptiveReasons = Array.isArray(autoAdaptive?.reasons)
+    ? autoAdaptive.reasons.filter(Boolean).slice(0, 3)
+    : [];
+  const adaptiveAction = autoAdaptive?.action || null;
 
   const title = analyticsLimited
     ? "Performance view is live, with fuller metrics unlocking as history builds."
@@ -429,6 +458,41 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
     adaptiveNotesEl.innerHTML = suggestionNotes.map((note) => `
       <span class="adaptive-suggestion-note">${escapeHtml(note)}</span>
     `).join("");
+  }
+
+  const autoAdaptiveCard = document.getElementById("autoAdaptiveCard");
+  const autoAdaptivePresetEl = document.getElementById("autoAdaptivePreset");
+  const autoAdaptiveConfidenceEl = document.getElementById("autoAdaptiveConfidence");
+  const autoAdaptiveSummaryEl = document.getElementById("autoAdaptiveSummary");
+  const autoAdaptiveReasonsEl = document.getElementById("autoAdaptiveReasons");
+  const autoAdaptiveActionsEl = document.getElementById("autoAdaptiveActions");
+
+  if (autoAdaptiveCard) {
+    const tone = confidenceTone(adaptiveConfidence);
+    autoAdaptiveCard.className = `auto-adaptive-card${tone ? ` ${tone}` : ""}`;
+  }
+  if (autoAdaptivePresetEl) {
+    autoAdaptivePresetEl.textContent = `${recommendedPreset} preset recommended`;
+  }
+  if (autoAdaptiveConfidenceEl) {
+    autoAdaptiveConfidenceEl.textContent = `${adaptiveConfidence} confidence`;
+    autoAdaptiveConfidenceEl.className = `auto-adaptive-confidence${confidenceTone(adaptiveConfidence) ? ` ${confidenceTone(adaptiveConfidence)}` : ""}`;
+  }
+  if (autoAdaptiveSummaryEl) {
+    autoAdaptiveSummaryEl.textContent = adaptiveSummary || "Recommendation-only intelligence is evaluating the current portfolio posture.";
+  }
+  if (autoAdaptiveReasonsEl) {
+    const reasons = adaptiveReasons.length ? adaptiveReasons : ["Recommendation confidence is conservative until more portfolio context is available."];
+    autoAdaptiveReasonsEl.innerHTML = reasons.map((reason) => `
+      <div class="auto-adaptive-reason">${escapeHtml(reason)}</div>
+    `).join("");
+  }
+  if (autoAdaptiveActionsEl) {
+    autoAdaptiveActionsEl.innerHTML = adaptiveAction && adaptiveAction.target ? `
+      <a class="btn btn-secondary auto-adaptive-link" href="${escapeHtml(configPresetUrl(adaptiveAction, "Auto-Adaptive Mode"))}">
+        ${escapeHtml(adaptiveAction.label || "Stage Recommended Preset")}
+      </a>
+    ` : "";
   }
 
   const titleEl = card.querySelector(".performance-summary-title");

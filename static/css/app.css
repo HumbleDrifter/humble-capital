@@ -1618,6 +1618,16 @@ tbody tr:last-child td {
     min-width: 0;
   }
 
+  .mobile-topbar-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-topbar-actions .dashboard-refresh-btn {
+    width: 100%;
+    min-height: 46px;
+  }
+
   .statusline {
     flex-direction: column;
     gap: 8px;
@@ -1626,6 +1636,7 @@ tbody tr:last-child td {
   .statusline-item {
     width: 100%;
     justify-content: space-between;
+    padding: 12px 14px;
   }
 
   .kpi-grid {
@@ -1637,6 +1648,30 @@ tbody tr:last-child td {
     font-size: 24px;
   }
 
+  .dashboard-status-panel,
+  .dashboard-overview-panel,
+  .dashboard-portfolio-panel,
+  .dashboard-rebalance-panel,
+  .dashboard-universe-panel {
+    border-radius: 18px;
+  }
+
+  .dashboard-status-panel .section-header,
+  .dashboard-overview-panel .section-header,
+  .dashboard-portfolio-panel .section-header,
+  .dashboard-rebalance-panel .section-header,
+  .dashboard-universe-panel .section-header {
+    margin-bottom: 14px;
+  }
+
+  #statusBadges {
+    gap: 6px;
+  }
+
+  #statusBadges .badge {
+    max-width: 100%;
+  }
+
   .mini-stat-grid,
   .risk-form-grid,
   .rebalance-grid {
@@ -1645,6 +1680,8 @@ tbody tr:last-child td {
 
   .trend-chart-summary {
     grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
   }
 
   .trend-range-row {
@@ -1655,6 +1692,28 @@ tbody tr:last-child td {
   .trend-range-btn {
     flex: 1 1 0;
     min-width: 0;
+    min-height: 42px;
+  }
+
+  .trend-chart-shell {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .trend-stat {
+    padding: 13px 14px;
+  }
+
+  .trend-stat-value {
+    font-size: 20px;
+  }
+
+  #accountValueChartHost {
+    margin-top: 14px;
+  }
+
+  #accountValueChartHost svg text {
+    font-size: 11px;
   }
 
   .configuration-search-row,
@@ -1806,5 +1865,115 @@ tbody tr:last-child td {
   .heatmap,
   .kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .page-content {
+    padding: 14px;
+    padding-bottom: 92px;
+  }
+
+  .panel {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .section-subtitle {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .dashboard-grid {
+    gap: 14px;
+  }
+
+  .statusline-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .kpi-card,
+  .mini-stat-card {
+    padding: 16px;
+  }
+
+  .kpi-value {
+    margin-top: 8px;
+    font-size: 22px;
+    line-height: 1.08;
+  }
+
+  .mini-stat-value {
+    font-size: 18px;
+  }
+
+  .trend-range-row {
+    gap: 8px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .trend-range-btn {
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .trend-range-btn.active {
+    border-color: rgba(20, 184, 126, 0.3);
+  }
+
+  .trend-chart-shell {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .trend-chart-summary {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .trend-stat {
+    padding: 12px 13px;
+    border-radius: 14px;
+  }
+
+  .trend-stat-label {
+    letter-spacing: 0.06em;
+  }
+
+  .trend-stat-value {
+    margin-top: 7px;
+    font-size: 18px;
+  }
+
+  #accountValueChartHost {
+    min-height: 160px;
+  }
+
+  #accountValueChartHost svg {
+    min-height: 220px;
+  }
+
+  #accountValueChartHost svg text {
+    font-size: 10px;
+  }
+
+  #statusBadges,
+  #activeBuyUniverse,
+  .signal-chip-row {
+    gap: 7px;
+  }
+
+  .signal-card {
+    padding: 13px;
+  }
+
+  .signal-row {
+    gap: 10px;
+    align-items: flex-start;
   }
 }

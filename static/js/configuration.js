@@ -7,6 +7,11 @@ let HOLDINGS_BY_PRODUCT = {};
 let TOTAL_ASSET_VALUE_USD = 0;
 let ACTIVE_PRESET = "";
 let URL_PRESET_APPLIED = false;
+const PERCENT_FIELD_IDS = [
+  "satellite_total_target",
+  "satellite_total_max",
+  "min_cash_reserve"
+];
 
 const CONFIG_PRESETS = {
   conservative: {
@@ -130,6 +135,58 @@ function setPresetStatus(message) {
   const el = document.getElementById("presetStatus");
   if (!el) return;
   el.textContent = message;
+}
+
+function isPercentFieldId(id) {
+  return PERCENT_FIELD_IDS.includes(String(id || "").trim());
+}
+
+function clampPercentValue(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(100, Math.max(0, n));
+}
+
+function formatPercentDisplayValue(value) {
+  const clamped = clampPercentValue(value);
+  return clamped == null ? "" : clamped.toFixed(2);
+}
+
+function setPercentFieldValue(id, percentValue) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const n = Number(percentValue);
+  el.value = Number.isFinite(n) ? formatPercentDisplayValue(n) : "";
+}
+
+function setPercentFieldDecimalValue(id, decimalValue) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const n = Number(decimalValue);
+  el.value = Number.isFinite(n) ? formatPercentDisplayValue(n * 100) : "";
+}
+
+function normalizePercentFieldInput(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const raw = String(el.value || "").trim();
+  if (!raw) return;
+  el.value = formatPercentDisplayValue(raw);
+}
+
+function bindPercentFieldBehavior() {
+  PERCENT_FIELD_IDS.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.percentBound === "true") return;
+
+    el.dataset.percentBound = "true";
+    el.addEventListener("blur", () => {
+      normalizePercentFieldInput(id);
+    });
+  });
 }
 
 function safeObject(value) {
@@ -468,10 +525,19 @@ function updateConfigurationSummary() {
 }
 
 function setInputValue(id, value, percent = false) {
+  if (percent) {
+    setPercentFieldDecimalValue(id, value);
+    return;
+  }
+
+  if (isPercentFieldId(id)) {
+    setPercentFieldValue(id, value);
+    return;
+  }
+
   const el = document.getElementById(id);
   if (!el) return;
-  const n = Number(value);
-  el.value = Number.isFinite(n) && percent ? (n * 100).toFixed(2) : (value ?? "");
+  el.value = value ?? "";
 }
 
 function setPresetActiveState(name) {
@@ -644,7 +710,10 @@ async function loadConfiguration() {
 
 function normalizePercentInput(id) {
   const el = document.getElementById(id);
-  const n = Number(el?.value || 0);
+  const raw = String(el?.value || "").trim();
+  if (!raw) return "";
+
+  const n = clampPercentValue(raw);
   return Number.isFinite(n) ? (n / 100) : "";
 }
 
@@ -759,6 +828,7 @@ window.applyConfigPreset = applyConfigPreset;
 window.addEventListener("DOMContentLoaded", () => {
   const search = document.getElementById("assetSearch");
   if (search) search.addEventListener("input", applyAssetFilter);
+  bindPercentFieldBehavior();
   loadConfiguration();
   applyConfigurationFocus();
 });

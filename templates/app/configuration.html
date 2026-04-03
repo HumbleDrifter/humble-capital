@@ -67,21 +67,30 @@
       <div class="form-card configuration-focus-card" data-focus-target="satellite_total_target">
         <div class="configuration-card-kicker">Allocation Target</div>
         <label for="satellite_total_target">Satellite Total Target</label>
-        <input id="satellite_total_target" type="number" step="0.01" min="0">
+        <div class="input-unit-wrap">
+          <input id="satellite_total_target" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
         <div class="field-help">Preferred target for active satellite allocation.</div>
       </div>
 
       <div class="form-card configuration-focus-card" data-focus-target="satellite_total_max">
         <div class="configuration-card-kicker">Hard Limit</div>
         <label for="satellite_total_max">Satellite Total Max</label>
-        <input id="satellite_total_max" type="number" step="0.01" min="0">
+        <div class="input-unit-wrap">
+          <input id="satellite_total_max" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
         <div class="field-help">Hard ceiling for total satellite exposure.</div>
       </div>
 
       <div class="form-card configuration-focus-card" data-focus-target="min_cash_reserve">
         <div class="configuration-card-kicker">Liquidity Safety</div>
         <label for="min_cash_reserve">Minimum Cash Reserve</label>
-        <input id="min_cash_reserve" type="number" step="0.01" min="0">
+        <div class="input-unit-wrap">
+          <input id="min_cash_reserve" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
         <div class="field-help">Cash that should remain unallocated after trades.</div>
       </div>
 

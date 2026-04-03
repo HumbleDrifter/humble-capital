@@ -545,6 +545,25 @@ label {
   color: var(--text-dim);
 }
 
+.input-unit-wrap {
+  position: relative;
+}
+
+.input-unit-wrap input {
+  padding-right: 36px;
+}
+
+.input-unit-suffix {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 /* =========================================================
    BADGES / PILLS
 ========================================================= */

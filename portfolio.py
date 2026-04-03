@@ -973,54 +973,97 @@ def build_adaptive_suggestions(snapshot=None, summary=None, history_analytics=No
     suggestions = []
     notes = []
 
-    def add_suggestion(title, detail):
+    def add_suggestion(title, detail, action=None):
         if len(suggestions) >= 3:
             return
-        suggestions.append({"title": title, "detail": detail})
+        item = {"title": title, "detail": detail}
+        if isinstance(action, dict) and action:
+            item["action"] = action
+        suggestions.append(item)
 
     if satellite_max > 0 and satellite_weight >= satellite_max:
         add_suggestion(
             "Satellite Exposure Is Full",
             "Satellite allocation is already at or above its configured maximum, so additional risk should wait for a reduction or rebalance review.",
+            action={
+                "label": "Adjust In Config",
+                "target": "satellite_total_max",
+                "section": "core-controls",
+            },
         )
     elif satellite_target > 0 and satellite_weight > satellite_target:
         add_suggestion(
             "Satellite Exposure Is Running Hot",
             "Satellite allocation is above target, so keep new risk selective until exposure rotates closer to plan.",
+            action={
+                "label": "Review Target",
+                "target": "satellite_total_target",
+                "section": "core-controls",
+            },
         )
 
     if min_cash_reserve > 0 and cash_weight < min_cash_reserve:
         add_suggestion(
             "Rebuild Cash Buffer",
             "Cash reserve is below the configured floor, so the safer posture is to restore liquidity before adding fresh exposure.",
+            action={
+                "label": "Review Reserve",
+                "target": "min_cash_reserve",
+                "section": "core-controls",
+            },
         )
 
     if current_drawdown_pct is not None and float(current_drawdown_pct) >= 0.10:
         add_suggestion(
             "Respect Current Drawdown",
             "Current drawdown is elevated relative to recent peak equity, so review sizing and avoid forcing risk back into the book.",
+            action={
+                "label": "Review Reserve",
+                "target": "min_cash_reserve",
+                "section": "core-controls",
+            },
         )
     elif max_drawdown_pct is not None and float(max_drawdown_pct) >= 0.18:
         add_suggestion(
             "Recent Volatility Calls For Patience",
             "Recent max drawdown has been meaningful, so favor steadier exposure and tighter operator review.",
+            action={
+                "label": "Review Exposure",
+                "target": "satellite_total_target",
+                "section": "core-controls",
+            },
         )
 
     if market_regime == "risk_off":
         add_suggestion(
             "Keep A Defensive Bias",
             "Market regime is risk-off, so preserving cash and waiting for cleaner conditions is the conservative operating stance.",
+            action={
+                "label": "Review Reserve",
+                "target": "min_cash_reserve",
+                "section": "core-controls",
+            },
         )
     elif market_regime == "neutral" and len(suggestions) < 3:
         add_suggestion(
             "Stay Selective In Neutral Conditions",
             "The regime is neutral, so new exposure should clear a higher bar than it would in a stronger trend environment.",
+            action={
+                "label": "Review Capacity",
+                "target": "max_new_satellites_per_cycle",
+                "section": "capacity-controls",
+            },
         )
 
     if not suggestions:
         add_suggestion(
             "Risk Posture Is Controlled",
             "Exposure, reserve, and drawdown inputs are currently balanced enough that no urgent defensive action stands out.",
+            action={
+                "label": "Open Config",
+                "target": "satellite_total_target",
+                "section": "core-controls",
+            },
         )
 
     if limited_history:

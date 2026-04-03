@@ -121,6 +121,67 @@ function setPresetStatus(message) {
   el.textContent = message;
 }
 
+function clearConfigFocusState() {
+  document.querySelectorAll(".config-focus-active").forEach((el) => {
+    el.classList.remove("config-focus-active");
+  });
+}
+
+function safeCssValue(value) {
+  if (window.CSS && typeof window.CSS.escape === "function") {
+    return window.CSS.escape(value);
+  }
+  return String(value).replace(/["\\]/g, "\\$&");
+}
+
+function applyConfigurationFocus() {
+  const focusTarget = String(URL_PARAMS.get("focus") || "").trim();
+  const sectionTarget = String(URL_PARAMS.get("section") || "").trim();
+  const sourceAction = String(URL_PARAMS.get("source_action") || "").trim();
+
+  if (!focusTarget && !sectionTarget) return;
+
+  const sectionEl = sectionTarget
+    ? document.querySelector(`[data-config-section="${safeCssValue(sectionTarget)}"]`)
+    : null;
+
+  if (sectionEl && sectionEl.tagName === "DETAILS") {
+    sectionEl.open = true;
+  }
+
+  const inputEl = focusTarget ? document.getElementById(focusTarget) : null;
+  const targetEl =
+    (focusTarget && document.querySelector(`[data-focus-target="${safeCssValue(focusTarget)}"]`)) ||
+    inputEl ||
+    sectionEl;
+
+  if (!targetEl) return;
+
+  clearConfigFocusState();
+  targetEl.classList.add("config-focus-active");
+
+  if (sectionEl && sectionEl !== targetEl) {
+    sectionEl.classList.add("config-focus-active");
+  }
+
+  window.setTimeout(() => {
+    targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (inputEl && typeof inputEl.focus === "function") {
+      inputEl.focus({ preventScroll: true });
+      if (typeof inputEl.select === "function") {
+        inputEl.select();
+      }
+    }
+    if (sourceAction) {
+      setStatus(`${sourceAction} opened the relevant configuration control. Review manually before saving.`);
+    }
+  }, 120);
+
+  window.setTimeout(() => {
+    clearConfigFocusState();
+  }, 2600);
+}
+
 function updateConfigurationSummary() {
   const modeEl = document.getElementById("assetModeSummary");
   if (!modeEl) return;
@@ -391,4 +452,5 @@ window.addEventListener("DOMContentLoaded", () => {
   const search = document.getElementById("assetSearch");
   if (search) search.addEventListener("input", applyAssetFilter);
   loadConfiguration();
+  applyConfigurationFocus();
 });

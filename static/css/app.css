@@ -934,6 +934,15 @@ tbody tr:last-child td {
   line-height: 1.6;
 }
 
+.adaptive-suggestion-actions {
+  margin-top: 10px;
+}
+
+.adaptive-suggestion-link {
+  min-height: 36px;
+  padding-inline: 12px;
+}
+
 .adaptive-suggestions-notes {
   display: flex;
   flex-wrap: wrap;
@@ -1387,6 +1396,22 @@ tbody tr:last-child td {
     radial-gradient(circle at top left, rgba(52, 211, 153, 0.1), transparent 42%),
     linear-gradient(180deg, rgba(20, 29, 42, 0.98), rgba(12, 18, 27, 0.98));
   border-color: rgba(52, 211, 153, 0.14);
+}
+
+.config-focus-active {
+  position: relative;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+  box-shadow:
+    0 0 0 1px rgba(52, 211, 153, 0.18),
+    0 0 0 6px rgba(52, 211, 153, 0.08),
+    0 18px 36px rgba(0, 0, 0, 0.18) !important;
+}
+
+.config-focus-active input {
+  border-color: rgba(52, 211, 153, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(52, 211, 153, 0.16),
+    0 0 0 4px rgba(52, 211, 153, 0.08);
 }
 
 .configuration-card-kicker {

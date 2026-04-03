@@ -9,6 +9,19 @@ function authUrl(path) {
   return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
 }
 
+function configFocusUrl(action) {
+  const target = encodeURIComponent(String(action?.target || "").trim());
+  const section = encodeURIComponent(String(action?.section || "").trim());
+  const label = encodeURIComponent(String(action?.label || "").trim());
+  const params = new URLSearchParams();
+  if (target) params.set("focus", target);
+  if (section) params.set("section", section);
+  if (label) params.set("source_action", label);
+  if (API_SECRET) params.set("secret", API_SECRET);
+  const query = params.toString();
+  return `/configuration${query ? `?${query}` : ""}`;
+}
+
 async function fetchJson(path, options = {}, timeoutMs = 15000) {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -402,6 +415,13 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
       <div class="adaptive-suggestion-item">
         <div class="adaptive-suggestion-title">${escapeHtml(item.title || "Suggestion")}</div>
         <div class="adaptive-suggestion-detail">${escapeHtml(item.detail || "")}</div>
+        ${item.action && item.action.target ? `
+          <div class="adaptive-suggestion-actions">
+            <a class="btn btn-secondary adaptive-suggestion-link" href="${escapeHtml(configFocusUrl(item.action))}">
+              ${escapeHtml(item.action.label || "Adjust In Config")}
+            </a>
+          </div>
+        ` : ""}
       </div>
     `).join("");
   }

@@ -32,7 +32,7 @@
     </div>
   </section>
 
-  <section class="panel span-12 configuration-core-panel">
+  <section class="panel span-12 configuration-core-panel" id="config-section-core-controls" data-config-section="core-controls">
     <div class="section-header">
       <div>
         <h2>Core Controls</h2>
@@ -57,28 +57,28 @@
     <div class="divider"></div>
 
     <div class="configuration-hero-grid">
-      <div class="form-card configuration-focus-card">
+      <div class="form-card configuration-focus-card" data-focus-target="satellite_total_target">
         <div class="configuration-card-kicker">Allocation Target</div>
         <label for="satellite_total_target">Satellite Total Target</label>
         <input id="satellite_total_target" type="number" step="0.01" min="0">
         <div class="field-help">Preferred target for active satellite allocation.</div>
       </div>
 
-      <div class="form-card configuration-focus-card">
+      <div class="form-card configuration-focus-card" data-focus-target="satellite_total_max">
         <div class="configuration-card-kicker">Hard Limit</div>
         <label for="satellite_total_max">Satellite Total Max</label>
         <input id="satellite_total_max" type="number" step="0.01" min="0">
         <div class="field-help">Hard ceiling for total satellite exposure.</div>
       </div>
 
-      <div class="form-card configuration-focus-card">
+      <div class="form-card configuration-focus-card" data-focus-target="min_cash_reserve">
         <div class="configuration-card-kicker">Liquidity Safety</div>
         <label for="min_cash_reserve">Minimum Cash Reserve</label>
         <input id="min_cash_reserve" type="number" step="0.01" min="0">
         <div class="field-help">Cash that should remain unallocated after trades.</div>
       </div>
 
-      <div class="form-card configuration-focus-card">
+      <div class="form-card configuration-focus-card" data-focus-target="trade_min_value_usd">
         <div class="configuration-card-kicker">Execution Floor</div>
         <label for="trade_min_value_usd">Minimum Trade Value (USD)</label>
         <input id="trade_min_value_usd" type="number" step="0.01" min="0">
@@ -103,7 +103,7 @@
     </div>
 
     <div class="configuration-advanced-stack">
-      <details class="advanced-config-group" open>
+      <details class="advanced-config-group" id="config-section-capacity-controls" data-config-section="capacity-controls" open>
         <summary>
           <div>
             <strong>Capacity and Rotation Controls</strong>
@@ -112,13 +112,13 @@
         </summary>
 
         <div class="risk-form-grid configuration-advanced-grid">
-          <div class="form-card">
+          <div class="form-card" data-focus-target="max_active_satellites">
             <label for="max_active_satellites">Max Active Satellites</label>
             <input id="max_active_satellites" type="number" step="1" min="0">
             <div class="field-help">Maximum number of active rotation assets held at once.</div>
           </div>
 
-          <div class="form-card">
+          <div class="form-card" data-focus-target="max_new_satellites_per_cycle">
             <label for="max_new_satellites_per_cycle">Max New Satellites Per Cycle</label>
             <input id="max_new_satellites_per_cycle" type="number" step="1" min="0">
             <div class="field-help">Limit how many new meme positions can open in one cycle.</div>
@@ -130,7 +130,7 @@
         </div>
       </details>
 
-      <details class="advanced-config-group" open>
+      <details class="advanced-config-group" id="config-section-asset-universe-section" data-config-section="asset-universe-section" open>
         <summary>
           <div>
             <strong>Asset Universe Controls</strong>
@@ -139,7 +139,7 @@
         </summary>
 
         <div class="configuration-search-row">
-          <div class="configuration-search-field">
+          <div class="configuration-search-field" data-focus-target="asset-universe-section">
             <label for="assetSearch" class="tiny">Search assets</label>
             <input
               id="assetSearch"

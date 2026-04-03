@@ -1118,6 +1118,106 @@ tbody tr:last-child td {
   gap: 14px;
 }
 
+.configuration-hero-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.configuration-focus-card {
+  background:
+    radial-gradient(circle at top left, rgba(52, 211, 153, 0.1), transparent 42%),
+    linear-gradient(180deg, rgba(20, 29, 42, 0.98), rgba(12, 18, 27, 0.98));
+  border-color: rgba(52, 211, 153, 0.14);
+}
+
+.configuration-card-kicker {
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.configuration-advanced-panel {
+  padding-top: 24px;
+}
+
+.configuration-advanced-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.advanced-config-group {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  overflow: hidden;
+}
+
+.advanced-config-group[open] {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 34px rgba(0, 0, 0, 0.14);
+}
+
+.advanced-config-group summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.advanced-config-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-config-group summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-soft);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.advanced-config-group[open] summary::after {
+  content: "−";
+}
+
+.advanced-config-group summary strong {
+  display: block;
+  font-size: 16px;
+  color: #f4fbff;
+}
+
+.advanced-config-group summary span {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.advanced-config-group > :not(summary) {
+  padding: 0 20px 20px;
+}
+
+.configuration-advanced-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .configuration-search-field {
   width: 100%;
   max-width: 420px;
@@ -2444,6 +2544,11 @@ tbody tr:last-child td {
     align-items: stretch;
   }
 
+  .configuration-hero-grid,
+  .configuration-advanced-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .configuration-search-field {
     max-width: none;
   }
@@ -2635,6 +2740,11 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .configuration-hero-grid,
+  .configuration-advanced-grid {
+    grid-template-columns: 1fr;
+  }
+
   .public-nav {
     width: 100%;
     justify-content: space-between;
@@ -2664,6 +2774,14 @@ tbody tr:last-child td {
 
   .auth-title {
     font-size: 34px;
+  }
+
+  .advanced-config-group summary {
+    padding: 16px;
+  }
+
+  .advanced-config-group > :not(summary) {
+    padding: 0 16px 16px;
   }
 
   .page-content {

@@ -2,12 +2,12 @@
 
 {% block topbar_actions %}
 <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Refresh</button>
-<button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Risk Controls</button>
+<button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Configuration</button>
 {% endblock %}
 
 {% block mobile_topbar_actions %}
 <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Refresh</button>
-<button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Risk Controls</button>
+<button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Configuration</button>
 {% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
     <div class="section-header">
       <div>
         <h2>Bot Configuration</h2>
-        <p class="section-subtitle">Manage tradable assets, portfolio constraints, and risk controls</p>
+        <p class="section-subtitle">Set the high-level portfolio guardrails first, then review advanced asset and capacity controls below</p>
       </div>
     </div>
 
@@ -26,112 +26,138 @@
     <div class="divider"></div>
 
     <div class="statusline">
-      <div>Mode: <span class="mono">live config</span></div>
-      <div>Asset universe: <span class="mono" id="assetUniverseCount">loading...</span></div>
-      <div>Search + actions optimized for mobile</div>
+      <div class="statusline-item"><span class="statusline-label">Mode</span><span class="mono statusline-value">live config</span></div>
+      <div class="statusline-item"><span class="statusline-label">Tradable Universe</span><span class="mono statusline-value" id="assetUniverseCount">loading...</span></div>
+      <div class="statusline-item"><span class="statusline-label">Satellite Modes</span><span class="mono statusline-value" id="assetModeSummary">loading...</span></div>
     </div>
   </section>
 
-  <section class="panel span-12 configuration-assets-panel">
-    <div class="section-header configuration-assets-header">
-      <div>
-        <h2>Tradable Satellite Asset Manager</h2>
-        <p class="section-subtitle">Search valid products, allow or block assets, and control active rotation candidates</p>
-      </div>
-      <div class="topbar-actions configuration-inline-actions">
-        <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Refresh Assets</button>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="configuration-search-row">
-      <div class="configuration-search-field">
-        <label for="assetSearch" class="tiny">Search assets</label>
-        <input
-          id="assetSearch"
-          type="text"
-          placeholder="Search symbol or product id..."
-          oninput="renderAssetRows()"
-        >
-      </div>
-    </div>
-
-    <div class="configuration-meta-row tiny">
-      <div id="assetSearchMeta">Loading asset universe...</div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="table-wrap">
-      <table class="configuration-table">
-        <thead>
-          <tr>
-            <th>Asset</th>
-            <th>Status</th>
-            <th class="right">Held Value</th>
-            <th class="right">Weight</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="assetRows"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="panel span-12 configuration-risk-panel">
+  <section class="panel span-12 configuration-core-panel">
     <div class="section-header">
       <div>
-        <h2>Risk Controls</h2>
-        <p class="section-subtitle">Satellite allocation caps, cash reserve floor, and minimum trade sizing</p>
+        <h2>Core Controls</h2>
+        <p class="section-subtitle">These are the broad portfolio settings most operators adjust during routine tuning</p>
       </div>
     </div>
 
-    <div class="divider"></div>
-
-    <div class="risk-form-grid">
-      <div class="form-card">
-        <label for="satellite_total_max">Satellite Total Max</label>
-        <input id="satellite_total_max" type="number" step="0.01" min="0">
-        <div class="field-help">Hard ceiling for total satellite exposure.</div>
-      </div>
-
-      <div class="form-card">
+    <div class="configuration-hero-grid">
+      <div class="form-card configuration-focus-card">
+        <div class="configuration-card-kicker">Allocation Target</div>
         <label for="satellite_total_target">Satellite Total Target</label>
         <input id="satellite_total_target" type="number" step="0.01" min="0">
         <div class="field-help">Preferred target for active satellite allocation.</div>
       </div>
 
-      <div class="form-card">
+      <div class="form-card configuration-focus-card">
+        <div class="configuration-card-kicker">Hard Limit</div>
+        <label for="satellite_total_max">Satellite Total Max</label>
+        <input id="satellite_total_max" type="number" step="0.01" min="0">
+        <div class="field-help">Hard ceiling for total satellite exposure.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card">
+        <div class="configuration-card-kicker">Liquidity Safety</div>
         <label for="min_cash_reserve">Minimum Cash Reserve</label>
         <input id="min_cash_reserve" type="number" step="0.01" min="0">
         <div class="field-help">Cash that should remain unallocated after trades.</div>
       </div>
 
-      <div class="form-card">
+      <div class="form-card configuration-focus-card">
+        <div class="configuration-card-kicker">Execution Floor</div>
         <label for="trade_min_value_usd">Minimum Trade Value (USD)</label>
         <input id="trade_min_value_usd" type="number" step="0.01" min="0">
         <div class="field-help">Ignore proposed trades below this size.</div>
-      </div>
-
-      <div class="form-card">
-        <label for="max_active_satellites">Max Active Satellites</label>
-        <input id="max_active_satellites" type="number" step="1" min="0">
-        <div class="field-help">Maximum number of active rotation assets held at once.</div>
-      </div>
-
-      <div class="form-card">
-        <label for="max_new_satellites_per_cycle">Max New Satellites Per Cycle</label>
-        <input id="max_new_satellites_per_cycle" type="number" step="1" min="0">
-        <div class="field-help">Limit how many new meme positions can open in one cycle.</div>
       </div>
     </div>
 
     <div class="divider"></div>
 
     <div class="configuration-action-row">
-      <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Risk Controls</button>
+      <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Core Controls</button>
       <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Reload Current Values</button>
+    </div>
+  </section>
+
+  <section class="panel span-12 configuration-advanced-panel">
+    <div class="section-header">
+      <div>
+        <h2>Advanced Configuration</h2>
+        <p class="section-subtitle">Detailed controls for satellite capacity and asset-universe management remain fully available below</p>
+      </div>
+    </div>
+
+    <div class="configuration-advanced-stack">
+      <details class="advanced-config-group" open>
+        <summary>
+          <div>
+            <strong>Capacity and Rotation Controls</strong>
+            <span>Detailed limits for how many satellite names can be active or newly introduced.</span>
+          </div>
+        </summary>
+
+        <div class="risk-form-grid configuration-advanced-grid">
+          <div class="form-card">
+            <label for="max_active_satellites">Max Active Satellites</label>
+            <input id="max_active_satellites" type="number" step="1" min="0">
+            <div class="field-help">Maximum number of active rotation assets held at once.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="max_new_satellites_per_cycle">Max New Satellites Per Cycle</label>
+            <input id="max_new_satellites_per_cycle" type="number" step="1" min="0">
+            <div class="field-help">Limit how many new meme positions can open in one cycle.</div>
+          </div>
+        </div>
+
+        <div class="configuration-action-row">
+          <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Advanced Controls</button>
+        </div>
+      </details>
+
+      <details class="advanced-config-group" open>
+        <summary>
+          <div>
+            <strong>Asset Universe Controls</strong>
+            <span>Search valid products, allow or block assets, and control active rotation candidates.</span>
+          </div>
+        </summary>
+
+        <div class="configuration-search-row">
+          <div class="configuration-search-field">
+            <label for="assetSearch" class="tiny">Search assets</label>
+            <input
+              id="assetSearch"
+              type="text"
+              placeholder="Search symbol or product id..."
+              oninput="renderAssetRows()"
+            >
+          </div>
+          <div class="topbar-actions configuration-inline-actions">
+            <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Refresh Assets</button>
+          </div>
+        </div>
+
+        <div class="configuration-meta-row tiny">
+          <div id="assetSearchMeta">Loading asset universe...</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="table-wrap">
+          <table class="configuration-table">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Status</th>
+                <th class="right">Held Value</th>
+                <th class="right">Weight</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="assetRows"></tbody>
+          </table>
+        </div>
+      </details>
     </div>
   </section>
 

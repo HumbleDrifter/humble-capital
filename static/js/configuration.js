@@ -78,6 +78,16 @@ function setStatus(message, isError = false) {
   el.className = isError ? "status-console error" : "status-console";
 }
 
+function updateConfigurationSummary() {
+  const modeEl = document.getElementById("assetModeSummary");
+  if (!modeEl) return;
+
+  const enabledCount = ALLOWED_SATELLITES.length;
+  const blockedCount = BLOCKED_SATELLITES.length;
+  const coreCount = CORE_ASSETS.length;
+  modeEl.textContent = `enabled ${enabledCount} • blocked ${blockedCount} • core ${coreCount}`;
+}
+
 function setInputValue(id, value, percent = false) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -203,6 +213,7 @@ async function loadConfigState() {
   BLOCKED_SATELLITES = Array.isArray(cfg.satellite_blocked) ? cfg.satellite_blocked.slice() : [];
   CORE_ASSETS = Object.keys(cfg.core_assets || {});
   renderRiskConfig(cfg);
+  updateConfigurationSummary();
 }
 
 async function loadTradableAssets() {
@@ -221,7 +232,7 @@ async function loadConfiguration() {
   try {
     await Promise.all([loadTradableAssets(), loadConfigState(), loadPortfolioSnapshot()]);
     drawAssetRows();
-    setStatus(`Loaded ${ASSETS.length} tradable USD assets.`);
+    setStatus(`Loaded ${ASSETS.length} tradable USD assets. Core controls and advanced sections are ready.`);
   } catch (err) {
     console.error(err);
     if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="bad">Asset load failed: ${escapeHtml(err.message)}</td></tr>`;

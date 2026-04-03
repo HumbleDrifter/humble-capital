@@ -818,6 +818,135 @@ def build_portfolio_history_analytics(history_rows, source="portfolio_history", 
     return analytics
 
 
+def build_portfolio_risk_score(snapshot=None, summary=None, history_analytics=None):
+    snapshot = snapshot or get_portfolio_snapshot()
+    summary = summary or portfolio_summary(snapshot)
+    history_analytics = history_analytics if isinstance(history_analytics, dict) else {}
+
+    cfg = snapshot.get("config", {}) or {}
+
+    satellite_weight = float(summary.get("satellite_weight", snapshot.get("satellite_weight", 0.0)) or 0.0)
+    cash_weight = float(summary.get("cash_weight", snapshot.get("cash_weight", 0.0)) or 0.0)
+    satellite_target = float(cfg.get("satellite_total_target", 0.0) or 0.0)
+    satellite_max = float(cfg.get("satellite_total_max", satellite_target or 0.0) or 0.0)
+    min_cash_reserve = float(cfg.get("min_cash_reserve", 0.0) or 0.0)
+    market_regime = str(summary.get("market_regime", "unknown") or "unknown").lower()
+
+    current_drawdown_pct = history_analytics.get("current_drawdown_pct")
+    max_drawdown_pct = history_analytics.get("max_drawdown_pct")
+    limited_history = bool(history_analytics.get("limited_history", False))
+
+    notes = []
+    components = {}
+
+    # Satellite allocation pressure: 30 points max.
+    if satellite_max > 0 and satellite_weight >= satellite_max:
+        satellite_component = 30.0
+        notes.append("Satellite allocation is at or above the configured maximum.")
+    elif satellite_target > 0 and satellite_weight > satellite_target:
+        headroom = max(satellite_max - satellite_target, 0.05)
+        over_target = max(0.0, satellite_weight - satellite_target)
+        satellite_component = 10.0 + min(20.0, (over_target / headroom) * 20.0)
+        notes.append("Satellite allocation is running above the configured target.")
+    elif satellite_target > 0:
+        satellite_component = min(10.0, (satellite_weight / satellite_target) * 10.0)
+    else:
+        satellite_component = min(12.0, satellite_weight * 20.0)
+        notes.append("Satellite target is not configured, so allocation pressure is estimated from live exposure.")
+    components["satellite_allocation"] = round(satellite_component, 2)
+
+    # Cash reserve pressure: 25 points max.
+    if min_cash_reserve > 0:
+        cash_gap = max(0.0, min_cash_reserve - cash_weight)
+        cash_component = min(25.0, (cash_gap / min_cash_reserve) * 25.0)
+        if cash_weight < min_cash_reserve:
+            notes.append("Cash reserve is below the configured minimum.")
+    else:
+        cash_component = 0.0
+        notes.append("Minimum cash reserve is not configured, so cash pressure is neutral.")
+    components["cash_reserve"] = round(cash_component, 2)
+
+    # Drawdown pressure uses persisted history when available.
+    if current_drawdown_pct is None:
+        current_drawdown_component = 0.0
+    else:
+        current_drawdown_component = min(20.0, (float(current_drawdown_pct) / 0.20) * 20.0)
+        if float(current_drawdown_pct) >= 0.10:
+            notes.append("Current drawdown is materially elevated versus recent peak equity.")
+    components["current_drawdown"] = round(current_drawdown_component, 2)
+
+    if max_drawdown_pct is None:
+        max_drawdown_component = 0.0
+    else:
+        max_drawdown_component = min(15.0, (float(max_drawdown_pct) / 0.30) * 15.0)
+        if float(max_drawdown_pct) >= 0.18:
+            notes.append("Recent max drawdown suggests the account has been operating through higher volatility.")
+    components["max_drawdown"] = round(max_drawdown_component, 2)
+
+    regime_component_map = {
+        "bull": 0.0,
+        "neutral": 5.0,
+        "risk_off": 10.0,
+    }
+    regime_component = regime_component_map.get(market_regime, 3.0)
+    if market_regime == "risk_off":
+        notes.append("Market regime is risk-off, which raises the overall risk posture.")
+    elif market_regime == "neutral":
+        notes.append("Market regime is neutral, so the score keeps some defensive bias.")
+    components["market_regime"] = round(regime_component, 2)
+
+    if limited_history:
+        notes.append("Drawdown inputs are limited because persisted equity history is still building.")
+
+    score = int(round(
+        satellite_component
+        + cash_component
+        + current_drawdown_component
+        + max_drawdown_component
+        + regime_component
+    ))
+    score = max(0, min(100, score))
+
+    if score >= 75:
+        band = "High Risk"
+    elif score >= 50:
+        band = "Elevated Risk"
+    elif score >= 25:
+        band = "Moderate Risk"
+    else:
+        band = "Low Risk"
+
+    deduped_notes = []
+    for note in notes:
+        if note and note not in deduped_notes:
+            deduped_notes.append(note)
+
+    return {
+        "score": score,
+        "band": band,
+        "notes": deduped_notes[:4],
+        "inputs": {
+            "satellite_weight": satellite_weight,
+            "satellite_total_target": satellite_target,
+            "satellite_total_max": satellite_max,
+            "cash_weight": cash_weight,
+            "min_cash_reserve": min_cash_reserve,
+            "current_drawdown_pct": current_drawdown_pct,
+            "max_drawdown_pct": max_drawdown_pct,
+            "market_regime": market_regime,
+            "limited_history": limited_history,
+        },
+        "weights": {
+            "satellite_allocation": 30,
+            "cash_reserve": 25,
+            "current_drawdown": 20,
+            "max_drawdown": 15,
+            "market_regime": 10,
+        },
+        "components": components,
+    }
+
+
 def persist_current_portfolio_snapshot(snapshot=None):
     snapshot = snapshot or get_portfolio_snapshot()
     row = _snapshot_to_history_row(snapshot)

@@ -736,6 +736,99 @@ tbody tr:last-child td {
   gap: 12px;
 }
 
+.performance-risk-strip {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(circle at top left, rgba(52, 211, 153, 0.1), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.performance-risk-strip.warn {
+  border-color: rgba(245, 158, 11, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.12), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.performance-risk-strip.negative {
+  border-color: rgba(251, 113, 133, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(251, 113, 133, 0.12), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+}
+
+.performance-risk-score-wrap {
+  min-width: 0;
+}
+
+.performance-risk-score-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.performance-risk-score {
+  margin-top: 8px;
+  font-size: 42px;
+  font-weight: 820;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: #f4fbff;
+  text-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+}
+
+.performance-risk-copy {
+  min-width: 0;
+}
+
+.performance-risk-band {
+  font-size: 18px;
+  font-weight: 760;
+  color: #f4fbff;
+}
+
+.performance-risk-band.positive {
+  color: var(--good);
+}
+
+.performance-risk-band.warn {
+  color: #fbbf24;
+}
+
+.performance-risk-band.negative {
+  color: var(--bad);
+}
+
+.performance-risk-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.performance-risk-note {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .performance-summary-metric {
   min-width: 0;
   padding: 14px 15px;
@@ -2506,6 +2599,14 @@ tbody tr:last-child td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .performance-risk-strip {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .performance-risk-score {
+    font-size: 36px;
+  }
+
   .kpi-value {
     font-size: 24px;
   }
@@ -2891,6 +2992,20 @@ tbody tr:last-child td {
 
   .performance-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .performance-risk-strip {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .performance-risk-score {
+    font-size: 34px;
+  }
+
+  .performance-risk-band {
+    font-size: 16px;
   }
 
   .performance-summary-value {

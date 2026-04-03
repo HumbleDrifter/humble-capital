@@ -276,6 +276,15 @@ function drawdownTone(value) {
   return value == null ? "" : value > 0 ? "negative" : "positive";
 }
 
+function riskBandTone(band) {
+  const normalized = String(band || "").toLowerCase();
+  if (normalized === "low risk") return "positive";
+  if (normalized === "moderate risk") return "";
+  if (normalized === "elevated risk") return "warn";
+  if (normalized === "high risk") return "negative";
+  return "";
+}
+
 function renderPerformanceSummary(portfolioData, historyData, rebalanceData, systemData) {
   const card = document.getElementById("performanceSummaryCard");
   const grid = document.getElementById("performanceSummaryGrid");
@@ -284,6 +293,7 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const snapshot = portfolioData?.snapshot || {};
   const summary = portfolioData?.summary || {};
   const analytics = historyData?.analytics || {};
+  const riskScore = historyData?.risk_score || {};
 
   const totalValue =
     Number(summary.total_value_usd || 0) ||
@@ -301,6 +311,9 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const maxDrawdownPct = hasNumericValue(analytics?.max_drawdown_pct) ? Number(analytics.max_drawdown_pct) : null;
   const analyticsLimited = Boolean(analytics?.limited_history);
   const analyticsNote = String(analytics?.note || "").trim();
+  const scoreValue = hasNumericValue(riskScore?.score) ? Math.max(0, Math.min(100, Number(riskScore.score))) : null;
+  const scoreBand = String(riskScore?.band || "Evaluating");
+  const scoreNotes = Array.isArray(riskScore?.notes) ? riskScore.notes.filter(Boolean).slice(0, 3) : [];
 
   const title = analyticsLimited
     ? "Performance view is live, with fuller metrics unlocking as history builds."
@@ -312,6 +325,32 @@ function renderPerformanceSummary(portfolioData, historyData, rebalanceData, sys
   const regimeBadge = document.getElementById("performanceSummaryRegime");
   if (regimeBadge) {
     regimeBadge.className = `performance-summary-badge${regimeTone(regime) ? ` ${regimeTone(regime)}` : ""}`;
+  }
+
+  const riskStrip = document.getElementById("performanceRiskStrip");
+  const riskScoreEl = document.getElementById("performanceRiskScore");
+  const riskBandEl = document.getElementById("performanceRiskBand");
+  const riskNotesEl = document.getElementById("performanceRiskNotes");
+
+  if (riskStrip) {
+    const tone = riskBandTone(scoreBand);
+    riskStrip.className = `performance-risk-strip${tone ? ` ${tone}` : ""}`;
+  }
+  if (riskScoreEl) {
+    riskScoreEl.textContent = scoreValue == null ? "--" : String(Math.round(scoreValue));
+  }
+  if (riskBandEl) {
+    riskBandEl.textContent = scoreBand;
+    riskBandEl.className = `performance-risk-band${riskBandTone(scoreBand) ? ` ${riskBandTone(scoreBand)}` : ""}`;
+  }
+  if (riskNotesEl) {
+    const fallbackNote = analyticsLimited
+      ? "Drawdown inputs are limited while persisted equity history is building."
+      : "Risk score is blending allocation, reserve, drawdown, and regime inputs.";
+    const notes = scoreNotes.length ? scoreNotes : [fallbackNote];
+    riskNotesEl.innerHTML = notes
+      .map((note) => `<span class="performance-risk-note">${escapeHtml(note)}</span>`)
+      .join("");
   }
 
   const titleEl = card.querySelector(".performance-summary-title");

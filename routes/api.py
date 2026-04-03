@@ -17,6 +17,7 @@ from execution import (
 )
 from portfolio import (
     build_portfolio_history_analytics,
+    build_portfolio_risk_score,
     get_portfolio_snapshot,
     persist_current_portfolio_snapshot,
     portfolio_summary,
@@ -753,10 +754,40 @@ def _build_portfolio_history():
     points = []
     series_type = "empty"
     analytics = build_portfolio_history_analytics([], source="empty")
+    risk_score = {
+        "score": 0,
+        "band": "Moderate Risk",
+        "notes": ["Risk score is waiting for a live portfolio snapshot."],
+        "inputs": {},
+        "weights": {
+            "satellite_allocation": 30,
+            "cash_reserve": 25,
+            "current_drawdown": 20,
+            "max_drawdown": 15,
+            "market_regime": 10,
+        },
+        "components": {},
+    }
+
+    def _risk_score_payload(history_analytics):
+        try:
+            snapshot = get_portfolio_snapshot()
+            summary = portfolio_summary(snapshot)
+            return build_portfolio_risk_score(
+                snapshot=snapshot,
+                summary=summary,
+                history_analytics=history_analytics,
+            )
+        except Exception as exc:
+            _log_api(f"risk score degraded during history build: {exc}")
+            fallback = dict(risk_score)
+            fallback["notes"] = [str(exc)]
+            return fallback
 
     try:
         history_rows = get_portfolio_history_since(start_ts=start_ts)
         analytics = build_portfolio_history_analytics(history_rows, source="portfolio_history")
+        risk_score = _risk_score_payload(analytics)
         points = [
             {
                 "ts": _safe_int(row.get("ts")),
@@ -771,6 +802,7 @@ def _build_portfolio_history():
                 "series_type": "portfolio_value",
                 "points": points,
                 "analytics": analytics,
+                "risk_score": risk_score,
             }
     except Exception as exc:
         _log_api(f"portfolio history snapshot source unavailable: {exc}")
@@ -928,20 +960,24 @@ def _build_portfolio_history():
                 source=series_type,
                 note="Persisted portfolio history is still building, so analytics are limited while the chart falls back to realized PnL history.",
             )
+        risk_score = _risk_score_payload(analytics)
         return {
             "ok": True,
             "range": range_name,
             "series_type": series_type,
             "points": points,
             "analytics": analytics,
+            "risk_score": risk_score,
         }
 
+    risk_score = _risk_score_payload(analytics)
     return {
         "ok": True,
         "range": range_name,
         "series_type": "empty",
         "points": [],
         "analytics": analytics,
+        "risk_score": risk_score,
     }
 
 

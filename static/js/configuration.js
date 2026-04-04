@@ -789,6 +789,21 @@ function renderRiskConfig(cfg) {
   setPresetStatus("No preset staged. Manual edits remain available.");
 }
 
+function renderProposalAutomationSettings(cfg) {
+  const generationEl = document.getElementById("config_proposal_generation_mode");
+  const applyEl = document.getElementById("config_proposal_apply_mode");
+
+  const generationMode = ["manual", "auto"].includes(String(cfg?.config_proposal_generation_mode || "").trim().toLowerCase())
+    ? String(cfg.config_proposal_generation_mode).trim().toLowerCase()
+    : "manual";
+  const applyMode = ["manual", "after_approval"].includes(String(cfg?.config_proposal_apply_mode || "").trim().toLowerCase())
+    ? String(cfg.config_proposal_apply_mode).trim().toLowerCase()
+    : "manual";
+
+  if (generationEl) generationEl.value = generationMode;
+  if (applyEl) applyEl.value = applyMode;
+}
+
 function getAssetMode(productId) {
   if (CORE_ASSETS.includes(productId)) {
     return { key: "core", badge: '<span class="badge accent2">core</span>' };
@@ -923,6 +938,7 @@ async function loadConfigState() {
   BLOCKED_SATELLITES = Array.isArray(cfg.satellite_blocked) ? cfg.satellite_blocked.slice() : [];
   CORE_ASSETS = Object.keys(cfg.core_assets || {});
   renderRiskConfig(cfg);
+  renderProposalAutomationSettings(cfg);
   updateConfigurationSummary();
 }
 
@@ -1052,14 +1068,52 @@ async function saveRiskControls() {
         trade_min_value_usd: document.getElementById("trade_min_value_usd")?.value || "",
         max_active_satellites: document.getElementById("max_active_satellites")?.value || "",
         max_new_satellites_per_cycle: document.getElementById("max_new_satellites_per_cycle")?.value || "",
+        config_proposal_generation_mode: document.getElementById("config_proposal_generation_mode")?.value || "manual",
+        config_proposal_apply_mode: document.getElementById("config_proposal_apply_mode")?.value || "manual",
         ...(API_SECRET ? { secret: API_SECRET } : {})
       })
     }, 20000);
-    setStatus("Risk controls saved.");
+    setStatus("Guardrails and proposal automation settings saved.");
     await loadConfiguration();
   } catch (err) {
     console.error(err);
     setStatus(`Risk control save failed: ${err.message}`, true);
+  }
+}
+
+function setProposalAutomationResult(message, isError = false) {
+  const el = document.getElementById("configProposalAutomationResult");
+  if (!el) return;
+  el.textContent = message;
+  el.className = isError ? "config-proposal-automation-result error" : "config-proposal-automation-result";
+}
+
+async function generateProposalNow() {
+  setProposalAutomationResult("Generating proposal...");
+
+  try {
+    const result = await fetchJson("/api/config_proposals/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 30000);
+
+    const status = String(result?.status || "").trim().toLowerCase();
+    if (status === "created") {
+      const delivery = result?.notification_sent === false ? " Telegram delivery needs review." : "";
+      setProposalAutomationResult(`New proposal ${result.proposal_id || ""} created.${delivery}`.trim());
+    } else if (status === "deduped") {
+      setProposalAutomationResult(`Existing pending proposal ${result.proposal_id || ""} already matches the current advisory state.`.trim());
+    } else if (status === "noop") {
+      setProposalAutomationResult("No proposal was generated because no new allowlisted changes qualified.");
+    } else {
+      setProposalAutomationResult(`Proposal generation returned status: ${status || "unknown"}.`);
+    }
+
+    await loadProposalState();
+  } catch (err) {
+    console.error(err);
+    setProposalAutomationResult(`Proposal generation failed: ${err.message}`, true);
   }
 }
 
@@ -1069,6 +1123,7 @@ window.renderAssetRows = applyAssetFilter;
 window.setAssetMode = setAssetMode;
 window.saveRiskControls = saveRiskControls;
 window.applyConfigPreset = applyConfigPreset;
+window.generateProposalNow = generateProposalNow;
 
 window.addEventListener("DOMContentLoaded", () => {
   const search = document.getElementById("assetSearch");

@@ -29,10 +29,14 @@ from portfolio import (
     portfolio_summary,
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
+from services.config_proposal_generation_service import start_config_proposal_generation_worker
+from services.config_proposal_service import generate_config_proposal
 from storage import get_portfolio_history_since
 from storage import get_latest_config_proposal_any_status, list_recent_config_proposals
 
 api_bp = Blueprint("api", __name__)
+
+start_config_proposal_generation_worker()
 
 BASE_DIR = str(preferred_env_path().parent.resolve())
 ASSET_CONFIG_PATH = os.path.join(BASE_DIR, "asset_config.json")
@@ -1450,6 +1454,23 @@ def api_config_proposals_recent():
         return jsonify({"ok": False, "error": str(exc), "items": []}), 500
 
 
+@api_bp.route("/api/config_proposals/generate", methods=["POST"])
+@require_admin_auth
+def api_config_proposals_generate():
+    try:
+        result = generate_config_proposal()
+        return jsonify({
+            "ok": bool(result.get("ok", False)),
+            "status": result.get("status"),
+            "proposal_id": result.get("proposal_id"),
+            "expired_count": result.get("expired_count", 0),
+            "superseded_count": result.get("superseded_count", 0),
+            "notification_sent": bool(result.get("notification_sent", False)),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @api_bp.route("/api/trades", methods=["GET"])
 @require_secret
 def api_trades():
@@ -1669,6 +1690,14 @@ def api_admin_asset():
 
             if payload.get("min_meme_score") not in (None, ""):
                 config["min_meme_score"] = float(payload.get("min_meme_score"))
+
+            generation_mode = str(payload.get("config_proposal_generation_mode", "") or "").strip().lower()
+            if generation_mode in {"manual", "auto"}:
+                config["config_proposal_generation_mode"] = generation_mode
+
+            apply_mode = str(payload.get("config_proposal_apply_mode", "") or "").strip().lower()
+            if apply_mode in {"manual", "after_approval"}:
+                config["config_proposal_apply_mode"] = apply_mode
 
             changed = True
 

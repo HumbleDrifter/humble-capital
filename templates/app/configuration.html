@@ -118,6 +118,44 @@
       </div>
     </div>
 
+    <div class="config-proposal-automation-panel">
+      <div class="config-proposal-automation-head">
+        <div>
+          <div class="config-proposal-eyebrow">Proposal Automation</div>
+          <div class="config-proposal-automation-copy">Choose how proposals are generated and whether approval should immediately apply approved guardrail changes.</div>
+        </div>
+      </div>
+
+      <div class="config-proposal-automation-grid">
+        <div class="form-card config-proposal-automation-card">
+          <label for="config_proposal_generation_mode">Generation Mode</label>
+          <select id="config_proposal_generation_mode">
+            <option value="manual">Manual</option>
+            <option value="auto">Auto</option>
+          </select>
+          <div class="field-help">Manual generation: proposals are created only when you trigger them.</div>
+          <div class="field-help">Auto generation: proposals are created automatically when advisory rules pass.</div>
+        </div>
+
+        <div class="form-card config-proposal-automation-card">
+          <label for="config_proposal_apply_mode">Apply Mode</label>
+          <select id="config_proposal_apply_mode">
+            <option value="manual">Manual</option>
+            <option value="after_approval">After Approval</option>
+          </select>
+          <div class="field-help">Manual apply: approval and apply remain separate.</div>
+          <div class="field-help">Apply after approval: approved proposals are applied immediately after approval using the existing safe allowlist.</div>
+        </div>
+      </div>
+
+      <div class="configuration-action-row config-proposal-automation-actions">
+        <button class="btn btn-secondary" type="button" onclick="generateProposalNow()">Generate Proposal Now</button>
+      </div>
+      <div class="config-proposal-automation-result" id="configProposalAutomationResult">No proposal generation run yet.</div>
+    </div>
+
+    <div class="divider"></div>
+
     <div class="config-proposal-card" id="configProposalLatestCard">
       <div class="config-proposal-empty" id="configProposalEmptyState">
         <div class="config-proposal-empty-title">No proposals yet</div>

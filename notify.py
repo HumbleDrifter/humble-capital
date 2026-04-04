@@ -330,6 +330,14 @@ def render_config_proposal_status_text(proposal_id, result, proposal_record=None
     if summary:
         lines.extend(["", summary])
 
+    if result.get("auto_apply_attempted") and not result.get("auto_apply_ok"):
+        lines.extend([
+            "",
+            f"Automatic apply after approval did not complete.",
+            f"Apply Reason: {result.get('auto_apply_reason', 'unknown')}",
+            f"Apply Status: {result.get('auto_apply_status', 'n/a')}",
+        ])
+
     lines.append("")
     if result.get("status") == "applied":
         lines.append("Config changes have been applied.")

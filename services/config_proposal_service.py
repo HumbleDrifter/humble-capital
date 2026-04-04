@@ -32,6 +32,8 @@ from storage import (
 PROPOSAL_TYPE = "config_guardrail"
 DEFAULT_ADVISORY_RANGE = "30d"
 DEFAULT_PROPOSAL_TTL_MINUTES = int(float(os.getenv("CONFIG_PROPOSAL_TTL_MINUTES", "120") or "120"))
+DEFAULT_PROPOSAL_GENERATION_MODE = "manual"
+DEFAULT_PROPOSAL_APPLY_MODE = "manual"
 ALLOWED_CHANGE_KEYS = {
     "satellite_total_target",
     "satellite_total_max",
@@ -48,6 +50,29 @@ def _safe_dict(value):
 
 def _safe_list(value):
     return value if isinstance(value, list) else []
+
+
+def get_config_proposal_automation_settings(config=None):
+    cfg = _safe_dict(config) if isinstance(config, dict) else _safe_dict(load_asset_config())
+
+    generation_mode = str(
+        cfg.get("config_proposal_generation_mode", DEFAULT_PROPOSAL_GENERATION_MODE)
+        or DEFAULT_PROPOSAL_GENERATION_MODE
+    ).strip().lower()
+    if generation_mode not in {"manual", "auto"}:
+        generation_mode = DEFAULT_PROPOSAL_GENERATION_MODE
+
+    apply_mode = str(
+        cfg.get("config_proposal_apply_mode", DEFAULT_PROPOSAL_APPLY_MODE)
+        or DEFAULT_PROPOSAL_APPLY_MODE
+    ).strip().lower()
+    if apply_mode not in {"manual", "after_approval"}:
+        apply_mode = DEFAULT_PROPOSAL_APPLY_MODE
+
+    return {
+        "generation_mode": generation_mode,
+        "apply_mode": apply_mode,
+    }
 
 
 def _clean_text_list(values, limit=3):
@@ -494,12 +519,33 @@ def approve_config_proposal(proposal_id, actor=None):
         }
 
     updated = get_config_proposal_by_id(proposal_id)
-    return {
+    approval_result = {
         "ok": True,
         "proposal_id": proposal_id,
         "status": (updated or {}).get("status", "approved"),
         "approved_at": result.get("timestamp"),
         "approved_by": actor,
+    }
+
+    settings = get_config_proposal_automation_settings()
+    if settings.get("apply_mode") != "after_approval":
+        return approval_result
+
+    apply_result = apply_config_proposal(proposal_id, applied_by=actor)
+    if apply_result.get("ok"):
+        return {
+            **approval_result,
+            **apply_result,
+            "auto_apply_attempted": True,
+            "auto_apply_ok": True,
+        }
+
+    return {
+        **approval_result,
+        "auto_apply_attempted": True,
+        "auto_apply_ok": False,
+        "auto_apply_reason": apply_result.get("reason"),
+        "auto_apply_status": apply_result.get("current_status"),
     }
 
 

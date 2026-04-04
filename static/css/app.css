@@ -111,6 +111,25 @@ canvas {
   padding: 28px;
 }
 
+.meme-rotation-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  min-width: 0;
+  width: 100%;
+}
+
+.meme-rotation-grid .panel,
+.meme-rotation-grid .panel.span-12 {
+  width: 100%;
+  max-width: none;
+}
+
+.meme-rotation-grid .span-12,
+.meme-rotation-grid .panel.span-12 {
+  grid-column: span 12;
+  width: 100%;
+}
+
 /* =========================================================
    SIDEBAR
 ========================================================= */
@@ -2509,6 +2528,8 @@ tbody tr:last-child td {
 .opportunities-panel,
 .opportunities-advanced-panel {
   padding-top: 24px;
+  width: 100%;
+  max-width: none;
 }
 
 .opportunity-summary-grid {
@@ -2619,9 +2640,10 @@ tbody tr:last-child td {
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
-  box-shadow: var(--shadow-soft);
-  outline: 1px solid rgba(255,255,255,0.05);
+    linear-gradient(180deg, rgba(17, 25, 39, 0.96), rgba(10, 16, 25, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    var(--shadow-soft);
 }
 
 .opportunity-card * {
@@ -2633,25 +2655,38 @@ tbody tr:last-child td {
 }
 
 .opportunity-card.high {
-  border-color: rgba(16, 185, 129, 0.26);
+  border-color: rgba(16, 185, 129, 0.32);
   background:
-    radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.24), transparent 40%),
+    radial-gradient(circle at bottom right, rgba(5, 150, 105, 0.14), transparent 48%),
+    linear-gradient(145deg, rgba(14, 35, 31, 0.98), rgba(10, 17, 25, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(220, 252, 231, 0.04),
+    0 18px 34px rgba(5, 150, 105, 0.12);
 }
 
 .opportunity-card.strong {
-  border-color: rgba(34, 197, 94, 0.22);
+  border-color: rgba(34, 197, 94, 0.24);
   background:
-    radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.16), transparent 42%),
+    radial-gradient(circle at bottom right, rgba(21, 128, 61, 0.08), transparent 52%),
+    linear-gradient(145deg, rgba(14, 31, 27, 0.98), rgba(10, 17, 25, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(220, 252, 231, 0.03),
+    0 14px 28px rgba(21, 128, 61, 0.08);
 }
 
 .opportunity-card.building {
   border-color: rgba(74, 222, 128, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(74, 222, 128, 0.10), transparent 44%),
+    linear-gradient(145deg, rgba(15, 27, 24, 0.98), rgba(10, 16, 25, 0.98));
 }
 
 .opportunity-card.early {
   border-color: rgba(148, 163, 184, 0.14);
+  background:
+    linear-gradient(145deg, rgba(16, 22, 32, 0.98), rgba(10, 15, 23, 0.98));
 }
 
 .opportunity-card-head {

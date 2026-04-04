@@ -63,12 +63,11 @@ function fmtPct(v, alreadyPercent = true) {
   return `${value.toFixed(2)}%`;
 }
 
-function candidateTone(score) {
-  const s = Number(score || 0);
-  if (s >= 90) return "rgba(22, 163, 74, 0.30)";
-  if (s >= 75) return "rgba(34, 197, 94, 0.24)";
-  if (s >= 50) return "rgba(74, 222, 128, 0.18)";
-  return "rgba(21, 128, 61, 0.12)";
+function fmtNumber(v) {
+  return Number(v || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  });
 }
 
 function sortCandidates(rows, sortKey) {
@@ -87,9 +86,223 @@ function sortCandidates(rows, sortKey) {
   return items;
 }
 
-function renderHeatmap(data) {
-  const meta = document.getElementById("heatmapMeta");
+function opportunityTone(score) {
+  const s = Number(score || 0);
+  if (s >= 90) return "high";
+  if (s >= 75) return "strong";
+  if (s >= 50) return "building";
+  return "early";
+}
+
+function scoreLabel(score) {
+  const s = Number(score || 0);
+  if (s >= 85) return "High";
+  if (s >= 65) return "Medium";
+  return "Developing";
+}
+
+function normalizeRegime(value) {
+  return String(value || "unknown").replaceAll("_", " ");
+}
+
+function regimeTone(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "bull") return "bull";
+  if (normalized === "neutral") return "neutral";
+  if (normalized === "risk_off") return "risk-off";
+  return "unknown";
+}
+
+function assetTypeForCandidate(row) {
+  const cls = String(row.class || "").trim().toLowerCase();
+  const productId = String(row.product_id || "").trim().toUpperCase();
+
+  if (cls.includes("option")) return "Options";
+  if (cls.includes("future")) return "Futures";
+  if (cls.includes("stock") || cls.includes("equity")) return "Stock";
+  if (cls.includes("crypto")) return "Crypto";
+  if (productId.includes("-")) return "Crypto";
+  return "Asset";
+}
+
+function signalLabel(row) {
+  return String(row.source || row.strategy || "Scanner").trim() || "Scanner";
+}
+
+function statusText(row) {
+  if (row.blocked || row.enabled === false) return "Paused";
+  if (row.core) return "Core (Portfolio)";
+  if (row.held) return "Live";
+  if (row.allowed) return "Allowed";
+  if (row.active_buy_universe) return "Ready";
+  return "Watching";
+}
+
+function groupForCandidate(row) {
+  if (row.blocked || row.enabled === false) return "paused";
+  if (row.held || row.allowed || row.active_buy_universe || row.core) return "active";
+  return "watching";
+}
+
+function groupTitle(groupKey) {
+  if (groupKey === "active") return "Active";
+  if (groupKey === "paused") return "Paused";
+  return "Watching";
+}
+
+function groupDescription(groupKey) {
+  if (groupKey === "active") return "Live, allowed, or ready-to-enter opportunities worth active operator attention.";
+  if (groupKey === "paused") return "Opportunities intentionally blocked or otherwise taken out of active rotation.";
+  return "Candidates being monitored without an active portfolio or allowlist commitment.";
+}
+
+function emptyStateText(groupKey) {
+  if (groupKey === "active") return "No currently active opportunities are standing out right now.";
+  if (groupKey === "paused") return "No opportunities are currently paused or blocked.";
+  return "No candidates are being monitored right now.";
+}
+
+function actionButtons(row) {
+  const productId = String(row.product_id || "");
+  const safeId = escapeHtml(productId);
+  const mode = row.blocked ? "disable" : row.allowed ? "enable" : "auto";
+
+  return `
+    <div class="opportunity-actions">
+      <button class="btn ${mode === "enable" ? "btn-primary" : "btn-secondary"} opportunity-action-btn" type="button" onclick="setOpportunityMode('${safeId}','enable')">Enable</button>
+      <button class="btn ${mode === "auto" ? "btn-primary" : "btn-secondary"} opportunity-action-btn" type="button" onclick="setOpportunityMode('${safeId}','auto')">Auto</button>
+      <button class="btn ${mode === "disable" ? "btn-primary" : "btn-secondary"} opportunity-action-btn" type="button" onclick="setOpportunityMode('${safeId}','disable')">Disable</button>
+    </div>
+  `;
+}
+
+function flagPills(row) {
+  const flags = [];
+  if (row.allowed) flags.push('<span class="pill">allowed</span>');
+  if (row.blocked) flags.push('<span class="pill">blocked</span>');
+  if (row.core) flags.push('<span class="pill">core</span>');
+  if (row.active_buy_universe) flags.push('<span class="pill">ready</span>');
+  return flags.join("");
+}
+
+function renderSummary(data, groups) {
+  const host = document.getElementById("opportunitySummary");
+  if (!host) return;
+  const regimeText = normalizeRegime(data.market_regime || "unknown");
+  const regimeClass = regimeTone(data.market_regime || "unknown");
+
+  host.innerHTML = `
+    <div class="opportunity-summary-card">
+      <div class="opportunity-summary-label">Active</div>
+      <div class="opportunity-summary-value">${groups.active.length}</div>
+    </div>
+    <div class="opportunity-summary-card">
+      <div class="opportunity-summary-label">Watching</div>
+      <div class="opportunity-summary-value">${groups.watching.length}</div>
+    </div>
+    <div class="opportunity-summary-card">
+      <div class="opportunity-summary-label">Paused</div>
+      <div class="opportunity-summary-value">${groups.paused.length}</div>
+    </div>
+    <div class="opportunity-summary-card">
+      <div class="opportunity-summary-label">Regime</div>
+      <div class="opportunity-summary-value">
+        <span class="opportunity-regime-badge ${escapeHtml(regimeClass)}">${escapeHtml(regimeText)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderScannerStatus(systemData) {
+  const summaryEl = document.getElementById("scannerStatusSummary");
+  const toggleBtn = document.getElementById("scannerToggleBtn");
+  const known = typeof systemData?.admin_state?.meme_rotation_enabled === "boolean";
+  const enabled = Boolean(systemData?.admin_state?.meme_rotation_enabled);
+
+  if (summaryEl) {
+    summaryEl.textContent = !known
+      ? "Scanner state unavailable. Toggle still uses the live scanner control."
+      : enabled
+        ? "Scanner is live and evaluating opportunities."
+        : "Scanner is paused. Existing records remain visible for review.";
+  }
+
+  if (toggleBtn) {
+    toggleBtn.textContent = !known ? "Toggle Scanner" : enabled ? "Pause Scanner" : "Resume Scanner";
+    toggleBtn.className = `btn ${enabled ? "btn-secondary" : "btn-primary"}`;
+    toggleBtn.dataset.enabled = enabled ? "true" : "false";
+  }
+}
+
+function renderStatus(data, systemData) {
   const status = document.getElementById("heatmapStatus");
+  if (!status) return;
+
+  const cache = data._cache?.source || "unknown";
+  const universeCount = Array.isArray(data.active_satellite_buy_universe)
+    ? data.active_satellite_buy_universe.length
+    : 0;
+  const scannerEnabled = Boolean(systemData?.admin_state?.meme_rotation_enabled);
+
+  status.innerHTML = `
+    <span class="badge accent">${escapeHtml(cache)}</span>
+    <span class="badge good">universe ${universeCount}</span>
+    <span class="badge ${scannerEnabled ? "good" : "warn"}">${scannerEnabled ? "scanner live" : "scanner paused"}</span>
+  `;
+}
+
+function opportunityCard(row) {
+  const productId = row.product_id || row.symbol || "—";
+  const tone = opportunityTone(row.score);
+  return `
+    <article class="opportunity-card ${tone}">
+      <div class="opportunity-card-head">
+        <div>
+          <div class="opportunity-symbol">${escapeHtml(productId)}</div>
+          <div class="opportunity-subline">
+            <span class="badge">${escapeHtml(assetTypeForCandidate(row))}</span>
+            <span class="tiny">${escapeHtml(signalLabel(row))}</span>
+          </div>
+        </div>
+        <div class="opportunity-score-wrap">
+          <div class="opportunity-score">${fmtNumber(row.score)}</div>
+          <div class="tiny">${escapeHtml(scoreLabel(row.score))} confidence</div>
+        </div>
+      </div>
+
+      <div class="opportunity-pill-row">
+        <span class="pill">${escapeHtml(statusText(row))}</span>
+        ${flagPills(row)}
+      </div>
+
+        <div class="opportunity-metrics">
+        <div class="opportunity-metric">
+          <span class="opportunity-metric-label">Target Allocation</span>
+          <strong>${fmtPct(row.portfolio_weight || 0, false)}</strong>
+        </div>
+        <div class="opportunity-metric">
+          <span class="opportunity-metric-label">Held Value</span>
+          <strong>${fmtUsd(row.held_value_usd || 0)}</strong>
+        </div>
+        <div class="opportunity-metric">
+          <span class="opportunity-metric-label">24H Move</span>
+          <strong>${fmtPct(row.change_24h || 0)}</strong>
+        </div>
+        <div class="opportunity-metric">
+          <span class="opportunity-metric-label">Unrealized</span>
+          <strong>${fmtPct(row.unrealized_pnl_pct || 0)}</strong>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      ${actionButtons(row)}
+    </article>
+  `;
+}
+
+function renderGroups(data) {
+  const meta = document.getElementById("heatmapMeta");
   const grid = document.getElementById("heatmapGrid");
   const sortKey = document.getElementById("heatmapSort")?.value || "score";
 
@@ -97,80 +310,107 @@ function renderHeatmap(data) {
 
   const rows = Array.isArray(data.candidates) ? data.candidates : [];
   const sorted = sortCandidates(rows, sortKey);
+  const groups = { active: [], watching: [], paused: [] };
+
+  for (const row of sorted) {
+    groups[groupForCandidate(row)].push(row);
+  }
 
   if (meta) {
-    const regime = data.market_regime || "unknown";
-    meta.textContent = `${sorted.length} candidate(s) loaded • regime ${regime}`;
+    meta.textContent = `${sorted.length} opportunity candidate(s) loaded • regime ${normalizeRegime(data.market_regime || "unknown")}`;
   }
 
-  if (status) {
-    const cache = data._cache?.source || "unknown";
-    const universeCount = Array.isArray(data.active_satellite_buy_universe)
-      ? data.active_satellite_buy_universe.length
-      : 0;
+  renderSummary(data, groups);
 
-    status.innerHTML = `
-      <span class="badge accent">${escapeHtml(cache)}</span>
-      <span class="badge good">universe ${universeCount}</span>
-    `;
-  }
-
-  grid.innerHTML = sorted.length ? sorted.map((row) => {
-    const productId = row.product_id || row.symbol || "—";
-    const score = Number(row.score || 0);
-    const source = row.source || row.strategy || "hunter";
-    const heldValue = Number(row.held_value_usd || 0);
-    const weight = Number(row.portfolio_weight || row.weight || 0);
-    const move1h = Number(row.change_1h || row.move_1h || 0);
-    const move24h = Number(row.change_24h || row.move_24h || 0);
-    const pnl = Number(row.unrealized_pnl_pct || 0);
-    const statusText = row.status || (heldValue > 0 ? "Held" : "Watching");
-    const flags = [
-      row.allowed ? '<span class="pill">allowed</span>' : '',
-      row.blocked ? '<span class="pill">blocked</span>' : '',
-      row.core ? '<span class="pill">core</span>' : '',
-      row.active_buy_universe ? '<span class="pill">active buy</span>' : ''
-    ].filter(Boolean).join('');
-
+  grid.innerHTML = ["active", "watching", "paused"].map((groupKey) => {
+    const items = groups[groupKey];
     return `
-      <div class="tile" style="background:${candidateTone(score)}; border:1px solid rgba(34,197,94,0.18);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px;">
+      <section class="opportunity-group">
+        <div class="section-header compact-header">
           <div>
-            <div style="font-size:18px; font-weight:800;">${escapeHtml(productId)}</div>
-            <div class="tiny">${escapeHtml(source)}</div>
+            <h3>${groupTitle(groupKey)}</h3>
+            <p class="section-subtitle">${groupDescription(groupKey)}</p>
           </div>
-          <span class="badge good">Score ${score.toFixed(1)}</span>
+          <span class="badge">${items.length}</span>
         </div>
-
-        <div class="pill-wrap" style="margin-bottom:10px;">
-          <span class="pill">${escapeHtml(statusText)}</span>
-          ${flags}
+        <div class="opportunity-card-grid">
+          ${items.length
+            ? items.map((row) => opportunityCard(row)).join("")
+            : `<div class="opportunity-empty muted">${escapeHtml(emptyStateText(groupKey))}</div>`
+          }
         </div>
-
-        <div class="statusline" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <div><span class="tiny">Weight</span><br><strong>${fmtPct(weight, false)}</strong></div>
-          <div><span class="tiny">Held Value</span><br><strong>${fmtUsd(heldValue)}</strong></div>
-          <div><span class="tiny">1H</span><br><strong>${fmtPct(move1h)}</strong></div>
-          <div><span class="tiny">24H</span><br><strong>${fmtPct(move24h)}</strong></div>
-          <div><span class="tiny">Unrealized</span><br><strong>${fmtPct(pnl)}</strong></div>
-        </div>
-      </div>
+      </section>
     `;
-  }).join("") : `<div class="muted">No Meme Hunter candidates found.</div>`;
+  }).join("");
+}
+
+async function postJson(path, body) {
+  return fetchJson(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, ...(API_SECRET ? { secret: API_SECRET } : {}) })
+  }, 15000);
+}
+
+async function setOpportunityMode(productId, mode) {
+  try {
+    if (mode === "enable") {
+      await postJson("/api/admin/satellite/block", { product_id: productId, action: "remove" });
+      await postJson("/api/admin/satellite/allow", { product_id: productId, action: "add" });
+    } else if (mode === "disable") {
+      await postJson("/api/admin/satellite/allow", { product_id: productId, action: "remove" });
+      await postJson("/api/admin/satellite/block", { product_id: productId, action: "add" });
+    } else {
+      await postJson("/api/admin/satellite/allow", { product_id: productId, action: "remove" });
+      await postJson("/api/admin/satellite/block", { product_id: productId, action: "remove" });
+    }
+
+    await refreshMemeRotation();
+  } catch (err) {
+    console.error(err);
+    const status = document.getElementById("heatmapStatus");
+    if (status) {
+      status.innerHTML = `<span class="badge bad">${escapeHtml(err.message)}</span>`;
+    }
+  }
+}
+
+async function toggleOpportunityScanner() {
+  const button = document.getElementById("scannerToggleBtn");
+  const enabled = String(button?.dataset.enabled || "false") === "true";
+
+  try {
+    await postJson("/api/admin/meme_rotation", { enabled: !enabled });
+    await refreshMemeRotation();
+  } catch (err) {
+    console.error(err);
+    const summaryEl = document.getElementById("scannerStatusSummary");
+    if (summaryEl) {
+      summaryEl.textContent = `Scanner update failed: ${err.message}`;
+    }
+  }
 }
 
 async function refreshMemeRotation() {
   try {
-    const data = await fetchJson("/api/meme_rotation");
-    renderHeatmap(data);
+    const [data, systemData] = await Promise.all([
+      fetchJson("/api/meme_rotation"),
+      fetchJson("/api/system_snapshot").catch(() => ({}))
+    ]);
+    renderStatus(data, systemData || {});
+    renderScannerStatus(systemData || {});
+    renderGroups(data);
   } catch (err) {
     console.error(err);
     const grid = document.getElementById("heatmapGrid");
     if (grid) {
-      grid.innerHTML = `<div class="status-console error">Meme Hunter load failed: ${escapeHtml(err.message)}</div>`;
+      grid.innerHTML = `<div class="status-console error">Opportunities load failed: ${escapeHtml(err.message)}</div>`;
     }
   }
 }
 
 window.refreshMemeRotation = refreshMemeRotation;
+window.setOpportunityMode = setOpportunityMode;
+window.toggleOpportunityScanner = toggleOpportunityScanner;
+
 refreshMemeRotation();

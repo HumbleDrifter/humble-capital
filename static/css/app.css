@@ -2506,6 +2506,228 @@ tbody tr:last-child td {
    MEME HUNTER / HEATMAP
 ========================================================= */
 
+.opportunities-panel,
+.opportunities-advanced-panel {
+  padding-top: 24px;
+}
+
+.opportunity-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.opportunity-summary-card {
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.opportunity-summary-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.opportunity-summary-value {
+  margin-top: 8px;
+  color: #f4fbff;
+  font-size: 24px;
+  font-weight: 780;
+  letter-spacing: -0.03em;
+}
+
+.opportunity-regime-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: capitalize;
+}
+
+.opportunity-regime-badge.bull {
+  border-color: rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.12);
+  color: #c9ffeb;
+}
+
+.opportunity-regime-badge.neutral {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.08);
+  color: #d9e3f1;
+}
+
+.opportunity-regime-badge.risk-off {
+  border-color: rgba(251, 191, 36, 0.24);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde68a;
+}
+
+.opportunity-regime-badge.unknown {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-dim);
+}
+
+.opportunity-groups {
+  display: grid;
+  gap: 18px;
+}
+
+.opportunity-group {
+  min-width: 0;
+}
+
+.opportunity-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.opportunity-card {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
+  box-shadow: var(--shadow-soft);
+}
+
+.opportunity-card.high {
+  border-color: rgba(16, 185, 129, 0.26);
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
+}
+
+.opportunity-card.strong {
+  border-color: rgba(34, 197, 94, 0.22);
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.018));
+}
+
+.opportunity-card.building {
+  border-color: rgba(74, 222, 128, 0.18);
+}
+
+.opportunity-card.early {
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.opportunity-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.opportunity-symbol {
+  color: #f4fbff;
+  font-size: 20px;
+  font-weight: 780;
+  letter-spacing: -0.03em;
+}
+
+.opportunity-subline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.opportunity-score-wrap {
+  text-align: right;
+}
+
+.opportunity-score {
+  color: #dffaf0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.opportunity-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.opportunity-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.opportunity-metric {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.opportunity-metric-label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.opportunity-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.opportunity-action-btn {
+  flex: 1 1 0;
+  min-width: 90px;
+}
+
+.opportunity-empty {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.opportunity-advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.opportunity-inline-status {
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .heatmap {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
@@ -3875,6 +4097,12 @@ tbody tr:last-child td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .opportunity-summary-grid,
+  .opportunity-card-grid,
+  .opportunity-advanced-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .config-proposal-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4098,6 +4326,13 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
+  .opportunity-summary-grid,
+  .opportunity-card-grid,
+  .opportunity-advanced-grid,
+  .opportunity-metrics {
+    grid-template-columns: 1fr;
+  }
+
   .configuration-shell-card,
   .configuration-advanced-toggle summary,
   .configuration-advanced-body {
@@ -4144,6 +4379,29 @@ tbody tr:last-child td {
   .configuration-preset-panel {
     padding: 16px;
     border-radius: 18px;
+  }
+
+  .opportunity-summary-card,
+  .opportunity-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .opportunity-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .opportunity-score-wrap {
+    text-align: left;
+  }
+
+  .opportunity-actions {
+    flex-direction: column;
+  }
+
+  .opportunity-action-btn {
+    width: 100%;
   }
 
   .configuration-preset-copy h3 {

@@ -217,8 +217,69 @@ function buildSvgLine(points, key, labelFormatter = fmtUsd) {
 
 function rangeLabel(rangeName) {
   if (rangeName === "7d") return "7D";
-  if (rangeName === "90d") return "90D";
+  if (rangeName === "all") return "All";
   return "30D";
+}
+
+function normalizeRegimeLabel(value) {
+  return String(value || "unknown").replaceAll("_", " ").trim() || "unknown";
+}
+
+function signedToneClass(value) {
+  if (value == null) return "";
+  return Number(value) >= 0 ? "positive" : "negative";
+}
+
+function deriveRangePnlValue(historyData) {
+  const analytics = safeObject(historyData?.analytics);
+  if (hasNumericValue(analytics?.pnl_usd)) return Number(analytics.pnl_usd);
+
+  const points = Array.isArray(historyData?.points) ? historyData.points : [];
+  if (points.length < 2) return null;
+
+  const key = historyData?.series_type === "realized_pnl" ? "realized_pnl" : "equity_usd";
+  return Number(points[points.length - 1]?.[key] || 0) - Number(points[0]?.[key] || 0);
+}
+
+function deriveDailyPnlValue(historyData, fallbackHistoryData) {
+  const primary = Array.isArray(historyData?.points) ? historyData.points : [];
+  const fallback = Array.isArray(fallbackHistoryData?.points) ? fallbackHistoryData.points : [];
+  const points = primary.length >= 2 ? primary : fallback;
+  if (points.length < 2) return null;
+
+  const source = primary.length >= 2 ? historyData : fallbackHistoryData;
+  const key = source?.series_type === "realized_pnl" ? "realized_pnl" : "equity_usd";
+  return Number(points[points.length - 1]?.[key] || 0) - Number(points[points.length - 2]?.[key] || 0);
+}
+
+function renderSummaryStrip(portfolioData, historyData, history30Data, historyAllData, rebalanceData, systemData) {
+  const snapshot = safeObject(portfolioData?.snapshot);
+  const summary = safeObject(portfolioData?.summary);
+  const totalValue =
+    Number(summary.total_value_usd || 0) ||
+    Number(snapshot.total_value_usd || 0) ||
+    0;
+  const usdCash = Number(summary.usd_cash || snapshot.usd_cash || 0);
+  const dailyPnl = deriveDailyPnlValue(historyData, history30Data);
+  const totalPnl = deriveRangePnlValue(historyAllData);
+  const regime =
+    summary.market_regime ||
+    rebalanceData?.summary?.market_regime ||
+    systemData?.portfolio_summary?.market_regime ||
+    "unknown";
+
+  [
+    ["summaryPortfolioValue", fmtUsd(totalValue), ""],
+    ["summaryDailyPnl", dailyPnl == null ? "Limited" : fmtSignedUsd(dailyPnl), signedToneClass(dailyPnl)],
+    ["summaryTotalPnl", totalPnl == null ? "Limited" : fmtSignedUsd(totalPnl), signedToneClass(totalPnl)],
+    ["summaryCashAvailable", fmtUsd(usdCash), ""],
+    ["summaryMarketRegime", normalizeRegimeLabel(regime), regimeTone(regime)]
+  ].forEach(([id, text, tone]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = `dashboard-command-value${tone ? ` ${tone}` : ""}`;
+  });
 }
 
 function buildTrendSvg(points, key) {
@@ -861,6 +922,9 @@ function renderPortfolio(data) {
   if (kpiCash) kpiCash.textContent = fmtUsd(usdCash);
   if (kpiCore) kpiCore.textContent = fmtPct(coreWeight);
   if (kpiSat) kpiSat.textContent = fmtPct(satWeight);
+  setText("allocationCashValue", fmtPct(cashWeight));
+  setText("allocationCoreValue", fmtPct(coreWeight));
+  setText("allocationSatValue", fmtPct(satWeight));
 
   const allocationText = document.getElementById("allocationText");
   if (allocationText) {
@@ -902,6 +966,31 @@ function renderPortfolio(data) {
   if (cashUsdt) cashUsdt.textContent = fmtUsd(cashBreakdown.USDT || 0);
   if (cashTotal) cashTotal.textContent = fmtUsd(usdCash);
 
+  const allocationBreakdown = document.getElementById("allocationBreakdown");
+  if (allocationBreakdown) {
+    const topRows = rows.filter((row) => Number(row.weight_total || 0) > 0).slice(0, 6);
+    allocationBreakdown.innerHTML = topRows.length
+      ? topRows.map((row) => {
+          const weightPct = Math.max(0, Number(row.weight_total || 0) * 100);
+          return `
+            <div class="dashboard-allocation-row">
+              <div class="dashboard-allocation-row-head">
+                <span class="dashboard-allocation-row-symbol">${escapeHtml(row.product_id || "—")}</span>
+                <span class="dashboard-allocation-row-weight">${fmtPct(row.weight_total)}</span>
+              </div>
+              <div class="dashboard-allocation-row-bar">
+                <span style="width:${Math.min(100, weightPct)}%"></span>
+              </div>
+              <div class="dashboard-allocation-row-meta">
+                <span>${escapeHtml(displayClass(row.class || ""))}</span>
+                <span>${fmtUsd(row.value_total_usd || 0)}</span>
+              </div>
+            </div>
+          `;
+        }).join("")
+      : `<div class="muted">No allocation rows available from the current portfolio snapshot.</div>`;
+  }
+
   const tbody = document.getElementById("portfolioTable");
   if (!tbody) return;
 
@@ -940,6 +1029,77 @@ function renderActiveBuyUniverse(source) {
   host.innerHTML = symbols.length
     ? symbols.map((sym) => `<span class="pill">${escapeHtml(sym)}</span>`).join("")
     : `<div class="muted">No active satellite buy universe entries available.</div>`;
+}
+
+function opportunityPreviewTone(score) {
+  const numeric = Number(score || 0);
+  if (numeric >= 85) return "high";
+  if (numeric >= 65) return "strong";
+  if (numeric >= 45) return "building";
+  return "early";
+}
+
+function opportunityPreviewStatus(row) {
+  if (row.blocked || row.enabled === false) return "Paused";
+  if (row.held || row.core) return "Live";
+  if (row.allowed || row.active_buy_universe) return "Ready";
+  return "Watching";
+}
+
+function renderOpportunitiesPreview(opportunityData, systemData) {
+  const host = document.getElementById("dashboardOpportunitiesPreview");
+  const meta = document.getElementById("dashboardOpportunitiesMeta");
+  if (!host) return;
+
+  const candidates = Array.isArray(opportunityData?.candidates) ? opportunityData.candidates.slice() : [];
+  const activeCount = candidates.filter((row) => row.held || row.allowed || row.active_buy_universe || row.core).length;
+  const watchingCount = candidates.filter((row) => !(row.blocked || row.enabled === false) && !(row.held || row.allowed || row.active_buy_universe || row.core)).length;
+  const previewRows = candidates
+    .filter((row) => !(row.blocked || row.enabled === false))
+    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
+    .slice(0, 6);
+
+  const scannerKnown = typeof systemData?.admin_state?.meme_rotation_enabled === "boolean";
+  const scannerText = !scannerKnown
+    ? "scanner state unavailable"
+    : systemData.admin_state.meme_rotation_enabled
+      ? "scanner live"
+      : "scanner paused";
+
+  if (meta) {
+    meta.textContent = `${activeCount} active • ${watchingCount} watching • ${scannerText}`;
+  }
+
+  host.innerHTML = previewRows.length
+    ? previewRows.map((row) => `
+      <article class="dashboard-opportunity-card ${opportunityPreviewTone(row.score)}">
+        <div class="dashboard-opportunity-card-head">
+          <div>
+            <div class="dashboard-opportunity-symbol">${escapeHtml(row.product_id || row.symbol || "—")}</div>
+            <div class="dashboard-opportunity-subline">
+              <span class="badge">${escapeHtml(opportunityPreviewStatus(row))}</span>
+              <span class="tiny">${escapeHtml(row.source || row.strategy || "Scanner")}</span>
+            </div>
+          </div>
+          <div class="dashboard-opportunity-score">${Number(row.score || 0).toFixed(1)}</div>
+        </div>
+        <div class="dashboard-opportunity-metrics">
+          <div class="dashboard-opportunity-metric">
+            <span>24H Move</span>
+            <strong>${fmtSignedPct(row.change_24h || 0, true)}</strong>
+          </div>
+          <div class="dashboard-opportunity-metric">
+            <span>Weight</span>
+            <strong>${fmtPct(row.portfolio_weight || 0)}</strong>
+          </div>
+          <div class="dashboard-opportunity-metric">
+            <span>Held Value</span>
+            <strong>${fmtUsd(row.held_value_usd || 0)}</strong>
+          </div>
+        </div>
+      </article>
+    `).join("")
+    : `<div class="dashboard-opportunities-empty muted">No current opportunity candidates are available for preview.</div>`;
 }
 
 function buyAmount(x) {
@@ -1043,32 +1203,85 @@ function renderExecutionActivity(systemData) {
   const host = document.getElementById("executionActivity");
   if (!host) return;
 
-  const rows = Array.isArray(systemData?.recent_trades) ? systemData.recent_trades.slice() : [];
-  const lastRow = rows
+  const rows = (Array.isArray(systemData?.recent_trades) ? systemData.recent_trades.slice() : [])
     .filter((row) => row && (row.product_id || row.side || row.status || row.created_at))
-    .sort((a, b) => Number(b?.created_at || 0) - Number(a?.created_at || 0))[0];
+    .sort((a, b) => Number(b?.created_at || 0) - Number(a?.created_at || 0))
+    .slice(0, 4);
 
-  if (!lastRow) {
+  if (!rows.length) {
     host.innerHTML = `<div class="execution-activity-fallback">No recent execution activity available.</div>`;
     return;
   }
 
+  host.innerHTML = rows.map((row) => `
+    <article class="execution-activity-entry">
+      <div class="execution-activity-entry-head">
+        <div class="execution-activity-entry-title">${escapeHtml(row.product_id || "—")}</div>
+        <span class="badge ${String(row.side || "").toLowerCase() === "buy" ? "good" : "warn"}">${escapeHtml(String(row.side || "—").toUpperCase())}</span>
+      </div>
+      <div class="execution-activity-entry-meta">
+        <span>${escapeHtml(row.status || "status pending")}</span>
+        <span>${escapeHtml(formatUnixTime(row.created_at))}</span>
+      </div>
+      <div class="execution-activity-entry-meta">
+        <span>Price ${fmtUsd(row.price || 0)}</span>
+        <span>Size ${fmtQty(row.base_size || 0)}</span>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderHealthGrid(systemData, portfolioData, rebalanceData, failures = []) {
+  const host = document.getElementById("dashboardHealthGrid");
+  if (!host) return;
+
+  const scannerKnown = typeof systemData?.admin_state?.meme_rotation_enabled === "boolean";
+  const scannerText = !scannerKnown
+    ? "Unavailable"
+    : systemData.admin_state.meme_rotation_enabled
+      ? "Live"
+      : "Paused";
+  const serviceText = `${systemData?.status?.service || "service"} • ${systemData?.status?.status || "unknown"}`;
+  const cache = safeObject(systemData?.status?.portfolio_cache);
+  const cacheAge = hasNumericValue(cache.snapshot_age_sec)
+    ? `${Math.round(Number(cache.snapshot_age_sec || 0))}s old`
+    : hasNumericValue(cache.age_sec)
+      ? `${Math.round(Number(cache.age_sec || 0))}s old`
+      : "Age unavailable";
+  const tradeCount = hasNumericValue(systemData?.trade_stats?.trade_count)
+    ? Number(systemData.trade_stats.trade_count || 0).toLocaleString()
+    : "Unavailable";
+  const snapshotTime =
+    portfolioData?.summary?.timestamp ||
+    portfolioData?.snapshot?.timestamp ||
+    rebalanceData?.summary?.timestamp ||
+    systemData?.timestamp ||
+    0;
+
   host.innerHTML = `
-    <div class="execution-activity-row">
-      <span class="execution-activity-key">Product</span>
-      <span class="execution-activity-value">${escapeHtml(lastRow.product_id || "—")}</span>
+    <div class="statusline-item">
+      <span class="statusline-label">Scanner</span>
+      <span class="mono statusline-value">${escapeHtml(scannerText)}</span>
     </div>
-    <div class="execution-activity-row">
-      <span class="execution-activity-key">Side</span>
-      <span class="execution-activity-value">${escapeHtml(String(lastRow.side || "—").toUpperCase())}</span>
+    <div class="statusline-item">
+      <span class="statusline-label">System</span>
+      <span class="mono statusline-value">${escapeHtml(serviceText)}</span>
     </div>
-    <div class="execution-activity-row">
-      <span class="execution-activity-key">Status</span>
-      <span class="execution-activity-value">${escapeHtml(lastRow.status || "—")}</span>
+    <div class="statusline-item">
+      <span class="statusline-label">Portfolio Cache</span>
+      <span class="mono statusline-value">${escapeHtml(cacheAge)}</span>
     </div>
-    <div class="execution-activity-row">
-      <span class="execution-activity-key">Time</span>
-      <span class="execution-activity-value">${escapeHtml(formatUnixTime(lastRow.created_at))}</span>
+    <div class="statusline-item">
+      <span class="statusline-label">Trades Seen</span>
+      <span class="mono statusline-value">${escapeHtml(tradeCount)}</span>
+    </div>
+    <div class="statusline-item">
+      <span class="statusline-label">Snapshot Time</span>
+      <span class="mono statusline-value">${escapeHtml(formatUnixTime(snapshotTime))}</span>
+    </div>
+    <div class="statusline-item">
+      <span class="statusline-label">Console Mode</span>
+      <span class="mono statusline-value">${failures.length ? "Partial Data" : "Live Console"}</span>
     </div>
   `;
 }
@@ -1085,7 +1298,11 @@ function renderDashboardStatus(systemData, portfolioData, rebalanceData, failure
     rebalanceData?.summary?.market_regime ||
     "unknown";
 
-  badges.push(`<span class="badge">${escapeHtml(regime)}</span>`);
+  badges.push(`<span class="badge">${escapeHtml(normalizeRegimeLabel(regime))}</span>`);
+
+  if (typeof systemData?.admin_state?.meme_rotation_enabled === "boolean") {
+    badges.push(`<span class="badge ${systemData.admin_state.meme_rotation_enabled ? "good" : "warn"}">${systemData.admin_state.meme_rotation_enabled ? "scanner live" : "scanner paused"}</span>`);
+  }
 
   if (systemData?.trade_stats?.trade_count != null) {
     badges.push(`<span class="badge accent">trades ${Number(systemData.trade_stats.trade_count || 0)}</span>`);
@@ -1110,12 +1327,14 @@ async function refreshAll(showBadgeMessage = false) {
   const selectedHistoryPath = `/api/portfolio/history?range=${encodeURIComponent(selectedHistoryRange)}`;
   const history7Path = "/api/portfolio/history?range=7d";
   const history30Path = "/api/portfolio/history?range=30d";
-  const historyPaths = Array.from(new Set([selectedHistoryPath, history7Path, history30Path]));
+  const historyAllPath = "/api/portfolio/history?range=all";
+  const historyPaths = Array.from(new Set([selectedHistoryPath, history7Path, history30Path, historyAllPath]));
 
-  const [systemRes, portfolioRes, rebalanceRes, ...historyResults] = await Promise.all([
+  const [systemRes, portfolioRes, rebalanceRes, opportunitiesRes, ...historyResults] = await Promise.all([
     fetchJsonSafe("/api/system_snapshot?recent_count=8"),
     fetchJsonSafe("/api/portfolio"),
     fetchJsonSafe("/api/rebalance/preview"),
+    fetchJsonSafe("/api/meme_rotation"),
     ...historyPaths.map((path) => fetchJsonSafe(path))
   ]);
 
@@ -1123,23 +1342,30 @@ async function refreshAll(showBadgeMessage = false) {
   const historyRes = historyByPath[selectedHistoryPath] || { ok: false, data: null };
   const history7Res = historyByPath[history7Path] || historyRes;
   const history30Res = historyByPath[history30Path] || historyRes;
+  const historyAllRes = historyByPath[historyAllPath] || historyRes;
 
-  const failures = [systemRes, portfolioRes, rebalanceRes, ...historyResults].filter((x) => !x.ok);
+  const failures = [systemRes, portfolioRes, rebalanceRes, opportunitiesRes, ...historyResults].filter((x) => !x.ok);
 
   const systemData = systemRes.data || {};
   const portfolioData = portfolioRes.data || {};
   const rebalanceData = rebalanceRes.data || {};
+  const opportunitiesData = opportunitiesRes.data || {};
   const historyData = historyRes.data || {};
   const history7Data = history7Res.data || {};
   const history30Data = history30Res.data || {};
+  const historyAllData = historyAllRes.data || {};
 
   if (portfolioRes.ok) {
     renderPortfolio(portfolioData);
   }
 
+  renderSummaryStrip(portfolioData, historyData, history30Data, historyAllData, rebalanceData, systemData);
+
   if (systemRes.ok || portfolioRes.ok) {
     renderActiveBuyUniverse(systemData?.portfolio || portfolioData?.snapshot || {});
   }
+
+  renderOpportunitiesPreview(opportunitiesData, systemData);
 
   if (rebalanceRes.ok) {
     renderRebalance(rebalanceData);
@@ -1161,6 +1387,7 @@ async function refreshAll(showBadgeMessage = false) {
     renderExecutionActivity({});
   }
 
+  renderHealthGrid(systemData, portfolioData, rebalanceData, failures);
   renderDashboardStatus(systemData, portfolioData, rebalanceData, failures);
   setUiRefreshNow();
 

@@ -9,13 +9,61 @@
 {% endblock %}
 
 {% block content %}
-<div class="grid cols-12 dashboard-grid">
+<div class="grid cols-12 dashboard-grid dashboard-terminal-grid">
 
-  <section class="panel span-12 dashboard-overview-panel">
+  <section class="panel span-12 dashboard-command-strip-panel">
+    <div class="section-header dashboard-command-strip-header">
+      <div>
+        <h2>Trading Command Center</h2>
+        <p class="section-subtitle">Portfolio visibility, active opportunities, and live system context in one terminal view.</p>
+      </div>
+    </div>
+
+    <div class="dashboard-command-strip" id="dashboardSummaryStrip">
+      <div class="dashboard-command-card">
+        <div class="dashboard-command-label">Total Portfolio Value</div>
+        <div class="dashboard-command-value" id="summaryPortfolioValue">$0.00</div>
+      </div>
+      <div class="dashboard-command-card">
+        <div class="dashboard-command-label">Daily PnL</div>
+        <div class="dashboard-command-value" id="summaryDailyPnl">Limited</div>
+      </div>
+      <div class="dashboard-command-card">
+        <div class="dashboard-command-label">Total PnL</div>
+        <div class="dashboard-command-value" id="summaryTotalPnl">Limited</div>
+      </div>
+      <div class="dashboard-command-card">
+        <div class="dashboard-command-label">Cash Available</div>
+        <div class="dashboard-command-value" id="summaryCashAvailable">$0.00</div>
+      </div>
+      <div class="dashboard-command-card">
+        <div class="dashboard-command-label">Market Regime</div>
+        <div class="dashboard-command-value" id="summaryMarketRegime">Unknown</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel span-8 dashboard-overview-panel dashboard-trend-panel">
     <div class="section-header">
       <div>
-        <h2>Overview</h2>
-        <p class="section-subtitle">Performance-first view of portfolio value, allocation, and trend</p>
+        <h2>PnL Trend</h2>
+        <p class="section-subtitle" id="accountValueMeta">Loading persisted portfolio history and performance context...</p>
+      </div>
+      <div class="trend-range-row" role="tablist" aria-label="Portfolio value range">
+        <button class="btn btn-secondary trend-range-btn" type="button" data-range="7d" aria-pressed="false">7D</button>
+        <button class="btn btn-secondary trend-range-btn active" type="button" data-range="30d" aria-pressed="true">30D</button>
+        <button class="btn btn-secondary trend-range-btn" type="button" data-range="all" aria-pressed="false">All</button>
+      </div>
+    </div>
+
+    <div id="accountValueChartHost" class="trend-panel-stage"></div>
+  </section>
+
+  <section class="panel span-4 dashboard-briefing-panel">
+    <div class="section-header">
+      <div>
+        <h2>Command Brief</h2>
+        <p class="section-subtitle">Risk posture, adaptive guidance, and what needs attention right now.</p>
       </div>
     </div>
 
@@ -36,9 +84,9 @@
           <div class="performance-risk-band" id="performanceRiskBand">Evaluating risk posture...</div>
           <div class="performance-risk-notes" id="performanceRiskNotes">
             <span class="performance-risk-note">Waiting for portfolio and history inputs.</span>
-            </div>
           </div>
         </div>
+      </div>
       <div class="dashboard-guidance-card" id="dashboardGuidanceCard">
         <div class="dashboard-guidance-head">
           <div>
@@ -75,34 +123,33 @@
       </div>
       <div class="performance-summary-note" id="performanceSummaryNote">Waiting for persisted history and portfolio analytics.</div>
     </div>
+  </section>
 
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-label">Cash Reserve</div>
-        <div class="kpi-value" id="kpiCash">$0.00</div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-label">Core Allocation</div>
-        <div class="kpi-value" id="kpiCore">0.00%</div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-label">Satellite Allocation</div>
-        <div class="kpi-value" id="kpiSat">0.00%</div>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="section-header compact-header">
+  <section class="panel span-5 dashboard-allocation-panel">
+    <div class="section-header">
       <div>
-        <h3 style="margin:0;">Allocation Mix</h3>
-        <p class="section-subtitle" style="margin:4px 0 0 0;">Cash, core, and satellite exposure</p>
+        <h2>Portfolio Allocation</h2>
+        <p class="section-subtitle">Core versus opportunities exposure, cash runway, and top weights.</p>
       </div>
     </div>
 
-    <div id="allocationText" class="tiny"></div>
+    <div class="dashboard-allocation-header">
+      <div id="allocationText" class="tiny"></div>
+      <div class="dashboard-allocation-split">
+        <div class="dashboard-allocation-split-item">
+          <span class="dashboard-allocation-split-label">Core</span>
+          <strong class="dashboard-allocation-split-value" id="allocationCoreValue">0.00%</strong>
+        </div>
+        <div class="dashboard-allocation-split-item">
+          <span class="dashboard-allocation-split-label">Opportunities</span>
+          <strong class="dashboard-allocation-split-value" id="allocationSatValue">0.00%</strong>
+        </div>
+        <div class="dashboard-allocation-split-item">
+          <span class="dashboard-allocation-split-label">Cash</span>
+          <strong class="dashboard-allocation-split-value" id="allocationCashValue">0.00%</strong>
+        </div>
+      </div>
+    </div>
 
     <div class="allocation-wrap">
       <div id="segCash" class="allocation-seg seg-cash" style="width:0%"></div>
@@ -114,65 +161,13 @@
 
     <div class="section-header compact-header">
       <div>
-        <h3 style="margin:0;">Portfolio Value Trend</h3>
-        <p class="section-subtitle" id="accountValueMeta">Loading 30d history and drawdown analytics...</p>
-      </div>
-      <div class="trend-range-row" role="tablist" aria-label="Portfolio value range">
-        <button class="btn btn-secondary trend-range-btn" type="button" data-range="7d" aria-pressed="false">7D</button>
-        <button class="btn btn-secondary trend-range-btn active" type="button" data-range="30d" aria-pressed="true">30D</button>
-        <button class="btn btn-secondary trend-range-btn" type="button" data-range="90d" aria-pressed="false">90D</button>
+        <h3 style="margin:0;">Major Allocations</h3>
+        <p class="section-subtitle" style="margin:4px 0 0 0;">Largest holdings by current portfolio weight.</p>
       </div>
     </div>
 
-    <div id="accountValueChartHost" class="trend-panel-stage"></div>
-  </section>
-
-  <section class="panel span-8 dashboard-portfolio-panel">
-    <div class="section-header">
-      <div>
-        <h2>Portfolio</h2>
-        <p class="section-subtitle" id="portfolioMeta"></p>
-      </div>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Asset</th>
-            <th class="right">Units</th>
-            <th class="right">Price</th>
-            <th class="right">Value USD</th>
-            <th class="right">Weight</th>
-            <th>Class</th>
-          </tr>
-        </thead>
-        <tbody id="portfolioTable"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="panel span-4 dashboard-rebalance-panel">
-    <div class="section-header">
-      <div>
-        <h2>Rebalance Preview</h2>
-        <p class="section-subtitle" id="rebalanceMeta">Previewing next actions</p>
-      </div>
-    </div>
-
-    <div id="rebalanceSummary" class="rebalance-shell"></div>
-
-    <div class="divider"></div>
-
-    <div class="section-header compact-header">
-      <div>
-        <h3 style="margin:0;">Execution Activity</h3>
-        <p class="section-subtitle" style="margin:4px 0 0 0;">Most recent trade or order activity</p>
-      </div>
-    </div>
-
-    <div class="execution-activity-shell" id="executionActivity">
-      <div class="execution-activity-fallback">No recent execution activity available.</div>
+    <div id="allocationBreakdown" class="dashboard-allocation-breakdown">
+      <div class="muted">Waiting for holdings data.</div>
     </div>
 
     <div class="divider"></div>
@@ -180,7 +175,7 @@
     <div class="section-header compact-header">
       <div>
         <h3 style="margin:0;">Cash Breakdown</h3>
-        <p class="section-subtitle" style="margin:4px 0 0 0;">Available stable balances</p>
+        <p class="section-subtitle" style="margin:4px 0 0 0;">Stable balances available for deployment.</p>
       </div>
     </div>
 
@@ -207,26 +202,100 @@
     </div>
   </section>
 
-  <section class="panel span-12 dashboard-universe-panel">
+  <section class="panel span-7 dashboard-opportunities-panel">
     <div class="section-header">
       <div>
-        <h2>Active Satellite Buy Universe</h2>
-        <p class="section-subtitle">Currently tradable rotation assets</p>
+        <h2>Active Opportunities</h2>
+        <p class="section-subtitle" id="dashboardOpportunitiesMeta">Loading top scanner opportunities and buy-universe context...</p>
+      </div>
+      <div class="configuration-inline-actions">
+        <a class="btn btn-secondary" href="{{ opportunities_url }}">Open Opportunities</a>
+      </div>
+    </div>
+
+    <div id="dashboardOpportunitiesPreview" class="dashboard-opportunities-preview">
+      <div class="muted">Waiting for opportunity candidates.</div>
+    </div>
+  </section>
+
+  <section class="panel span-8 dashboard-portfolio-panel">
+    <div class="section-header">
+      <div>
+        <h2>Portfolio Visibility</h2>
+        <p class="section-subtitle" id="portfolioMeta"></p>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th class="right">Units</th>
+            <th class="right">Price</th>
+            <th class="right">Value USD</th>
+            <th class="right">Weight</th>
+            <th>Class</th>
+          </tr>
+        </thead>
+        <tbody id="portfolioTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel span-4 dashboard-activity-panel">
+    <div class="section-header">
+      <div>
+        <h2>Recent Activity</h2>
+        <p class="section-subtitle">Latest execution context and next rebalance queue.</p>
+      </div>
+    </div>
+
+    <div class="execution-activity-shell" id="executionActivity">
+      <div class="execution-activity-fallback">No recent execution activity available.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-header compact-header">
+      <div>
+        <h3 style="margin:0;">Rebalance Preview</h3>
+        <p class="section-subtitle" id="rebalanceMeta" style="margin:4px 0 0 0;">Previewing next actions</p>
+      </div>
+    </div>
+
+    <div id="rebalanceSummary" class="rebalance-shell"></div>
+  </section>
+
+  <section class="panel span-6 dashboard-universe-panel">
+    <div class="section-header">
+      <div>
+        <h2>Opportunity Context</h2>
+        <p class="section-subtitle">Current buy universe and scanner-ready symbols from the live system.</p>
       </div>
     </div>
 
     <div id="activeBuyUniverse"></div>
   </section>
 
-  <section class="panel span-12 dashboard-status-panel dashboard-status-panel-bottom">
+  <section class="panel span-6 dashboard-status-panel dashboard-status-panel-bottom">
     <div class="section-header">
       <div>
-        <h2>Console Status</h2>
-        <p class="section-subtitle">Session mode, refresh health, and live dashboard state</p>
+        <h2>System Health</h2>
+        <p class="section-subtitle">Scanner status, cache freshness, webhook posture, and refresh context.</p>
       </div>
     </div>
 
     <div id="statusBadges"></div>
+
+    <div class="divider"></div>
+
+    <div id="dashboardHealthGrid" class="dashboard-health-grid">
+      <div class="statusline-item"><span class="statusline-label">Scanner</span><span class="mono statusline-value">Reviewing</span></div>
+      <div class="statusline-item"><span class="statusline-label">Webhook</span><span class="mono statusline-value">Reviewing</span></div>
+      <div class="statusline-item"><span class="statusline-label">Portfolio Cache</span><span class="mono statusline-value">Reviewing</span></div>
+      <div class="statusline-item"><span class="statusline-label">Trade Count</span><span class="mono statusline-value">Reviewing</span></div>
+    </div>
 
     <div class="divider"></div>
 

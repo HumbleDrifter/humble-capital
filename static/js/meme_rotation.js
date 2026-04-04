@@ -325,7 +325,7 @@ function renderGroups(data) {
   grid.innerHTML = ["active", "watching", "paused"].map((groupKey) => {
     const items = groups[groupKey];
     return `
-      <section class="opportunity-group">
+      <section class="opportunity-group opportunity-column opportunity-column-${groupKey}">
         <div class="section-header compact-header">
           <div>
             <h3>${groupTitle(groupKey)}</h3>

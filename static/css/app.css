@@ -2619,37 +2619,45 @@ tbody tr:last-child td {
   color: var(--text-dim);
 }
 
-.opportunity-groups {
+.page-opportunities .opportunity-groups {
   display: grid;
-  grid-template-columns:
-    repeat(3, minmax(340px, 1fr));
-  gap: 20px;
-  min-width: 0;
+  grid-template-columns: repeat(3, minmax(380px, 1fr));
+  gap: 24px;
   width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  align-items: start;
 }
 
-.opportunity-group {
+.opportunity-group,
+.page-opportunities .opportunity-column {
   min-width: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.opportunity-card-grid {
+.opportunity-column-active,
+.opportunity-column-watching,
+.opportunity-column-paused {
+  min-width: 0;
+  grid-column: span 1;
+}
+
+.page-opportunities .opportunity-column .opportunity-card-grid {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-width: 0;
+  gap: 16px;
   width: 100%;
 }
 
-.opportunity-card {
+.page-opportunities .opportunity-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
   width: 100%;
   height: auto;
-  min-height: 240px;
+  min-height: 220px;
   padding: 18px;
   position: relative;
   overflow: hidden;
@@ -2662,6 +2670,15 @@ tbody tr:last-child td {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
     var(--shadow-soft);
+}
+
+.page-opportunities .opportunity-card,
+.page-opportunities .opportunity-symbol,
+.page-opportunities .opportunity-subline,
+.page-opportunities .opportunity-metric,
+.page-opportunities .opportunity-metric-label {
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .opportunity-card * {
@@ -4172,9 +4189,12 @@ tbody tr:last-child td {
   }
 
   .opportunity-summary-grid,
-  .opportunity-groups,
   .opportunity-advanced-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .page-opportunities .opportunity-groups {
+    grid-template-columns: 1fr 1fr;
   }
 
   .config-proposal-grid {
@@ -4401,9 +4421,12 @@ tbody tr:last-child td {
   }
 
   .opportunity-summary-grid,
-  .opportunity-groups,
   .opportunity-advanced-grid,
   .opportunity-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .page-opportunities .opportunity-groups {
     grid-template-columns: 1fr;
   }
 

@@ -190,6 +190,8 @@ function renderSummary(data, groups) {
   if (!host) return;
   const regimeText = normalizeRegime(data.market_regime || "unknown");
   const regimeClass = regimeTone(data.market_regime || "unknown");
+  const rows = Array.isArray(data.candidates) ? data.candidates : [];
+  const topScore = rows.reduce((best, row) => Math.max(best, Number(row.score || 0)), 0);
 
   host.innerHTML = `
     <div class="opportunity-summary-card">
@@ -209,6 +211,20 @@ function renderSummary(data, groups) {
       <div class="opportunity-summary-value">
         <span class="opportunity-regime-badge ${escapeHtml(regimeClass)}">${escapeHtml(regimeText)}</span>
       </div>
+    </div>
+    <div class="opportunity-score-guide">
+      <div class="opportunity-score-guide-head">
+        <div>
+          <div class="opportunity-summary-label">Top Score Right Now</div>
+          <div class="opportunity-summary-value">${fmtNumber(topScore)}</div>
+        </div>
+        <div class="opportunity-score-guide-bands">
+          <span class="opportunity-score-guide-band high">85+ = High conviction</span>
+          <span class="opportunity-score-guide-band strong">65-84 = Building setup</span>
+          <span class="opportunity-score-guide-band early">Below 65 = Early / lower confidence</span>
+        </div>
+      </div>
+      <p class="opportunity-score-guide-note">Higher scores indicate stronger opportunity quality based on current scanner inputs.</p>
     </div>
   `;
 }

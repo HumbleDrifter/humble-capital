@@ -706,6 +706,32 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
   const adaptiveAction = autoAdaptive.action;
   const attentionItems = buildNeedsAttentionItems(analytics30, systemData, adaptiveSuggestions, autoAdaptive);
   const currentPreset = deriveCurrentPresetLabel(portfolioData, rebalanceData, systemData, autoAdaptive);
+  const hasHoldingsContext =
+    Boolean(summary.assets && Object.keys(summary.assets).length) ||
+    Boolean(snapshot.positions && Object.keys(snapshot.positions).length);
+  const hasPortfolioMetrics = [
+    summary.total_value_usd,
+    snapshot.total_value_usd,
+    summary.usd_cash,
+    snapshot.usd_cash,
+    summary.cash_weight,
+    snapshot.cash_weight,
+    summary.core_weight,
+    snapshot.core_weight,
+    summary.satellite_weight,
+    snapshot.satellite_weight
+  ].some(hasNumericValue);
+  const hasRegimeContext = Boolean(
+    summary.market_regime ||
+    snapshot.market_regime ||
+    rebalanceData?.summary?.market_regime ||
+    systemData?.portfolio_summary?.market_regime
+  );
+  const hasLivePortfolioContext =
+    hasHoldingsContext ||
+    hasPortfolioMetrics ||
+    hasRegimeContext ||
+    Boolean(summary.timestamp || snapshot.timestamp);
 
   const riskStrip = document.getElementById("performanceRiskStrip");
   const riskScoreEl = document.getElementById("performanceRiskScore");
@@ -725,13 +751,18 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
     riskBandEl.className = `performance-risk-band${riskBandTone(scoreBand) ? ` ${riskBandTone(scoreBand)}` : ""}`;
   }
   if (riskNotesEl) {
-    const fallbackNote = analyticsLimited
-      ? "Drawdown inputs are limited while persisted equity history is building."
-      : "Risk score is blending allocation, reserve, drawdown, and regime inputs.";
+    const liveContextNote = "Risk score is blending allocation, reserve, drawdown, and regime inputs.";
+    const waitingContextNote = "Risk score will update as live portfolio context refreshes.";
     const normalizedNotes = scoreNotes
       .map((note) => normalizeRiskScoreNote(note))
       .filter(Boolean);
-    const notes = normalizedNotes.length ? normalizedNotes : [fallbackNote];
+    const notes = normalizedNotes.length
+      ? normalizedNotes.map((note) => (
+          note === waitingContextNote && hasLivePortfolioContext
+            ? liveContextNote
+            : note
+        ))
+      : [hasLivePortfolioContext ? liveContextNote : waitingContextNote];
     riskNotesEl.innerHTML = notes
         .map((note) => `<span class="performance-risk-note">${escapeHtml(note)}</span>`)
         .join("");

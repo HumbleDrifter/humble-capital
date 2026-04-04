@@ -2645,13 +2645,24 @@ tbody tr:last-child td {
   width: 100%;
 }
 
+.page-opportunities .opportunity-groups > .opportunity-group:first-child .opportunity-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.page-opportunities .opportunity-groups > .opportunity-group:not(:first-child) .opportunity-card-grid {
+  display: flex;
+  flex-direction: column;
+}
+
 .opportunity-card {
   display: flex;
   flex-direction: column;
   min-width: 0;
   width: 100%;
   height: auto;
-  min-height: 300px;
+  min-height: 260px;
   padding: 18px;
   position: relative;
   overflow: hidden;
@@ -4406,6 +4417,10 @@ tbody tr:last-child td {
   .opportunity-groups,
   .opportunity-advanced-grid,
   .opportunity-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .page-opportunities .opportunity-groups > .opportunity-group:first-child .opportunity-card-grid {
     grid-template-columns: 1fr;
   }
 

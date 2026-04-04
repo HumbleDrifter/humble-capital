@@ -696,6 +696,16 @@ function clearConfigFocusState() {
   });
 }
 
+function openDetailsAncestors(node) {
+  let current = node;
+  while (current) {
+    if (current.tagName === "DETAILS") {
+      current.open = true;
+    }
+    current = current.parentElement;
+  }
+}
+
 function safeCssValue(value) {
   if (window.CSS && typeof window.CSS.escape === "function") {
     return window.CSS.escape(value);
@@ -725,6 +735,9 @@ function applyConfigurationFocus() {
     sectionEl;
 
   if (!targetEl) return;
+
+  openDetailsAncestors(sectionEl);
+  openDetailsAncestors(targetEl);
 
   clearConfigFocusState();
   targetEl.classList.add("config-focus-active");

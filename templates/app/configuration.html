@@ -16,8 +16,8 @@
   <section class="panel span-12 configuration-status-panel">
     <div class="section-header">
       <div>
-        <h2>Bot Configuration</h2>
-        <p class="section-subtitle">Set the high-level portfolio guardrails first, then review advanced asset and capacity controls below</p>
+        <h2>Automation Workspace</h2>
+        <p class="section-subtitle">Start with plain-language controls for risk posture and proposal behavior, then open the advanced workspace only when you need deeper operational detail.</p>
       </div>
     </div>
 
@@ -25,18 +25,56 @@
 
     <div class="divider"></div>
 
-    <div class="statusline">
-      <div class="statusline-item"><span class="statusline-label">Mode</span><span class="mono statusline-value">live config</span></div>
-      <div class="statusline-item"><span class="statusline-label">Tradable Universe</span><span class="mono statusline-value" id="assetUniverseCount">loading...</span></div>
-      <div class="statusline-item"><span class="statusline-label">Satellite Modes</span><span class="mono statusline-value" id="assetModeSummary">loading...</span></div>
+    <div class="configuration-basic-grid">
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Markets</div>
+        <div class="configuration-shell-title">Tradable market universe</div>
+        <div class="configuration-shell-value mono" id="assetUniverseCount">loading...</div>
+        <div class="configuration-shell-note">Spot products currently available to the automation stack.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Connected Brokers</div>
+        <div class="configuration-shell-title">Execution connections</div>
+        <div class="configuration-shell-value">Live terminal stack</div>
+        <div class="configuration-shell-note">Broker connectivity stays server-managed and unchanged in this phase.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Risk Profile</div>
+        <div class="configuration-shell-title">Everyday guardrails</div>
+        <div class="configuration-shell-value">Preset + manual review</div>
+        <div class="configuration-shell-note">Use the profile below to stage broad operating posture before saving.</div>
+      </div>
+      <div class="form-card config-proposal-automation-card">
+        <div class="configuration-card-kicker">Automation Mode</div>
+        <div class="configuration-shell-title">Proposal workflow</div>
+        <label for="config_proposal_generation_mode" class="configuration-shell-label">Generation Mode</label>
+        <select id="config_proposal_generation_mode">
+          <option value="manual">Manual</option>
+          <option value="auto">Auto</option>
+        </select>
+        <div class="field-help">Manual generation: proposals are created only when you trigger them.</div>
+        <div class="field-help">Auto generation: proposals are created automatically when advisory rules pass.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Opportunity Style</div>
+        <div class="configuration-shell-title">Rotation posture</div>
+        <div class="configuration-shell-value mono" id="assetModeSummary">loading...</div>
+        <div class="configuration-shell-note">Satellite capacity and universe tuning shape how aggressively new names enter rotation.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Notifications</div>
+        <div class="configuration-shell-title">Operator alerts</div>
+        <div class="configuration-shell-value">Telegram workflow</div>
+        <div class="configuration-shell-note">Proposal notifications, approvals, and confirmations remain manual and reviewable.</div>
+      </div>
     </div>
   </section>
 
   <section class="panel span-12 configuration-core-panel" id="config-section-core-controls" data-config-section="core-controls">
     <div class="section-header">
       <div>
-        <h2>Portfolio Guardrails</h2>
-        <p class="section-subtitle">Use this as the primary surface for top-level risk parameters. Dashboard recommendations land here for review, staging, and manual save.</p>
+        <h2>Basic Controls</h2>
+        <p class="section-subtitle">These are the everyday controls most operators use: broad risk posture, trade floor, and proposal workflow settings.</p>
       </div>
     </div>
 
@@ -57,8 +95,8 @@
     <div class="divider"></div>
 
     <div class="configuration-primary-note">
-      <div class="configuration-primary-note-title">Risk Parameters</div>
-      <div class="configuration-primary-note-copy">These guardrails shape overall portfolio pressure: satellite target, hard max, liquidity reserve, trade floor, and advanced capacity limits below.</div>
+      <div class="configuration-primary-note-title">Risk Profile</div>
+      <div class="configuration-primary-note-copy">Set the overall operating posture here first. Advanced rotation and universe controls stay available below, but hidden until you need them.</div>
     </div>
 
     <div class="divider"></div>
@@ -113,8 +151,8 @@
   <section class="panel span-12 config-proposal-panel">
     <div class="section-header">
       <div>
-        <h2>Proposal Status</h2>
-        <p class="section-subtitle">Track the latest advisory-driven config proposal, its approval/apply state, and recent proposal history.</p>
+        <h2>Automation &amp; Proposals</h2>
+        <p class="section-subtitle">Control proposal behavior and review approvals when needed.</p>
       </div>
     </div>
 
@@ -127,16 +165,6 @@
       </div>
 
       <div class="config-proposal-automation-grid">
-        <div class="form-card config-proposal-automation-card">
-          <label for="config_proposal_generation_mode">Generation Mode</label>
-          <select id="config_proposal_generation_mode">
-            <option value="manual">Manual</option>
-            <option value="auto">Auto</option>
-          </select>
-          <div class="field-help">Manual generation: proposals are created only when you trigger them.</div>
-          <div class="field-help">Auto generation: proposals are created automatically when advisory rules pass.</div>
-        </div>
-
         <div class="form-card config-proposal-automation-card">
           <label for="config_proposal_apply_mode">Apply Mode</label>
           <select id="config_proposal_apply_mode">
@@ -165,158 +193,177 @@
 
     <div class="divider"></div>
 
-    <div class="config-proposal-card" id="configProposalLatestCard">
-      <div class="config-proposal-empty" id="configProposalEmptyState">
-        <div class="config-proposal-empty-title">No proposals yet</div>
-        <div class="config-proposal-empty-copy">Advisory-driven config proposals will appear here once generated.</div>
-      </div>
-
-      <div class="config-proposal-latest" id="configProposalLatestContent" hidden>
-        <div class="config-proposal-head">
-          <div>
-            <div class="config-proposal-eyebrow">Latest Proposal</div>
-            <div class="config-proposal-id" id="configProposalId">—</div>
-          </div>
-          <div class="config-proposal-status" id="configProposalStatus">pending</div>
+    <details class="configuration-advanced-toggle" id="config-section-proposal-status" data-config-section="proposal-status">
+      <summary>
+        <div>
+          <strong>Advanced Proposal Status</strong>
+          <span>Open the full proposal record, audit timeline, and recent proposal history.</span>
         </div>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="config-proposal-card" id="configProposalLatestCard">
+          <div class="config-proposal-empty" id="configProposalEmptyState">
+            <div class="config-proposal-empty-title">No proposals yet</div>
+            <div class="config-proposal-empty-copy">Advisory-driven config proposals will appear here once generated.</div>
+          </div>
 
-        <div class="config-proposal-summary" id="configProposalSummary">—</div>
+          <div class="config-proposal-latest" id="configProposalLatestContent" hidden>
+            <div class="config-proposal-head">
+              <div>
+                <div class="config-proposal-eyebrow">Latest Proposal</div>
+                <div class="config-proposal-id" id="configProposalId">—</div>
+              </div>
+              <div class="config-proposal-status" id="configProposalStatus">pending</div>
+            </div>
 
-        <div class="config-proposal-grid" id="configProposalGrid">
-          <div>
-            <div class="config-proposal-label">Confidence</div>
-            <div class="config-proposal-value" id="configProposalConfidence">—</div>
-          </div>
-          <div>
-            <div class="config-proposal-label">Current Risk</div>
-            <div class="config-proposal-value" id="configProposalCurrentRisk">—</div>
-          </div>
-          <div>
-            <div class="config-proposal-label">Projected Risk</div>
-            <div class="config-proposal-value" id="configProposalProjectedRisk">—</div>
-          </div>
-          <div>
-            <div class="config-proposal-label">Score Delta</div>
-            <div class="config-proposal-value" id="configProposalScoreDelta">—</div>
-          </div>
-          <div>
-            <div class="config-proposal-label">Created</div>
-            <div class="config-proposal-value" id="configProposalCreatedAt">—</div>
-          </div>
-          <div>
-            <div class="config-proposal-label">Expires</div>
-            <div class="config-proposal-value" id="configProposalExpiresAt">—</div>
-          </div>
-          <div>
-            <div class="config-proposal-label">Approved By</div>
-            <div class="config-proposal-value" id="configProposalApprovedBy">—</div>
-          </div>
-          <div>
-            <div class="config-proposal-label">Applied By</div>
-            <div class="config-proposal-value" id="configProposalAppliedBy">—</div>
+            <div class="config-proposal-summary" id="configProposalSummary">—</div>
+
+            <div class="config-proposal-grid" id="configProposalGrid">
+              <div>
+                <div class="config-proposal-label">Confidence</div>
+                <div class="config-proposal-value" id="configProposalConfidence">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Current Risk</div>
+                <div class="config-proposal-value" id="configProposalCurrentRisk">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Projected Risk</div>
+                <div class="config-proposal-value" id="configProposalProjectedRisk">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Score Delta</div>
+                <div class="config-proposal-value" id="configProposalScoreDelta">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Created</div>
+                <div class="config-proposal-value" id="configProposalCreatedAt">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Expires</div>
+                <div class="config-proposal-value" id="configProposalExpiresAt">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Approved By</div>
+                <div class="config-proposal-value" id="configProposalApprovedBy">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Applied By</div>
+                <div class="config-proposal-value" id="configProposalAppliedBy">—</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="config-proposal-changes">
+              <div class="config-proposal-changes-title">Changed Controls</div>
+              <div id="configProposalChanges"></div>
+            </div>
+
+            <div class="config-proposal-note" id="configProposalNote">This proposal is awaiting operator review.</div>
           </div>
         </div>
 
         <div class="divider"></div>
 
-        <div class="config-proposal-changes">
-          <div class="config-proposal-changes-title">Changed Controls</div>
-          <div id="configProposalChanges"></div>
-        </div>
-
-        <div class="config-proposal-note" id="configProposalNote">This proposal is awaiting operator review.</div>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="config-proposal-history-panel">
-      <div class="section-header compact-header">
-        <div>
-          <h3 style="margin:0;">Recent Proposal History</h3>
-          <p class="section-subtitle" style="margin:4px 0 0 0;">Latest 5 config proposal records with status and timeline context.</p>
+        <div class="config-proposal-history-panel">
+          <div class="section-header compact-header">
+            <div>
+              <h3 style="margin:0;">Recent Proposal History</h3>
+              <p class="section-subtitle" style="margin:4px 0 0 0;">Latest 5 config proposal records with status and timeline context.</p>
+            </div>
+          </div>
+          <div class="config-proposal-history" id="configProposalHistory">
+            <div class="config-proposal-history-empty">No recent proposal history yet.</div>
+          </div>
         </div>
       </div>
-      <div class="config-proposal-history" id="configProposalHistory">
-        <div class="config-proposal-history-empty">No recent proposal history yet.</div>
-      </div>
-    </div>
+    </details>
   </section>
 
   <section class="panel span-12 configuration-advisory-panel">
     <div class="section-header">
       <div>
-        <h2>Risk Intelligence</h2>
-        <p class="section-subtitle">Detailed read-only guidance now lives here so the dashboard can stay focused on live portfolio state and trend clarity.</p>
+        <h2>Advanced Workspace</h2>
+        <p class="section-subtitle">Open the technical guidance and deeper operational controls only when you need to review advisory internals or tune the underlying engine.</p>
       </div>
     </div>
 
-    <div class="configuration-advisory-note">
-      <div class="configuration-advisory-note-title">Advisory Workspace</div>
-      <div class="configuration-advisory-note-copy">Adaptive suggestions, preset recommendations, and projected guardrail impact are reviewed here. Presets can be staged from this section, but nothing is applied until you save manually.</div>
-    </div>
+    <details class="configuration-advanced-toggle" id="config-section-risk-intelligence" data-config-section="risk-intelligence">
+      <summary>
+        <div>
+          <strong>Risk Intelligence</strong>
+          <span>Detailed adaptive guidance, preset recommendations, and simulated guardrail impact.</span>
+        </div>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="configuration-advisory-note">
+          <div class="configuration-advisory-note-title">Advisory Workspace</div>
+          <div class="configuration-advisory-note-copy">Adaptive suggestions, preset recommendations, and projected guardrail impact are reviewed here. Presets can be staged from this section, but nothing is applied until you save manually.</div>
+        </div>
 
+        <div class="divider"></div>
+
+        <div class="configuration-advisory-grid">
+          <div class="adaptive-suggestions-card" id="configAdaptiveSuggestionsCard">
+            <div class="adaptive-suggestions-head">
+              <div class="adaptive-suggestions-eyebrow">Adaptive Suggestions</div>
+              <div class="adaptive-suggestions-priority" id="configAdaptiveSuggestionsPriority">Reviewing</div>
+            </div>
+            <div class="adaptive-suggestions-summary" id="configAdaptiveSuggestionsSummary">
+              Advisory guidance will appear once analytics and risk inputs are available.
+            </div>
+            <div class="adaptive-suggestions-list" id="configAdaptiveSuggestionsList">
+              <div class="adaptive-suggestion-item">
+                <div class="adaptive-suggestion-title">Waiting for inputs</div>
+                <div class="adaptive-suggestion-detail">Suggestions remain read-only and use the current portfolio, reserve, drawdown, and regime picture.</div>
+              </div>
+            </div>
+            <div class="adaptive-suggestions-notes" id="configAdaptiveSuggestionsNotes"></div>
+          </div>
+
+          <div class="auto-adaptive-card" id="configAutoAdaptiveCard">
+            <div class="auto-adaptive-head">
+              <div>
+                <div class="auto-adaptive-eyebrow">Auto-Adaptive Mode</div>
+                <div class="auto-adaptive-preset" id="configAutoAdaptivePreset">Reviewing current preset fit...</div>
+              </div>
+              <div class="auto-adaptive-confidence" id="configAutoAdaptiveConfidence">low confidence</div>
+            </div>
+            <div class="auto-adaptive-summary" id="configAutoAdaptiveSummary">
+              Recommendation-only intelligence is evaluating the current portfolio posture.
+            </div>
+            <div class="auto-adaptive-reasons" id="configAutoAdaptiveReasons"></div>
+            <div class="auto-adaptive-simulation" id="configAutoAdaptiveSimulation">
+              <div class="auto-adaptive-simulation-head">
+                <div class="auto-adaptive-simulation-eyebrow">Preset Impact Simulation</div>
+                <div class="auto-adaptive-simulation-band" id="configAutoAdaptiveSimulationBand">Projected band pending</div>
+              </div>
+              <div class="auto-adaptive-simulation-line" id="configAutoAdaptiveProjectionLine">
+                Current score -- → projected score --
+              </div>
+              <div class="auto-adaptive-simulation-summary" id="configAutoAdaptiveSimulationSummary">
+                Projected guardrail pressure will appear once the recommended preset is available.
+              </div>
+              <div class="auto-adaptive-simulation-controls" id="configAutoAdaptiveChangedControls"></div>
+              <div class="auto-adaptive-simulation-notes" id="configAutoAdaptiveSimulationNotes"></div>
+            </div>
+            <div class="auto-adaptive-actions" id="configAutoAdaptiveActions"></div>
+          </div>
+        </div>
+      </div>
+    </details>
     <div class="divider"></div>
-
-    <div class="configuration-advisory-grid">
-      <div class="adaptive-suggestions-card" id="configAdaptiveSuggestionsCard">
-        <div class="adaptive-suggestions-head">
-          <div class="adaptive-suggestions-eyebrow">Adaptive Suggestions</div>
-          <div class="adaptive-suggestions-priority" id="configAdaptiveSuggestionsPriority">Reviewing</div>
+    <details class="configuration-advanced-toggle" id="config-section-advanced-controls" data-config-section="advanced-controls">
+      <summary>
+        <div>
+          <strong>Technical and Internal Controls</strong>
+          <span>Capacity limits, opportunity-universe management, and the more technical controls operators use less often.</span>
         </div>
-        <div class="adaptive-suggestions-summary" id="configAdaptiveSuggestionsSummary">
-          Advisory guidance will appear once analytics and risk inputs are available.
-        </div>
-        <div class="adaptive-suggestions-list" id="configAdaptiveSuggestionsList">
-          <div class="adaptive-suggestion-item">
-            <div class="adaptive-suggestion-title">Waiting for inputs</div>
-            <div class="adaptive-suggestion-detail">Suggestions remain read-only and use the current portfolio, reserve, drawdown, and regime picture.</div>
-          </div>
-        </div>
-        <div class="adaptive-suggestions-notes" id="configAdaptiveSuggestionsNotes"></div>
-      </div>
-
-      <div class="auto-adaptive-card" id="configAutoAdaptiveCard">
-        <div class="auto-adaptive-head">
-          <div>
-            <div class="auto-adaptive-eyebrow">Auto-Adaptive Mode</div>
-            <div class="auto-adaptive-preset" id="configAutoAdaptivePreset">Reviewing current preset fit...</div>
-          </div>
-          <div class="auto-adaptive-confidence" id="configAutoAdaptiveConfidence">low confidence</div>
-        </div>
-        <div class="auto-adaptive-summary" id="configAutoAdaptiveSummary">
-          Recommendation-only intelligence is evaluating the current portfolio posture.
-        </div>
-        <div class="auto-adaptive-reasons" id="configAutoAdaptiveReasons"></div>
-        <div class="auto-adaptive-simulation" id="configAutoAdaptiveSimulation">
-          <div class="auto-adaptive-simulation-head">
-            <div class="auto-adaptive-simulation-eyebrow">Preset Impact Simulation</div>
-            <div class="auto-adaptive-simulation-band" id="configAutoAdaptiveSimulationBand">Projected band pending</div>
-          </div>
-          <div class="auto-adaptive-simulation-line" id="configAutoAdaptiveProjectionLine">
-            Current score -- → projected score --
-          </div>
-          <div class="auto-adaptive-simulation-summary" id="configAutoAdaptiveSimulationSummary">
-            Projected guardrail pressure will appear once the recommended preset is available.
-          </div>
-          <div class="auto-adaptive-simulation-controls" id="configAutoAdaptiveChangedControls"></div>
-          <div class="auto-adaptive-simulation-notes" id="configAutoAdaptiveSimulationNotes"></div>
-        </div>
-        <div class="auto-adaptive-actions" id="configAutoAdaptiveActions"></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel span-12 configuration-advanced-panel">
-    <div class="section-header">
-      <div>
-        <h2>Advanced Configuration</h2>
-        <p class="section-subtitle">Detailed controls for satellite capacity and asset-universe management remain fully available below after the top-level guardrails.</p>
-      </div>
-    </div>
-
-    <div class="configuration-advanced-stack">
-      <details class="advanced-config-group" id="config-section-capacity-controls" data-config-section="capacity-controls" open>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="configuration-advanced-stack">
+      <details class="advanced-config-group" id="config-section-capacity-controls" data-config-section="capacity-controls">
         <summary>
           <div>
             <strong>Capacity and Rotation Controls</strong>
@@ -343,7 +390,7 @@
         </div>
       </details>
 
-      <details class="advanced-config-group" id="config-section-asset-universe-section" data-config-section="asset-universe-section" open>
+      <details class="advanced-config-group" id="config-section-asset-universe-section" data-config-section="asset-universe-section">
         <summary>
           <div>
             <strong>Asset Universe Controls</strong>
@@ -387,7 +434,9 @@
           </table>
         </div>
       </details>
-    </div>
+        </div>
+      </div>
+    </details>
   </section>
 
 </div>

@@ -158,14 +158,26 @@ canvas {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  align-self: stretch;
+  justify-self: stretch;
   flex-direction: unset !important;
   flex-wrap: unset !important;
   white-space: normal !important;
+  overflow: visible;
+}
+
+.page-opportunities .opportunities-panel,
+.page-opportunities .panel {
+  display: block;
+  width: 100%;
 }
 
 .page-opportunities .opportunity-card {
   display: block;
   width: 100%;
+  min-width: 0;
 }
 
 .page-opportunities .opportunity-card-grid > * {

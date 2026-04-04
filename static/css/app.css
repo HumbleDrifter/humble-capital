@@ -2580,9 +2580,9 @@ tbody tr:last-child td {
   letter-spacing: -0.03em;
 }
 
-.opportunity-score-guide {
-  grid-column: 1 / -1;
+.opportunity-score-legend {
   min-width: 0;
+  width: 100%;
   padding: 18px 20px;
   border-radius: 20px;
   border: 1px solid rgba(16, 185, 129, 0.16);
@@ -2594,21 +2594,21 @@ tbody tr:last-child td {
     0 14px 32px rgba(0, 0, 0, 0.18);
 }
 
-.opportunity-score-guide-head {
+.opportunity-score-legend-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
 
-.opportunity-score-guide-bands {
+.opportunity-score-legend-bands {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
 }
 
-.opportunity-score-guide-band {
+.opportunity-score-legend-band {
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
@@ -2621,25 +2621,25 @@ tbody tr:last-child td {
   line-height: 1.4;
 }
 
-.opportunity-score-guide-band.high {
+.opportunity-score-legend-band.high {
   border-color: rgba(16, 185, 129, 0.28);
   background: rgba(16, 185, 129, 0.12);
   color: #d8fff0;
 }
 
-.opportunity-score-guide-band.strong {
+.opportunity-score-legend-band.strong {
   border-color: rgba(22, 163, 74, 0.22);
   background: rgba(22, 163, 74, 0.1);
   color: #dff7e9;
 }
 
-.opportunity-score-guide-band.early {
+.opportunity-score-legend-band.early {
   border-color: rgba(148, 163, 184, 0.18);
   background: rgba(148, 163, 184, 0.08);
   color: #d5dfec;
 }
 
-.opportunity-score-guide-note {
+.opportunity-score-legend-note {
   margin-top: 12px;
   color: var(--text-soft);
   font-size: 13px;

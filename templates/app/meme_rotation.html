@@ -1,35 +1,99 @@
 {% extends "base_app.html" %}
 
 {% block content %}
-<div class="grid cols-12 meme-rotation-grid">
+<div class="opportunities-layout meme-rotation-page">
 
-  <section class="panel span-12 meme-rotation-panel">
-
+  <section class="panel opportunities-header-panel">
     <div class="section-header">
       <div>
-        <h2>Meme Hunter Heatmap</h2>
+        <h2>Active Opportunities</h2>
         <p class="section-subtitle" id="heatmapMeta">
-          Loading meme candidates...
+          Loading opportunity scanner...
         </p>
       </div>
 
-      <div class="section-actions">
-        <label class="tiny" for="heatmapSort">Sort By</label>
-        <select id="heatmapSort" class="select" onchange="refreshMemeRotation()">
-          <option value="score">Score</option>
-          <option value="held_value">Held Value</option>
-          <option value="weight">Portfolio Weight</option>
-          <option value="change_24h">24H Change</option>
-        </select>
+      <div class="configuration-inline-actions">
+        <button class="btn btn-secondary" type="button" onclick="refreshMemeRotation()">Refresh</button>
       </div>
     </div>
 
-    <div id="heatmapStatus"></div>
+    <div class="opportunities-status-block" id="heatmapStatus"></div>
+  </section>
 
-    <div class="divider"></div>
+  <section class="panel opportunities-summary-panel">
+    <div id="opportunitySummary" class="opportunity-summary-grid">
+      <div class="opportunity-summary-card">
+        <div class="opportunity-summary-label">Active</div>
+        <div class="opportunity-summary-value">—</div>
+      </div>
+      <div class="opportunity-summary-card">
+        <div class="opportunity-summary-label">Watching</div>
+        <div class="opportunity-summary-value">—</div>
+      </div>
+      <div class="opportunity-summary-card">
+        <div class="opportunity-summary-label">Paused</div>
+        <div class="opportunity-summary-value">—</div>
+      </div>
+      <div class="opportunity-summary-card">
+        <div class="opportunity-summary-label">Regime</div>
+        <div class="opportunity-summary-value">—</div>
+      </div>
+    </div>
+  </section>
 
-    <div id="heatmapGrid" class="heatmap"></div>
+  <div id="opportunityScoreLegend" class="opportunity-score-legend"></div>
 
+  <section class="panel opportunities-board-panel">
+    <div class="section-header compact-header">
+      <div>
+        <h3>Opportunities Board</h3>
+        <p class="section-subtitle">Active, watching, and paused opportunities stay organized into clear columns while controls remain available on every card.</p>
+      </div>
+    </div>
+    <div class="opportunities-columns-shell">
+      <div id="heatmapGrid" class="opportunity-groups"></div>
+    </div>
+  </section>
+
+  <section class="panel opportunities-advanced-panel">
+    <div class="section-header">
+      <div>
+        <h2>Advanced Controls</h2>
+        <p class="section-subtitle">Use these deeper controls when you want to tune sorting, scanner status, or opportunity-management behavior.</p>
+      </div>
+    </div>
+
+    <details class="configuration-advanced-toggle opportunity-advanced-toggle">
+      <summary>
+        <div>
+          <strong>Scanner and Universe Controls</strong>
+          <span>Manage scanner status, sort order, and direct allow or block actions without changing backend logic.</span>
+        </div>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="opportunity-advanced-grid">
+          <div class="form-card">
+            <label for="heatmapSort">Sort Opportunities By</label>
+            <select id="heatmapSort" class="select" onchange="refreshMemeRotation()">
+              <option value="score">Score</option>
+              <option value="held_value">Held Value</option>
+              <option value="weight">Portfolio Weight</option>
+              <option value="change_24h">24H Change</option>
+            </select>
+            <div class="field-help">Reorder cards using the current live opportunity data only.</div>
+          </div>
+
+          <div class="form-card">
+            <label>Scanner Status</label>
+            <div id="scannerStatusSummary" class="opportunity-inline-status">Loading scanner state...</div>
+            <div class="configuration-action-row opportunity-inline-actions">
+              <button class="btn btn-secondary" id="scannerToggleBtn" type="button" onclick="toggleOpportunityScanner()">Loading...</button>
+            </div>
+            <div class="field-help">This reuses the existing meme-rotation enable toggle and keeps the current scanner logic intact.</div>
+          </div>
+        </div>
+      </div>
+    </details>
   </section>
 
 </div>

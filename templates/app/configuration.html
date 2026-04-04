@@ -110,6 +110,92 @@
     </div>
   </section>
 
+  <section class="panel span-12 config-proposal-panel">
+    <div class="section-header">
+      <div>
+        <h2>Proposal Status</h2>
+        <p class="section-subtitle">Track the latest advisory-driven config proposal, its approval/apply state, and recent proposal history.</p>
+      </div>
+    </div>
+
+    <div class="config-proposal-card" id="configProposalLatestCard">
+      <div class="config-proposal-empty" id="configProposalEmptyState">
+        <div class="config-proposal-empty-title">No proposals yet</div>
+        <div class="config-proposal-empty-copy">Advisory-driven config proposals will appear here once generated.</div>
+      </div>
+
+      <div class="config-proposal-latest" id="configProposalLatestContent" hidden>
+        <div class="config-proposal-head">
+          <div>
+            <div class="config-proposal-eyebrow">Latest Proposal</div>
+            <div class="config-proposal-id" id="configProposalId">—</div>
+          </div>
+          <div class="config-proposal-status" id="configProposalStatus">pending</div>
+        </div>
+
+        <div class="config-proposal-summary" id="configProposalSummary">—</div>
+
+        <div class="config-proposal-grid" id="configProposalGrid">
+          <div>
+            <div class="config-proposal-label">Confidence</div>
+            <div class="config-proposal-value" id="configProposalConfidence">—</div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Current Risk</div>
+            <div class="config-proposal-value" id="configProposalCurrentRisk">—</div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Projected Risk</div>
+            <div class="config-proposal-value" id="configProposalProjectedRisk">—</div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Score Delta</div>
+            <div class="config-proposal-value" id="configProposalScoreDelta">—</div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Created</div>
+            <div class="config-proposal-value" id="configProposalCreatedAt">—</div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Expires</div>
+            <div class="config-proposal-value" id="configProposalExpiresAt">—</div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Approved By</div>
+            <div class="config-proposal-value" id="configProposalApprovedBy">—</div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Applied By</div>
+            <div class="config-proposal-value" id="configProposalAppliedBy">—</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="config-proposal-changes">
+          <div class="config-proposal-changes-title">Changed Controls</div>
+          <div id="configProposalChanges"></div>
+        </div>
+
+        <div class="config-proposal-note" id="configProposalNote">This proposal is awaiting operator review.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="config-proposal-history-panel">
+      <div class="section-header compact-header">
+        <div>
+          <h3 style="margin:0;">Recent Proposal History</h3>
+          <p class="section-subtitle" style="margin:4px 0 0 0;">Latest 5 config proposal records with status and timeline context.</p>
+        </div>
+      </div>
+      <div class="config-proposal-history" id="configProposalHistory">
+        <div class="config-proposal-history-empty">No recent proposal history yet.</div>
+      </div>
+    </div>
+  </section>
+
   <section class="panel span-12 configuration-advisory-panel">
     <div class="section-header">
       <div>

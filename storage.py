@@ -4,12 +4,17 @@ import sqlite3
 import time
 from pathlib import Path
 from datetime import datetime
+
+from env_runtime import load_runtime_env, preferred_env_path
 from werkzeug.security import generate_password_hash, check_password_hash
 
-DEFAULT_DB_PATH = "/root/tradingbot/trading.db"
+load_runtime_env(override=True)
+
+DEFAULT_DB_PATH = str((preferred_env_path().parent / "trading.db").resolve())
 
 
 def get_db_path():
+    load_runtime_env(override=True)
     db_path = str(os.getenv("TRADINGBOT_DB_PATH", DEFAULT_DB_PATH) or "").strip()
     return db_path or DEFAULT_DB_PATH
 
@@ -310,6 +315,11 @@ def get_config_proposal_by_id(proposal_id):
     if not row:
         return None
 
+    return _normalize_config_proposal_row(row)
+
+
+def _normalize_config_proposal_row(row):
+    row = row if row else {}
     try:
         payload = json.loads(row["proposal_json"] or "{}")
     except Exception:
@@ -333,6 +343,58 @@ def get_config_proposal_by_id(proposal_id):
         "expired_at": row["expired_at"],
         "superseded_at": row["superseded_at"],
     }
+
+
+def get_latest_config_proposal_any_status(proposal_type="config_guardrail"):
+    ensure_config_proposals_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
+               proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
+               applied_at, applied_by, expired_at, superseded_at
+        FROM config_proposals
+        WHERE proposal_type = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+        """,
+        (str(proposal_type or "config_guardrail"),),
+    )
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return _normalize_config_proposal_row(row)
+
+
+def list_recent_config_proposals(limit=5, proposal_type="config_guardrail"):
+    ensure_config_proposals_table()
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
+               proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
+               applied_at, applied_by, expired_at, superseded_at
+        FROM config_proposals
+        WHERE proposal_type = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT ?
+        """,
+        (
+            str(proposal_type or "config_guardrail"),
+            max(1, int(limit or 5)),
+        ),
+    )
+    rows = cur.fetchall()
+    conn.close()
+
+    return [_normalize_config_proposal_row(row) for row in rows or []]
 
 
 def get_latest_pending_config_proposal(proposal_type="config_guardrail"):

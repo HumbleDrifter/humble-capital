@@ -30,6 +30,7 @@ from portfolio import (
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
 from storage import get_portfolio_history_since
+from storage import get_latest_config_proposal_any_status, list_recent_config_proposals
 
 api_bp = Blueprint("api", __name__)
 
@@ -1422,6 +1423,31 @@ def api_portfolio_history():
         return jsonify(_build_portfolio_history())
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/config_proposals/latest", methods=["GET"])
+@require_secret
+def api_config_proposals_latest():
+    try:
+        return jsonify({
+            "ok": True,
+            "proposal": get_latest_config_proposal_any_status() or None,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "proposal": None}), 500
+
+
+@api_bp.route("/api/config_proposals/recent", methods=["GET"])
+@require_secret
+def api_config_proposals_recent():
+    try:
+        limit = max(1, min(10, _safe_int(request.args.get("limit"), 5)))
+        return jsonify({
+            "ok": True,
+            "items": list_recent_config_proposals(limit=limit),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "items": []}), 500
 
 
 @api_bp.route("/api/trades", methods=["GET"])

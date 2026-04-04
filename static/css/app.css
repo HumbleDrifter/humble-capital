@@ -1836,6 +1836,236 @@ tbody tr:last-child td {
   line-height: 1.7;
 }
 
+.config-proposal-panel {
+  padding-top: 24px;
+}
+
+.config-proposal-card,
+.config-proposal-history-panel {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.config-proposal-card {
+  padding: 20px;
+}
+
+.config-proposal-empty,
+.config-proposal-history-empty {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.config-proposal-empty-title {
+  color: #f4fbff;
+  font-size: 16px;
+  font-weight: 760;
+}
+
+.config-proposal-empty-copy {
+  margin-top: 6px;
+}
+
+.config-proposal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.config-proposal-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.config-proposal-id {
+  margin-top: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #f4fbff;
+}
+
+.config-proposal-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.config-proposal-status.pending {
+  color: #fde68a;
+  border-color: rgba(251, 191, 36, 0.24);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.config-proposal-status.approved {
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.24);
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.config-proposal-status.applied {
+  color: #b7f7dd;
+  border-color: rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.config-proposal-status.rejected {
+  color: #fecdd3;
+  border-color: rgba(251, 113, 133, 0.22);
+  background: rgba(251, 113, 133, 0.1);
+}
+
+.config-proposal-status.expired {
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.config-proposal-status.superseded {
+  color: #ddd6fe;
+  border-color: rgba(168, 85, 247, 0.22);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.config-proposal-summary {
+  margin-top: 14px;
+  color: #f4fbff;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.config-proposal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.config-proposal-label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.config-proposal-value {
+  display: block;
+  margin-top: 7px;
+  color: #f4fbff;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.6;
+}
+
+.config-proposal-changes-title {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.config-proposal-changes {
+  display: grid;
+  gap: 10px;
+}
+
+.config-proposal-change-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.config-proposal-change-label {
+  color: #f4fbff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.config-proposal-change-values {
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.config-proposal-note {
+  margin-top: 14px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.config-proposal-history-panel {
+  padding: 18px 20px;
+}
+
+.config-proposal-history {
+  display: grid;
+  gap: 10px;
+}
+
+.config-proposal-history-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 15px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.config-proposal-history-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.config-proposal-history-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.config-proposal-history-summary {
+  margin-top: 8px;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.config-proposal-history-meta {
+  min-width: 220px;
+  display: grid;
+  gap: 8px;
+}
+
 .configuration-focus-card {
   background:
     radial-gradient(circle at top left, rgba(52, 211, 153, 0.1), transparent 42%),
@@ -3337,6 +3567,10 @@ tbody tr:last-child td {
     grid-template-columns: 1fr 1fr;
   }
 
+  .config-proposal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .configuration-preset-actions {
     width: 100%;
   }
@@ -3539,6 +3773,41 @@ tbody tr:last-child td {
 
   .configuration-hero-grid,
   .configuration-advanced-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .config-proposal-card,
+  .config-proposal-history-panel {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .config-proposal-head,
+  .config-proposal-history-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .config-proposal-status {
+    width: fit-content;
+  }
+
+  .config-proposal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .config-proposal-change-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .config-proposal-change-values {
+    text-align: left;
+  }
+
+  .config-proposal-history-meta {
+    min-width: 0;
     grid-template-columns: 1fr;
   }
 

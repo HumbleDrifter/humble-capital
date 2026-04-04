@@ -279,6 +279,235 @@ function normalizeAutoAdaptivePayload(value) {
   };
 }
 
+function normalizeConfigProposalRecord(value) {
+  const source = safeObject(value);
+  const proposal = safeObject(source.proposal);
+  const proposalSource = safeObject(proposal.source);
+  const simulation = safeObject(proposal.simulation);
+  const changes = [];
+
+  for (const item of Array.isArray(proposal.changes) ? proposal.changes : []) {
+    const raw = safeObject(item);
+    const key = String(raw.key || "").trim();
+    const label = String(raw.label || key || "Control").trim();
+    if (!label) continue;
+    changes.push({
+      key,
+      label,
+      current_value: raw.current_value,
+      proposed_value: raw.proposed_value,
+      kind: String(raw.kind || "float").trim() || "float",
+      format: String(raw.format || "text").trim() || "text"
+    });
+  }
+
+  return {
+    id: String(source.id || "").trim(),
+    status: String(source.status || "pending").trim().toLowerCase() || "pending",
+    summary_text: String(source.summary_text || proposal.summary || "").trim(),
+    created_at: String(source.created_at || "").trim(),
+    expires_at: String(source.expires_at || "").trim(),
+    approved_at: String(source.approved_at || "").trim(),
+    approved_by: String(source.approved_by || "").trim(),
+    rejected_at: String(source.rejected_at || "").trim(),
+    rejected_by: String(source.rejected_by || "").trim(),
+    applied_at: String(source.applied_at || "").trim(),
+    applied_by: String(source.applied_by || "").trim(),
+    expired_at: String(source.expired_at || "").trim(),
+    superseded_at: String(source.superseded_at || "").trim(),
+    proposal: {
+      proposal_type: String(proposal.proposal_type || "config_guardrail").trim() || "config_guardrail",
+      source: {
+        advisory_range: String(proposalSource.advisory_range || "").trim(),
+        risk_score: hasNumericValue(proposalSource.risk_score) ? Number(proposalSource.risk_score) : null,
+        risk_band: String(proposalSource.risk_band || "").trim(),
+        recommended_preset: String(proposalSource.recommended_preset || "").trim(),
+        recommended_label: String(proposalSource.recommended_label || "").trim(),
+        confidence: String(proposalSource.confidence || "").trim().toLowerCase()
+      },
+      summary: String(proposal.summary || "").trim(),
+      reasons: cleanTextList(proposal.reasons, 3),
+      changes,
+      simulation: {
+        current_score: hasNumericValue(simulation.current_score) ? Number(simulation.current_score) : null,
+        projected_score: hasNumericValue(simulation.projected_score) ? Number(simulation.projected_score) : null,
+        score_delta: hasNumericValue(simulation.score_delta) ? Number(simulation.score_delta) : null,
+        current_band: String(simulation.current_band || "").trim(),
+        projected_band: String(simulation.projected_band || "").trim(),
+        summary: String(simulation.summary || "").trim()
+      }
+    }
+  };
+}
+
+function formatProposalDate(value) {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  const dt = new Date(text);
+  if (Number.isNaN(dt.getTime())) return "—";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[dt.getUTCMonth()] || "—";
+  const day = dt.getUTCDate();
+  const year = dt.getUTCFullYear();
+  const hour = String(dt.getUTCHours()).padStart(2, "0");
+  const minute = String(dt.getUTCMinutes()).padStart(2, "0");
+  return `${month} ${day}, ${year} ${hour}:${minute} UTC`;
+}
+
+function formatProposalRisk(score, band) {
+  const scoreText = hasNumericValue(score) ? String(Math.round(Number(score))) : "";
+  const bandText = String(band || "").trim();
+  if (!scoreText && !bandText) return "—";
+  if (!scoreText) return bandText || "—";
+  if (!bandText) return scoreText;
+  return `${scoreText} · ${bandText}`;
+}
+
+function formatProposalScoreDelta(value) {
+  if (!hasNumericValue(value)) return "—";
+  const n = Math.round(Number(value));
+  return n > 0 ? `+${n}` : String(n);
+}
+
+function proposalStatusTone(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (["pending", "approved", "applied", "rejected", "expired", "superseded"].includes(normalized)) {
+    return normalized;
+  }
+  return "";
+}
+
+function proposalStatusNote(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "approved") return "This proposal is approved and ready to apply.";
+  if (normalized === "applied") return "This proposal has been applied to live configuration.";
+  if (normalized === "rejected") return "This proposal was rejected and did not change live configuration.";
+  if (normalized === "expired") return "This proposal expired before it was applied.";
+  if (normalized === "superseded") return "This proposal was replaced by a newer recommendation.";
+  return "This proposal is awaiting operator review.";
+}
+
+function relevantProposalEvent(proposal) {
+  const item = normalizeConfigProposalRecord(proposal);
+  if (item.applied_at) return { label: "Applied", value: item.applied_at };
+  if (item.approved_at) return { label: "Approved", value: item.approved_at };
+  if (item.rejected_at) return { label: "Rejected", value: item.rejected_at };
+  if (item.expired_at) return { label: "Expired", value: item.expired_at };
+  if (item.superseded_at) return { label: "Superseded", value: item.superseded_at };
+  return { label: "Created", value: item.created_at };
+}
+
+function formatPercent(value) {
+  if (!hasNumericValue(value)) return "—";
+  return `${(Number(value) * 100).toFixed(2)}%`;
+}
+
+function formatUSD(value) {
+  if (!hasNumericValue(value)) return "—";
+  return `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatInteger(value) {
+  if (!hasNumericValue(value)) return "—";
+  return Math.round(Number(value)).toLocaleString();
+}
+
+function renderProposalLatest(data) {
+  const emptyEl = document.getElementById("configProposalEmptyState");
+  const contentEl = document.getElementById("configProposalLatestContent");
+  const proposal = data ? normalizeConfigProposalRecord(data) : null;
+
+  if (!proposal || !proposal.id) {
+    if (emptyEl) emptyEl.hidden = false;
+    if (contentEl) contentEl.hidden = true;
+    return;
+  }
+
+  if (emptyEl) emptyEl.hidden = true;
+  if (contentEl) contentEl.hidden = false;
+
+  const statusTone = proposalStatusTone(proposal.status);
+  const statusEl = document.getElementById("configProposalStatus");
+  if (statusEl) {
+    statusEl.textContent = proposal.status || "—";
+    statusEl.className = `config-proposal-status${statusTone ? ` ${statusTone}` : ""}`;
+  }
+
+  const changesHost = document.getElementById("configProposalChanges");
+  if (changesHost) {
+    const formatChangeValue = (value, format) => {
+      if (format === "percent") return formatPercent(value);
+      if (format === "usd") return formatUSD(value);
+      if (format === "integer") return formatInteger(value);
+      return value === null || value === undefined || value === "" ? "—" : String(value);
+    };
+
+    changesHost.innerHTML = proposal.proposal.changes.length
+      ? proposal.proposal.changes.map((item) => `
+        <div class="config-proposal-change-row">
+          <span class="config-proposal-change-label">${escapeHtml(item.label || "Control")}</span>
+          <span class="config-proposal-change-values">
+            ${escapeHtml(formatChangeValue(item.current_value, item.format))} → ${escapeHtml(formatChangeValue(item.proposed_value, item.format))}
+          </span>
+        </div>
+      `).join("")
+      : `<div class="config-proposal-change-row">
+          <span class="config-proposal-change-label">Changed Controls</span>
+          <span class="config-proposal-change-values">—</span>
+        </div>`;
+  }
+
+  const valueMap = {
+    configProposalId: proposal.id || "—",
+    configProposalSummary: proposal.summary_text || proposal.proposal.summary || "—",
+    configProposalConfidence: proposal.proposal.source.confidence || "—",
+    configProposalCurrentRisk: formatProposalRisk(proposal.proposal.source.risk_score, proposal.proposal.source.risk_band),
+    configProposalProjectedRisk: formatProposalRisk(proposal.proposal.simulation.projected_score, proposal.proposal.simulation.projected_band),
+    configProposalScoreDelta: formatProposalScoreDelta(proposal.proposal.simulation.score_delta),
+    configProposalCreatedAt: formatProposalDate(proposal.created_at),
+    configProposalExpiresAt: formatProposalDate(proposal.expires_at),
+    configProposalApprovedBy: proposal.approved_by || "—",
+    configProposalAppliedBy: proposal.applied_by || "—",
+    configProposalNote: proposalStatusNote(proposal.status)
+  };
+
+  Object.entries(valueMap).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
+}
+
+function renderProposalHistory(items) {
+  const host = document.getElementById("configProposalHistory");
+  if (!host) return;
+
+  const proposals = Array.isArray(items) ? items.map(normalizeConfigProposalRecord).filter((item) => item.id).slice(0, 5) : [];
+  if (!proposals.length) {
+    host.innerHTML = `<div class="config-proposal-history-empty">No recent proposal history yet.</div>`;
+    return;
+  }
+
+  host.innerHTML = proposals.map((proposal) => {
+    const event = relevantProposalEvent(proposal);
+    const tone = proposalStatusTone(proposal.status);
+    return `
+      <div class="config-proposal-history-row">
+        <div class="config-proposal-history-main">
+          <div class="config-proposal-history-top">
+            <span class="config-proposal-id">${escapeHtml(proposal.id)}</span>
+            <span class="config-proposal-status ${escapeHtml(tone)}">${escapeHtml(proposal.status)}</span>
+          </div>
+          <div class="config-proposal-history-summary">${escapeHtml(proposal.summary_text || "—")}</div>
+        </div>
+        <div class="config-proposal-history-meta">
+          <div><span class="config-proposal-label">Created</span><span class="config-proposal-value">${escapeHtml(formatProposalDate(proposal.created_at))}</span></div>
+          <div><span class="config-proposal-label">${escapeHtml(event.label)}</span><span class="config-proposal-value">${escapeHtml(formatProposalDate(event.value))}</span></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
 function priorityTone(priority) {
   if (priority === "low") return "positive";
   if (priority === "high") return "negative";
@@ -301,9 +530,9 @@ function riskBandTone(band) {
 
 function fmtControlValue(value, format = "text") {
   if (value === null || value === undefined || value === "") return "—";
-  if (format === "percent") return formatPct(Number(value || 0));
-  if (format === "usd") return formatUsd(Number(value || 0));
-  if (format === "integer") return Number(value || 0).toLocaleString();
+  if (format === "percent") return formatPercent(value);
+  if (format === "usd") return formatUSD(value);
+  if (format === "integer") return formatInteger(value);
   return String(value);
 }
 
@@ -672,6 +901,21 @@ async function loadAdvisoryState() {
   }
 }
 
+async function loadProposalState() {
+  try {
+    const [latest, recent] = await Promise.all([
+      fetchJson("/api/config_proposals/latest", {}, 20000),
+      fetchJson("/api/config_proposals/recent?limit=5", {}, 20000)
+    ]);
+    renderProposalLatest(latest?.proposal || null);
+    renderProposalHistory(recent?.items || []);
+  } catch (err) {
+    console.warn("Proposal visibility load failed:", err.message);
+    renderProposalLatest(null);
+    renderProposalHistory([]);
+  }
+}
+
 async function loadConfigState() {
   const cfgData = await fetchJson("/api/config", {}, 20000);
   const cfg = cfgData.config || {};
@@ -698,6 +942,7 @@ async function loadConfiguration() {
   try {
     await Promise.all([loadTradableAssets(), loadConfigState(), loadPortfolioSnapshot()]);
     await loadAdvisoryState();
+    await loadProposalState();
     drawAssetRows();
     applyPresetFromUrlIfPresent();
     setStatus(`Loaded ${ASSETS.length} tradable USD assets. Portfolio guardrails and advanced sections are ready.`);

@@ -717,12 +717,16 @@ tbody tr:last-child td {
   display: flex;
   flex: 1;
   min-height: 0;
+  width: 100%;
+  align-self: stretch;
 }
 
 .dashboard-trend-panel #accountValueChartHost {
   display: flex;
   flex: 1;
   min-height: 0;
+  width: 100%;
+  align-self: stretch;
 }
 
 .dashboard-allocation-panel {
@@ -764,6 +768,39 @@ tbody tr:last-child td {
 .dashboard-opportunities-preview,
 .dashboard-allocation-breakdown {
   width: 100%;
+}
+
+.dashboard-portfolio-panel .table-wrap {
+  width: 100%;
+}
+
+.dashboard-portfolio-panel table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.dashboard-portfolio-panel th,
+.dashboard-portfolio-panel td {
+  padding: 12px 10px;
+}
+
+.dashboard-portfolio-panel th:first-child,
+.dashboard-portfolio-panel td:first-child {
+  width: 24%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-portfolio-panel th:last-child,
+.dashboard-portfolio-panel td:last-child {
+  width: 16%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-portfolio-panel th.right,
+.dashboard-portfolio-panel td.right {
+  white-space: nowrap;
 }
 
 .dashboard-command-strip {
@@ -2141,6 +2178,8 @@ tbody tr:last-child td {
 }
 
 .trend-chart-shell {
+  width: 100%;
+  min-width: 0;
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:

@@ -223,6 +223,24 @@ function normalizeRegimeLabel(value) {
     .join(" ");
 }
 
+function formatPresetLabel(value) {
+  const normalized = String(value || "")
+    .replaceAll("_", " ")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) return "";
+  if (normalized === "balanced") return "Balanced";
+  if (normalized === "aggressive") return "Aggressive";
+  if (normalized === "conservative") return "Conservative";
+
+  return normalized
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function signedToneClass(value) {
   if (value == null) return "";
   return Number(value) >= 0 ? "positive" : "negative";
@@ -432,10 +450,14 @@ function normalizeActionPayload(action, fallbackLabel = "Open Config") {
 
 function normalizeRiskScorePayload(value) {
   const source = safeObject(value);
+  const notes = cleanTextList(source.notes, 3);
+  const singularNote = normalizeRiskScoreNote(source.note || source.summary || "");
+  if (singularNote && !notes.includes(singularNote)) notes.unshift(singularNote);
+
   return {
     score: hasNumericValue(source.score) ? Math.max(0, Math.min(100, Number(source.score))) : null,
     band: String(source.band || "Moderate Risk").trim() || "Moderate Risk",
-    notes: cleanTextList(source.notes, 3),
+    notes: notes.slice(0, 3),
     inputs: safeObject(source.inputs)
   };
 }
@@ -494,11 +516,15 @@ function normalizeAutoAdaptivePayload(value) {
 
   return {
     label: String(source.label || "Balanced").trim() || "Balanced",
+    recommended_preset: String(source.recommended_preset || "").trim(),
+    recommended_label: String(source.recommended_label || "").trim(),
     confidence,
     summary: String(source.summary || "").trim(),
     reasons: cleanTextList(source.reasons, 3),
     action,
     simulation: {
+      preset: String(simulationRaw.preset || "").trim(),
+      label: String(simulationRaw.label || "").trim(),
       current_score: hasNumericValue(simulationRaw.current_score) ? Number(simulationRaw.current_score) : null,
       projected_score: hasNumericValue(simulationRaw.projected_score) ? Number(simulationRaw.projected_score) : null,
       score_delta: hasNumericValue(simulationRaw.score_delta) ? Number(simulationRaw.score_delta) : null,
@@ -510,22 +536,67 @@ function normalizeAutoAdaptivePayload(value) {
   };
 }
 
-function deriveCurrentPresetLabel(portfolioData, rebalanceData, systemData) {
+function deriveCurrentPresetLabel(portfolioData, rebalanceData, systemData, autoAdaptive = null) {
   const candidates = [
+    portfolioData?.summary?.current_preset_label,
     portfolioData?.summary?.current_preset,
+    portfolioData?.summary?.config_preset_label,
     portfolioData?.summary?.config_preset,
+    portfolioData?.summary?.preset_label,
+    portfolioData?.summary?.preset,
+    portfolioData?.snapshot?.current_preset_label,
     portfolioData?.snapshot?.current_preset,
+    portfolioData?.snapshot?.config?.preset_label,
     portfolioData?.snapshot?.config?.preset,
+    portfolioData?.snapshot?.preset_label,
+    portfolioData?.snapshot?.preset,
+    rebalanceData?.summary?.current_preset_label,
     rebalanceData?.summary?.current_preset,
-    systemData?.portfolio_summary?.current_preset
+    rebalanceData?.summary?.config_preset_label,
+    rebalanceData?.summary?.config_preset,
+    rebalanceData?.summary?.preset_label,
+    rebalanceData?.summary?.preset,
+    systemData?.portfolio_summary?.current_preset_label,
+    systemData?.portfolio_summary?.current_preset,
+    systemData?.portfolio_summary?.config_preset_label,
+    systemData?.portfolio_summary?.config_preset,
+    systemData?.portfolio_summary?.preset_label,
+    systemData?.portfolio_summary?.preset
   ];
 
   for (const candidate of candidates) {
-    const text = String(candidate || "").trim();
-    if (text) return normalizeRegimeLabel(text);
+    const text = formatPresetLabel(candidate);
+    if (text) return text;
   }
 
-  return "Unavailable";
+  const fallbackCandidates = [
+    autoAdaptive?.recommended_label,
+    autoAdaptive?.label,
+    autoAdaptive?.recommended_preset,
+    autoAdaptive?.action?.target,
+    autoAdaptive?.simulation?.label,
+    autoAdaptive?.simulation?.preset
+  ];
+
+  for (const candidate of fallbackCandidates) {
+    const text = formatPresetLabel(candidate);
+    if (text) return text;
+  }
+
+  return "Reviewing";
+}
+
+function normalizeRiskScoreNote(note) {
+  const text = String(note || "").trim();
+  if (!text) return "";
+
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const lower = normalized.toLowerCase();
+  if (lower.includes("live portfolio snapshot") && lower.includes("waiting")) {
+    return "Risk score will update as live portfolio context refreshes.";
+  }
+
+  return normalized;
 }
 
 function buildNeedsAttentionItems(analytics, systemData, adaptiveSuggestions, autoAdaptive) {
@@ -614,34 +685,27 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
   const adaptiveSuggestions = normalizeAdaptiveSuggestionsPayload(advisoryHistory?.adaptive_suggestions);
   const autoAdaptive = normalizeAutoAdaptivePayload(advisoryHistory?.auto_adaptive);
 
-  const totalValue =
-    Number(summary.total_value_usd || 0) ||
-    Number(snapshot.total_value_usd || 0) ||
-    0;
-
-  const regime =
-    summary.market_regime ||
-    rebalanceData?.summary?.market_regime ||
-    systemData?.portfolio_summary?.market_regime ||
-    "unknown";
-
   const analyticsLimited = Boolean(analytics30?.limited_history || analyticsSelected?.limited_history);
   const scoreValue = riskScore.score;
   const scoreBand = riskScore.band || "Evaluating";
   const scoreNotes = riskScore.notes;
   const suggestionSummary = adaptiveSuggestions.summary;
   const suggestionItems = adaptiveSuggestions.suggestions.slice(0, 2);
-  const recommendedPreset = autoAdaptive.label || "Balanced";
+  const recommendedPreset =
+    formatPresetLabel(
+      autoAdaptive.recommended_label ||
+      autoAdaptive.label ||
+      autoAdaptive.recommended_preset ||
+      autoAdaptive.action?.target ||
+      autoAdaptive.simulation?.label ||
+      autoAdaptive.simulation?.preset
+    ) || "Balanced";
   const adaptiveConfidence = autoAdaptive.confidence || "low";
   const adaptiveSummary = autoAdaptive.summary;
   const adaptiveReasons = autoAdaptive.reasons.slice(0, 2);
   const adaptiveAction = autoAdaptive.action;
   const attentionItems = buildNeedsAttentionItems(analytics30, systemData, adaptiveSuggestions, autoAdaptive);
-  const currentPreset = deriveCurrentPresetLabel(portfolioData, rebalanceData, systemData);
-
-  const title = analyticsLimited
-    ? "Performance view is live, with fuller metrics unlocking as history builds."
-    : "Performance, risk posture, and guidance are summarized here.";
+  const currentPreset = deriveCurrentPresetLabel(portfolioData, rebalanceData, systemData, autoAdaptive);
 
   const riskStrip = document.getElementById("performanceRiskStrip");
   const riskScoreEl = document.getElementById("performanceRiskScore");
@@ -664,7 +728,10 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
     const fallbackNote = analyticsLimited
       ? "Drawdown inputs are limited while persisted equity history is building."
       : "Risk score is blending allocation, reserve, drawdown, and regime inputs.";
-    const notes = scoreNotes.length ? scoreNotes : [fallbackNote];
+    const normalizedNotes = scoreNotes
+      .map((note) => normalizeRiskScoreNote(note))
+      .filter(Boolean);
+    const notes = normalizedNotes.length ? normalizedNotes : [fallbackNote];
     riskNotesEl.innerHTML = notes
         .map((note) => `<span class="performance-risk-note">${escapeHtml(note)}</span>`)
         .join("");
@@ -723,9 +790,6 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
       </a>
     `;
   }
-
-  const titleEl = card.querySelector(".performance-summary-title");
-  if (titleEl) titleEl.textContent = title;
 
   renderNeedsAttention(attentionItems);
 }

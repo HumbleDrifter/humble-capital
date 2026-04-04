@@ -2620,13 +2620,12 @@ tbody tr:last-child td {
 }
 
 .page-opportunities .opportunity-groups {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
   width: 100%;
   max-width: none;
   margin: 0;
-  align-items: start;
 }
 
 .page-opportunities .opportunity-column {
@@ -2644,9 +2643,9 @@ tbody tr:last-child td {
 }
 
 .page-opportunities .opportunity-column .opportunity-card-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
   width: 100%;
 }
 
@@ -4192,8 +4191,8 @@ tbody tr:last-child td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .page-opportunities .opportunity-groups {
-    grid-template-columns: 1fr 1fr;
+  .page-opportunities .opportunity-column .opportunity-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .config-proposal-grid {
@@ -4425,7 +4424,7 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
-  .page-opportunities .opportunity-groups {
+  .page-opportunities .opportunity-column .opportunity-card-grid {
     grid-template-columns: 1fr;
   }
 

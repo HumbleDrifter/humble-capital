@@ -4,11 +4,11 @@ After=network.target
 
 [Service]
 Type=simple
-User=tradingbot
-Group=tradingbot
+User=root
+Group=root
 WorkingDirectory=/root/tradingbot
 EnvironmentFile=/root/tradingbot/.env
-ExecStart=/root/tradingbot/venv/bin/python /root/tradingbot/config_proposal_worker.py
+ExecStart=/usr/bin/python3 /root/tradingbot/config_proposal_worker.py
 Restart=always
 RestartSec=10
 

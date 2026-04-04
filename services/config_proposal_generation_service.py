@@ -37,13 +37,18 @@ def run_config_proposal_generation_cycle():
         _log_once("manual_mode", "skipped generation because mode is manual")
         return {"ok": True, "status": "skipped_manual_mode"}
 
-    result = generate_config_proposal()
+    result = generate_config_proposal(min_confidence=settings.get("min_confidence"))
     status = str(result.get("status", "unknown") or "unknown").strip().lower()
 
     if status == "created":
         _log_once(f"created:{result.get('proposal_id')}", f"created proposal {result.get('proposal_id')}")
     elif status == "deduped":
         _log_once(f"deduped:{result.get('proposal_id')}", "skipped generation because matching pending proposal already exists")
+    elif status == "skipped_low_confidence":
+        _log_once(
+            f"low_confidence:{result.get('confidence')}:{result.get('required_confidence')}",
+            f"skipped generation because confidence {result.get('confidence', 'low')} is below required {result.get('required_confidence', 'high')}",
+        )
     elif status == "noop":
         _log_once("noop", "skipped generation because no new allowlisted changes qualified")
     else:

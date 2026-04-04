@@ -34,6 +34,7 @@ DEFAULT_ADVISORY_RANGE = "30d"
 DEFAULT_PROPOSAL_TTL_MINUTES = int(float(os.getenv("CONFIG_PROPOSAL_TTL_MINUTES", "120") or "120"))
 DEFAULT_PROPOSAL_GENERATION_MODE = "manual"
 DEFAULT_PROPOSAL_APPLY_MODE = "manual"
+DEFAULT_PROPOSAL_MIN_CONFIDENCE = "high"
 ALLOWED_CHANGE_KEYS = {
     "satellite_total_target",
     "satellite_total_max",
@@ -52,26 +53,41 @@ def _safe_list(value):
     return value if isinstance(value, list) else []
 
 
+def _normalize_confidence_value(value, allowed_values, fallback):
+    normalized = str(value or "").strip().lower()
+    return normalized if normalized in allowed_values else fallback
+
+
+def _confidence_rank(value):
+    mapping = {"low": 0, "medium": 1, "high": 2}
+    return mapping.get(str(value or "").strip().lower(), -1)
+
+
 def get_config_proposal_automation_settings(config=None):
     cfg = _safe_dict(config) if isinstance(config, dict) else _safe_dict(load_asset_config())
 
-    generation_mode = str(
-        cfg.get("config_proposal_generation_mode", DEFAULT_PROPOSAL_GENERATION_MODE)
-        or DEFAULT_PROPOSAL_GENERATION_MODE
-    ).strip().lower()
-    if generation_mode not in {"manual", "auto"}:
-        generation_mode = DEFAULT_PROPOSAL_GENERATION_MODE
+    generation_mode = _normalize_confidence_value(
+        cfg.get("config_proposal_generation_mode", DEFAULT_PROPOSAL_GENERATION_MODE),
+        {"manual", "auto"},
+        DEFAULT_PROPOSAL_GENERATION_MODE,
+    )
 
-    apply_mode = str(
-        cfg.get("config_proposal_apply_mode", DEFAULT_PROPOSAL_APPLY_MODE)
-        or DEFAULT_PROPOSAL_APPLY_MODE
-    ).strip().lower()
-    if apply_mode not in {"manual", "after_approval"}:
-        apply_mode = DEFAULT_PROPOSAL_APPLY_MODE
+    apply_mode = _normalize_confidence_value(
+        cfg.get("config_proposal_apply_mode", DEFAULT_PROPOSAL_APPLY_MODE),
+        {"manual", "after_approval"},
+        DEFAULT_PROPOSAL_APPLY_MODE,
+    )
+
+    min_confidence = _normalize_confidence_value(
+        cfg.get("config_proposal_min_confidence", DEFAULT_PROPOSAL_MIN_CONFIDENCE),
+        {"medium", "high"},
+        DEFAULT_PROPOSAL_MIN_CONFIDENCE,
+    )
 
     return {
         "generation_mode": generation_mode,
         "apply_mode": apply_mode,
+        "min_confidence": min_confidence,
     }
 
 
@@ -276,7 +292,7 @@ def expire_stale_proposals(proposal_type=PROPOSAL_TYPE):
     return expire_pending_config_proposals(utcnow_iso(), proposal_type=proposal_type)
 
 
-def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES):
+def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES, min_confidence=None):
     expired_count = expire_stale_proposals()
     built = build_config_proposal(range_name=range_name)
 
@@ -290,6 +306,28 @@ def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFA
         }
 
     proposal = _safe_dict(built.get("proposal"))
+    proposal_confidence = _normalize_confidence_value(
+        _safe_dict(proposal.get("source")).get("confidence", "low"),
+        {"low", "medium", "high"},
+        "low",
+    )
+    required_confidence = _normalize_confidence_value(
+        min_confidence,
+        {"medium", "high"},
+        "",
+    )
+
+    if required_confidence and _confidence_rank(proposal_confidence) < _confidence_rank(required_confidence):
+        return {
+            "ok": True,
+            "status": "skipped_low_confidence",
+            "reason": "confidence_below_threshold",
+            "expired_count": expired_count,
+            "confidence": proposal_confidence,
+            "required_confidence": required_confidence,
+            "proposal": None,
+        }
+
     fingerprint = compute_config_proposal_fingerprint(proposal)
     existing = find_pending_config_proposal_by_fingerprint(fingerprint, proposal_type=PROPOSAL_TYPE)
 

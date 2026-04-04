@@ -1707,6 +1707,13 @@ def api_admin_asset():
             if apply_mode:
                 config["config_proposal_apply_mode"] = apply_mode
 
+            min_confidence = _normalized_choice(
+                payload.get("config_proposal_min_confidence"),
+                {"medium", "high"},
+            )
+            if min_confidence:
+                config["config_proposal_min_confidence"] = min_confidence
+
             changed = True
 
         if not changed:

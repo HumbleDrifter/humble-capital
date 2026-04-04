@@ -14,6 +14,7 @@ const PERCENT_FIELD_IDS = [
 ];
 const PROPOSAL_GENERATION_MODES = ["manual", "auto"];
 const PROPOSAL_APPLY_MODES = ["manual", "after_approval"];
+const PROPOSAL_MIN_CONFIDENCE_VALUES = ["medium", "high"];
 
 const CONFIG_PRESETS = {
   conservative: {
@@ -799,6 +800,7 @@ function renderRiskConfig(cfg) {
 function renderProposalAutomationSettings(cfg) {
   const generationEl = document.getElementById("config_proposal_generation_mode");
   const applyEl = document.getElementById("config_proposal_apply_mode");
+  const minConfidenceEl = document.getElementById("config_proposal_min_confidence");
 
   const generationMode = normalizeProposalAutomationMode(
     cfg?.config_proposal_generation_mode,
@@ -810,9 +812,15 @@ function renderProposalAutomationSettings(cfg) {
     PROPOSAL_APPLY_MODES,
     "manual"
   );
+  const minConfidence = normalizeProposalAutomationMode(
+    cfg?.config_proposal_min_confidence,
+    PROPOSAL_MIN_CONFIDENCE_VALUES,
+    "high"
+  );
 
   if (generationEl) generationEl.value = generationMode;
   if (applyEl) applyEl.value = applyMode;
+  if (minConfidenceEl) minConfidenceEl.value = minConfidence;
 }
 
 function getAssetMode(productId) {
@@ -1078,6 +1086,11 @@ async function saveRiskControls() {
       PROPOSAL_APPLY_MODES,
       "manual"
     );
+    const minConfidence = normalizeProposalAutomationMode(
+      document.getElementById("config_proposal_min_confidence")?.value,
+      PROPOSAL_MIN_CONFIDENCE_VALUES,
+      "high"
+    );
 
     await fetchJson("/api/admin/asset", {
       method: "POST",
@@ -1092,6 +1105,7 @@ async function saveRiskControls() {
         max_new_satellites_per_cycle: document.getElementById("max_new_satellites_per_cycle")?.value || "",
         config_proposal_generation_mode: generationMode,
         config_proposal_apply_mode: applyMode,
+        config_proposal_min_confidence: minConfidence,
         ...(API_SECRET ? { secret: API_SECRET } : {})
       })
     }, 20000);

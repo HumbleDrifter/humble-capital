@@ -146,6 +146,15 @@
           <div class="field-help">Manual apply: approval and apply remain separate.</div>
           <div class="field-help">Apply after approval: approved proposals are applied immediately after approval using the existing safe allowlist.</div>
         </div>
+
+        <div class="form-card config-proposal-automation-card">
+          <label for="config_proposal_min_confidence">Proposal Minimum Confidence</label>
+          <select id="config_proposal_min_confidence">
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <div class="field-help">Auto mode only creates proposals when advisory confidence meets this threshold.</div>
+        </div>
       </div>
 
       <div class="configuration-action-row config-proposal-automation-actions">

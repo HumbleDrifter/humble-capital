@@ -698,6 +698,54 @@ tbody tr:last-child td {
   gap: 22px;
 }
 
+.dashboard-terminal-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.dashboard-allocation-panel {
+  grid-column: span 6;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-opportunities-panel {
+  grid-column: span 6;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-portfolio-panel {
+  grid-column: span 8;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-activity-panel {
+  grid-column: span 4;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-universe-panel {
+  grid-column: span 6;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-status-panel {
+  grid-column: span 6;
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-opportunities-preview,
+.dashboard-allocation-breakdown {
+  width: 100%;
+}
+
 .dashboard-command-strip {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -4287,6 +4335,15 @@ tbody tr:last-child td {
 ========================================================= */
 
 @media (max-width: 1200px) {
+  .dashboard-allocation-panel,
+  .dashboard-opportunities-panel,
+  .dashboard-portfolio-panel,
+  .dashboard-activity-panel,
+  .dashboard-universe-panel,
+  .dashboard-status-panel {
+    grid-column: span 12;
+  }
+
   .dashboard-command-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

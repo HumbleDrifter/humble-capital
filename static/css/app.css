@@ -125,16 +125,36 @@ canvas {
   display: block;
 }
 
+.page-opportunities .grid.cols-12.meme-rotation-grid,
 .page-opportunities .meme-rotation-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   width: 100%;
 }
 
+.page-opportunities .panel > * {
+  max-width: none;
+  width: 100%;
+}
+
+.page-opportunities .panel-content,
+.page-opportunities .panel-inner,
+.page-opportunities .section,
+.page-opportunities .inner {
+  max-width: none;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .page-opportunities .panel.span-12 {
   grid-column: span 12;
   width: 100%;
   max-width: none;
+}
+
+.page-opportunities .opportunity-card-grid {
+  width: 100%;
 }
 
 .meme-rotation-grid {

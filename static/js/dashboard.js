@@ -486,15 +486,22 @@ function buildNeedsAttentionItems(analytics, systemData, adaptiveSuggestions, au
   const analyticsNote = String(analytics?.note || "").trim();
   const adaptiveSummary = String(adaptiveSuggestions?.summary || "").trim();
   const autoAdaptiveSummary = String(autoAdaptive?.summary || "").trim();
+  const riskBand = String(systemData?.portfolio_summary?.risk_band || "").trim();
   const cache = safeObject(systemData?.status?.portfolio_cache);
   const snapshotAgeSec = hasNumericValue(cache.snapshot_age_sec)
     ? Number(cache.snapshot_age_sec)
     : (hasNumericValue(cache.age_sec) ? Number(cache.age_sec) : null);
   const lastError = String(cache.last_error || "").trim();
   const degradedText = `${analyticsNote} ${adaptiveSummary} ${autoAdaptiveSummary}`.toLowerCase();
+  const addItem = (text, tone = "warn") => {
+    const normalized = String(text || "").trim();
+    if (!normalized) return;
+    if (items.some((item) => item.text === normalized)) return;
+    items.push({ text: normalized, tone });
+  };
 
   if (analytics?.limited_history) {
-    items.push("History incomplete");
+    addItem("Portfolio history is still limited.", "muted");
   }
 
   if (
@@ -503,18 +510,22 @@ function buildNeedsAttentionItems(analytics, systemData, adaptiveSuggestions, au
     degradedText.includes("waiting") ||
     degradedText.includes("unavailable")
   ) {
-    items.push("Advisory degraded");
+    addItem("Advisory is using fallback data.", "warn");
   }
 
   if (snapshotAgeSec != null && snapshotAgeSec > 300) {
-    items.push("Snapshot stale");
+    addItem("Snapshot freshness is degraded.", snapshotAgeSec > 900 ? "critical" : "warn");
   }
 
   if (lastError) {
-    items.push("Portfolio cache error");
+    addItem("Portfolio cache reported an error.", "critical");
   }
 
-  return items.filter((item, index, list) => list.indexOf(item) === index).slice(0, 3);
+  if (!items.length && String(riskBand || "").toLowerCase() === "high risk") {
+    addItem("Risk posture is elevated and worth review.", "warn");
+  }
+
+  return items.slice(0, 3);
 }
 
 function renderPortfolioPosture(summary, snapshot, riskScore, autoAdaptive) {
@@ -534,18 +545,27 @@ function renderPortfolioPosture(summary, snapshot, riskScore, autoAdaptive) {
 }
 
 function renderNeedsAttention(items) {
+  const panel = document.getElementById("needsAttentionPanel");
   const host = document.getElementById("needsAttentionStrip");
-  if (!host) return;
+  if (!panel || !host) return;
 
   if (!Array.isArray(items) || !items.length) {
-    host.hidden = true;
+    panel.hidden = true;
     host.innerHTML = "";
     return;
   }
 
-  host.hidden = false;
+  panel.hidden = false;
   host.innerHTML = items
-    .map((item) => `<span class="needs-attention-item">${escapeHtml(item)}</span>`)
+    .map((item) => {
+      const tone = String(item?.tone || "warn").trim().toLowerCase();
+      const text = String(item?.text || "").trim();
+      const toneClass =
+        tone === "critical" ? " critical" :
+        tone === "muted" ? " muted" :
+        " warn";
+      return `<span class="needs-attention-item${toneClass}">${escapeHtml(text)}</span>`;
+    })
     .join("");
 }
 

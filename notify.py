@@ -308,6 +308,16 @@ def render_config_proposal_status_text(proposal_id, result, proposal_record=None
         ]
         if result.get("approved_by"):
             lines.append(f"Approved By: {result.get('approved_by')}")
+    elif result.get("status") == "applied":
+        lines = [
+            "✅ Config Proposal Applied",
+            f"ID: {proposal_id}",
+            f"Applied At: {result.get('applied_at')}",
+        ]
+        if result.get("applied_by"):
+            lines.append(f"Applied By: {result.get('applied_by')}")
+        if result.get("config_changed") is not None:
+            lines.append(f"Config Changed: {'yes' if bool(result.get('config_changed')) else 'no'}")
     else:
         lines = [
             "🛑 Config Proposal Rejected",
@@ -321,7 +331,10 @@ def render_config_proposal_status_text(proposal_id, result, proposal_record=None
         lines.extend(["", summary])
 
     lines.append("")
-    lines.append("No config changes have been applied yet.")
+    if result.get("status") == "applied":
+        lines.append("Config changes have been applied.")
+    else:
+        lines.append("No config changes have been applied yet.")
     return "\n".join(lines).strip()
 
 

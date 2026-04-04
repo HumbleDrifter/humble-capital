@@ -10,7 +10,7 @@ import requests
 from env_runtime import load_runtime_env, preferred_env_path
 from daily_bot_report import _send_telegram
 from notify import render_config_proposal_status_text
-from services.config_proposal_service import approve_config_proposal, reject_config_proposal
+from services.config_proposal_service import apply_config_proposal, approve_config_proposal, reject_config_proposal
 from services.rebalance_proposal_service import approve_proposal, reject_proposal, get_proposal_by_id
 from storage import get_config_proposal_by_id
 
@@ -82,7 +82,7 @@ def _normalize_text(text: str) -> str:
 
 def _extract_command(text: str):
     text = _normalize_text(text)
-    m = re.match(r"^(APPROVE|REJECT|EXECUTE)\s+((?:RB|CFG)-\d{8}-\d{3})$", text, re.IGNORECASE)
+    m = re.match(r"^(APPROVE|REJECT|APPLY|EXECUTE)\s+((?:RB|CFG)-\d{8}-\d{3})$", text, re.IGNORECASE)
     if not m:
         return None, None
     return m.group(1).upper(), m.group(2).upper()
@@ -171,13 +171,15 @@ def _handle_update(update: dict) -> None:
         return
 
     if proposal_id.startswith("CFG-"):
-        if command not in {"APPROVE", "REJECT"}:
+        if command not in {"APPROVE", "REJECT", "APPLY"}:
             return
 
         actor = _telegram_actor(update)
 
         if command == "APPROVE":
             result = approve_config_proposal(proposal_id, actor=actor)
+        elif command == "APPLY":
+            result = apply_config_proposal(proposal_id, applied_by=actor)
         else:
             result = reject_config_proposal(proposal_id, actor=actor)
 

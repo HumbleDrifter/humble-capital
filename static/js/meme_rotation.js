@@ -322,26 +322,31 @@ function renderGroups(data) {
 
   renderSummary(data, groups);
 
-  grid.innerHTML = ["active", "watching", "paused"].map((groupKey) => {
-    const items = groups[groupKey];
-    return `
-      <section class="opportunity-group opportunity-column opportunity-column-${groupKey}">
-        <div class="section-header compact-header">
-          <div>
-            <h3>${groupTitle(groupKey)}</h3>
-            <p class="section-subtitle">${groupDescription(groupKey)}</p>
-          </div>
-          <span class="badge">${items.length}</span>
-        </div>
-        <div class="opportunity-card-grid">
-          ${items.length
-            ? items.map((row) => opportunityCard(row)).join("")
-            : `<div class="opportunity-empty muted">${escapeHtml(emptyStateText(groupKey))}</div>`
-          }
-        </div>
-      </section>
-    `;
-  }).join("");
+  grid.className = "";
+  grid.innerHTML = `
+    <div class="opps-board">
+      ${["active", "watching", "paused"].map((groupKey) => {
+        const items = groups[groupKey];
+        return `
+          <section class="opps-section opps-section-${groupKey}">
+            <div class="section-header compact-header">
+              <div>
+                <h3>${groupTitle(groupKey)}</h3>
+                <p class="section-subtitle">${groupDescription(groupKey)}</p>
+              </div>
+              <span class="badge">${items.length}</span>
+            </div>
+            <div class="opps-cards">
+              ${items.length
+                ? items.map((row) => opportunityCard(row)).join("")
+                : `<div class="opportunity-empty muted">${escapeHtml(emptyStateText(groupKey))}</div>`
+              }
+            </div>
+          </section>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 async function postJson(path, body) {

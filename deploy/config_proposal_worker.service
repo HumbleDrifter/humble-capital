@@ -1,0 +1,16 @@
+[Unit]
+Description=Humble Capital Config Proposal Worker
+After=network.target
+
+[Service]
+Type=simple
+User=tradingbot
+Group=tradingbot
+WorkingDirectory=/root/tradingbot
+EnvironmentFile=/root/tradingbot/.env
+ExecStart=/root/tradingbot/venv/bin/python /root/tradingbot/config_proposal_worker.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

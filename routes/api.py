@@ -29,14 +29,11 @@ from portfolio import (
     portfolio_summary,
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
-from services.config_proposal_generation_service import start_config_proposal_generation_worker
 from services.config_proposal_service import generate_config_proposal
 from storage import get_portfolio_history_since
 from storage import get_latest_config_proposal_any_status, list_recent_config_proposals
 
 api_bp = Blueprint("api", __name__)
-
-start_config_proposal_generation_worker()
 
 BASE_DIR = str(preferred_env_path().parent.resolve())
 ASSET_CONFIG_PATH = os.path.join(BASE_DIR, "asset_config.json")

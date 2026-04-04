@@ -154,7 +154,28 @@ canvas {
 }
 
 .page-opportunities .opportunity-card-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
   width: 100%;
+  flex-direction: unset !important;
+  flex-wrap: unset !important;
+  white-space: normal !important;
+}
+
+.page-opportunities .opportunity-card {
+  display: block;
+  width: 100%;
+}
+
+.page-opportunities .opportunity-card-grid > * {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .page-opportunities .opportunity-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .meme-rotation-grid {

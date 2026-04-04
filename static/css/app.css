@@ -116,6 +116,27 @@ canvas {
   width: 100%;
 }
 
+.page-opportunities .grid {
+  max-width: none;
+  width: 100%;
+}
+
+.page-opportunities .grid.cols-12 {
+  display: block;
+}
+
+.page-opportunities .meme-rotation-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  width: 100%;
+}
+
+.page-opportunities .panel.span-12 {
+  grid-column: span 12;
+  width: 100%;
+  max-width: none;
+}
+
 .meme-rotation-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));

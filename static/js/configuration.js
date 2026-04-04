@@ -12,6 +12,8 @@ const PERCENT_FIELD_IDS = [
   "satellite_total_max",
   "min_cash_reserve"
 ];
+const PROPOSAL_GENERATION_MODES = ["manual", "auto"];
+const PROPOSAL_APPLY_MODES = ["manual", "after_approval"];
 
 const CONFIG_PRESETS = {
   conservative: {
@@ -139,6 +141,11 @@ function setPresetStatus(message) {
 
 function isPercentFieldId(id) {
   return PERCENT_FIELD_IDS.includes(String(id || "").trim());
+}
+
+function normalizeProposalAutomationMode(value, allowedValues, fallback) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return allowedValues.includes(normalized) ? normalized : fallback;
 }
 
 function clampPercentValue(value) {
@@ -793,12 +800,16 @@ function renderProposalAutomationSettings(cfg) {
   const generationEl = document.getElementById("config_proposal_generation_mode");
   const applyEl = document.getElementById("config_proposal_apply_mode");
 
-  const generationMode = ["manual", "auto"].includes(String(cfg?.config_proposal_generation_mode || "").trim().toLowerCase())
-    ? String(cfg.config_proposal_generation_mode).trim().toLowerCase()
-    : "manual";
-  const applyMode = ["manual", "after_approval"].includes(String(cfg?.config_proposal_apply_mode || "").trim().toLowerCase())
-    ? String(cfg.config_proposal_apply_mode).trim().toLowerCase()
-    : "manual";
+  const generationMode = normalizeProposalAutomationMode(
+    cfg?.config_proposal_generation_mode,
+    PROPOSAL_GENERATION_MODES,
+    "manual"
+  );
+  const applyMode = normalizeProposalAutomationMode(
+    cfg?.config_proposal_apply_mode,
+    PROPOSAL_APPLY_MODES,
+    "manual"
+  );
 
   if (generationEl) generationEl.value = generationMode;
   if (applyEl) applyEl.value = applyMode;
@@ -1057,6 +1068,17 @@ async function setAssetMode(productId, mode) {
 
 async function saveRiskControls() {
   try {
+    const generationMode = normalizeProposalAutomationMode(
+      document.getElementById("config_proposal_generation_mode")?.value,
+      PROPOSAL_GENERATION_MODES,
+      "manual"
+    );
+    const applyMode = normalizeProposalAutomationMode(
+      document.getElementById("config_proposal_apply_mode")?.value,
+      PROPOSAL_APPLY_MODES,
+      "manual"
+    );
+
     await fetchJson("/api/admin/asset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1068,8 +1090,8 @@ async function saveRiskControls() {
         trade_min_value_usd: document.getElementById("trade_min_value_usd")?.value || "",
         max_active_satellites: document.getElementById("max_active_satellites")?.value || "",
         max_new_satellites_per_cycle: document.getElementById("max_new_satellites_per_cycle")?.value || "",
-        config_proposal_generation_mode: document.getElementById("config_proposal_generation_mode")?.value || "manual",
-        config_proposal_apply_mode: document.getElementById("config_proposal_apply_mode")?.value || "manual",
+        config_proposal_generation_mode: generationMode,
+        config_proposal_apply_mode: applyMode,
         ...(API_SECRET ? { secret: API_SECRET } : {})
       })
     }, 20000);

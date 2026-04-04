@@ -319,6 +319,11 @@ def _safe_float(value, default=0.0):
         return default
 
 
+def _normalized_choice(value, allowed, default=""):
+    normalized = str(value or "").strip().lower()
+    return normalized if normalized in allowed else default
+
+
 def _trading_db_conn():
     conn = sqlite3.connect(TRADING_DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -1688,12 +1693,18 @@ def api_admin_asset():
             if payload.get("min_meme_score") not in (None, ""):
                 config["min_meme_score"] = float(payload.get("min_meme_score"))
 
-            generation_mode = str(payload.get("config_proposal_generation_mode", "") or "").strip().lower()
-            if generation_mode in {"manual", "auto"}:
+            generation_mode = _normalized_choice(
+                payload.get("config_proposal_generation_mode"),
+                {"manual", "auto"},
+            )
+            if generation_mode:
                 config["config_proposal_generation_mode"] = generation_mode
 
-            apply_mode = str(payload.get("config_proposal_apply_mode", "") or "").strip().lower()
-            if apply_mode in {"manual", "after_approval"}:
+            apply_mode = _normalized_choice(
+                payload.get("config_proposal_apply_mode"),
+                {"manual", "after_approval"},
+            )
+            if apply_mode:
                 config["config_proposal_apply_mode"] = apply_mode
 
             changed = True

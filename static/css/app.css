@@ -190,9 +190,24 @@ canvas {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+.nav-link-label {
+  display: block;
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding-top: 8px;
+}
+
+.sidebar-user {
+  margin-bottom: 10px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 /* =========================================================
@@ -2433,6 +2448,71 @@ tbody tr:last-child td {
   line-height: 1.05;
 }
 
+.mobile-more-menu {
+  position: relative;
+  min-width: 0;
+}
+
+.mobile-more-menu summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.mobile-more-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-more-trigger {
+  height: 100%;
+}
+
+.mobile-more-sheet {
+  position: absolute;
+  right: 10px;
+  bottom: calc(100% + 10px);
+  min-width: 172px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid var(--border-strong);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 35, 0.98), rgba(10, 16, 25, 0.98));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+}
+
+.mobile-more-sheet::after {
+  content: "";
+  position: absolute;
+  right: 22px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: rgba(10, 16, 25, 0.98);
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  transform: rotate(45deg);
+}
+
+.mobile-more-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text-soft);
+  border: 1px solid transparent;
+}
+
+.mobile-more-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border);
+}
+
+.mobile-more-link.active {
+  color: #d8fff0;
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.14), rgba(52, 211, 153, 0.08));
+  border-color: rgba(52, 211, 153, 0.22);
+}
+
 /* =========================================================
    PUBLIC SITE
 ========================================================= */
@@ -3721,7 +3801,7 @@ tbody tr:last-child td {
     z-index: 40;
     height: 70px;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     background: rgba(10, 16, 25, 0.96);
     backdrop-filter: blur(12px);
     border-top: 1px solid var(--border-strong);
@@ -3855,6 +3935,12 @@ tbody tr:last-child td {
 
   .public-brand-subtitle {
     display: none;
+  }
+
+  .mobile-more-sheet {
+    right: 8px;
+    left: auto;
+    min-width: 164px;
   }
 
   .hero-title {

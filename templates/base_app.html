@@ -4,31 +4,57 @@
   <meta charset="utf-8">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <title>{{ page_title or "Leprechaun Console" }}</title>
+  <title>{{ page_title or "Humble Capital Console" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body class="theme-dark app-body">
   {% set current_path = request.path %}
   {% set secret_value = secret if secret is defined and secret else request.args.get('secret', '') %}
+  {% set dashboard_url = '/dashboard?secret=' ~ (secret_value|urlencode) if secret_value else '/dashboard' %}
+  {% set portfolio_url = '/analytics?secret=' ~ (secret_value|urlencode) if secret_value else '/analytics' %}
+  {% set opportunities_url = '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' %}
+  {% set activity_url = '/trade-history?secret=' ~ (secret_value|urlencode) if secret_value else '/trade-history' %}
+  {% set automation_url = '/configuration?secret=' ~ (secret_value|urlencode) if secret_value else '/configuration' %}
+  {% set accounts_url = '/accounts?secret=' ~ (secret_value|urlencode) if secret_value else '/accounts' %}
+  {% set settings_url = '/settings?secret=' ~ (secret_value|urlencode) if secret_value else '/settings' %}
+  {% set accounts_active = current_path == '/accounts' %}
+  {% set automation_active = current_path == '/configuration' %}
+  {% set settings_active = current_path in ['/settings', '/system-status'] %}
+  {% set more_active = accounts_active or automation_active or settings_active %}
 
   <div class="app-shell">
     <aside class="sidebar">
       <div class="sidebar-brand">
         <div class="brand-mark">☘</div>
         <div>
-          <div class="brand-title">Leprechaun</div>
-          <div class="brand-subtitle">Humble Capital Trading Engine</div>
+          <div class="brand-title">Humble Capital</div>
+          <div class="brand-subtitle">Trading Terminal</div>
         </div>
       </div>
 
       <nav class="sidebar-nav">
-        <a class="nav-link {% if current_path == '/dashboard' %}active{% endif %}" href="{{ '/dashboard?secret=' ~ (secret_value|urlencode) if secret_value else '/dashboard' }}">Dashboard</a>
-        <a class="nav-link {% if current_path == '/analytics' %}active{% endif %}" href="{{ '/analytics?secret=' ~ (secret_value|urlencode) if secret_value else '/analytics' }}">Portfolio Analytics</a>
-        <a class="nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' }}">Meme Hunter</a>
-        <a class="nav-link {% if current_path == '/trade-history' %}active{% endif %}" href="{{ '/trade-history?secret=' ~ (secret_value|urlencode) if secret_value else '/trade-history' }}">Trade History</a>
-        <a class="nav-link {% if current_path == '/configuration' %}active{% endif %}" href="{{ '/configuration?secret=' ~ (secret_value|urlencode) if secret_value else '/configuration' }}">Bot Configuration</a>
-        <a class="nav-link {% if current_path == '/system-status' %}active{% endif %}" href="{{ '/system-status?secret=' ~ (secret_value|urlencode) if secret_value else '/system-status' }}">System Status</a>
+        <a class="nav-link {% if current_path == '/dashboard' %}active{% endif %}" href="{{ dashboard_url }}">
+          <span class="nav-link-label">Dashboard</span>
+        </a>
+        <a class="nav-link {% if current_path == '/analytics' %}active{% endif %}" href="{{ portfolio_url }}">
+          <span class="nav-link-label">Portfolio</span>
+        </a>
+        <a class="nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ opportunities_url }}">
+          <span class="nav-link-label">Opportunities</span>
+        </a>
+        <a class="nav-link {% if accounts_active %}active{% endif %}" href="{{ accounts_url }}">
+          <span class="nav-link-label">Accounts</span>
+        </a>
+        <a class="nav-link {% if automation_active %}active{% endif %}" href="{{ automation_url }}">
+          <span class="nav-link-label">Automation</span>
+        </a>
+        <a class="nav-link {% if current_path == '/trade-history' %}active{% endif %}" href="{{ activity_url }}">
+          <span class="nav-link-label">Activity</span>
+        </a>
+        <a class="nav-link {% if settings_active %}active{% endif %}" href="{{ settings_url }}">
+          <span class="nav-link-label">Settings</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -46,8 +72,8 @@
           <div class="mobile-brand-lockup">
             <div class="mobile-brand-mark">☘</div>
             <div class="mobile-brand-copy">
-              <div class="mobile-brand-title">Leprechaun</div>
-              <div class="mobile-brand-subtitle">Humble Capital Console</div>
+              <div class="mobile-brand-title">Humble Capital</div>
+              <div class="mobile-brand-subtitle">Trading Terminal</div>
             </div>
           </div>
         </div>
@@ -86,25 +112,37 @@
   </div>
 
   <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-    <a class="mobile-nav-link {% if current_path == '/dashboard' %}active{% endif %}" href="{{ '/dashboard?secret=' ~ (secret_value|urlencode) if secret_value else '/dashboard' }}">
+    <a class="mobile-nav-link {% if current_path == '/dashboard' %}active{% endif %}" href="{{ dashboard_url }}">
       <span class="mobile-nav-icon">⌂</span>
-      <span class="mobile-nav-label">Dashboard</span>
+      <span class="mobile-nav-label">Home</span>
     </a>
 
-    <a class="mobile-nav-link {% if current_path == '/configuration' %}active{% endif %}" href="{{ '/configuration?secret=' ~ (secret_value|urlencode) if secret_value else '/configuration' }}">
-      <span class="mobile-nav-icon">⚙</span>
-      <span class="mobile-nav-label">Config</span>
+    <a class="mobile-nav-link {% if current_path == '/analytics' %}active{% endif %}" href="{{ portfolio_url }}">
+      <span class="mobile-nav-icon">▣</span>
+      <span class="mobile-nav-label">Portfolio</span>
     </a>
 
-    <a class="mobile-nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' }}">
+    <a class="mobile-nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ opportunities_url }}">
       <span class="mobile-nav-icon">◈</span>
-      <span class="mobile-nav-label">Hunter</span>
+      <span class="mobile-nav-label">Opportunities</span>
     </a>
 
-    <a class="mobile-nav-link {% if current_path == '/system-status' %}active{% endif %}" href="{{ '/system-status?secret=' ~ (secret_value|urlencode) if secret_value else '/system-status' }}">
-      <span class="mobile-nav-icon">●</span>
-      <span class="mobile-nav-label">System</span>
+    <a class="mobile-nav-link {% if current_path == '/trade-history' %}active{% endif %}" href="{{ activity_url }}">
+      <span class="mobile-nav-icon">≣</span>
+      <span class="mobile-nav-label">Activity</span>
     </a>
+
+    <details class="mobile-more-menu {% if more_active %}active{% endif %}">
+      <summary class="mobile-nav-link mobile-more-trigger {% if more_active %}active{% endif %}">
+        <span class="mobile-nav-icon">⋯</span>
+        <span class="mobile-nav-label">More</span>
+      </summary>
+      <div class="mobile-more-sheet">
+        <a class="mobile-more-link {% if accounts_active %}active{% endif %}" href="{{ accounts_url }}">Accounts</a>
+        <a class="mobile-more-link {% if automation_active %}active{% endif %}" href="{{ automation_url }}">Automation</a>
+        <a class="mobile-more-link {% if settings_active %}active{% endif %}" href="{{ settings_url }}">Settings</a>
+      </div>
+    </details>
   </nav>
 </body>
 </html>

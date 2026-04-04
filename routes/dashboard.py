@@ -59,34 +59,40 @@ def dashboard():
 @dashboard_bp.route("/analytics", methods=["GET"])
 @require_dashboard_auth
 def analytics():
-    return render_template("app/analytics.html", **_page_context("Portfolio Analytics"))
+    return render_template("app/analytics.html", **_page_context("Portfolio"))
 
 
 @dashboard_bp.route("/meme-rotation", methods=["GET"])
 @require_dashboard_auth
 def meme_rotation():
-    return render_template("app/meme_rotation.html", **_page_context("Meme Hunter"))
+    return render_template("app/meme_rotation.html", **_page_context("Opportunities"))
 
 
 @dashboard_bp.route("/trade-history", methods=["GET"])
 @require_dashboard_auth
 def trade_history():
-    return render_template("app/trade_history.html", **_page_context("Trade History"))
+    return render_template("app/trade_history.html", **_page_context("Activity"))
 
 
 @dashboard_bp.route("/configuration", methods=["GET"])
 @require_dashboard_auth
 def configuration():
-    return render_template("app/configuration.html", **_page_context("Bot Configuration"))
+    return render_template("app/configuration.html", **_page_context("Automation"))
+
+
+@dashboard_bp.route("/accounts", methods=["GET"])
+@require_dashboard_auth
+def accounts():
+    return render_template("app/settings.html", **_page_context("Accounts"))
 
 
 @dashboard_bp.route("/settings", methods=["GET"])
 @require_dashboard_auth
 def settings():
-    return render_template("app/settings.html", **_page_context("Settings"))
+    return render_template("app/system_status.html", **_page_context("Settings"))
 
 
 @dashboard_bp.route("/system-status", methods=["GET"])
 @require_dashboard_auth
 def system_status():
-    return render_template("app/system_status.html", **_page_context("System Status"))
+    return render_template("app/system_status.html", **_page_context("Settings"))

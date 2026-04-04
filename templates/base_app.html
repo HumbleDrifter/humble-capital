@@ -8,8 +8,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
-<body class="theme-dark app-body">
-  {% set current_path = request.path %}
+{% set current_path = request.path %}
+<body class="theme-dark app-body{% if current_path == '/meme-rotation' %} page-opportunities{% endif %}">
   {% set secret_value = secret if secret is defined and secret else request.args.get('secret', '') %}
   {% set dashboard_url = '/dashboard?secret=' ~ (secret_value|urlencode) if secret_value else '/dashboard' %}
   {% set portfolio_url = '/analytics?secret=' ~ (secret_value|urlencode) if secret_value else '/analytics' %}

@@ -111,6 +111,11 @@ canvas {
   padding: 28px;
 }
 
+.page-opportunities .page-content {
+  max-width: none;
+  width: 100%;
+}
+
 .meme-rotation-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -2648,10 +2653,6 @@ tbody tr:last-child td {
 
 .opportunity-card * {
   position: relative;
-}
-
-.opportunity-card [style*="position:absolute"] {
-  position: relative !important;
 }
 
 .opportunity-card.high {

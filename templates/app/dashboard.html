@@ -73,7 +73,6 @@
           <div class="performance-summary-eyebrow">Performance Summary</div>
           <div class="performance-summary-title">Loading portfolio performance...</div>
         </div>
-        <div class="performance-summary-badge" id="performanceSummaryRegime">Regime pending</div>
       </div>
       <div class="performance-risk-strip" id="performanceRiskStrip">
         <div class="performance-risk-score-wrap">
@@ -86,6 +85,10 @@
             <span class="performance-risk-note">Waiting for portfolio and history inputs.</span>
           </div>
         </div>
+      </div>
+      <div class="dashboard-current-preset">
+        <div class="dashboard-current-preset-label">Current Preset</div>
+        <div class="dashboard-current-preset-value" id="dashboardCurrentPreset">Unavailable</div>
       </div>
       <div class="dashboard-guidance-card" id="dashboardGuidanceCard">
         <div class="dashboard-guidance-head">
@@ -100,28 +103,10 @@
         </div>
         <div class="dashboard-guidance-actions" id="dashboardGuidanceActions"></div>
       </div>
-      <div class="portfolio-posture-strip" id="portfolioPostureStrip">
-        <div class="portfolio-posture-line" id="portfolioPostureLine">Posture: Reviewing • Cash: Reviewing • Regime: Reviewing • Advisory: Reviewing</div>
-      </div>
       <div class="needs-attention-panel" id="needsAttentionPanel" hidden>
         <div class="needs-attention-title">Needs Attention</div>
         <div class="needs-attention-strip" id="needsAttentionStrip"></div>
       </div>
-      <div class="performance-summary-grid" id="performanceSummaryGrid">
-        <div class="performance-summary-metric">
-          <div class="performance-summary-label">7D PnL</div>
-          <div class="performance-summary-value">Limited</div>
-        </div>
-        <div class="performance-summary-metric">
-          <div class="performance-summary-label">30D PnL</div>
-          <div class="performance-summary-value">Limited</div>
-        </div>
-        <div class="performance-summary-metric">
-          <div class="performance-summary-label">Current Drawdown</div>
-          <div class="performance-summary-value">Limited</div>
-        </div>
-      </div>
-      <div class="performance-summary-note" id="performanceSummaryNote">Waiting for persisted history and portfolio analytics.</div>
     </div>
   </section>
 
@@ -265,45 +250,6 @@
     </div>
 
     <div id="rebalanceSummary" class="rebalance-shell"></div>
-  </section>
-
-  <section class="panel span-6 dashboard-universe-panel">
-    <div class="section-header">
-      <div>
-        <h2>Opportunity Context</h2>
-        <p class="section-subtitle">Current buy universe and scanner-ready symbols from the live system.</p>
-      </div>
-    </div>
-
-    <div id="activeBuyUniverse"></div>
-  </section>
-
-  <section class="panel span-6 dashboard-status-panel dashboard-status-panel-bottom">
-    <div class="section-header">
-      <div>
-        <h2>System Health</h2>
-        <p class="section-subtitle">Scanner status, cache freshness, webhook posture, and refresh context.</p>
-      </div>
-    </div>
-
-    <div id="statusBadges"></div>
-
-    <div class="divider"></div>
-
-    <div id="dashboardHealthGrid" class="dashboard-health-grid">
-      <div class="statusline-item"><span class="statusline-label">Scanner</span><span class="mono statusline-value">Reviewing</span></div>
-      <div class="statusline-item"><span class="statusline-label">Webhook</span><span class="mono statusline-value">Reviewing</span></div>
-      <div class="statusline-item"><span class="statusline-label">Portfolio Cache</span><span class="mono statusline-value">Reviewing</span></div>
-      <div class="statusline-item"><span class="statusline-label">Trade Count</span><span class="mono statusline-value">Reviewing</span></div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="statusline">
-      <div class="statusline-item"><span class="statusline-label">Auto refresh</span><span class="mono statusline-value">120s</span></div>
-      <div class="statusline-item"><span class="statusline-label">Secret mode</span><span class="mono statusline-value" id="secretMode"></span></div>
-      <div class="statusline-item"><span class="statusline-label">Last UI refresh</span><span class="mono statusline-value" id="uiRefresh">never</span></div>
-    </div>
   </section>
 
 </div>

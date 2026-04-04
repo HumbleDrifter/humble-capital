@@ -41,6 +41,25 @@ function formatUnixTime(ts) {
   return new Date(n * 1000).toLocaleString();
 }
 
+function normalizeRegimeLabel(value) {
+  const normalized = String(value || "unknown")
+    .replaceAll("_", " ")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized || normalized === "unknown") return "Unknown";
+  if (normalized === "bull") return "Bullish";
+  if (normalized === "bear") return "Bearish";
+  if (normalized === "neutral") return "Neutral";
+  if (normalized === "risk off") return "Risk Off";
+
+  return normalized
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function cacheBadge(cache) {
   if (!cache) return '<span class="badge">no-cache-meta</span>';
   const src = cache.source || "unknown";
@@ -67,7 +86,7 @@ function renderSummary(data) {
   document.getElementById("paAssetCount").textContent = String(s.asset_count || 0);
   document.getElementById("paTradeCount").textContent = String(s.trade_count || 0);
   document.getElementById("paPnlPoints").textContent = String(s.realized_pnl_points || 0);
-  document.getElementById("paRegime").textContent = s.market_regime || "—";
+  document.getElementById("paRegime").textContent = normalizeRegimeLabel(s.market_regime || "unknown");
   document.getElementById("paTopAsset").textContent = s.top_asset || "—";
 
   const cashW = Number(s.cash_weight || 0);

@@ -155,23 +155,6 @@ function cacheBadge(cache) {
   return `<span class="badge">${escapeHtml(src)}</span>`;
 }
 
-function setUiRefreshNow() {
-  const el = document.getElementById("uiRefresh");
-  if (el) el.textContent = new Date().toLocaleTimeString();
-}
-
-function setSecretMode() {
-  const el = document.getElementById("secretMode");
-  if (!el) return;
-  el.textContent = API_SECRET ? "secret+session" : "session";
-}
-
-function setStatusBadges(items) {
-  const el = document.getElementById("statusBadges");
-  if (!el) return;
-  el.innerHTML = items.join("");
-}
-
 function displayClass(cls) {
   if (cls === "core") return "core";
   if (cls === "satellite_active") return "satellite";
@@ -222,7 +205,22 @@ function rangeLabel(rangeName) {
 }
 
 function normalizeRegimeLabel(value) {
-  return String(value || "unknown").replaceAll("_", " ").trim() || "unknown";
+  const normalized = String(value || "unknown")
+    .replaceAll("_", " ")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized || normalized === "unknown") return "Unknown";
+  if (normalized === "bull") return "Bullish";
+  if (normalized === "bear") return "Bearish";
+  if (normalized === "neutral") return "Neutral";
+  if (normalized === "risk off") return "Risk Off";
+
+  return normalized
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function signedToneClass(value) {
@@ -355,6 +353,7 @@ function setText(id, value) {
 function regimeTone(regime) {
   const normalized = String(regime || "").toLowerCase();
   if (normalized === "bull") return "positive";
+  if (normalized === "bear") return "negative";
   if (normalized === "risk_off") return "negative";
   return "";
 }
@@ -511,35 +510,22 @@ function normalizeAutoAdaptivePayload(value) {
   };
 }
 
-function derivePostureLabel(riskBand) {
-  const normalized = String(riskBand || "").toLowerCase();
-  if (normalized === "high risk" || normalized === "elevated risk") return "Defensive";
-  if (normalized === "moderate risk") return "Balanced";
-  if (normalized === "low risk") return "Risk-On";
-  return "Reviewing";
-}
+function deriveCurrentPresetLabel(portfolioData, rebalanceData, systemData) {
+  const candidates = [
+    portfolioData?.summary?.current_preset,
+    portfolioData?.summary?.config_preset,
+    portfolioData?.snapshot?.current_preset,
+    portfolioData?.snapshot?.config?.preset,
+    rebalanceData?.summary?.current_preset,
+    systemData?.portfolio_summary?.current_preset
+  ];
 
-function deriveCashContext(summary, snapshot, riskInputs) {
-  const cashWeight =
-    hasNumericValue(summary?.cash_weight) ? Number(summary.cash_weight) :
-    hasNumericValue(snapshot?.cash_weight) ? Number(snapshot.cash_weight) :
-    hasNumericValue(riskInputs?.cash_weight) ? Number(riskInputs.cash_weight) :
-    null;
+  for (const candidate of candidates) {
+    const text = String(candidate || "").trim();
+    if (text) return normalizeRegimeLabel(text);
+  }
 
-  const configuredReserve =
-    hasNumericValue(snapshot?.config?.min_cash_reserve) ? Number(snapshot.config.min_cash_reserve) :
-    hasNumericValue(riskInputs?.min_cash_reserve) ? Number(riskInputs.min_cash_reserve) :
-    null;
-
-  if (cashWeight == null || configuredReserve == null || configuredReserve <= 0) return "Reviewing";
-  if (cashWeight < configuredReserve) return "Below Reserve";
-  if (cashWeight <= configuredReserve + 0.03) return "Near Reserve";
-  return "Above Reserve";
-}
-
-function deriveAdvisoryLabel(autoAdaptive) {
-  const label = String(autoAdaptive?.label || "").trim();
-  return label || "Reviewing";
+  return "Unavailable";
 }
 
 function buildNeedsAttentionItems(analytics, systemData, adaptiveSuggestions, autoAdaptive) {
@@ -589,22 +575,6 @@ function buildNeedsAttentionItems(analytics, systemData, adaptiveSuggestions, au
   return items.slice(0, 3);
 }
 
-function renderPortfolioPosture(summary, snapshot, riskScore, autoAdaptive) {
-  const lineEl = document.getElementById("portfolioPostureLine");
-  if (!lineEl) return;
-
-  const regime =
-    String(summary?.market_regime || snapshot?.market_regime || "Reviewing")
-      .replaceAll("_", " ")
-      .trim() || "Reviewing";
-
-  const posture = derivePostureLabel(riskScore?.band);
-  const cash = deriveCashContext(summary, snapshot, riskScore?.inputs);
-  const advisory = deriveAdvisoryLabel(autoAdaptive);
-
-  lineEl.textContent = `Posture: ${posture} • Cash: ${cash} • Regime: ${regime} • Advisory: ${advisory}`;
-}
-
 function renderNeedsAttention(items) {
   const panel = document.getElementById("needsAttentionPanel");
   const host = document.getElementById("needsAttentionStrip");
@@ -632,8 +602,7 @@ function renderNeedsAttention(items) {
 
 function renderPerformanceSummary(portfolioData, historyData, history7Data, history30Data, rebalanceData, systemData) {
   const card = document.getElementById("performanceSummaryCard");
-  const grid = document.getElementById("performanceSummaryGrid");
-  if (!card || !grid) return;
+  if (!card) return;
 
   const snapshot = safeObject(portfolioData?.snapshot);
   const summary = safeObject(portfolioData?.summary);
@@ -656,13 +625,7 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
     systemData?.portfolio_summary?.market_regime ||
     "unknown";
 
-  const pnl7dValue = hasNumericValue(analytics7?.pnl_usd) ? Number(analytics7.pnl_usd) : null;
-  const pnl30dValue = hasNumericValue(analytics30?.pnl_usd) ? Number(analytics30.pnl_usd) : null;
-  const currentDrawdownPct = hasNumericValue(analytics30?.current_drawdown_pct)
-    ? Number(analytics30.current_drawdown_pct)
-    : (hasNumericValue(analyticsSelected?.current_drawdown_pct) ? Number(analyticsSelected.current_drawdown_pct) : null);
   const analyticsLimited = Boolean(analytics30?.limited_history || analyticsSelected?.limited_history);
-  const analyticsNote = String(analytics30?.note || analyticsSelected?.note || "").trim();
   const scoreValue = riskScore.score;
   const scoreBand = riskScore.band || "Evaluating";
   const scoreNotes = riskScore.notes;
@@ -673,29 +636,18 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
   const adaptiveSummary = autoAdaptive.summary;
   const adaptiveReasons = autoAdaptive.reasons.slice(0, 2);
   const adaptiveAction = autoAdaptive.action;
-  const adaptiveSimulation = safeObject(autoAdaptive.simulation);
-  const simulatedCurrentScore = adaptiveSimulation.current_score;
-  const simulatedProjectedScore = adaptiveSimulation.projected_score;
-  const simulatedScoreDelta = adaptiveSimulation.score_delta;
-  const simulatedSummary = adaptiveSimulation.summary;
   const attentionItems = buildNeedsAttentionItems(analytics30, systemData, adaptiveSuggestions, autoAdaptive);
+  const currentPreset = deriveCurrentPresetLabel(portfolioData, rebalanceData, systemData);
 
   const title = analyticsLimited
     ? "Performance view is live, with fuller metrics unlocking as history builds."
-    : "Persisted equity history is powering the current performance and drawdown view.";
-
-  setText("performanceSummaryNote", analyticsNote || "Using persisted portfolio history and the current portfolio snapshot.");
-  setText("performanceSummaryRegime", String(regime || "unknown").replaceAll("_", " "));
-
-  const regimeBadge = document.getElementById("performanceSummaryRegime");
-  if (regimeBadge) {
-    regimeBadge.className = `performance-summary-badge${regimeTone(regime) ? ` ${regimeTone(regime)}` : ""}`;
-  }
+    : "Performance, risk posture, and guidance are summarized here.";
 
   const riskStrip = document.getElementById("performanceRiskStrip");
   const riskScoreEl = document.getElementById("performanceRiskScore");
   const riskBandEl = document.getElementById("performanceRiskBand");
   const riskNotesEl = document.getElementById("performanceRiskNotes");
+  const currentPresetEl = document.getElementById("dashboardCurrentPreset");
 
   if (riskStrip) {
     const tone = riskBandTone(scoreBand);
@@ -716,6 +668,9 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
     riskNotesEl.innerHTML = notes
         .map((note) => `<span class="performance-risk-note">${escapeHtml(note)}</span>`)
         .join("");
+  }
+  if (currentPresetEl) {
+    currentPresetEl.textContent = currentPreset;
   }
 
   const dashboardGuidanceCard = document.getElementById("dashboardGuidanceCard");
@@ -772,23 +727,7 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
   const titleEl = card.querySelector(".performance-summary-title");
   if (titleEl) titleEl.textContent = title;
 
-  renderPortfolioPosture(summary, snapshot, riskScore, autoAdaptive);
   renderNeedsAttention(attentionItems);
-
-  grid.innerHTML = `
-    <div class="performance-summary-metric">
-      <div class="performance-summary-label">7D PnL</div>
-      <div class="performance-summary-value ${pnl7dValue == null ? "" : (pnl7dValue >= 0 ? "positive" : "negative")}">${pnl7dValue == null ? "Limited" : fmtSignedUsd(pnl7dValue)}</div>
-    </div>
-    <div class="performance-summary-metric">
-      <div class="performance-summary-label">30D PnL</div>
-      <div class="performance-summary-value ${pnl30dValue == null ? "" : (pnl30dValue >= 0 ? "positive" : "negative")}">${pnl30dValue == null ? "Limited" : fmtSignedUsd(pnl30dValue)}</div>
-    </div>
-    <div class="performance-summary-metric">
-      <div class="performance-summary-label">Current Drawdown</div>
-      <div class="performance-summary-value ${drawdownTone(currentDrawdownPct)}">${currentDrawdownPct == null ? "Limited" : fmtPct(currentDrawdownPct)}</div>
-    </div>
-  `;
 }
 
 function setTrendRangeButtons(activeRange) {
@@ -1017,20 +956,6 @@ function renderPortfolio(data) {
     : `<tr><td colspan="6" class="muted">No portfolio holdings found.</td></tr>`;
 }
 
-function renderActiveBuyUniverse(source) {
-  const host = document.getElementById("activeBuyUniverse");
-  if (!host) return;
-
-  const snapshot = source?.portfolio || source?.snapshot || source || {};
-  const symbols = Array.isArray(snapshot.active_satellite_buy_universe)
-    ? snapshot.active_satellite_buy_universe
-    : [];
-
-  host.innerHTML = symbols.length
-    ? symbols.map((sym) => `<span class="pill">${escapeHtml(sym)}</span>`).join("")
-    : `<div class="muted">No active satellite buy universe entries available.</div>`;
-}
-
 function opportunityPreviewTone(score) {
   const numeric = Number(score || 0);
   if (numeric >= 85) return "high";
@@ -1149,7 +1074,7 @@ function renderRebalance(data) {
   const harvests = Array.isArray(harvest.harvests) ? harvest.harvests : [];
 
   if (meta) {
-    meta.innerHTML = `${cacheBadge(data?._cache)} <span class="tiny">regime: ${escapeHtml(summary.market_regime || "unknown")}</span>`;
+    meta.innerHTML = `${cacheBadge(data?._cache)} <span class="tiny">regime: ${escapeHtml(normalizeRegimeLabel(summary.market_regime || "unknown"))}</span>`;
   }
 
   const topBuys = buys.slice(0, 3).map((x) => `
@@ -1178,7 +1103,7 @@ function renderRebalance(data) {
       <span class="badge good">buys ${buys.length}</span>
       <span class="badge warn">trims ${trims.length}</span>
       <span class="badge accent">harvests ${harvests.length}</span>
-      <span class="badge">${escapeHtml(summary.market_regime || "unknown")}</span>
+      <span class="badge">${escapeHtml(normalizeRegimeLabel(summary.market_regime || "unknown"))}</span>
     </div>
 
     <div class="rebalance-grid">
@@ -1231,98 +1156,6 @@ function renderExecutionActivity(systemData) {
   `).join("");
 }
 
-function renderHealthGrid(systemData, portfolioData, rebalanceData, failures = []) {
-  const host = document.getElementById("dashboardHealthGrid");
-  if (!host) return;
-
-  const scannerKnown = typeof systemData?.admin_state?.meme_rotation_enabled === "boolean";
-  const scannerText = !scannerKnown
-    ? "Unavailable"
-    : systemData.admin_state.meme_rotation_enabled
-      ? "Live"
-      : "Paused";
-  const serviceText = `${systemData?.status?.service || "service"} • ${systemData?.status?.status || "unknown"}`;
-  const cache = safeObject(systemData?.status?.portfolio_cache);
-  const cacheAge = hasNumericValue(cache.snapshot_age_sec)
-    ? `${Math.round(Number(cache.snapshot_age_sec || 0))}s old`
-    : hasNumericValue(cache.age_sec)
-      ? `${Math.round(Number(cache.age_sec || 0))}s old`
-      : "Age unavailable";
-  const tradeCount = hasNumericValue(systemData?.trade_stats?.trade_count)
-    ? Number(systemData.trade_stats.trade_count || 0).toLocaleString()
-    : "Unavailable";
-  const snapshotTime =
-    portfolioData?.summary?.timestamp ||
-    portfolioData?.snapshot?.timestamp ||
-    rebalanceData?.summary?.timestamp ||
-    systemData?.timestamp ||
-    0;
-
-  host.innerHTML = `
-    <div class="statusline-item">
-      <span class="statusline-label">Scanner</span>
-      <span class="mono statusline-value">${escapeHtml(scannerText)}</span>
-    </div>
-    <div class="statusline-item">
-      <span class="statusline-label">System</span>
-      <span class="mono statusline-value">${escapeHtml(serviceText)}</span>
-    </div>
-    <div class="statusline-item">
-      <span class="statusline-label">Portfolio Cache</span>
-      <span class="mono statusline-value">${escapeHtml(cacheAge)}</span>
-    </div>
-    <div class="statusline-item">
-      <span class="statusline-label">Trades Seen</span>
-      <span class="mono statusline-value">${escapeHtml(tradeCount)}</span>
-    </div>
-    <div class="statusline-item">
-      <span class="statusline-label">Snapshot Time</span>
-      <span class="mono statusline-value">${escapeHtml(formatUnixTime(snapshotTime))}</span>
-    </div>
-    <div class="statusline-item">
-      <span class="statusline-label">Console Mode</span>
-      <span class="mono statusline-value">${failures.length ? "Partial Data" : "Live Console"}</span>
-    </div>
-  `;
-}
-
-function renderDashboardStatus(systemData, portfolioData, rebalanceData, failures = []) {
-  const badges = [];
-
-  if (portfolioData && portfolioData._cache) {
-    badges.push(cacheBadge(portfolioData._cache));
-  }
-
-  const regime =
-    systemData?.portfolio_summary?.market_regime ||
-    rebalanceData?.summary?.market_regime ||
-    "unknown";
-
-  badges.push(`<span class="badge">${escapeHtml(normalizeRegimeLabel(regime))}</span>`);
-
-  if (typeof systemData?.admin_state?.meme_rotation_enabled === "boolean") {
-    badges.push(`<span class="badge ${systemData.admin_state.meme_rotation_enabled ? "good" : "warn"}">${systemData.admin_state.meme_rotation_enabled ? "scanner live" : "scanner paused"}</span>`);
-  }
-
-  if (systemData?.trade_stats?.trade_count != null) {
-    badges.push(`<span class="badge accent">trades ${Number(systemData.trade_stats.trade_count || 0)}</span>`);
-  }
-
-  if (failures.length) {
-    badges.push(`<span class="badge warn">partial data mode</span>`);
-  }
-
-  setStatusBadges(badges);
-}
-
-function renderDashboardErrorState(failures) {
-  const failureText = failures.map((f) => `${f.path}: ${f.error}`).join(" | ");
-  setStatusBadges([
-    `<span class="badge bad">dashboard load failed</span>`,
-    `<span class="badge warn">${escapeHtml(failureText)}</span>`
-  ]);
-}
-
 async function refreshAll(showBadgeMessage = false) {
   const selectedHistoryPath = `/api/portfolio/history?range=${encodeURIComponent(selectedHistoryRange)}`;
   const history7Path = "/api/portfolio/history?range=7d";
@@ -1361,10 +1194,6 @@ async function refreshAll(showBadgeMessage = false) {
 
   renderSummaryStrip(portfolioData, historyData, history30Data, historyAllData, rebalanceData, systemData);
 
-  if (systemRes.ok || portfolioRes.ok) {
-    renderActiveBuyUniverse(systemData?.portfolio || portfolioData?.snapshot || {});
-  }
-
   renderOpportunitiesPreview(opportunitiesData, systemData);
 
   if (rebalanceRes.ok) {
@@ -1387,30 +1216,7 @@ async function refreshAll(showBadgeMessage = false) {
     renderExecutionActivity({});
   }
 
-  renderHealthGrid(systemData, portfolioData, rebalanceData, failures);
-  renderDashboardStatus(systemData, portfolioData, rebalanceData, failures);
-  setUiRefreshNow();
-
-  if (!systemRes.ok && !portfolioRes.ok && !rebalanceRes.ok && !historyRes.ok) {
-    renderDashboardErrorState(failures);
-    return;
-  }
-
-  if (showBadgeMessage) {
-    const items = [
-      '<span class="badge good">dashboard refreshed</span>'
-    ];
-
-    if (portfolioData && portfolioData._cache) {
-      items.push(cacheBadge(portfolioData._cache));
-    }
-
-    if (failures.length) {
-      items.push(`<span class="badge warn">partial data mode</span>`);
-    }
-
-    setStatusBadges(items);
-  }
+  if (!systemRes.ok && !portfolioRes.ok && !rebalanceRes.ok && !historyRes.ok) return;
 }
 
 function startAutoRefresh() {
@@ -1448,7 +1254,6 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-setSecretMode();
 setTrendRangeButtons(selectedHistoryRange);
 refreshAll(false);
 startAutoRefresh();

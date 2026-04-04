@@ -102,7 +102,22 @@ function scoreLabel(score) {
 }
 
 function normalizeRegime(value) {
-  return String(value || "unknown").replaceAll("_", " ");
+  const normalized = String(value || "unknown")
+    .replaceAll("_", " ")
+    .trim()
+    .toLowerCase();
+
+  if (!normalized || normalized === "unknown") return "Unknown";
+  if (normalized === "bull") return "Bullish";
+  if (normalized === "bear") return "Bearish";
+  if (normalized === "neutral") return "Neutral";
+  if (normalized === "risk off") return "Risk Off";
+
+  return normalized
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function regimeTone(value) {

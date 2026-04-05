@@ -1752,6 +1752,86 @@ def _build_tradable_universe():
     }
 
 
+def _build_tradingview_manifest():
+    universe = _build_tradable_universe()
+
+    core_assets = sorted(
+        set(str(product_id).upper().strip() for product_id in (universe.get("core_assets") or []) if str(product_id or "").strip())
+    )
+    satellite_allowed = sorted(
+        set(str(product_id).upper().strip() for product_id in (universe.get("satellite_allowed") or []) if str(product_id or "").strip())
+    )
+    satellite_blocked = sorted(
+        set(str(product_id).upper().strip() for product_id in (universe.get("satellite_blocked") or []) if str(product_id or "").strip())
+    )
+    active_satellite_buy_universe = sorted(
+        set(
+            str(product_id).upper().strip()
+            for product_id in (universe.get("active_satellite_buy_universe") or [])
+            if str(product_id or "").strip()
+        )
+    )
+    current_system_selections = sorted(
+        set(
+            str(product_id).upper().strip()
+            for product_id in (universe.get("current_system_selections") or [])
+            if str(product_id or "").strip()
+        )
+    )
+
+    satellite_exit = sorted(
+        set(satellite_allowed)
+        | set(active_satellite_buy_universe)
+        | set(current_system_selections)
+    )
+
+    manifest = {
+        "ok": True,
+        "generated_at": int(_now()),
+        "snapshot_timestamp": universe.get("snapshot_timestamp"),
+        "source": "tradingview_manifest_v1",
+        "version": 1,
+        "satellite_mode": universe.get("satellite_mode"),
+        "core_assets": core_assets,
+        "satellite_allowed": satellite_allowed,
+        "satellite_blocked": satellite_blocked,
+        "active_satellite_buy_universe": active_satellite_buy_universe,
+        "current_system_selections": current_system_selections,
+        "strategy_groups": {
+            "core_buy": core_assets,
+            "core_exit": core_assets,
+            "satellite_buy": active_satellite_buy_universe,
+            "satellite_exit": satellite_exit,
+            "sniper_buy": active_satellite_buy_universe,
+        },
+        "summary": {
+            "core_asset_count": len(core_assets),
+            "satellite_allowed_count": len(satellite_allowed),
+            "satellite_blocked_count": len(satellite_blocked),
+            "active_satellite_buy_universe_count": len(active_satellite_buy_universe),
+            "current_system_selection_count": len(current_system_selections),
+            "core_buy_count": len(core_assets),
+            "core_exit_count": len(core_assets),
+            "satellite_buy_count": len(active_satellite_buy_universe),
+            "satellite_exit_count": len(satellite_exit),
+            "sniper_buy_count": len(active_satellite_buy_universe),
+        },
+        "notes": {
+            "purpose": "Server-authoritative symbol sets for downstream TradingView maintenance and diagnostics tooling.",
+            "satellite_buy_definition": "Current live-eligible satellite buy universe.",
+            "satellite_exit_definition": "Best-effort managed satellite set inferred from allowed symbols, active buy universe, and current system selections.",
+            "sniper_buy_definition": "Best-effort mirror of the live active satellite buy universe until a narrower dedicated sniper manifest is exported.",
+        },
+        "meta": {
+            "built_from": "tradable_universe_v1",
+            "server_authoritative": True,
+            "read_only": True,
+        },
+    }
+
+    return manifest
+
+
 def _proposal_actor():
     return (
         str(session.get("username") or "").strip()
@@ -1837,6 +1917,19 @@ def api_system_tradable_universe():
             "ok": False,
             "error": str(exc),
             "source": "tradable_universe_v1",
+        }), 500
+
+
+@api_bp.route("/api/system/tradingview_manifest", methods=["GET"])
+@require_secret
+def api_system_tradingview_manifest():
+    try:
+        return jsonify(_with_cache("tradingview_manifest", _build_tradingview_manifest, ttl_sec=15, stale_sec=120))
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+            "source": "tradingview_manifest_v1",
         }), 500
 
 

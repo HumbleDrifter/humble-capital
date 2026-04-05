@@ -215,6 +215,44 @@
 
     <div class="divider"></div>
 
+    <div class="system-universe-label">Alert Payload Generator</div>
+    <div class="system-manifest-generator">
+      <label class="system-manifest-format-control" for="alertPayloadGroup">
+        <span class="system-universe-label">Group</span>
+        <select id="alertPayloadGroup">
+          <option value="core_buy">Core Buy</option>
+          <option value="core_exit">Core Exit</option>
+          <option value="satellite_buy">Satellite Buy</option>
+          <option value="satellite_exit">Satellite Exit</option>
+          <option value="sniper_buy">Sniper Buy</option>
+        </select>
+      </label>
+      <label class="system-manifest-format-control" for="alertPayloadSource">
+        <span class="system-universe-label">Source</span>
+        <select id="alertPayloadSource">
+          <option value="manifest">Manifest Group</option>
+          <option value="expected">Expected Group</option>
+          <option value="add">Add List</option>
+          <option value="remove">Remove List</option>
+        </select>
+      </label>
+      <label class="system-manifest-format-control" for="alertPayloadMode">
+        <span class="system-universe-label">Payload Mode</span>
+        <select id="alertPayloadMode">
+          <option value="single">Single Symbol Template</option>
+          <option value="multi">Multi Symbol Preview</option>
+        </select>
+      </label>
+      <div class="system-manifest-actions">
+        <button class="btn btn-secondary" type="button" onclick="refreshAlertPayloadPreview()">Generate Alert Payload</button>
+        <button class="btn btn-primary" type="button" onclick="copyAlertPayloadPreview()">Copy Alert Payload</button>
+      </div>
+    </div>
+    <div id="alertPayloadNotes" class="status-console">Replace the secret placeholder from secure local config before using these payloads. This is a manual setup aid only.</div>
+    <pre id="alertPayloadPreview">Select a group, source, and mode to generate TradingView-ready webhook payload JSON.</pre>
+
+    <div class="divider"></div>
+
     <div class="system-universe-label">Raw Group Lists</div>
     <pre id="tradingViewManifestLists">Waiting for server data.</pre>
   </section>

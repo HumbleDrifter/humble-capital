@@ -3501,7 +3501,8 @@ tbody tr:last-child td {
 #diagnostics,
 #tradableUniverseLists,
 #tradingViewManifestLists,
-#pineTemplatePreview {
+#pineTemplatePreview,
+#alertPayloadPreview {
   margin: 0;
   padding: 14px;
   min-height: 220px;

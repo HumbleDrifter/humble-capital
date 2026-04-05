@@ -312,6 +312,72 @@ function buildPineTemplate(groupKey, source) {
   ].join("\n");
 }
 
+function setAlertPayloadPreview(text, isError = false) {
+  const el = document.getElementById("alertPayloadPreview");
+  if (!el) return;
+  el.textContent = text;
+  el.className = isError ? "status-console error" : "";
+}
+
+function alertPayloadSelection() {
+  return {
+    groupKey: String(document.getElementById("alertPayloadGroup")?.value || "core_buy").trim(),
+    source: String(document.getElementById("alertPayloadSource")?.value || "manifest").trim().toLowerCase(),
+    mode: String(document.getElementById("alertPayloadMode")?.value || "single").trim().toLowerCase()
+  };
+}
+
+function valuesForAlertSource(groupKey, source) {
+  return normalizeSymbolList(valuesForPineSource(groupKey, source));
+}
+
+function payloadDefaultsForGroup(groupKey) {
+  const normalized = String(groupKey || "").trim().toLowerCase();
+  if (normalized === "core_buy") {
+    return { action: "BUY", signal_type: "CORE_BUY_WINDOW" };
+  }
+  if (normalized === "core_exit") {
+    return { action: "EXIT", signal_type: "EXIT" };
+  }
+  if (normalized === "satellite_buy") {
+    return { action: "BUY", signal_type: "SATELLITE_BUY" };
+  }
+  if (normalized === "satellite_exit") {
+    return { action: "EXIT", signal_type: "EXIT" };
+  }
+  if (normalized === "sniper_buy") {
+    return { action: "BUY", signal_type: "SNIPER_BUY" };
+  }
+  return { action: "BUY", signal_type: "BUY" };
+}
+
+function buildAlertPayloadPreview(groupKey, source, mode) {
+  const symbols = valuesForAlertSource(groupKey, source);
+  if (!symbols.length) return "";
+
+  const defaults = payloadDefaultsForGroup(groupKey);
+  const buildPayload = (productId) => ({
+    product_id: productId,
+    action: defaults.action,
+    signal_type: defaults.signal_type,
+    secret: "<WEBHOOK_SHARED_SECRET>"
+  });
+
+  if (String(mode || "").trim().toLowerCase() === "multi") {
+    const payloads = symbols.map((symbol) => buildPayload(symbol));
+    return [
+      `// ${groupKey} • ${source} • ${symbols.length} symbol${symbols.length === 1 ? "" : "s"}`,
+      JSON.stringify(payloads, null, 2)
+    ].join("\n");
+  }
+
+  return [
+    `// ${groupKey} • ${source} • sample payload`,
+    JSON.stringify(buildPayload(symbols[0]), null, 2),
+    symbols.length > 1 ? `// Additional symbols: ${symbols.slice(1).join(", ")}` : ""
+  ].filter(Boolean).join("\n");
+}
+
 function renderTradingViewSuggestions(manifest, universe) {
   const host = document.getElementById("tradingViewManifestSuggestions");
   if (!host) return;
@@ -339,6 +405,7 @@ ${!item.hasChanges ? "No changes needed." : ""}
   `).join("");
 
   refreshPineTemplatePreview();
+  refreshAlertPayloadPreview();
 }
 
 function setManifestActionStatus(message, isError = false) {
@@ -363,6 +430,26 @@ function refreshPineTemplatePreview() {
   }
 
   setPineTemplatePreview(snippet, false);
+}
+
+function refreshAlertPayloadPreview() {
+  const { groupKey, source, mode } = alertPayloadSelection();
+  if (!CURRENT_TRADINGVIEW_MANIFEST && source === "manifest") {
+    setAlertPayloadPreview("Fetch the TradingView manifest before generating alert payloads.", true);
+    return;
+  }
+  if (!CURRENT_TRADINGVIEW_MANIFEST || !CURRENT_TRADABLE_UNIVERSE) {
+    setAlertPayloadPreview("Load both the server tradable universe and TradingView manifest to generate alert payloads.", true);
+    return;
+  }
+
+  const preview = buildAlertPayloadPreview(groupKey, source, mode);
+  if (!preview) {
+    setAlertPayloadPreview(`No symbols are available for ${groupKey} using the ${source} source.`, true);
+    return;
+  }
+
+  setAlertPayloadPreview(preview, false);
 }
 
 async function copyExpectedManifestGroup(groupKey) {
@@ -402,6 +489,25 @@ async function copyPineTemplate() {
   } catch (err) {
     console.error(err);
     setManifestActionStatus(`Copy failed for Pine template ${groupKey}: ${err.message}`, true);
+  }
+}
+
+async function copyAlertPayloadPreview() {
+  const { groupKey, source, mode } = alertPayloadSelection();
+  const preview = buildAlertPayloadPreview(groupKey, source, mode);
+  if (!preview) {
+    setManifestActionStatus(`No alert payload preview is available for ${groupKey} using the ${source} source.`, true);
+    refreshAlertPayloadPreview();
+    return;
+  }
+
+  try {
+    await copyTextToClipboard(preview);
+    setManifestActionStatus(`Copied alert payload preview for ${groupKey} (${source}, ${mode}).`);
+    refreshAlertPayloadPreview();
+  } catch (err) {
+    console.error(err);
+    setManifestActionStatus(`Copy failed for alert payload ${groupKey}: ${err.message}`, true);
   }
 }
 
@@ -605,6 +711,7 @@ function renderTradingViewManifestError(message) {
   renderManifestText("tradingViewManifestNotes", "Unable to load server manifest notes.", true);
   setManifestActionStatus("Manifest tools are unavailable until a valid manifest is loaded.", true);
   setPineTemplatePreview("Unable to generate Pine templates until a valid manifest is loaded.", true);
+  setAlertPayloadPreview("Unable to generate alert payloads until a valid manifest is loaded.", true);
   const groupsHost = document.getElementById("tradingViewManifestGroups");
   if (groupsHost) {
     groupsHost.innerHTML = `<div class="status-console error">${message}</div>`;
@@ -732,6 +839,8 @@ window.copyManifestGroup = copyManifestGroup;
 window.copyManifestRawLists = copyManifestRawLists;
 window.refreshPineTemplatePreview = refreshPineTemplatePreview;
 window.copyPineTemplate = copyPineTemplate;
+window.refreshAlertPayloadPreview = refreshAlertPayloadPreview;
+window.copyAlertPayloadPreview = copyAlertPayloadPreview;
 window.copySuggestionList = copySuggestionList;
 window.exportManifestJson = exportManifestJson;
 

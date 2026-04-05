@@ -13,6 +13,7 @@ let LATEST_AUTOMATION_MESSAGE = "";
 let RECENT_PROPOSALS = [];
 let LAST_CONFIGURATION_REFRESH_AT = 0;
 let LATEST_OPTIONS_HEALTH = null;
+let OPTIONS_TELEMETRY_WARNING_SHOWN = false;
 const PERCENT_FIELD_IDS = [
   "satellite_total_target",
   "satellite_total_max",
@@ -1961,18 +1962,36 @@ function renderOptionsPositionsHistory(items) {
   `).join("");
 }
 
+function warnOptionsTelemetryUnavailableOnce() {
+  if (OPTIONS_TELEMETRY_WARNING_SHOWN) return;
+  OPTIONS_TELEMETRY_WARNING_SHOWN = true;
+  console.warn("options telemetry unavailable");
+}
+
 async function loadOptionsTelemetry() {
   try {
     const [executions, orders, positions] = await Promise.all([
-      fetchJson("/api/options/executions?limit=8", {}, 20000),
-      fetchJson("/api/options/orders?limit=8", {}, 20000),
-      fetchJson("/api/options/positions", {}, 20000)
+      requestJson("/api/options/executions?limit=8", {}, 20000).catch(() => null),
+      requestJson("/api/options/orders?limit=8", {}, 20000).catch(() => null),
+      requestJson("/api/options/positions", {}, 20000).catch(() => null)
     ]);
-    renderOptionsExecutionHistory(executions?.items || []);
-    renderOptionsOrdersHistory(orders?.items || []);
-    renderOptionsPositionsHistory(positions?.items || []);
+    const telemetryUnavailable =
+      !executions?._httpOk ||
+      !orders?._httpOk ||
+      !positions?._httpOk ||
+      executions?.ok === false ||
+      orders?.ok === false ||
+      positions?.ok === false;
+
+    if (telemetryUnavailable) {
+      warnOptionsTelemetryUnavailableOnce();
+    }
+
+    renderOptionsExecutionHistory(executions?._httpOk && executions?.ok !== false ? executions?.items || [] : []);
+    renderOptionsOrdersHistory(orders?._httpOk && orders?.ok !== false ? orders?.items || [] : []);
+    renderOptionsPositionsHistory(positions?._httpOk && positions?.ok !== false ? positions?.items || [] : []);
   } catch (err) {
-    console.warn("Options telemetry load failed:", err.message);
+    warnOptionsTelemetryUnavailableOnce();
     renderOptionsExecutionHistory([]);
     renderOptionsOrdersHistory([]);
     renderOptionsPositionsHistory([]);

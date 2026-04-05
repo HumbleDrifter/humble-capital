@@ -129,6 +129,21 @@ function resolveUniverseCount(data) {
   return null;
 }
 
+function resolveOpportunityScore(row) {
+  const candidates = [
+    row?.net_score,
+    row?.gross_score,
+    row?.score
+  ];
+
+  for (const value of candidates) {
+    const numeric = numericOrNull(value);
+    if (numeric != null) return numeric;
+  }
+
+  return 0;
+}
+
 function sortCandidates(rows, sortKey) {
   const items = [...rows];
 
@@ -139,7 +154,11 @@ function sortCandidates(rows, sortKey) {
   } else if (sortKey === "change_24h") {
     items.sort((a, b) => (resolve24hMove(b) ?? Number.NEGATIVE_INFINITY) - (resolve24hMove(a) ?? Number.NEGATIVE_INFINITY));
   } else {
-    items.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+    items.sort((a, b) => (
+      resolveOpportunityScore(b) - resolveOpportunityScore(a)
+      || Number(b.gross_score || 0) - Number(a.gross_score || 0)
+      || Number(b.score || 0) - Number(a.score || 0)
+    ));
   }
 
   return items;
@@ -293,7 +312,7 @@ function renderScoreLegend(data) {
   if (!host) return;
 
   const rows = Array.isArray(data.candidates) ? data.candidates : [];
-  const topScore = rows.reduce((best, row) => Math.max(best, Number(row.score || 0)), 0);
+  const topScore = rows.reduce((best, row) => Math.max(best, resolveOpportunityScore(row)), 0);
 
   host.innerHTML = `
     <div class="opportunity-score-legend-head">
@@ -316,7 +335,7 @@ function renderScoreLegend(data) {
         <div class="opportunity-summary-value">${fmtNumber(topScore)}</div>
       </div>
     </div>
-    <p class="opportunity-score-legend-note">Higher scores indicate stronger opportunity quality based on current scanner inputs.</p>
+    <p class="opportunity-score-legend-note">Higher intelligence scores indicate stronger opportunity quality based on the current shadow ranking inputs.</p>
   `;
 }
 
@@ -499,7 +518,8 @@ function renderShadowNearMissCandidates(data) {
 
 function opportunityCard(row) {
   const productId = row.product_id || row.symbol || "—";
-  const tone = opportunityTone(row.score);
+  const score = resolveOpportunityScore(row);
+  const tone = opportunityTone(score);
   const move24h = resolve24hMove(row);
   return `
     <article class="opportunity-card ${tone}">
@@ -512,8 +532,8 @@ function opportunityCard(row) {
           </div>
         </div>
         <div class="opportunity-score-wrap">
-          <div class="opportunity-score">${fmtNumber(row.score)}</div>
-          <div class="tiny">${escapeHtml(scoreLabel(row.score))} confidence</div>
+          <div class="opportunity-score">${fmtNumber(score)}</div>
+          <div class="tiny">${escapeHtml(scoreLabel(score))} confidence</div>
         </div>
       </div>
 

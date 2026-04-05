@@ -6,6 +6,7 @@ import os
 from routes.public import public_bp
 from routes.webhook import webhook_bp
 from routes.api import api_bp
+from routes.api_options import api_options_bp
 from routes.dashboard import dashboard_bp
 
 from workers.execution_queue import start_execution_worker
@@ -31,6 +32,7 @@ def create_app():
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(api_options_bp)
     app.register_blueprint(dashboard_bp)
 
     return app

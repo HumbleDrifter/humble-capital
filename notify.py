@@ -240,6 +240,7 @@ def render_config_proposal_text(proposal_record):
     simulation = proposal.get("simulation", {}) if isinstance(proposal.get("simulation"), dict) else {}
     changes = proposal.get("changes", []) if isinstance(proposal.get("changes"), list) else []
     candidates = proposal.get("candidates", []) if isinstance(proposal.get("candidates"), list) else []
+    order = proposal.get("order", {}) if isinstance(proposal.get("order"), dict) else {}
     proposal_type = str(proposal.get("proposal_type") or proposal_record.get("proposal_type") or "config_guardrail").strip()
 
     proposal_id = str(proposal_record.get("id") or proposal.get("proposal_id") or "").strip() or "CFG-UNKNOWN"
@@ -255,6 +256,18 @@ def render_config_proposal_text(proposal_record):
             "",
             f"Confidence: {confidence}",
             f"Candidates: {len(candidates)}",
+        ]
+    elif proposal_type == "options_order_recommendation":
+        lines = [
+            "🧾 Options Order Recommendation",
+            f"ID: {proposal_id}",
+            summary,
+            "",
+            f"Broker: {str(order.get('broker', 'ibkr') or 'ibkr').strip()}",
+            f"Underlying: {str(order.get('underlying', '') or '').strip().upper() or 'unknown'}",
+            f"Strategy: {str(order.get('strategy', '') or '').strip() or 'unknown'}",
+            f"Order Type: {str(order.get('order_type', 'LIMIT') or 'LIMIT').strip().upper()}",
+            f"Limit: {_fmt_usd(order.get('limit_price', 0.0))}",
         ]
     else:
         lines = [
@@ -278,6 +291,18 @@ def render_config_proposal_text(proposal_record):
             liquidity_bucket = str(item.get("liquidity_bucket", "") or "").strip() or "unknown"
             volatility_bucket = str(item.get("volatility_bucket", "") or "").strip() or "unknown"
             lines.append(f"• {product_id}: {score:.1f} · {confidence_band} confidence · {liquidity_bucket} liquidity · {volatility_bucket} volatility")
+    elif proposal_type == "options_order_recommendation" and order:
+        lines.append("")
+        lines.append("Order Legs")
+        for leg in (order.get("legs") or [])[:6]:
+            leg = leg if isinstance(leg, dict) else {}
+            lines.append(
+                f"• {str(leg.get('side', '') or '').strip().upper()} "
+                f"{_fmt_num(leg.get('quantity', 0))} "
+                f"{str(leg.get('expiry', '') or '').strip()} "
+                f"{_fmt_num(leg.get('strike', 0))} "
+                f"{str(leg.get('right_code', leg.get('right', '')) or '').strip().upper()}"
+            )
     elif changes:
         lines.append("")
         lines.append("Changed Controls")
@@ -308,6 +333,7 @@ def render_config_proposal_status_text(proposal_id, result, proposal_record=None
     result = result if isinstance(result, dict) else {}
     proposal_record = proposal_record if isinstance(proposal_record, dict) else {}
     proposal = proposal_record.get("proposal") if isinstance(proposal_record.get("proposal"), dict) else {}
+    proposal_type = str(proposal.get("proposal_type") or proposal_record.get("proposal_type") or "config_guardrail").strip().lower()
 
     if not result.get("ok"):
         return (
@@ -323,9 +349,15 @@ def render_config_proposal_status_text(proposal_id, result, proposal_record=None
         or ""
     ).strip()
 
+    title = "Config Proposal"
+    if proposal_type == "satellite_enable_recommendation":
+        title = "Satellite Enable Recommendation"
+    elif proposal_type == "options_order_recommendation":
+        title = "Options Order Recommendation"
+
     if result.get("status") == "approved":
         lines = [
-            "✅ Config Proposal Approved",
+            f"✅ {title} Approved",
             f"ID: {proposal_id}",
             f"Approved At: {result.get('approved_at')}",
         ]
@@ -333,7 +365,7 @@ def render_config_proposal_status_text(proposal_id, result, proposal_record=None
             lines.append(f"Approved By: {result.get('approved_by')}")
     elif result.get("status") == "applied":
         lines = [
-            "✅ Config Proposal Applied",
+            f"✅ {title} Applied",
             f"ID: {proposal_id}",
             f"Applied At: {result.get('applied_at')}",
         ]
@@ -343,7 +375,7 @@ def render_config_proposal_status_text(proposal_id, result, proposal_record=None
             lines.append(f"Config Changed: {'yes' if bool(result.get('config_changed')) else 'no'}")
     else:
         lines = [
-            "🛑 Config Proposal Rejected",
+            f"🛑 {title} Rejected",
             f"ID: {proposal_id}",
             f"Rejected At: {result.get('rejected_at')}",
         ]

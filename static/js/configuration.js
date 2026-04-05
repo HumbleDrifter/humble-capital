@@ -394,6 +394,7 @@ function normalizeConfigProposalRecord(value) {
   const proposal = safeObject(source.proposal);
   const proposalSource = safeObject(proposal.source);
   const simulation = safeObject(proposal.simulation);
+  const order = safeObject(proposal.order);
   const changes = [];
   const candidates = [];
 
@@ -454,6 +455,28 @@ function normalizeConfigProposalRecord(value) {
       },
       summary: String(proposal.summary || "").trim(),
       reasons: cleanTextList(proposal.reasons, 3),
+      order: {
+        asset_class: String(order.asset_class || "").trim(),
+        broker: String(order.broker || "").trim(),
+        action: String(order.action || "").trim(),
+        underlying: String(order.underlying || "").trim(),
+        strategy: String(order.strategy || "").trim(),
+        order_type: String(order.order_type || "").trim(),
+        limit_price: hasNumericValue(order.limit_price) ? Number(order.limit_price) : null,
+        tif: String(order.tif || "").trim(),
+        source: String(order.source || "").trim(),
+        proposal_id: String(order.proposal_id || "").trim(),
+        legs: Array.isArray(order.legs) ? order.legs.map((item) => {
+          const raw = safeObject(item);
+          return {
+            side: String(raw.side || "").trim(),
+            right: String(raw.right || raw.right_code || "").trim(),
+            expiry: String(raw.expiry || "").trim(),
+            strike: hasNumericValue(raw.strike) ? Number(raw.strike) : null,
+            quantity: hasNumericValue(raw.quantity) ? Number(raw.quantity) : null
+          };
+        }) : []
+      },
       candidates,
       changes,
       simulation: {
@@ -530,6 +553,7 @@ function proposalStatusNote(status) {
 function proposalTypeLabel(value) {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "satellite_enable_recommendation") return "Satellite Enable Recommendation";
+  if (normalized === "options_order_recommendation") return "Options Order Recommendation";
   if (normalized === "config_guardrail") return "Config Guardrail";
   return titleCase(normalized || "unknown");
 }
@@ -627,6 +651,7 @@ function renderProposalLatest(data) {
 
   const statusTone = proposalStatusTone(proposal.status);
   const isSatelliteEnableProposal = proposal.proposal.proposal_type === "satellite_enable_recommendation";
+  const isOptionsOrderProposal = proposal.proposal.proposal_type === "options_order_recommendation";
   const isPending = proposal.status === "pending";
   const isApproved = proposal.status === "approved";
   const isApplyCapable = isProposalApplyCapable(proposal);
@@ -637,6 +662,14 @@ function renderProposalLatest(data) {
   }
 
   const changesHost = document.getElementById("configProposalChanges");
+  const changesTitleEl = document.getElementById("configProposalChangesTitle");
+  if (changesTitleEl) {
+    changesTitleEl.textContent = isSatelliteEnableProposal
+      ? "Recommended Candidates"
+      : isOptionsOrderProposal
+        ? "Proposed Order"
+        : "Changed Controls";
+  }
   if (changesHost) {
     const formatChangeValue = (value, format) => {
       if (format === "percent") return formatPercent(value);
@@ -661,6 +694,30 @@ function renderProposalLatest(data) {
               <span class="config-proposal-change-values">—</span>
             </div>`
       )
+      : isOptionsOrderProposal
+      ? (
+        proposal.proposal.order.underlying
+          ? [
+              `<div class="config-proposal-change-row">
+                <span class="config-proposal-change-label">${escapeHtml(proposal.proposal.order.underlying || "Underlying")}</span>
+                <span class="config-proposal-change-values">${escapeHtml(
+                  `${proposal.proposal.order.broker || "ibkr"} • ${proposal.proposal.order.strategy || "options"} • ${proposal.proposal.order.order_type || "LIMIT"} ${hasNumericValue(proposal.proposal.order.limit_price) ? formatUSD(proposal.proposal.order.limit_price) : "—"} • ${proposal.proposal.order.tif || "DAY"}`
+                )}</span>
+              </div>`,
+              ...(proposal.proposal.order.legs || []).map((leg, idx) => `
+                <div class="config-proposal-change-row">
+                  <span class="config-proposal-change-label">${escapeHtml(`Leg ${idx + 1}`)}</span>
+                  <span class="config-proposal-change-values">${escapeHtml(
+                    `${leg.side || "—"} ${hasNumericValue(leg.quantity) ? formatInteger(leg.quantity) : "—"} ${leg.expiry || "—"} ${hasNumericValue(leg.strike) ? Number(leg.strike).toFixed(2) : "—"} ${leg.right || "—"}`
+                  )}</span>
+                </div>
+              `)
+            ].join("")
+          : `<div class="config-proposal-change-row">
+              <span class="config-proposal-change-label">Proposed Order</span>
+              <span class="config-proposal-change-values">—</span>
+            </div>`
+      )
       : proposal.proposal.changes.length
       ? proposal.proposal.changes.map((item) => `
         <div class="config-proposal-change-row">
@@ -681,15 +738,27 @@ function renderProposalLatest(data) {
     configProposalSummary: proposal.summary_text || proposal.proposal.summary || "—",
     configProposalType: proposalTypeLabel(proposal.proposal.proposal_type),
     configProposalConfidence: proposal.proposal.source.confidence || "—",
-    configProposalCurrentRisk: isSatelliteEnableProposal ? `${proposal.proposal.candidates.length || 0} review-ready` : formatProposalRisk(proposal.proposal.source.risk_score, proposal.proposal.source.risk_band),
-    configProposalProjectedRisk: isSatelliteEnableProposal ? "Approval only" : formatProposalRisk(proposal.proposal.simulation.projected_score, proposal.proposal.simulation.projected_band),
-    configProposalScoreDelta: formatProposalScoreDelta(proposal.proposal.simulation.score_delta),
+    configProposalCurrentRisk: isSatelliteEnableProposal
+      ? `${proposal.proposal.candidates.length || 0} review-ready`
+      : isOptionsOrderProposal
+        ? `${proposal.proposal.order.broker || "ibkr"} • ${proposal.proposal.order.strategy || "options"}`
+        : formatProposalRisk(proposal.proposal.source.risk_score, proposal.proposal.source.risk_band),
+    configProposalProjectedRisk: isSatelliteEnableProposal
+      ? "Approval only"
+      : isOptionsOrderProposal
+        ? `${proposal.proposal.order.order_type || "LIMIT"} ${hasNumericValue(proposal.proposal.order.limit_price) ? formatUSD(proposal.proposal.order.limit_price) : "—"}`
+        : formatProposalRisk(proposal.proposal.simulation.projected_score, proposal.proposal.simulation.projected_band),
+    configProposalScoreDelta: isOptionsOrderProposal
+      ? `${(proposal.proposal.order.legs || []).length || 0} legs`
+      : formatProposalScoreDelta(proposal.proposal.simulation.score_delta),
     configProposalCreatedAt: formatProposalDate(proposal.created_at),
     configProposalExpiresAt: formatProposalDate(proposal.expires_at),
     configProposalApprovedBy: proposal.approved_by || "—",
     configProposalAppliedBy: proposal.applied_by || "—",
     configProposalNote: isSatelliteEnableProposal
       ? "This recommendation is approval-only and will not change the live allowlist until an explicit operator action is taken."
+      : isOptionsOrderProposal
+        ? "This options recommendation is approval-first. Execution must be queued explicitly after review, and options remain limit-only and fail-closed on validation."
       : proposalStatusNote(proposal.status)
   };
 

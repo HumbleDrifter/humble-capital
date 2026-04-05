@@ -5,6 +5,8 @@ import time
 from datetime import datetime, timedelta
 
 from notify import notify_config_proposal
+from options.contracts import describe_options_order, normalize_options_payload
+from options.validator import validate_options_order
 from portfolio import (
     build_adaptive_suggestions,
     build_auto_adaptive_recommendation,
@@ -34,6 +36,7 @@ from storage import (
 
 PROPOSAL_TYPE = "config_guardrail"
 SHADOW_ALLOWLIST_PROPOSAL_TYPE = "satellite_enable_recommendation"
+OPTIONS_ORDER_PROPOSAL_TYPE = "options_order_recommendation"
 DEFAULT_ADVISORY_RANGE = "30d"
 DEFAULT_PROPOSAL_TTL_MINUTES = int(float(os.getenv("CONFIG_PROPOSAL_TTL_MINUTES", "120") or "120"))
 DEFAULT_PROPOSAL_GENERATION_MODE = "manual"
@@ -216,6 +219,75 @@ def _shadow_candidate_summary(candidates):
 def _auto_draft_allowed(config=None):
     settings = get_config_proposal_automation_settings(config=config)
     return settings.get("generation_mode") == "auto"
+
+
+def _normalize_options_proposal_order(order):
+    normalized = _safe_dict(normalize_options_payload(order))
+    normalized["legs"] = [
+        {
+            "side": str(_safe_dict(leg).get("side", "") or "").strip(),
+            "right": str(_safe_dict(leg).get("right", "") or "").strip(),
+            "right_code": str(_safe_dict(leg).get("right_code", "") or "").strip(),
+            "strike": float(_safe_dict(leg).get("strike", 0.0) or 0.0),
+            "expiry": str(_safe_dict(leg).get("expiry", "") or "").strip(),
+            "quantity": int(_safe_dict(leg).get("quantity", 0) or 0),
+            "exchange": str(_safe_dict(leg).get("exchange", "") or "").strip(),
+            "currency": str(_safe_dict(leg).get("currency", "") or "").strip(),
+        }
+        for leg in _safe_list(normalized.get("legs"))
+        if _safe_dict(leg)
+    ]
+    normalized["limit_price"] = float(normalized.get("limit_price", 0.0) or 0.0)
+    return normalized
+
+
+def build_options_order_proposal(order_payload):
+    validation = validate_options_order(order_payload, enforce_approval=False, approval_verified=False)
+    if not validation.get("ok"):
+        return {
+            "ok": False,
+            "status": "invalid",
+            "reason": "options_validation_failed",
+            "errors": validation.get("errors", []),
+            "warnings": validation.get("warnings", []),
+            "proposal": None,
+        }
+
+    order = _safe_dict(validation.get("order"))
+    proposal = {
+        "proposal_type": OPTIONS_ORDER_PROPOSAL_TYPE,
+        "source": {
+            "broker": str(order.get("broker", "ibkr") or "ibkr").strip().lower(),
+            "underlying": str(order.get("underlying", "") or "").strip().upper(),
+            "strategy": str(order.get("strategy", "") or "").strip().lower(),
+            "confidence": "high",
+            "asset_class": "option",
+        },
+        "summary": f"Review {describe_options_order(order)}",
+        "reasons": _clean_text_list(
+            [
+                f"Strategy: {str(order.get('strategy_label', order.get('strategy', 'option')) or '').strip()}",
+                f"Estimated premium: ${float(order.get('estimated_premium_usd', 0.0) or 0.0):,.2f}",
+                f"DTE: {order.get('dte')}",
+            ],
+            limit=3,
+        ),
+        "notes": _clean_text_list(
+            [
+                "Approval is required before any options execution can be queued.",
+                "Manual follow-up: verify IBKR paper connection and contract details before approving live transport use.",
+            ] + _safe_list(validation.get("warnings")),
+            limit=4,
+        ),
+        "order": _normalize_options_proposal_order(order),
+        "changes": [],
+        "simulation": {},
+    }
+    return {
+        "ok": True,
+        "status": "proposal_ready",
+        "proposal": proposal,
+    }
 
 
 def _range_to_start_ts(range_name):
@@ -477,6 +549,35 @@ def compute_config_proposal_fingerprint(proposal):
             for item in sorted(_safe_list(proposal.get("candidates")), key=lambda x: str(_safe_dict(x).get("product_id", "")))
             if str(_safe_dict(item).get("product_id", "") or "").strip()
         ],
+        "order": {
+            "asset_class": str(_safe_dict(proposal.get("order")).get("asset_class", "") or "").strip().lower(),
+            "broker": str(_safe_dict(proposal.get("order")).get("broker", "") or "").strip().lower(),
+            "action": str(_safe_dict(proposal.get("order")).get("action", "") or "").strip().upper(),
+            "underlying": str(_safe_dict(proposal.get("order")).get("underlying", "") or "").strip().upper(),
+            "strategy": str(_safe_dict(proposal.get("order")).get("strategy", "") or "").strip().lower(),
+            "order_type": str(_safe_dict(proposal.get("order")).get("order_type", "") or "").strip().upper(),
+            "limit_price": float(_safe_dict(proposal.get("order")).get("limit_price", 0.0) or 0.0),
+            "tif": str(_safe_dict(proposal.get("order")).get("tif", "") or "").strip().upper(),
+            "legs": [
+                {
+                    "side": str(_safe_dict(leg).get("side", "") or "").strip().upper(),
+                    "right": str(_safe_dict(leg).get("right", "") or "").strip().upper(),
+                    "strike": float(_safe_dict(leg).get("strike", 0.0) or 0.0),
+                    "expiry": str(_safe_dict(leg).get("expiry", "") or "").strip(),
+                    "quantity": int(_safe_dict(leg).get("quantity", 0) or 0),
+                }
+                for leg in sorted(
+                    _safe_list(_safe_dict(proposal.get("order")).get("legs")),
+                    key=lambda x: (
+                        str(_safe_dict(x).get("expiry", "") or "").strip(),
+                        str(_safe_dict(x).get("right", "") or "").strip(),
+                        float(_safe_dict(x).get("strike", 0.0) or 0.0),
+                        str(_safe_dict(x).get("side", "") or "").strip(),
+                    ),
+                )
+                if _safe_dict(leg)
+            ],
+        },
     }
     raw = json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return "sha256:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -681,6 +782,84 @@ def generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=DEFAULT_PROP
         summary_text=summary_text,
         fingerprint=fingerprint,
         proposal_type=SHADOW_ALLOWLIST_PROPOSAL_TYPE,
+        expires_at=expires_at,
+        status="pending",
+    )
+    saved = get_config_proposal_by_id(proposal_id)
+    notification_sent = False
+    try:
+        if saved:
+            notification_sent = bool(notify_config_proposal(saved))
+    except Exception:
+        notification_sent = False
+
+    return {
+        "ok": True,
+        "status": "created",
+        "expired_count": expired_count,
+        "superseded_count": superseded_count,
+        "proposal_id": proposal_id,
+        "proposal": saved,
+        "notification_sent": notification_sent,
+    }
+
+
+def generate_options_order_proposal(order_payload, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES):
+    expired_count = expire_stale_proposals(proposal_type=OPTIONS_ORDER_PROPOSAL_TYPE)
+    built = build_options_order_proposal(order_payload)
+
+    if not built.get("ok"):
+        return {
+            "ok": False,
+            "status": built.get("status", "invalid"),
+            "reason": built.get("reason", "options_validation_failed"),
+            "errors": built.get("errors", []),
+            "warnings": built.get("warnings", []),
+            "expired_count": expired_count,
+            "proposal": None,
+        }
+
+    proposal = _safe_dict(built.get("proposal"))
+    fingerprint = compute_config_proposal_fingerprint(proposal)
+    existing = find_pending_config_proposal_by_fingerprint(fingerprint, proposal_type=OPTIONS_ORDER_PROPOSAL_TYPE)
+
+    if existing and not proposal_is_stale(existing):
+        return {
+            "ok": True,
+            "status": "deduped",
+            "expired_count": expired_count,
+            "proposal_id": existing.get("id"),
+            "proposal": existing,
+        }
+
+    recent_match = _find_recent_matching_proposal(
+        fingerprint,
+        proposal_type=OPTIONS_ORDER_PROPOSAL_TYPE,
+        window_minutes=ttl_minutes,
+    )
+    if recent_match:
+        return {
+            "ok": True,
+            "status": "deduped_recent",
+            "expired_count": expired_count,
+            "proposal_id": recent_match.get("id"),
+            "proposal": recent_match,
+        }
+
+    pending = list_pending_config_proposals(OPTIONS_ORDER_PROPOSAL_TYPE)
+    pending = [item for item in pending if item]
+    pending = [item for item in pending if str(item.get("fingerprint", "") or "").strip() != fingerprint]
+    superseded_count = 0
+    if pending:
+        superseded_count = supersede_pending_config_proposals(OPTIONS_ORDER_PROPOSAL_TYPE)
+
+    expires_at = _expires_at_iso(ttl_minutes)
+    summary_text = str(proposal.get("summary", "") or "").strip() or "Options order recommendation ready for review."
+    proposal_id = save_config_proposal(
+        proposal=proposal,
+        summary_text=summary_text,
+        fingerprint=fingerprint,
+        proposal_type=OPTIONS_ORDER_PROPOSAL_TYPE,
         expires_at=expires_at,
         status="pending",
     )

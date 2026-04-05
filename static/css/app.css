@@ -889,14 +889,14 @@ tbody tr:last-child td {
   flex-direction: column;
   height: 100%;
   flex: 1;
-  gap: 20px;
+  gap: 24px;
 }
 
 .dashboard-briefing-primary,
 .dashboard-briefing-secondary {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .dashboard-briefing-secondary {

@@ -441,7 +441,12 @@ function renderShadowEligibleCandidates(data) {
   host.innerHTML = rows.map((row) => `
     <div class="shadow-eligible-row">
       <div class="shadow-eligible-main">
-        <div class="shadow-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
+        <div class="shadow-eligible-head">
+          <div class="shadow-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
+          <span class="badge ${row.shadow_eligible && row.active_buy_universe === false ? "warn" : "good"}">
+            ${escapeHtml(row.shadow_eligible && row.active_buy_universe === false ? "Not Live Yet" : "Review Ready")}
+          </span>
+        </div>
         <div class="shadow-eligible-meta">
           <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
           <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>

@@ -3677,6 +3677,13 @@ tbody tr:last-child td {
   flex: 1 1 auto;
 }
 
+.shadow-eligible-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .shadow-eligible-symbol {
   color: #f4fbff;
   font-size: 15px;

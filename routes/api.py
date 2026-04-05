@@ -565,6 +565,12 @@ def _build_meme_rotation():
     asset_rows = summary.get("assets", {})
     candidates = []
 
+    def _first_present(*values):
+        for value in values:
+            if value is not None:
+                return value
+        return None
+
     for item in rotation.get("candidates", []):
         product_id = _normalize_product_id(item.get("product_id"))
         if not product_id:
@@ -581,9 +587,10 @@ def _build_meme_rotation():
             "name": item.get("name"),
             "trend_score": item.get("trend_score"),
             "momentum_bonus": item.get("momentum_bonus"),
-            "change_1h": item.get("price_change_1h_pct", item.get("change_1h")),
-            "change_24h": item.get("price_change_24h_pct", item.get("change_24h")),
-            "change_7d": item.get("price_change_7d_pct", item.get("change_7d")),
+            "change_1h": _first_present(item.get("change_1h"), item.get("price_change_1h_pct"), item.get("price_change_1h")),
+            "change_24h": _first_present(item.get("change_24h"), item.get("price_change_24h_pct"), item.get("price_change_24h")),
+            "change_7d": _first_present(item.get("change_7d"), item.get("price_change_7d_pct"), item.get("price_change_7d")),
+            "price_change_24h": _first_present(item.get("price_change_24h"), item.get("price_change_24h_pct"), item.get("change_24h")),
             "held_value_usd": float(asset.get("value_total_usd", 0.0) or 0.0),
             "portfolio_weight": float(asset.get("weight_total", 0.0) or 0.0),
             "class": asset.get("class"),
@@ -615,10 +622,13 @@ def _build_meme_rotation():
         reverse=True,
     )
 
+    candidate_count = len(candidates)
+
     return {
         "ok": True,
         "meme_rotation": rotation,
-        "count": len(candidates),
+        "count": candidate_count,
+        "candidate_count": candidate_count,
         "market_regime": summary.get("market_regime"),
         "active_satellite_buy_universe": sorted(active_buy_universe),
         "candidates": candidates,

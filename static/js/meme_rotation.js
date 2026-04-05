@@ -71,15 +71,16 @@ function fmtNumber(v) {
 }
 
 function numericOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
 
 function resolve24hMove(row) {
   const candidates = [
+    row.change_24h,
     row.price_change_24h,
     row.price_change_24h_pct,
-    row.change_24h,
     row.move_24h
   ];
 
@@ -91,13 +92,15 @@ function resolve24hMove(row) {
   return null;
 }
 
+function formatPercentOrNA(value) {
+  const numeric = numericOrNull(value);
+  if (numeric == null) return "N/A";
+  return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(2)}%`;
+}
+
 function resolveUniverseCount(data) {
   const explicitCount = numericOrNull(data.candidate_count);
   if (explicitCount != null) return explicitCount;
-
-  if (Array.isArray(data.active_satellite_buy_universe)) {
-    return data.active_satellite_buy_universe.length;
-  }
 
   if (Array.isArray(data.candidates)) {
     return data.candidates.length;
@@ -360,7 +363,7 @@ function opportunityCard(row) {
         </div>
         <div class="opportunity-metric">
           <span class="opportunity-metric-label">24H Move</span>
-          <strong>${move24h == null ? "N/A" : fmtPct(move24h)}</strong>
+          <strong>${formatPercentOrNA(move24h)}</strong>
         </div>
         <div class="opportunity-metric">
           <span class="opportunity-metric-label">Unrealized</span>

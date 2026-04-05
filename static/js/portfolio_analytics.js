@@ -170,32 +170,89 @@ function renderAllocations(data) {
     : `<tr><td colspan="6" class="muted">No holdings found.</td></tr>`;
 }
 
-function buildSvgLine(points, key, labelFormatter = fmtUsd) {
-  const width = 900;
-  const height = 280;
-  const pad = 24;
+function buildTrendStat(label, value, tone = "") {
+  return `
+    <div class="trend-stat">
+      <div class="trend-stat-label">${label}</div>
+      <div class="trend-stat-value${tone ? ` ${tone}` : ""}">${value}</div>
+    </div>
+  `;
+}
 
-  const values = points.map(p => Number(p[key] || 0));
+function buildTrendSvg(points, key, labelFormatter = fmtUsd) {
+  const width = 960;
+  const height = 280;
+  const padLeft = 18;
+  const padRight = 18;
+  const padTop = 26;
+  const padBottom = 28;
+  const innerWidth = width - padLeft - padRight;
+  const innerHeight = height - padTop - padBottom;
+
+  const values = points.map((p) => Number(p[key] || 0));
   const min = Math.min(...values);
   const max = Math.max(...values);
   const spread = Math.max(1e-9, max - min);
+  const areaBaseY = padTop + innerHeight;
+  const lastValue = values[values.length - 1] || 0;
+  const startValue = values[0] || 0;
+  const trendPositive = lastValue - startValue >= 0;
+  const stroke = trendPositive ? "#34d399" : "#fb7185";
+  const areaAccent = trendPositive ? "52, 211, 153" : "251, 113, 133";
 
   const coords = points.map((p, i) => {
-    const x = pad + (i * (width - pad * 2)) / Math.max(1, points.length - 1);
-    const y = height - pad - ((Number(p[key] || 0) - min) / spread) * (height - pad * 2);
+    const x = padLeft + (i * innerWidth) / Math.max(1, points.length - 1);
+    const y = areaBaseY - ((Number(p[key] || 0) - min) / spread) * innerHeight;
     return [x, y];
   });
 
-  const d = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c[0]} ${c[1]}`).join(" ");
+  const linePath = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c[0]} ${c[1]}`).join(" ");
+  const areaPath = `${linePath} L ${coords[coords.length - 1][0]} ${areaBaseY} L ${coords[0][0]} ${areaBaseY} Z`;
+  const yMarkers = [
+    { label: `Max ${labelFormatter(max)}`, y: padTop + 10 },
+    { label: `Min ${labelFormatter(min)}`, y: areaBaseY - 6 }
+  ];
 
   return `
-    <svg viewBox="0 0 ${width} ${height}" style="width:100%; height:280px; display:block;">
-      <rect x="0" y="0" width="${width}" height="${height}" rx="18" ry="18" fill="rgba(255,255,255,0.02)"></rect>
-      <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="rgba(147,160,184,0.25)" />
-      <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height-pad}" stroke="rgba(147,160,184,0.25)" />
-      <path d="${d}" fill="none" stroke="rgba(79,140,255,1)" stroke-width="3" stroke-linecap="round" />
-      <text x="${pad}" y="${pad-6}" fill="rgba(147,160,184,0.95)" font-size="12">Min: ${labelFormatter(min)}</text>
-      <text x="${width-180}" y="${pad-6}" fill="rgba(147,160,184,0.95)" font-size="12">Max: ${labelFormatter(max)}</text>
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Portfolio history chart">
+      <defs>
+        <linearGradient id="analyticsTrendArea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(${areaAccent}, 0.34)" />
+          <stop offset="100%" stop-color="rgba(${areaAccent}, 0.02)" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${height}" rx="22" ry="22" fill="rgba(255,255,255,0.02)"></rect>
+      ${yMarkers.map((marker) => `
+        <line
+          x1="${padLeft}"
+          y1="${marker.y}"
+          x2="${width - padRight}"
+          y2="${marker.y}"
+          stroke="rgba(154, 169, 192, 0.12)"
+          stroke-dasharray="4 6"
+        ></line>
+      `).join("")}
+      <path d="${areaPath}" fill="url(#analyticsTrendArea)"></path>
+      <path
+        d="${linePath}"
+        fill="none"
+        stroke="${stroke}"
+        stroke-width="3.25"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      ></path>
+      ${coords.length ? `
+        <circle
+          cx="${coords[coords.length - 1][0]}"
+          cy="${coords[coords.length - 1][1]}"
+          r="4.5"
+          fill="${stroke}"
+          stroke="rgba(236, 243, 255, 0.92)"
+          stroke-width="2"
+        ></circle>
+      ` : ""}
+      <text x="${padLeft}" y="${padTop - 8}" fill="rgba(154, 169, 192, 0.92)" font-size="12">Max ${labelFormatter(max)}</text>
+      <text x="${padLeft}" y="${areaBaseY + 18}" fill="rgba(154, 169, 192, 0.92)" font-size="12">Min ${labelFormatter(min)}</text>
     </svg>
   `;
 }
@@ -213,7 +270,7 @@ function renderHistory(data) {
   if (type === "empty") {
     title.textContent = "History Unavailable";
     if (meta) meta.textContent = "No portfolio history series is available yet.";
-    host.innerHTML = `<div class="muted">No history data found for the selected range.</div>`;
+    host.innerHTML = `<div class="trend-chart-empty">No history data found for the selected range.</div>`;
     return;
   }
 
@@ -224,20 +281,41 @@ function renderHistory(data) {
         ? "No portfolio value history found."
         : "No realized PnL history found.";
     }
-    host.innerHTML = `<div class="muted">No history data found for the selected range.</div>`;
+    host.innerHTML = `<div class="trend-chart-empty">No history data found for the selected range.</div>`;
     return;
   }
 
-  if (type === "portfolio_value") {
-    title.textContent = "Portfolio Value History";
-    if (meta) meta.textContent = `${points.length} portfolio value point(s) in selected range`;
-    host.innerHTML = buildSvgLine(points, "equity_usd", fmtUsd);
-    return;
+  const key = type === "portfolio_value" ? "equity_usd" : "realized_pnl";
+  const formatter = fmtUsd;
+  const values = points.map((point) => Number(point[key] || 0));
+  const startValue = values[0] || 0;
+  const currentValue = values[values.length - 1] || 0;
+  const rangeDelta = currentValue - startValue;
+  const lowValue = Math.min(...values);
+  const tone = rangeDelta >= 0 ? "positive" : "negative";
+
+  title.textContent = type === "portfolio_value" ? "Portfolio Value History" : "Realized PnL History";
+  if (meta) {
+    meta.textContent = type === "portfolio_value"
+      ? `${points.length} portfolio value point(s) in selected range`
+      : `${points.length} realized PnL point(s) in selected range`;
   }
 
-  title.textContent = "Realized PnL History";
-  if (meta) meta.textContent = `${points.length} realized PnL point(s) in selected range`;
-  host.innerHTML = buildSvgLine(points, "realized_pnl", fmtUsd);
+  host.innerHTML = `
+    <div class="trend-chart-shell">
+      <div class="trend-chart-summary">
+        ${buildTrendStat(type === "portfolio_value" ? "Current Value" : "Current PnL", formatter(currentValue), tone)}
+        ${buildTrendStat("Range Change", `${rangeDelta >= 0 ? "+" : "-"}${formatter(Math.abs(rangeDelta))}`, tone)}
+        ${buildTrendStat("Low Watermark", formatter(lowValue))}
+      </div>
+      ${buildTrendSvg(points, key, formatter)}
+      <div class="trend-chart-note">
+        ${type === "portfolio_value"
+          ? "Persisted portfolio history is powering the account value trend for the selected range."
+          : "Persisted realized PnL entries are plotted across the selected range."}
+      </div>
+    </div>
+  `;
 }
 
 async function refreshAnalytics() {

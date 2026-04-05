@@ -9,7 +9,7 @@
         <p class="section-subtitle" id="analyticsMeta">Loading portfolio analytics...</p>
       </div>
       <div class="topbar-actions">
-        <select id="historyRange" onchange="refreshAnalytics()">
+        <select id="historyRange" class="select" onchange="refreshAnalytics()">
           <option value="7d">7D</option>
           <option value="30d" selected>30D</option>
           <option value="90d">90D</option>
@@ -43,6 +43,20 @@
 
     <div class="tiny">Allocation Mix</div>
     <div id="paAllocationText" class="tiny"></div>
+    <div class="allocation-legend" aria-label="Allocation legend">
+      <span class="allocation-legend-item">
+        <span class="allocation-legend-swatch core" aria-hidden="true"></span>
+        <span class="allocation-legend-label">Core</span>
+      </span>
+      <span class="allocation-legend-item">
+        <span class="allocation-legend-swatch opportunities" aria-hidden="true"></span>
+        <span class="allocation-legend-label">Opportunities</span>
+      </span>
+      <span class="allocation-legend-item">
+        <span class="allocation-legend-swatch cash" aria-hidden="true"></span>
+        <span class="allocation-legend-label">Cash</span>
+      </span>
+    </div>
     <div class="allocation-wrap">
       <div id="paSegCash" class="allocation-seg seg-cash" style="width:0%"></div>
       <div id="paSegCore" class="allocation-seg seg-core" style="width:0%"></div>
@@ -90,10 +104,6 @@
         <div class="analytics-stat-value mono" id="paTopAsset">—</div>
       </div>
     </div>
-
-    <div class="divider"></div>
-
-    <div id="analyticsConsole" class="analytics-stats-console mono tiny">Portfolio stats will appear here.</div>
   </section>
 
   <section class="panel span-12">

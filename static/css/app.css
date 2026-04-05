@@ -539,6 +539,24 @@ textarea {
   outline: none;
 }
 
+select {
+  appearance: none;
+  background:
+    linear-gradient(180deg, rgba(19, 29, 43, 0.98), rgba(12, 18, 27, 0.98));
+  color: #f4fbff;
+}
+
+select:hover {
+  border-color: rgba(52, 211, 153, 0.22);
+  background:
+    linear-gradient(180deg, rgba(21, 33, 48, 0.98), rgba(13, 20, 31, 0.98));
+}
+
+select option {
+  background: #111927;
+  color: #f4fbff;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: var(--text-dim);
@@ -3128,6 +3146,14 @@ tbody tr:last-child td {
   min-width: 0;
 }
 
+.analytics-summary-panel .kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analytics-summary-panel .allocation-legend {
+  margin-top: 10px;
+}
+
 .analytics-stats-panel {
   display: flex;
   flex-direction: column;
@@ -3178,6 +3204,16 @@ tbody tr:last-child td {
   background: rgba(255, 255, 255, 0.02);
   color: var(--text-soft);
   line-height: 1.7;
+}
+
+#historyChartHost {
+  margin-top: 12px;
+  min-height: 180px;
+}
+
+#historyChartHost svg {
+  width: 100%;
+  height: auto;
 }
 
 .page-opportunities .opportunities-layout .panel {
@@ -4786,6 +4822,10 @@ tbody tr:last-child td {
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
+  }
+
+  .analytics-summary-panel .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .analytics-stats-grid {

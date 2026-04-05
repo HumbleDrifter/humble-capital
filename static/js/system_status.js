@@ -227,11 +227,18 @@ function buildTradingViewSuggestions(manifest, universe) {
     return {
       label,
       key,
+      expected,
       add,
       remove,
       hasChanges: add.length > 0 || remove.length > 0
     };
   });
+}
+
+function suggestionForGroup(groupKey) {
+  if (!CURRENT_TRADINGVIEW_MANIFEST || !CURRENT_TRADABLE_UNIVERSE) return null;
+  return buildTradingViewSuggestions(CURRENT_TRADINGVIEW_MANIFEST, CURRENT_TRADABLE_UNIVERSE)
+    .find((item) => item.key === groupKey) || null;
 }
 
 function renderTradingViewSuggestions(manifest, universe) {
@@ -252,12 +259,37 @@ Add: ${fmtList(item.add)}
 Remove: ${fmtList(item.remove)}
 ${!item.hasChanges ? "No changes needed." : ""}
       </div>
+      <div class="system-manifest-actions">
+        <button class="btn btn-secondary" type="button" onclick="copyExpectedManifestGroup('${item.key}')">Copy Expected</button>
+        <button class="btn btn-secondary" type="button" onclick="copySuggestionList('${item.key}', 'add')">Copy Add List</button>
+        <button class="btn btn-secondary" type="button" onclick="copySuggestionList('${item.key}', 'remove')">Copy Remove List</button>
+      </div>
     </div>
   `).join("");
 }
 
 function setManifestActionStatus(message, isError = false) {
   renderManifestText("tradingViewManifestActionStatus", message, isError);
+}
+
+async function copyExpectedManifestGroup(groupKey) {
+  const suggestion = suggestionForGroup(groupKey);
+  if (!suggestion) {
+    setManifestActionStatus("Load both the server tradable universe and TradingView manifest before copying expected groups.", true);
+    return;
+  }
+  if (!suggestion.expected.length) {
+    setManifestActionStatus(`No expected symbols are available for ${groupKey}.`, true);
+    return;
+  }
+
+  try {
+    await copyTextToClipboard(suggestion.expected.join(", "));
+    setManifestActionStatus(`Copied expected ${groupKey} set (${suggestion.expected.length} symbol${suggestion.expected.length === 1 ? "" : "s"}).`);
+  } catch (err) {
+    console.error(err);
+    setManifestActionStatus(`Copy failed for expected ${groupKey}: ${err.message}`, true);
+  }
 }
 
 function manifestGroupValues(groupName) {
@@ -302,6 +334,28 @@ async function copyTextToClipboard(text) {
   textarea.select();
   document.execCommand("copy");
   document.body.removeChild(textarea);
+}
+
+async function copySuggestionList(groupKey, mode) {
+  const suggestion = suggestionForGroup(groupKey);
+  if (!suggestion) {
+    setManifestActionStatus("Load both the server tradable universe and TradingView manifest before copying suggestions.", true);
+    return;
+  }
+
+  const values = mode === "remove" ? suggestion.remove : suggestion.add;
+  if (!values.length) {
+    setManifestActionStatus(`No ${mode} suggestions are needed for ${groupKey}.`, true);
+    return;
+  }
+
+  try {
+    await copyTextToClipboard(values.join(", "));
+    setManifestActionStatus(`Copied ${mode} list for ${groupKey} (${values.length} symbol${values.length === 1 ? "" : "s"}).`);
+  } catch (err) {
+    console.error(err);
+    setManifestActionStatus(`Copy failed for ${groupKey} ${mode} list: ${err.message}`, true);
+  }
 }
 
 async function copyManifestGroup(groupName) {
@@ -557,8 +611,10 @@ window.refreshSystemStatus = refreshSystemStatus;
 window.refreshCaches = refreshCaches;
 window.refreshTradableUniverse = refreshTradableUniverse;
 window.refreshTradingViewManifest = refreshTradingViewManifest;
+window.copyExpectedManifestGroup = copyExpectedManifestGroup;
 window.copyManifestGroup = copyManifestGroup;
 window.copyManifestRawLists = copyManifestRawLists;
+window.copySuggestionList = copySuggestionList;
 window.exportManifestJson = exportManifestJson;
 
 refreshSystemStatus();

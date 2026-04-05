@@ -3453,6 +3453,13 @@ tbody tr:last-child td {
   min-width: 0;
 }
 
+.system-manifest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .system-status-universe .service-actions + .status-console {
   margin-top: 12px;
 }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <title>{{ page_title or "Humble Capital Console" }}</title>
+  <title>{{ page_title or "Leprechaun Console" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
@@ -28,7 +28,7 @@
       <div class="sidebar-brand">
         <div class="brand-mark">🍀</div>
         <div>
-          <div class="brand-title">Humble Capital</div>
+          <div class="brand-title">Leprechaun</div>
           <div class="brand-subtitle">Trading Terminal</div>
         </div>
       </div>
@@ -72,7 +72,7 @@
           <div class="mobile-brand-lockup">
             <div class="mobile-brand-mark">🍀</div>
             <div class="mobile-brand-copy">
-              <div class="mobile-brand-title">Humble Capital</div>
+              <div class="mobile-brand-title">Leprechaun</div>
               <div class="mobile-brand-subtitle">Trading Terminal</div>
             </div>
           </div>
@@ -80,7 +80,6 @@
 
         <div class="mobile-page-head">
           <h1 class="mobile-page-title">{{ page_title }}</h1>
-          <div class="mobile-page-subtitle">Where Luck Meets Momentum</div>
         </div>
 
         {% block mobile_topbar_actions %}
@@ -95,7 +94,6 @@
       <header class="topbar">
         <div>
           <h1 class="page-title">{{ page_title }}</h1>
-          <div class="page-subtitle">Where Luck Meets Momentum</div>
         </div>
         <div class="topbar-actions">
           {% if session_username %}

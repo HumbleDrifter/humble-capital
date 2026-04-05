@@ -149,6 +149,38 @@ function resolveOpportunityScore(row) {
   return 0;
 }
 
+function decisionLabel(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "recommend_for_enable") return "Enable Ready";
+  if (normalized === "recommend_replacement") return "Replacement Ready";
+  if (normalized === "almost_ready") return "Almost Ready";
+  if (normalized === "blocked") return "Blocked";
+  if (normalized === "ignore") return "Monitor";
+  return "";
+}
+
+function decisionBadgeTone(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "recommend_for_enable" || normalized === "recommend_replacement") return "good";
+  if (normalized === "almost_ready") return "warn";
+  if (normalized === "blocked") return "bad";
+  return "accent";
+}
+
+function decisionSummaryText(summary) {
+  const payload = safeObject(summary);
+  const parts = [];
+  const replacements = Number(payload.recommend_replacement || 0);
+  const enableReady = Number(payload.recommend_for_enable || 0);
+  const almostReady = Number(payload.almost_ready || 0);
+
+  if (replacements > 0) parts.push(`${replacements} replacement${replacements === 1 ? "" : "s"}`);
+  if (enableReady > 0) parts.push(`${enableReady} enable-ready`);
+  if (almostReady > 0) parts.push(`${almostReady} almost ready`);
+
+  return parts.length ? parts.join(" • ") : "";
+}
+
 function resolvePendingSatelliteProposal(items) {
   const proposals = Array.isArray(items) ? items : [];
   for (const item of proposals) {
@@ -189,8 +221,8 @@ function buildShadowPortfolioContext(row, opportunitiesData, systemData, configD
     ? reviewReadyRows.filter((item) => !item?.held).length
     : 0;
 
-  let heldContext = held ? "Already held" : "New candidate";
-  let slotPressure = held ? "Held slot preserved" : "Room available";
+  let heldContext = row?.heldContext || row?.held_context || (held ? "Already held" : "New candidate");
+  let slotPressure = row?.slotPressure || row?.slot_pressure || (held ? "Held slot preserved" : "Room available");
   if (!held && maxActive != null) {
     if (activeUniverseCount >= maxActive) {
       slotPressure = "Slots full";
@@ -199,24 +231,28 @@ function buildShadowPortfolioContext(row, opportunitiesData, systemData, configD
     }
   }
 
-  let portfolioPressure = "Normal";
+  let portfolioPressure = row?.portfolioPressure || row?.portfolio_pressure || "Normal";
   if (satelliteWeight != null && satelliteMax != null && satelliteWeight >= satelliteMax) {
     portfolioPressure = "High";
   } else if (satelliteWeight != null && satelliteTarget != null && satelliteWeight >= satelliteTarget) {
     portfolioPressure = "Moderate";
   }
 
-  const noteParts = [
-    held ? "Already held in the portfolio." : "Adds new satellite exposure."
-  ];
-  if (row?.active_buy_universe === false) {
-    noteParts.push("Not live in the active universe yet.");
-  }
-  if (!held && maxNewPerCycle != null) {
-    if (newReviewReadyCount > maxNewPerCycle) {
-      noteParts.push(`Cycle entry pressure is elevated (${newReviewReadyCount}/${Math.round(maxNewPerCycle)} review-ready names).`);
-    } else {
-      noteParts.push("Cycle entry room is available.");
+  const existingNote = String(row?.portfolioContextNote || row?.portfolio_context_note || "").trim();
+  const noteParts = [];
+  if (existingNote) {
+    noteParts.push(existingNote);
+  } else {
+    noteParts.push(held ? "Already held in the portfolio." : "Adds new satellite exposure.");
+    if (row?.active_buy_universe === false) {
+      noteParts.push("Not live in the active universe yet.");
+    }
+    if (!held && maxNewPerCycle != null) {
+      if (newReviewReadyCount > maxNewPerCycle) {
+        noteParts.push(`Cycle entry pressure is elevated (${newReviewReadyCount}/${Math.round(maxNewPerCycle)} review-ready names).`);
+      } else {
+        noteParts.push("Cycle entry room is available.");
+      }
     }
   }
 
@@ -226,6 +262,68 @@ function buildShadowPortfolioContext(row, opportunitiesData, systemData, configD
     portfolioPressure,
     portfolioContextNote: noteParts.join(" ")
   };
+}
+
+function renderDecisionLines(row, options = {}) {
+  const {
+    showQualifies = false,
+    showPrimaryMiss = false,
+    showPortfolio = true
+  } = options;
+  const lines = [];
+  const decisionText = String(row?.decision_reason || "").trim();
+  const decision = String(row?.decision || "").trim();
+  const decisionConfidence = String(row?.decision_confidence || "").trim();
+  const blockers = Array.isArray(row?.decision_blockers) ? row.decision_blockers.filter(Boolean) : [];
+  const replacementTarget = String(row?.replacement_target || "").trim();
+  const replacementScoreDelta = numericOrNull(row?.replacement_score_delta);
+  const qualifiesText = String(row?.shadow_eligibility_reason || "").trim();
+  const primaryMiss = String(row?.primary_fail_reason || row?.shadow_block_reason || "").trim();
+  const failText = String(row?.fail_explanation || row?.shadow_eligibility_reason || "").trim();
+  const notLiveText = String(row?.shadow_block_reason || "").trim();
+  const portfolioText = String(row?.portfolioContextNote || row?.portfolio_context_note || "").trim();
+
+  if (decisionText) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>Decision:</strong> ${escapeHtml(decisionText)}</div>`);
+  } else if (decision) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>Decision:</strong> ${escapeHtml(decisionLabel(decision) || titleCase(decision))}</div>`);
+  }
+
+  if (decisionConfidence) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>Decision confidence:</strong> ${escapeHtml(titleCase(decisionConfidence))}</div>`);
+  }
+
+  if (showQualifies && qualifiesText) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>Qualifies:</strong> ${escapeHtml(qualifiesText)}</div>`);
+  }
+
+  if (showPrimaryMiss && primaryMiss) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>Primary miss:</strong> ${escapeHtml(titleCase(primaryMiss))}</div>`);
+  }
+
+  if (showPrimaryMiss && failText) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>Why it missed:</strong> ${escapeHtml(failText)}</div>`);
+  }
+
+  if (!showPrimaryMiss && notLiveText) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>Not live yet:</strong> ${escapeHtml(titleCase(notLiveText))}</div>`);
+  }
+
+  if (blockers.length) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>${showPrimaryMiss ? "Blockers" : "Guardrails"}:</strong> ${escapeHtml(blockers.map((item) => titleCase(item)).join(" • "))}</div>`);
+  }
+
+  if (replacementTarget) {
+    lines.push(
+      `<div class="shadow-eligible-reason"><strong>Replacement target:</strong> ${escapeHtml(replacementTarget)}${replacementScoreDelta != null ? ` (${escapeHtml(`+${replacementScoreDelta.toFixed(1)} intelligence score`)})` : ""}</div>`
+    );
+  }
+
+  if (showPortfolio && portfolioText) {
+    lines.push(`<div class="shadow-eligible-reason"><strong>Portfolio:</strong> ${escapeHtml(portfolioText)}</div>`);
+  }
+
+  return lines.join("");
 }
 
 function sortCandidates(rows, sortKey) {
@@ -470,7 +568,7 @@ function renderStatus(data, systemData) {
   `;
 }
 
-function renderShadowRotationReport(data) {
+function renderShadowRotationReport(data, opportunityData = {}) {
   const host = document.getElementById("dashboardShadowRotation");
   if (!host) return;
 
@@ -486,6 +584,7 @@ function renderShadowRotationReport(data) {
     : [];
   const blockedReasons = Array.isArray(data?.blocked_reason_breakdown) ? data.blocked_reason_breakdown : [];
   const takeaways = Array.isArray(data?.quick_takeaways) ? data.quick_takeaways : [];
+  const decisionSummary = decisionSummaryText(opportunityData?.satellite_decision_summary);
   const topBlocker = blockedReasons.length ? blockedReasons[0].reason : "none";
   const lastUpdatedTs = Number(data?.last_updated_ts || data?.generated_at || 0);
 
@@ -519,6 +618,7 @@ function renderShadowRotationReport(data) {
 
     <div class="dashboard-shadow-chip-row">
       <span class="dashboard-shadow-chip">Top blocker <strong>${escapeHtml(topBlocker)}</strong></span>
+      ${decisionSummary ? `<span class="dashboard-shadow-chip">Decision engine <strong>${escapeHtml(decisionSummary)}</strong></span>` : ""}
       ${topPicks.map((row) => `
         <span class="dashboard-shadow-chip">${escapeHtml(row.product_id || "—")} <strong>${Number(row.count || 0)}</strong></span>
       `).join("")}
@@ -541,7 +641,6 @@ function renderShadowRotationReport(data) {
 
 function renderShadowEligibleCandidates(data) {
   const host = document.getElementById("shadowEligibleCandidates");
-  const resultEl = document.getElementById("shadowEligibleProposalResult");
   if (!host) return;
 
   const rows = Array.isArray(data?.shadow_eligible_candidates)
@@ -561,6 +660,7 @@ function renderShadowEligibleCandidates(data) {
           <span class="badge ${row.shadow_eligible && row.active_buy_universe === false ? "warn" : "good"}">
             ${escapeHtml(row.shadow_eligible && row.active_buy_universe === false ? "Not Live Yet" : "Review Ready")}
           </span>
+          ${row.decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(row.decision))}">${escapeHtml(decisionLabel(row.decision) || titleCase(row.decision))}</span>` : ""}
         </div>
         <div class="shadow-eligible-meta">
           <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
@@ -573,9 +673,7 @@ function renderShadowEligibleCandidates(data) {
         </div>
       </div>
       <div class="shadow-eligible-reasons">
-        <div class="shadow-eligible-reason"><strong>Qualifies:</strong> ${escapeHtml(row.shadow_eligibility_reason || "Review thresholds met.")}</div>
-        <div class="shadow-eligible-reason"><strong>Not live yet:</strong> ${escapeHtml(titleCase(row.shadow_block_reason || "not_allowed"))}</div>
-        <div class="shadow-eligible-reason"><strong>Portfolio:</strong> ${escapeHtml(row.portfolioContextNote || "Portfolio context is neutral.")}</div>
+        ${renderDecisionLines(row, { showQualifies: true, showPortfolio: true })}
       </div>
     </div>
   `).join("");
@@ -612,6 +710,7 @@ function renderShadowNearMissCandidates(data) {
         <div class="shadow-eligible-head">
           <div class="shadow-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
           <span class="badge warn">Almost Ready</span>
+          ${row.decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(row.decision))}">${escapeHtml(decisionLabel(row.decision) || titleCase(row.decision))}</span>` : ""}
         </div>
         <div class="shadow-eligible-meta">
           <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
@@ -624,9 +723,7 @@ function renderShadowNearMissCandidates(data) {
         </div>
       </div>
       <div class="shadow-eligible-reasons">
-        <div class="shadow-eligible-reason"><strong>Primary miss:</strong> ${escapeHtml(titleCase(row.primary_fail_reason || row.shadow_block_reason || "unknown"))}</div>
-        <div class="shadow-eligible-reason"><strong>Why it missed:</strong> ${escapeHtml(row.fail_explanation || row.shadow_eligibility_reason || "Review threshold not met.")}</div>
-        <div class="shadow-eligible-reason"><strong>Portfolio:</strong> ${escapeHtml(row.portfolioContextNote || "Portfolio context is neutral.")}</div>
+        ${renderDecisionLines(row, { showPrimaryMiss: true, showPortfolio: true })}
       </div>
     </div>
   `).join("");
@@ -666,6 +763,8 @@ function opportunityCard(row) {
   const score = resolveOpportunityScore(row);
   const tone = opportunityTone(score);
   const move24h = resolve24hMove(row);
+  const decision = String(row?.decision || "").trim();
+  const decisionConfidence = String(row?.decision_confidence || "").trim();
   return `
     <article class="opportunity-card ${tone}">
       <div class="opportunity-card-head">
@@ -685,7 +784,13 @@ function opportunityCard(row) {
 
       <div class="opportunity-pill-row">
         ${flagPills(row)}
+        ${decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(decision))}">${escapeHtml(decisionLabel(decision) || titleCase(decision))}</span>` : ""}
+        ${decisionConfidence ? `<span class="pill">${escapeHtml(titleCase(decisionConfidence))} decision confidence</span>` : ""}
       </div>
+
+      ${decision || row?.decision_reason || row?.replacement_target || (Array.isArray(row?.decision_blockers) && row.decision_blockers.length)
+        ? `<div class="opportunity-subline">${renderDecisionLines(row, { showPortfolio: false })}</div>`
+        : ""}
 
         <div class="opportunity-metrics">
         <div class="opportunity-metric">
@@ -912,7 +1017,7 @@ async function refreshMemeRotation() {
 
     renderStatus(data, systemData || {});
     renderScannerStatus(systemData || {});
-    renderShadowRotationReport(enrichedShadowData || {});
+    renderShadowRotationReport(enrichedShadowData || {}, data || {});
     renderShadowProposalActionState(enrichedShadowData || {}, recentProposals);
     renderShadowEligibleCandidates(enrichedShadowData || {});
     renderShadowNearMissCandidates(enrichedShadowData || {});

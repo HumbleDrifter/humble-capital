@@ -875,6 +875,45 @@ def _build_portfolio_history():
 
         return filtered
 
+    def _is_isolated_history_point_glitch(prev_point, point, next_point):
+        prev_total = _safe_float(prev_point.get("equity_usd"))
+        row_total = _safe_float(point.get("equity_usd"))
+        next_total = _safe_float(next_point.get("equity_usd"))
+
+        if prev_total <= 0 or row_total <= 0 or next_total <= 0:
+            return False
+
+        anchor_high = max(prev_total, next_total)
+        anchor_low = min(prev_total, next_total)
+        if anchor_high <= 0:
+            return False
+
+        anchors_close = abs(prev_total - next_total) / anchor_high <= 0.20
+        sharp_plunge = row_total < anchor_low * 0.50
+        sharp_spike = row_total > anchor_high * 2.0
+        return anchors_close and (sharp_plunge or sharp_spike)
+
+    def _filter_portfolio_value_points(points):
+        filtered = []
+        dropped = 0
+
+        for idx, point in enumerate(points):
+            equity_value = _safe_float(point.get("equity_usd"))
+            if equity_value <= 0:
+                dropped += 1
+                continue
+
+            if 0 < idx < len(points) - 1 and _is_isolated_history_point_glitch(points[idx - 1], point, points[idx + 1]):
+                dropped += 1
+                continue
+
+            filtered.append(point)
+
+        if dropped:
+            _log_api(f"filtered {dropped} invalid portfolio_value point(s) from history response")
+
+        return filtered
+
     try:
         history_rows = get_portfolio_history_since(start_ts=start_ts)
         history_rows = _filter_portfolio_history_rows(history_rows)
@@ -890,6 +929,7 @@ def _build_portfolio_history():
             }
             for row in history_rows
         ]
+        points = _filter_portfolio_value_points(points)
         if points:
             return {
                 "ok": True,
@@ -971,6 +1011,7 @@ def _build_portfolio_history():
                     }
                     for r in rows
                 ]
+                points = _filter_portfolio_value_points(points)
                 if points:
                     series_type = "portfolio_value"
             elif "realized_pnl" in columns and ts_expr:

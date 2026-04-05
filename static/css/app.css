@@ -1380,9 +1380,12 @@ tbody tr:last-child td {
 }
 
 .performance-risk-band {
-  font-size: 18px;
-  font-weight: 760;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
   color: #f4fbff;
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
 .performance-risk-band.positive {
@@ -1395,6 +1398,26 @@ tbody tr:last-child td {
 
 .performance-risk-band.negative {
   color: var(--bad);
+}
+
+.performance-risk-band.risk-low {
+  color: #34d399;
+  text-shadow: 0 10px 24px rgba(16, 185, 129, 0.2);
+}
+
+.performance-risk-band.risk-moderate {
+  color: #facc15;
+  text-shadow: 0 10px 24px rgba(250, 204, 21, 0.18);
+}
+
+.performance-risk-band.risk-elevated {
+  color: #fb923c;
+  text-shadow: 0 10px 24px rgba(251, 146, 60, 0.18);
+}
+
+.performance-risk-band.risk-high {
+  color: #f87171;
+  text-shadow: 0 10px 24px rgba(248, 113, 113, 0.18);
 }
 
 .adaptive-suggestions-card {

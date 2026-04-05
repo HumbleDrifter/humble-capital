@@ -757,8 +757,9 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
     riskScoreEl.className = `performance-risk-score${riskScoreClass(scoreValue) ? ` ${riskScoreClass(scoreValue)}` : ""}`;
   }
   if (riskBandEl) {
+    const bandScoreClass = riskScoreClass(scoreValue);
     riskBandEl.textContent = scoreBand;
-    riskBandEl.className = `performance-risk-band${riskBandTone(scoreBand) ? ` ${riskBandTone(scoreBand)}` : ""}`;
+    riskBandEl.className = `performance-risk-band${bandScoreClass ? ` ${bandScoreClass}` : (riskBandTone(scoreBand) ? ` ${riskBandTone(scoreBand)}` : "")}`;
   }
   if (riskNotesEl) {
     const scaleNote = "Risk score blends allocation, reserve, drawdown, and regime inputs. Scale: 0-24 low, 25-49 moderate, 50-74 elevated, 75-100 high.";

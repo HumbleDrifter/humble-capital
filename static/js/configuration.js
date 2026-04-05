@@ -505,6 +505,18 @@ function proposalStatusTone(status) {
   return "";
 }
 
+function proposalStatusLabel(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (!normalized) return "—";
+  if (normalized === "pending") return "Pending Review";
+  if (normalized === "approved") return "Approved";
+  if (normalized === "applied") return "Applied";
+  if (normalized === "rejected") return "Rejected";
+  if (normalized === "expired") return "Expired";
+  if (normalized === "superseded") return "Superseded";
+  return titleCase(normalized);
+}
+
 function proposalStatusNote(status) {
   const normalized = String(status || "").toLowerCase();
   if (normalized === "approved") return "This proposal is approved and ready to apply.";
@@ -520,6 +532,35 @@ function proposalTypeLabel(value) {
   if (normalized === "satellite_enable_recommendation") return "Satellite Enable Recommendation";
   if (normalized === "config_guardrail") return "Config Guardrail";
   return titleCase(normalized || "unknown");
+}
+
+function setProposalAutomationMessageFromStatus(result) {
+  const status = String(result?.status || "").trim().toLowerCase();
+  if (status === "created" || status === "drafted") {
+    const delivery = result?.notification_sent === false ? " Telegram delivery needs review." : "";
+    const createdCount = Number(result?.created_count || 0);
+    setProposalAutomationResult(`${createdCount || 1} review proposal${createdCount === 1 || !createdCount ? "" : "s"} created.${result.proposal_id ? ` Latest ${result.proposal_id}.` : ""}${delivery}`.trim());
+    return;
+  }
+  if (status === "deduped" || status === "deduped_recent" || status === "already_matches_current_state") {
+    setProposalAutomationResult(`Existing pending proposal ${result.proposal_id || ""} already matches the current advisory state.`.trim());
+    return;
+  }
+  if (status === "confidence_below_threshold" || status === "skipped_low_confidence") {
+    const required = String(result?.required_confidence || result?.min_confidence || "").trim();
+    const actual = String(result?.confidence || "").trim();
+    setProposalAutomationResult(`Auto-draft skipped because confidence ${actual || "current"} is below ${required || "the required"} threshold.`);
+    return;
+  }
+  if (status === "manual_mode") {
+    setProposalAutomationResult("Auto-draft is disabled because Draft Recommendations is set to Manual.");
+    return;
+  }
+  if (status === "noop") {
+    setProposalAutomationResult("No proposal was generated because no new guardrail or satellite review changes qualified.");
+    return;
+  }
+  setProposalAutomationResult(`Proposal generation returned status: ${status || "unknown"}.`);
 }
 
 function setProposalActionResult(message = "", isError = false, sticky = false) {
@@ -580,9 +621,10 @@ function renderProposalLatest(data) {
   const statusTone = proposalStatusTone(proposal.status);
   const isSatelliteEnableProposal = proposal.proposal.proposal_type === "satellite_enable_recommendation";
   const isPending = proposal.status === "pending";
+  const isApproved = proposal.status === "approved";
   const statusEl = document.getElementById("configProposalStatus");
   if (statusEl) {
-    statusEl.textContent = proposal.status || "—";
+    statusEl.textContent = proposalStatusLabel(proposal.status || "—");
     statusEl.className = `config-proposal-status${statusTone ? ` ${statusTone}` : ""}`;
   }
 
@@ -650,18 +692,26 @@ function renderProposalLatest(data) {
 
   const actionsEl = document.getElementById("configProposalActions");
   const approveBtn = document.getElementById("configProposalApproveBtn");
+  const applyBtn = document.getElementById("configProposalApplyBtn");
   const rejectBtn = document.getElementById("configProposalRejectBtn");
-  if (actionsEl) actionsEl.hidden = !isPending;
+  if (actionsEl) actionsEl.hidden = !(isPending || isApproved);
   if (approveBtn) {
     approveBtn.disabled = !isPending;
+    approveBtn.hidden = !isPending;
     approveBtn.dataset.proposalId = proposal.id || "";
+  }
+  if (applyBtn) {
+    applyBtn.disabled = !isApproved;
+    applyBtn.hidden = !isApproved;
+    applyBtn.dataset.proposalId = proposal.id || "";
   }
   if (rejectBtn) {
     rejectBtn.disabled = !isPending;
+    rejectBtn.hidden = !isPending;
     rejectBtn.dataset.proposalId = proposal.id || "";
   }
   const actionResultEl = document.getElementById("configProposalActionResult");
-  if (!isPending && !(actionResultEl && actionResultEl.dataset.userMessage)) {
+  if (!(isPending || isApproved) && !(actionResultEl && actionResultEl.dataset.userMessage)) {
     setProposalActionResult("");
   }
 
@@ -688,7 +738,7 @@ function renderProposalHistory(items) {
         <div class="config-proposal-history-main">
           <div class="config-proposal-history-top">
             <span class="config-proposal-id">${escapeHtml(proposal.id)}</span>
-            <span class="config-proposal-status ${escapeHtml(tone)}">${escapeHtml(proposal.status)}</span>
+            <span class="config-proposal-status ${escapeHtml(tone)}">${escapeHtml(proposalStatusLabel(proposal.status))}</span>
             <span class="config-proposal-history-type">${escapeHtml(proposalTypeLabel(proposal.proposal.proposal_type))}</span>
           </div>
           <div class="config-proposal-history-summary">${escapeHtml(proposal.summary_text || "—")}</div>
@@ -1471,16 +1521,23 @@ function setProposalAutomationResult(message, isError = false) {
 async function updateLatestProposalStatus(action) {
   const proposalId = String(LATEST_PROPOSAL?.id || "").trim();
   if (!proposalId) {
-    setProposalActionResult("No pending proposal is available to review.", true, true);
+    setProposalActionResult(action === "apply" ? "No approved proposal is available to apply." : "No pending proposal is available to review.", true, true);
     return;
   }
 
   const approveBtn = document.getElementById("configProposalApproveBtn");
+  const applyBtn = document.getElementById("configProposalApplyBtn");
   const rejectBtn = document.getElementById("configProposalRejectBtn");
   if (approveBtn) approveBtn.disabled = true;
+  if (applyBtn) applyBtn.disabled = true;
   if (rejectBtn) rejectBtn.disabled = true;
 
-  const actionLabel = action === "approve" ? "Approving" : "Rejecting";
+  const actionLabel =
+    action === "approve"
+      ? "Approving"
+      : action === "apply"
+        ? "Applying"
+        : "Rejecting";
   setProposalActionResult(`${actionLabel} proposal...`, false, true);
 
   try {
@@ -1498,6 +1555,20 @@ async function updateLatestProposalStatus(action) {
       } else {
         setProposalActionResult("Proposal approved. Apply remains a separate operator step.", false, true);
       }
+    } else if (action === "apply") {
+      const status = String(result?.status || "").trim().toLowerCase();
+      const reason = String(result?.reason || "").trim().toLowerCase();
+      if (status === "applied") {
+        setProposalActionResult("Proposal applied.", false, true);
+      } else if (reason === "already_applied") {
+        setProposalActionResult("Proposal was already applied.", false, true);
+      } else if (reason === "cannot_apply_until_approved") {
+        setProposalActionResult("Proposal must be approved before it can be applied.", true, true);
+      } else if (reason === "review_only_proposal") {
+        setProposalActionResult("This proposal is approval-only and does not support direct apply.", true, true);
+      } else {
+        setProposalActionResult(`Apply returned status: ${status || reason || "unknown"}.`, status !== "applied", true);
+      }
     } else {
       setProposalActionResult("Proposal rejected.", false, true);
     }
@@ -1514,8 +1585,30 @@ async function approveLatestProposal() {
   await updateLatestProposalStatus("approve");
 }
 
+async function applyLatestProposal() {
+  await updateLatestProposalStatus("apply");
+}
+
 async function rejectLatestProposal() {
   await updateLatestProposalStatus("reject");
+}
+
+async function evaluateAutoDraftNow() {
+  setProposalAutomationResult("Evaluating recommendations...");
+
+  try {
+    const result = await fetchJson("/api/config_proposals/auto_draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 30000);
+
+    setProposalAutomationMessageFromStatus(result);
+    await loadProposalState();
+  } catch (err) {
+    console.error(err);
+    setProposalAutomationResult(`Recommendation evaluation failed: ${err.message}`, true);
+  }
 }
 
 async function generateProposalNow() {
@@ -1528,19 +1621,7 @@ async function generateProposalNow() {
       body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
     }, 30000);
 
-    const status = String(result?.status || "").trim().toLowerCase();
-    if (status === "created") {
-      const delivery = result?.notification_sent === false ? " Telegram delivery needs review." : "";
-      const createdCount = Number(result?.created_count || 0);
-      setProposalAutomationResult(`${createdCount || 1} review proposal${createdCount === 1 || !createdCount ? "" : "s"} created.${result.proposal_id ? ` Latest ${result.proposal_id}.` : ""}${delivery}`.trim());
-    } else if (status === "deduped" || status === "deduped_recent") {
-      setProposalAutomationResult(`Existing pending proposal ${result.proposal_id || ""} already matches the current advisory state.`.trim());
-    } else if (status === "noop") {
-      setProposalAutomationResult("No proposal was generated because no new guardrail or satellite review changes qualified.");
-    } else {
-      setProposalAutomationResult(`Proposal generation returned status: ${status || "unknown"}.`);
-    }
-
+    setProposalAutomationMessageFromStatus(result);
     await loadProposalState();
   } catch (err) {
     console.error(err);
@@ -1554,8 +1635,10 @@ window.renderAssetRows = applyAssetFilter;
 window.setAssetMode = setAssetMode;
 window.saveRiskControls = saveRiskControls;
 window.applyConfigPreset = applyConfigPreset;
+window.evaluateAutoDraftNow = evaluateAutoDraftNow;
 window.generateProposalNow = generateProposalNow;
 window.approveLatestProposal = approveLatestProposal;
+window.applyLatestProposal = applyLatestProposal;
 window.rejectLatestProposal = rejectLatestProposal;
 
 window.addEventListener("DOMContentLoaded", () => {

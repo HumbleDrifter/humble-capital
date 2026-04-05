@@ -242,6 +242,7 @@
       </div>
 
       <div class="configuration-action-row config-proposal-automation-actions">
+        <button class="btn btn-secondary" type="button" onclick="evaluateAutoDraftNow()">Evaluate Recommendations</button>
         <button class="btn btn-secondary" type="button" onclick="generateProposalNow()">Generate Proposal Now</button>
       </div>
       <div class="config-proposal-automation-result" id="configProposalAutomationResult">No proposal generation run yet.</div>
@@ -322,6 +323,7 @@
 
             <div class="configuration-action-row config-proposal-review-actions" id="configProposalActions" hidden>
               <button class="btn btn-primary" type="button" id="configProposalApproveBtn" onclick="approveLatestProposal()">Approve Proposal</button>
+              <button class="btn btn-primary" type="button" id="configProposalApplyBtn" onclick="applyLatestProposal()" hidden>Apply Proposal</button>
               <button class="btn btn-secondary" type="button" id="configProposalRejectBtn" onclick="rejectLatestProposal()">Reject Proposal</button>
             </div>
             <div class="config-proposal-action-result" id="configProposalActionResult" hidden></div>

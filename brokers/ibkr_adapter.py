@@ -1,3 +1,4 @@
+import asyncio
 import os
 import threading
 import traceback
@@ -91,6 +92,17 @@ class IBKRAdapter(BrokerAdapter):
             bool(runtime.get("paper_mode")),
         )
 
+    def _ensure_thread_event_loop(self):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                raise RuntimeError("current event loop is closed")
+            return loop
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
+
     def _get_connection(self, IB):
         global _SHARED_IB, _SHARED_RUNTIME_KEY
 
@@ -117,6 +129,7 @@ class IBKRAdapter(BrokerAdapter):
 
             ib = IB()
             try:
+                self._ensure_thread_event_loop()
                 ib.connect(
                     runtime.get("host"),
                     int(runtime.get("port") or 0),
@@ -364,6 +377,7 @@ class IBKRAdapter(BrokerAdapter):
 
         try:
             ib = self._get_connection(IB)
+            self._ensure_thread_event_loop()
             open_orders = list(ib.reqAllOpenOrders() or [])
             positions = list(ib.positions() or [])
             self._mark_ready()
@@ -466,6 +480,12 @@ class IBKRAdapter(BrokerAdapter):
         except Exception as exc:
             self._set_last_error(exc)
             return broker_result(False, reason="ib_insync_unavailable", broker=self.name, error=str(exc))
+
+        try:
+            self._ensure_thread_event_loop()
+        except Exception as exc:
+            self._set_last_error(exc)
+            return broker_result(False, reason="ibkr_event_loop_failed", broker=self.name, error=str(exc))
 
         connection_reused = False
         reconnect_attempted = False

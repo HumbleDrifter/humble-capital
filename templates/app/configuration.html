@@ -246,6 +246,48 @@
         <button class="btn btn-secondary" type="button" onclick="generateProposalNow()">Generate Proposal Now</button>
       </div>
       <div class="config-proposal-automation-result" id="configProposalAutomationResult">No proposal generation run yet.</div>
+
+      <div class="divider"></div>
+
+      <div class="config-proposal-automation-head">
+        <div>
+          <div class="config-proposal-eyebrow">Options Paper Trading</div>
+          <div class="config-proposal-automation-copy">Check IBKR paper-trading readiness and create a conservative test-only options proposal that still follows the normal approval and queue workflow.</div>
+        </div>
+      </div>
+
+      <div class="config-proposal-grid">
+        <div>
+          <div class="config-proposal-label">Health Status</div>
+          <div class="config-proposal-value" id="optionsHealthStatus">Not checked</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Paper Mode</div>
+          <div class="config-proposal-value" id="optionsHealthPaperMode">—</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Connected</div>
+          <div class="config-proposal-value" id="optionsHealthConnected">—</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Endpoint</div>
+          <div class="config-proposal-value" id="optionsHealthEndpoint">—</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Account</div>
+          <div class="config-proposal-value" id="optionsHealthAccount">—</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Reason</div>
+          <div class="config-proposal-value" id="optionsHealthReason">—</div>
+        </div>
+      </div>
+
+      <div class="configuration-action-row config-proposal-automation-actions">
+        <button class="btn btn-secondary" type="button" onclick="loadOptionsHealth()">Refresh IBKR Health</button>
+        <button class="btn btn-secondary" type="button" onclick="createTestOptionsProposal()">Create Test Options Proposal</button>
+      </div>
+      <div class="config-proposal-automation-result" id="optionsHealthResult">Options paper-trading health has not been checked yet.</div>
     </div>
 
     <div class="divider"></div>
@@ -324,6 +366,7 @@
             <div class="configuration-action-row config-proposal-review-actions" id="configProposalActions" hidden>
               <button class="btn btn-primary" type="button" id="configProposalApproveBtn" onclick="approveLatestProposal()">Approve Proposal</button>
               <button class="btn btn-primary" type="button" id="configProposalApplyBtn" onclick="applyLatestProposal()" hidden>Apply Proposal</button>
+              <button class="btn btn-primary" type="button" id="configProposalExecuteOptionsBtn" onclick="executeLatestOptionsProposal()" hidden>Execute Options Proposal</button>
               <button class="btn btn-secondary" type="button" id="configProposalRejectBtn" onclick="rejectLatestProposal()">Reject Proposal</button>
             </div>
             <div class="config-proposal-action-result" id="configProposalActionResult" hidden></div>

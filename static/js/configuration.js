@@ -12,6 +12,7 @@ let LATEST_PROPOSAL = null;
 let LATEST_AUTOMATION_MESSAGE = "";
 let RECENT_PROPOSALS = [];
 let LAST_CONFIGURATION_REFRESH_AT = 0;
+let LATEST_OPTIONS_HEALTH = null;
 const PERCENT_FIELD_IDS = [
   "satellite_total_target",
   "satellite_total_max",
@@ -69,7 +70,7 @@ function authUrl(path) {
   return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
 }
 
-async function fetchJson(path, options = {}, timeoutMs = 30000) {
+async function requestJson(path, options = {}, timeoutMs = 30000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -88,11 +89,11 @@ async function fetchJson(path, options = {}, timeoutMs = 30000) {
       throw new Error(`Invalid JSON response from ${path}`);
     }
 
-    if (!res.ok || data.ok === false) {
-      throw new Error(data.error || `HTTP ${res.status}`);
-    }
-
-    return data;
+    return {
+      ...data,
+      _httpOk: res.ok,
+      _httpStatus: res.status
+    };
   } catch (err) {
     if (err.name === "AbortError") {
       throw new Error(`Request timed out for ${path}`);
@@ -565,6 +566,17 @@ function isProposalApplyCapable(proposal) {
   return proposalType === "config_guardrail";
 }
 
+function isOptionsProposalType(proposal) {
+  const proposalRecord = safeObject(proposal);
+  const nestedProposal = safeObject(proposalRecord.proposal);
+  const proposalType = String(nestedProposal.proposal_type || proposalRecord.proposal_type || "").trim().toLowerCase();
+  return proposalType === "options_order_recommendation";
+}
+
+function isOptionsProposalExecuteCapable(proposal) {
+  return isOptionsProposalType(proposal) && String(safeObject(proposal).status || "").trim().toLowerCase() === "approved";
+}
+
 function setProposalAutomationMessageFromStatus(result) {
   const status = String(result?.status || "").trim().toLowerCase();
   if (status === "created" || status === "drafted") {
@@ -640,6 +652,12 @@ function renderProposalLatest(data) {
   LATEST_PROPOSAL = proposal && proposal.id ? proposal : null;
 
   if (!proposal || !proposal.id) {
+    const executeOptionsBtn = document.getElementById("configProposalExecuteOptionsBtn");
+    if (executeOptionsBtn) {
+      executeOptionsBtn.disabled = true;
+      executeOptionsBtn.hidden = true;
+      executeOptionsBtn.dataset.proposalId = "";
+    }
     if (emptyEl) emptyEl.hidden = false;
     if (contentEl) contentEl.hidden = true;
     renderAutomationOverview();
@@ -655,6 +673,7 @@ function renderProposalLatest(data) {
   const isPending = proposal.status === "pending";
   const isApproved = proposal.status === "approved";
   const isApplyCapable = isProposalApplyCapable(proposal);
+  const isOptionsExecuteCapable = isOptionsProposalExecuteCapable(proposal);
   const statusEl = document.getElementById("configProposalStatus");
   if (statusEl) {
     statusEl.textContent = proposalStatusLabel(proposal.status || "—");
@@ -770,8 +789,9 @@ function renderProposalLatest(data) {
   const actionsEl = document.getElementById("configProposalActions");
   const approveBtn = document.getElementById("configProposalApproveBtn");
   const applyBtn = document.getElementById("configProposalApplyBtn");
+  const executeOptionsBtn = document.getElementById("configProposalExecuteOptionsBtn");
   const rejectBtn = document.getElementById("configProposalRejectBtn");
-  if (actionsEl) actionsEl.hidden = !(isPending || (isApproved && isApplyCapable));
+  if (actionsEl) actionsEl.hidden = !(isPending || (isApproved && (isApplyCapable || isOptionsExecuteCapable)));
   if (approveBtn) {
     approveBtn.disabled = !isPending;
     approveBtn.hidden = !isPending;
@@ -782,13 +802,18 @@ function renderProposalLatest(data) {
     applyBtn.hidden = !(isApproved && isApplyCapable);
     applyBtn.dataset.proposalId = proposal.id || "";
   }
+  if (executeOptionsBtn) {
+    executeOptionsBtn.disabled = !(isApproved && isOptionsExecuteCapable);
+    executeOptionsBtn.hidden = !(isApproved && isOptionsExecuteCapable);
+    executeOptionsBtn.dataset.proposalId = proposal.id || "";
+  }
   if (rejectBtn) {
     rejectBtn.disabled = !isPending;
     rejectBtn.hidden = !isPending;
     rejectBtn.dataset.proposalId = proposal.id || "";
   }
   const actionResultEl = document.getElementById("configProposalActionResult");
-  if (!(isPending || (isApproved && isApplyCapable)) && !(actionResultEl && actionResultEl.dataset.userMessage)) {
+  if (!(isPending || (isApproved && (isApplyCapable || isOptionsExecuteCapable))) && !(actionResultEl && actionResultEl.dataset.userMessage)) {
     setProposalActionResult("");
   }
 
@@ -1421,6 +1446,24 @@ async function loadProposalState() {
   }
 }
 
+async function loadOptionsHealth() {
+  try {
+    const data = await requestJson("/api/options/ibkr/health", {}, 20000);
+    renderOptionsHealth(data);
+  } catch (err) {
+    console.warn("Options health load failed:", err.message);
+    renderOptionsHealth({
+      ok: false,
+      paper_mode: false,
+      connected: false,
+      host: "",
+      port: "",
+      account: "",
+      reason: err.message
+    });
+  }
+}
+
 async function loadConfigState() {
   const cfgData = await fetchJson("/api/config", {}, 20000);
   const cfg = cfgData.config || {};
@@ -1449,8 +1492,7 @@ async function loadConfiguration() {
 
   try {
     await Promise.all([loadTradableAssets(), loadConfigState(), loadPortfolioSnapshot()]);
-    await loadAdvisoryState();
-    await loadProposalState();
+    await Promise.all([loadAdvisoryState(), loadProposalState(), loadOptionsHealth()]);
     drawAssetRows();
     applyPresetFromUrlIfPresent();
     setStatus(`Loaded ${ASSETS.length} tradable USD assets. Portfolio guardrails and advanced sections are ready.`);
@@ -1602,12 +1644,15 @@ async function updateLatestProposalStatus(action) {
     return;
   }
   const proposalApplyCapable = isProposalApplyCapable(LATEST_PROPOSAL);
+  const proposalIsOptionsType = isOptionsProposalType(LATEST_PROPOSAL);
 
   const approveBtn = document.getElementById("configProposalApproveBtn");
   const applyBtn = document.getElementById("configProposalApplyBtn");
+  const executeOptionsBtn = document.getElementById("configProposalExecuteOptionsBtn");
   const rejectBtn = document.getElementById("configProposalRejectBtn");
   if (approveBtn) approveBtn.disabled = true;
   if (applyBtn) applyBtn.disabled = true;
+  if (executeOptionsBtn) executeOptionsBtn.disabled = true;
   if (rejectBtn) rejectBtn.disabled = true;
 
   const actionLabel =
@@ -1630,6 +1675,8 @@ async function updateLatestProposalStatus(action) {
         setProposalActionResult("Proposal approved and applied based on the current After Approval setting.", false, true);
       } else if (result?.auto_apply_attempted && result?.auto_apply_ok === false) {
         setProposalActionResult("Proposal was approved, but the automatic apply step needs review.", true, true);
+      } else if (proposalIsOptionsType) {
+        setProposalActionResult("Options proposal approved. Execution remains a separate operator step through the queue.", false, true);
       } else if (!proposalApplyCapable) {
         setProposalActionResult("Proposal approved. This proposal is review-only and does not have a separate apply step.", false, true);
       } else {
@@ -1676,8 +1723,76 @@ async function applyLatestProposal() {
   await updateLatestProposalStatus("apply");
 }
 
+async function executeLatestOptionsProposal() {
+  const proposalId = String(LATEST_PROPOSAL?.id || "").trim();
+  if (!proposalId || !isOptionsProposalExecuteCapable(LATEST_PROPOSAL)) {
+    setProposalActionResult("No approved options proposal is available to execute.", true, true);
+    return;
+  }
+
+  const executeOptionsBtn = document.getElementById("configProposalExecuteOptionsBtn");
+  if (executeOptionsBtn) executeOptionsBtn.disabled = true;
+  setProposalActionResult("Queueing approved options proposal...", false, true);
+
+  try {
+    const result = await requestJson(`/api/options/proposals/${encodeURIComponent(proposalId)}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 30000);
+
+    if (result.ok) {
+      setProposalActionResult(
+        `Options proposal ${proposalId} queued for execution review.${result.message ? ` ${result.message}` : ""}`.trim(),
+        false,
+        true
+      );
+    } else {
+      setProposalActionResult(
+        `Options execution failed: ${String(result.reason || result.error || `HTTP ${result._httpStatus || "unknown"}`).trim()}.`,
+        true,
+        true
+      );
+    }
+    await loadProposalState();
+  } catch (err) {
+    console.error(err);
+    setProposalActionResult(`Options execution failed: ${err.message}`, true, true);
+    await loadProposalState();
+  }
+}
+
 async function rejectLatestProposal() {
   await updateLatestProposalStatus("reject");
+}
+
+async function createTestOptionsProposal() {
+  setOptionsHealthResult("Creating test options proposal...");
+
+  try {
+    const result = await requestJson("/api/options/proposals/test_submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 30000);
+
+    if (result.ok && (result.status === "created" || result.status === "deduped" || result.status === "deduped_recent")) {
+      const message = result.status === "created"
+        ? `Test options proposal ${result.proposal_id || ""} created with status ${result.status}.`
+        : `Matching test options proposal ${result.proposal_id || ""} already exists with status ${result.status}.`;
+      setOptionsHealthResult(message.trim(), false);
+      await loadProposalState();
+      return;
+    }
+
+    setOptionsHealthResult(
+      `Test options proposal failed: ${String(result.reason || result.error || result.status || `HTTP ${result._httpStatus || "unknown"}`).trim()}.`,
+      true
+    );
+  } catch (err) {
+    console.error(err);
+    setOptionsHealthResult(`Test options proposal failed: ${err.message}`, true);
+  }
 }
 
 async function evaluateAutoDraftNow() {
@@ -1696,6 +1811,47 @@ async function evaluateAutoDraftNow() {
     console.error(err);
     setProposalAutomationResult(`Recommendation evaluation failed: ${err.message}`, true);
   }
+}
+
+function setOptionsHealthResult(message = "", isError = false) {
+  const el = document.getElementById("optionsHealthResult");
+  if (!el) return;
+  el.textContent = String(message || "").trim() || "Options paper-trading health has not been checked yet.";
+  el.className = isError ? "config-proposal-automation-result error" : "config-proposal-automation-result";
+}
+
+function renderOptionsHealth(data) {
+  const payload = safeObject(data);
+  LATEST_OPTIONS_HEALTH = payload;
+
+  const valueMap = {
+    optionsHealthStatus: payload.ok ? "Ready" : "Needs Attention",
+    optionsHealthPaperMode: payload.paper_mode ? "On" : "Off",
+    optionsHealthConnected: payload.connected ? "Connected" : "Disconnected",
+    optionsHealthEndpoint: payload.host && payload.port ? `${payload.host}:${payload.port}` : "—",
+    optionsHealthAccount: String(payload.account || "").trim() || "—",
+    optionsHealthReason: String(payload.reason || payload.error || "").trim() || "—"
+  };
+
+  Object.entries(valueMap).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
+
+  if (payload.ok) {
+    setOptionsHealthResult("IBKR options paper-trading health is ready for operator testing.");
+  } else {
+    const reason = String(payload.reason || payload.error || "not_ready").trim();
+    setOptionsHealthResult(`IBKR options paper-trading is not ready: ${reason}.`, true);
+  }
+}
+
+async function fetchJson(path, options = {}, timeoutMs = 30000) {
+  const data = await requestJson(path, options, timeoutMs);
+  if (!data._httpOk || data.ok === false) {
+    throw new Error(data.error || data.reason || `HTTP ${data._httpStatus}`);
+  }
+  return data;
 }
 
 async function generateProposalNow() {
@@ -1724,8 +1880,11 @@ window.saveRiskControls = saveRiskControls;
 window.applyConfigPreset = applyConfigPreset;
 window.evaluateAutoDraftNow = evaluateAutoDraftNow;
 window.generateProposalNow = generateProposalNow;
+window.loadOptionsHealth = loadOptionsHealth;
+window.createTestOptionsProposal = createTestOptionsProposal;
 window.approveLatestProposal = approveLatestProposal;
 window.applyLatestProposal = applyLatestProposal;
+window.executeLatestOptionsProposal = executeLatestOptionsProposal;
 window.rejectLatestProposal = rejectLatestProposal;
 
 window.addEventListener("DOMContentLoaded", () => {

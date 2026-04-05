@@ -1,0 +1,56 @@
+# Local source of truth for tradingbot secrets, runtime config, and deploy target settings.
+# Copy this to deploy/managed_env.local.toml and fill only the values you intend to manage locally.
+# Blank values are skipped by default during merge/deploy so working remote secrets are preserved
+# unless you explicitly force-clear them with FORCE_CLEAR_BLANKS=true or --force-clear.
+
+[secrets]
+# True secrets / credentials. Leave blank locally unless you intend to set or rotate them.
+COINBASE_API_KEY = ""
+COINBASE_API_SECRET = ""
+WEBHOOK_SHARED_SECRET = ""
+WEBHOOK_SHARED_SECRETS = ""
+INTERNAL_API_SECRET = ""
+STATUS_SECRET = ""
+APP_SESSION_SECRET = ""
+TELEGRAM_BOT_TOKEN = ""
+TELEGRAM_CHAT_ID = ""
+
+[runtime]
+# Runtime config / feature flags / risk controls
+# Broker / options grouped config
+IBKR_ENABLED = false
+IBKR_PAPER_TRADING = true
+IBKR_HOST = "127.0.0.1"
+IBKR_PORT_PAPER = 7497
+IBKR_PORT_LIVE = 7496
+IBKR_CLIENT_ID = 91
+IBKR_ACCOUNT = "" # leave blank until you have the correct paper/live account id
+IBKR_ALLOW_LIVE_OPTIONS = false
+IBKR_OPTIONS_EXCHANGE = "SMART"
+IBKR_OPTIONS_CURRENCY = "USD"
+
+OPTIONS_ENABLED = false
+OPTIONS_REQUIRE_APPROVAL = true
+OPTIONS_PAPER_ONLY = true
+OPTIONS_ALLOWED_UNDERLYINGS = "SPY,QQQ"
+OPTIONS_MIN_DTE = 1
+OPTIONS_MAX_DTE = 45
+OPTIONS_MAX_CONTRACTS = 5
+OPTIONS_MAX_PREMIUM_USD = 2500.0
+OPTIONS_ALLOW_0DTE = false
+
+[deployment_target]
+# Deployment target settings are local-only and are not written into the server .env.
+# Server deploy verification expects the remote env to remain at /root/tradingbot/.env.
+REMOTE_HOST = ""
+REMOTE_PORT = 22
+REMOTE_USER = "root"
+REMOTE_ENV_PATH = "/root/tradingbot/.env"
+REMOTE_SERVICE_NAME = "tradingbot"
+REMOTE_WORKER_SERVICE_NAME = "config_proposal_worker"
+SSH_KEY_PATH = ""
+FORCE_CLEAR_BLANKS = false # explicit operator opt-in for clearing remote values with local blanks
+
+[deployment_secrets]
+# Local-only deploy credential. Leave blank if you use SSH keys.
+DEPLOY_SSH_PASSWORD = ""

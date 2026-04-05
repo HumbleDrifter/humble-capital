@@ -2157,6 +2157,14 @@ tbody tr:last-child td {
   text-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
 }
 
+.kpi-value.positive {
+  color: var(--good);
+}
+
+.kpi-value.negative {
+  color: var(--bad);
+}
+
 .mini-stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -157,8 +157,8 @@ function cacheBadge(cache) {
 
 function displayClass(cls) {
   if (cls === "core") return "core";
-  if (cls === "satellite_active") return "satellite";
-  if (cls === "satellite_blocked") return "blocked";
+  if (cls === "satellite_active") return "satellite assets";
+  if (cls === "satellite_blocked") return "blocked satellite assets";
   if (cls === "dust") return "remainder";
   if (cls === "nontradable") return "nontradable";
   return cls || "—";
@@ -961,7 +961,7 @@ function renderPortfolio(data) {
   const allocationText = document.getElementById("allocationText");
   if (allocationText) {
     allocationText.textContent =
-      `Cash ${fmtPct(cashWeight)} | Core ${fmtPct(coreWeight)} | Satellite ${fmtPct(satWeight)}`;
+      `Cash ${fmtPct(cashWeight)} | Core ${fmtPct(coreWeight)} | Satellite Assets ${fmtPct(satWeight)}`;
   }
 
   const segCash = document.getElementById("segCash");
@@ -978,7 +978,7 @@ function renderPortfolio(data) {
   }
   if (segSat) {
     segSat.style.width = `${Math.max(0, satWeight * 100)}%`;
-    segSat.textContent = satWeight > 0.08 ? "Satellite" : "";
+    segSat.textContent = satWeight > 0.12 ? "Satellite Assets" : "";
   }
 
   const portfolioMeta = document.getElementById("portfolioMeta");

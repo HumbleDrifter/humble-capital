@@ -78,11 +78,16 @@ function setConsole(message, isError = false) {
 
 function renderSummary(data) {
   const s = data.summary || {};
+  const realizedPnl = Number(s.realized_pnl_total || 0);
+  const realizedEl = document.getElementById("paRealized");
 
   document.getElementById("paTotal").textContent = fmtUsd(s.total_value_usd);
   document.getElementById("paCash").textContent = fmtUsd(s.usd_cash);
   document.getElementById("paInvested").textContent = fmtUsd(s.invested_usd);
-  document.getElementById("paRealized").textContent = fmtUsd(s.realized_pnl_total);
+  if (realizedEl) {
+    realizedEl.textContent = fmtUsd(realizedPnl);
+    realizedEl.className = `kpi-value${realizedPnl > 0 ? " positive" : realizedPnl < 0 ? " negative" : ""}`;
+  }
 
   document.getElementById("paAssetCount").textContent = String(s.asset_count || 0);
   document.getElementById("paTradeCount").textContent = String(s.trade_count || 0);
@@ -95,7 +100,7 @@ function renderSummary(data) {
   const satW = Number(s.satellite_weight || 0);
 
   document.getElementById("paAllocationText").textContent =
-    `Cash ${fmtPct(cashW)} | Core ${fmtPct(coreW)} | Satellite ${fmtPct(satW)}`;
+    `Cash ${fmtPct(cashW)} | Core ${fmtPct(coreW)} | Satellite Assets ${fmtPct(satW)}`;
 
   const segCash = document.getElementById("paSegCash");
   const segCore = document.getElementById("paSegCore");
@@ -107,7 +112,7 @@ function renderSummary(data) {
 
   segCash.textContent = cashW > 0.08 ? "Cash" : "";
   segCore.textContent = coreW > 0.08 ? "Core" : "";
-  segSat.textContent = satW > 0.08 ? "Satellite" : "";
+  segSat.textContent = satW > 0.12 ? "Satellite Assets" : "";
 
   const meta = document.getElementById("analyticsMeta");
   if (meta) {
@@ -151,13 +156,13 @@ function renderAllocations(data) {
 
   function displayClass(cls) {
     if (cls === "core") return "core";
-    if (cls === "satellite_active") return "satellite";
+    if (cls === "satellite_active") return "satellite assets";
     if (cls === "dust") return "remainder";
     return cls || "—";
   }
 
   tbody.innerHTML = rows.length
-    ? rows.map(r => `
+    ? rows.map((r) => `
       <tr>
         <td>${r.product_id}</td>
         <td>${displayClass(r.class)}</td>
@@ -214,7 +219,7 @@ function buildTrendSvg(points, key, labelFormatter = fmtUsd) {
   ];
 
   return `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Portfolio history chart">
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Realized PnL history chart">
       <defs>
         <linearGradient id="analyticsTrendArea" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="rgba(${areaAccent}, 0.34)" />
@@ -264,56 +269,42 @@ function renderHistory(data) {
 
   if (!host) return;
 
-  const points = data.points || [];
-  const type = data.series_type || "realized_pnl";
+  const points = Array.isArray(data.points) ? data.points : [];
+  const realizedPoints = points.filter((point) => Number.isFinite(Number(point?.realized_pnl)));
 
-  if (type === "empty") {
+  if ((data.series_type || "realized_pnl") === "empty") {
     title.textContent = "History Unavailable";
     if (meta) meta.textContent = "No portfolio history series is available yet.";
     host.innerHTML = `<div class="trend-chart-empty">No history data found for the selected range.</div>`;
     return;
   }
 
-  if (!points.length) {
-    title.textContent = type === "portfolio_value" ? "Portfolio Value History" : "Realized PnL History";
-    if (meta) {
-      meta.textContent = type === "portfolio_value"
-        ? "No portfolio value history found."
-        : "No realized PnL history found.";
-    }
+  if (!realizedPoints.length) {
+    title.textContent = "Realized PnL History";
+    if (meta) meta.textContent = "No realized PnL history found.";
     host.innerHTML = `<div class="trend-chart-empty">No history data found for the selected range.</div>`;
     return;
   }
 
-  const key = type === "portfolio_value" ? "equity_usd" : "realized_pnl";
-  const formatter = fmtUsd;
-  const values = points.map((point) => Number(point[key] || 0));
+  const values = realizedPoints.map((point) => Number(point.realized_pnl || 0));
   const startValue = values[0] || 0;
   const currentValue = values[values.length - 1] || 0;
   const rangeDelta = currentValue - startValue;
   const lowValue = Math.min(...values);
   const tone = rangeDelta >= 0 ? "positive" : "negative";
 
-  title.textContent = type === "portfolio_value" ? "Portfolio Value History" : "Realized PnL History";
-  if (meta) {
-    meta.textContent = type === "portfolio_value"
-      ? `${points.length} portfolio value point(s) in selected range`
-      : `${points.length} realized PnL point(s) in selected range`;
-  }
+  title.textContent = "Realized PnL History";
+  if (meta) meta.textContent = `${realizedPoints.length} realized PnL point(s) in selected range`;
 
   host.innerHTML = `
     <div class="trend-chart-shell">
       <div class="trend-chart-summary">
-        ${buildTrendStat(type === "portfolio_value" ? "Current Value" : "Current PnL", formatter(currentValue), tone)}
-        ${buildTrendStat("Range Change", `${rangeDelta >= 0 ? "+" : "-"}${formatter(Math.abs(rangeDelta))}`, tone)}
-        ${buildTrendStat("Low Watermark", formatter(lowValue))}
+        ${buildTrendStat("Current PnL", fmtUsd(currentValue), tone)}
+        ${buildTrendStat("Range Change", `${rangeDelta >= 0 ? "+" : "-"}${fmtUsd(Math.abs(rangeDelta))}`, tone)}
+        ${buildTrendStat("Low Watermark", fmtUsd(lowValue))}
       </div>
-      ${buildTrendSvg(points, key, formatter)}
-      <div class="trend-chart-note">
-        ${type === "portfolio_value"
-          ? "Persisted portfolio history is powering the account value trend for the selected range."
-          : "Persisted realized PnL entries are plotted across the selected range."}
-      </div>
+      ${buildTrendSvg(realizedPoints, "realized_pnl", fmtUsd)}
+      <div class="trend-chart-note">Persisted realized PnL entries are plotted across the selected range.</div>
     </div>
   `;
 }

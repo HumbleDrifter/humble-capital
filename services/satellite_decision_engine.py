@@ -7,6 +7,9 @@ REPLACEMENT_SCORE_DELTA_THRESHOLD = 8.0
 RECENT_PROPOSAL_COOLDOWN_MINUTES = 360
 RECENT_REPLACEMENT_COOLDOWN_MINUTES = 720
 MIN_STABILITY_HITS = 2
+MIN_CONSECUTIVE_TOP_BAND_HITS = 2
+MIN_REPLACEMENT_STABILITY_HITS = 3
+MIN_REPLACEMENT_CONSECUTIVE_HITS = 2
 STABILITY_WINDOW_CYCLES = 6
 ALMOST_READY_MIN_NET_SCORE = 55.0
 
@@ -97,24 +100,76 @@ def _recent_candidate_maps(recent_proposals):
     }
 
 
+def _recent_proposal_block(product_id, recent_candidate_ids, held=False):
+    return bool(product_id) and not held and product_id in recent_candidate_ids
+
+
+def _recent_replacement_block(replacement_target, recent_replacement_targets):
+    return bool(replacement_target) and replacement_target in recent_replacement_targets
+
+
 def _stability_snapshot(product_id, cycles, top_n):
     sorted_cycles = sorted(_safe_list(cycles), key=lambda item: int(_safe_dict(item).get("logged_at") or 0), reverse=True)
     observed_cycles = 0
     stability_hits = 0
+    consecutive_top_band_hits = 0
+    consecutive_open = True
+    rank_positions = []
+    score_values = []
 
     for cycle in sorted_cycles[:STABILITY_WINDOW_CYCLES]:
         ranking = _safe_list(_safe_dict(cycle).get("ranking_by_net_score"))
         if not ranking:
             continue
         observed_cycles += 1
-        top_rows = ranking[: max(1, int(top_n or 1))]
-        if any(str(_safe_dict(row).get("product_id") or "").strip() == product_id for row in top_rows):
+        top_band = max(1, int(top_n or 1))
+        rank_position = None
+        rank_score = None
+
+        for idx, row in enumerate(ranking, start=1):
+            row = _safe_dict(row)
+            if str(row.get("product_id") or "").strip() != product_id:
+                continue
+            rank_position = idx
+            rank_score = _safe_float(row.get("net_score"))
+            break
+
+        if rank_position is not None:
+            rank_positions.append(rank_position)
+            score_values.append(rank_score)
+
+        in_top_band = rank_position is not None and rank_position <= top_band
+        if in_top_band:
             stability_hits += 1
+            if consecutive_open:
+                consecutive_top_band_hits += 1
+        else:
+            consecutive_open = False
+
+    if observed_cycles <= 0:
+        stability_ok = True
+        replacement_stability_ok = True
+    else:
+        required_hits = min(MIN_STABILITY_HITS, observed_cycles)
+        required_consecutive = min(MIN_CONSECUTIVE_TOP_BAND_HITS, observed_cycles)
+        stability_ok = stability_hits >= required_hits and consecutive_top_band_hits >= required_consecutive
+
+        required_replacement_hits = min(MIN_REPLACEMENT_STABILITY_HITS, observed_cycles)
+        required_replacement_consecutive = min(MIN_REPLACEMENT_CONSECUTIVE_HITS, observed_cycles)
+        replacement_stability_ok = (
+            stability_hits >= required_replacement_hits
+            and consecutive_top_band_hits >= required_replacement_consecutive
+        )
 
     return {
         "stability_hits": stability_hits,
         "stability_window_cycles": observed_cycles,
-        "stability_ok": observed_cycles < MIN_STABILITY_HITS or stability_hits >= MIN_STABILITY_HITS,
+        "consecutive_top_band_hits": consecutive_top_band_hits,
+        "observed_rank_cycles": len(rank_positions),
+        "average_rank_position": round(sum(rank_positions) / len(rank_positions), 2) if rank_positions else None,
+        "recent_score_range": round(max(score_values) - min(score_values), 2) if len(score_values) >= 2 else 0.0,
+        "stability_ok": stability_ok,
+        "replacement_stability_ok": replacement_stability_ok,
     }
 
 
@@ -253,7 +308,7 @@ def build_satellite_decisions(latest_rows, *, cycles=None, current_system_select
             if not stability["stability_ok"] and not held:
                 blockers.append("low_persistence")
 
-            if product_id in recent_candidate_ids and not held:
+            if _recent_proposal_block(product_id, recent_candidate_ids, held=held):
                 blockers.append("recent_proposal_suppression")
 
             room_available = held or max_active is None or active_count < max_active
@@ -273,7 +328,9 @@ def build_satellite_decisions(latest_rows, *, cycles=None, current_system_select
                 replacement_candidate_id = str(_safe_dict(weakest_active).get("product_id") or "").strip() if weakest_active else ""
                 replacement_score_delta = round(net_score - weakest_score, 2) if weakest_score is not None else None
 
-                if replacement_candidate_id and replacement_candidate_id in recent_replacement_targets:
+                if not stability["replacement_stability_ok"] and not held:
+                    blockers.append("replacement_persistence")
+                if _recent_replacement_block(replacement_candidate_id, recent_replacement_targets):
                     blockers.append("replacement_cooldown")
                 if replacement_score_delta is None or replacement_score_delta < REPLACEMENT_SCORE_DELTA_THRESHOLD:
                     blockers.append("insufficient_replacement_gap")
@@ -307,6 +364,10 @@ def build_satellite_decisions(latest_rows, *, cycles=None, current_system_select
                 "replacement_score_delta": replacement_score_delta,
                 "stability_hits": stability["stability_hits"],
                 "stability_window_cycles": stability["stability_window_cycles"],
+                "consecutive_top_band_hits": stability["consecutive_top_band_hits"],
+                "observed_rank_cycles": stability["observed_rank_cycles"],
+                "average_rank_position": stability["average_rank_position"],
+                "recent_score_range": stability["recent_score_range"],
                 **portfolio_context,
             }
         )

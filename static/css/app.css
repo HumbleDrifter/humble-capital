@@ -3017,6 +3017,21 @@ tbody tr:last-child td {
   color: var(--bad);
 }
 
+.config-proposal-review-actions {
+  margin-top: 16px;
+}
+
+.config-proposal-action-result {
+  margin-top: 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.config-proposal-action-result.error {
+  color: var(--bad);
+}
+
 .config-proposal-empty,
 .config-proposal-history-empty {
   color: var(--text-dim);
@@ -3222,6 +3237,19 @@ tbody tr:last-child td {
   color: var(--text-soft);
   font-size: 13px;
   line-height: 1.6;
+}
+
+.config-proposal-history-type {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .config-proposal-history-meta {

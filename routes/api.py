@@ -31,7 +31,7 @@ from portfolio import (
     portfolio_summary,
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
-from services.config_proposal_service import generate_review_proposals
+from services.config_proposal_service import approve_config_proposal, generate_review_proposals, reject_config_proposal
 from shadow_rotation_report import build_shadow_rotation_report
 from storage import get_portfolio_history_since
 from storage import get_latest_config_proposal_any_status, list_recent_config_proposals
@@ -1624,6 +1624,15 @@ def _build_shadow_rotation_report():
     return build_shadow_rotation_report(window_hours=24)
 
 
+def _proposal_actor():
+    return (
+        str(session.get("username") or "").strip()
+        or str(session.get("email") or "").strip()
+        or str(session.get("user_id") or "").strip()
+        or None
+    )
+
+
 # -------------------------------------------------------------------
 # Session/bootstrap helpers
 # -------------------------------------------------------------------
@@ -1876,6 +1885,26 @@ def api_config_proposals_generate():
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/config_proposals/<proposal_id>/approve", methods=["POST"])
+@require_admin_auth
+def api_config_proposals_approve(proposal_id):
+    try:
+        result = approve_config_proposal(proposal_id, actor=_proposal_actor())
+        return jsonify(result), (200 if result.get("ok") else 400)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "proposal_id": str(proposal_id or "").strip()}), 500
+
+
+@api_bp.route("/api/config_proposals/<proposal_id>/reject", methods=["POST"])
+@require_admin_auth
+def api_config_proposals_reject(proposal_id):
+    try:
+        result = reject_config_proposal(proposal_id, actor=_proposal_actor())
+        return jsonify(result), (200 if result.get("ok") else 400)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "proposal_id": str(proposal_id or "").strip()}), 500
 
 
 @api_bp.route("/api/trades", methods=["GET"])

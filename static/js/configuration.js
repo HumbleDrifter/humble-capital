@@ -515,6 +515,27 @@ function proposalStatusNote(status) {
   return "This proposal is awaiting operator review.";
 }
 
+function proposalTypeLabel(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "satellite_enable_recommendation") return "Satellite Enable Recommendation";
+  if (normalized === "config_guardrail") return "Config Guardrail";
+  return titleCase(normalized || "unknown");
+}
+
+function setProposalActionResult(message = "", isError = false, sticky = false) {
+  const el = document.getElementById("configProposalActionResult");
+  if (!el) return;
+  const text = String(message || "").trim();
+  el.hidden = !text;
+  el.textContent = text;
+  el.className = isError ? "config-proposal-action-result error" : "config-proposal-action-result";
+  if (sticky && text) {
+    el.dataset.userMessage = "true";
+  } else {
+    delete el.dataset.userMessage;
+  }
+}
+
 function relevantProposalEvent(proposal) {
   const item = normalizeConfigProposalRecord(proposal);
   if (item.applied_at) return { label: "Applied", value: item.applied_at };
@@ -558,6 +579,7 @@ function renderProposalLatest(data) {
 
   const statusTone = proposalStatusTone(proposal.status);
   const isSatelliteEnableProposal = proposal.proposal.proposal_type === "satellite_enable_recommendation";
+  const isPending = proposal.status === "pending";
   const statusEl = document.getElementById("configProposalStatus");
   if (statusEl) {
     statusEl.textContent = proposal.status || "—";
@@ -607,6 +629,7 @@ function renderProposalLatest(data) {
   const valueMap = {
     configProposalId: proposal.id || "—",
     configProposalSummary: proposal.summary_text || proposal.proposal.summary || "—",
+    configProposalType: proposalTypeLabel(proposal.proposal.proposal_type),
     configProposalConfidence: proposal.proposal.source.confidence || "—",
     configProposalCurrentRisk: isSatelliteEnableProposal ? `${proposal.proposal.candidates.length || 0} review-ready` : formatProposalRisk(proposal.proposal.source.risk_score, proposal.proposal.source.risk_band),
     configProposalProjectedRisk: isSatelliteEnableProposal ? "Approval only" : formatProposalRisk(proposal.proposal.simulation.projected_score, proposal.proposal.simulation.projected_band),
@@ -624,6 +647,23 @@ function renderProposalLatest(data) {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
   });
+
+  const actionsEl = document.getElementById("configProposalActions");
+  const approveBtn = document.getElementById("configProposalApproveBtn");
+  const rejectBtn = document.getElementById("configProposalRejectBtn");
+  if (actionsEl) actionsEl.hidden = !isPending;
+  if (approveBtn) {
+    approveBtn.disabled = !isPending;
+    approveBtn.dataset.proposalId = proposal.id || "";
+  }
+  if (rejectBtn) {
+    rejectBtn.disabled = !isPending;
+    rejectBtn.dataset.proposalId = proposal.id || "";
+  }
+  const actionResultEl = document.getElementById("configProposalActionResult");
+  if (!isPending && !(actionResultEl && actionResultEl.dataset.userMessage)) {
+    setProposalActionResult("");
+  }
 
   renderAutomationOverview();
 }
@@ -649,6 +689,7 @@ function renderProposalHistory(items) {
           <div class="config-proposal-history-top">
             <span class="config-proposal-id">${escapeHtml(proposal.id)}</span>
             <span class="config-proposal-status ${escapeHtml(tone)}">${escapeHtml(proposal.status)}</span>
+            <span class="config-proposal-history-type">${escapeHtml(proposalTypeLabel(proposal.proposal.proposal_type))}</span>
           </div>
           <div class="config-proposal-history-summary">${escapeHtml(proposal.summary_text || "—")}</div>
         </div>
@@ -1427,6 +1468,56 @@ function setProposalAutomationResult(message, isError = false) {
   renderAutomationOverview();
 }
 
+async function updateLatestProposalStatus(action) {
+  const proposalId = String(LATEST_PROPOSAL?.id || "").trim();
+  if (!proposalId) {
+    setProposalActionResult("No pending proposal is available to review.", true, true);
+    return;
+  }
+
+  const approveBtn = document.getElementById("configProposalApproveBtn");
+  const rejectBtn = document.getElementById("configProposalRejectBtn");
+  if (approveBtn) approveBtn.disabled = true;
+  if (rejectBtn) rejectBtn.disabled = true;
+
+  const actionLabel = action === "approve" ? "Approving" : "Rejecting";
+  setProposalActionResult(`${actionLabel} proposal...`, false, true);
+
+  try {
+    const result = await fetchJson(`/api/config_proposals/${encodeURIComponent(proposalId)}/${encodeURIComponent(action)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 30000);
+
+    if (action === "approve") {
+      if (result?.auto_apply_attempted && result?.auto_apply_ok) {
+        setProposalActionResult("Proposal approved and applied based on the current After Approval setting.", false, true);
+      } else if (result?.auto_apply_attempted && result?.auto_apply_ok === false) {
+        setProposalActionResult("Proposal was approved, but the automatic apply step needs review.", true, true);
+      } else {
+        setProposalActionResult("Proposal approved. Apply remains a separate operator step.", false, true);
+      }
+    } else {
+      setProposalActionResult("Proposal rejected.", false, true);
+    }
+
+    await loadProposalState();
+  } catch (err) {
+    console.error(err);
+    setProposalActionResult(`${actionLabel} failed: ${err.message}`, true, true);
+    await loadProposalState();
+  }
+}
+
+async function approveLatestProposal() {
+  await updateLatestProposalStatus("approve");
+}
+
+async function rejectLatestProposal() {
+  await updateLatestProposalStatus("reject");
+}
+
 async function generateProposalNow() {
   setProposalAutomationResult("Generating proposal...");
 
@@ -1464,6 +1555,8 @@ window.setAssetMode = setAssetMode;
 window.saveRiskControls = saveRiskControls;
 window.applyConfigPreset = applyConfigPreset;
 window.generateProposalNow = generateProposalNow;
+window.approveLatestProposal = approveLatestProposal;
+window.rejectLatestProposal = rejectLatestProposal;
 
 window.addEventListener("DOMContentLoaded", () => {
   const search = document.getElementById("assetSearch");

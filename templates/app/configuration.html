@@ -276,6 +276,10 @@
 
             <div class="config-proposal-grid" id="configProposalGrid">
               <div>
+                <div class="config-proposal-label">Proposal Type</div>
+                <div class="config-proposal-value" id="configProposalType">—</div>
+              </div>
+              <div>
                 <div class="config-proposal-label">Confidence</div>
                 <div class="config-proposal-value" id="configProposalConfidence">—</div>
               </div>
@@ -315,6 +319,12 @@
               <div class="config-proposal-changes-title">Changed Controls</div>
               <div id="configProposalChanges"></div>
             </div>
+
+            <div class="configuration-action-row config-proposal-review-actions" id="configProposalActions" hidden>
+              <button class="btn btn-primary" type="button" id="configProposalApproveBtn" onclick="approveLatestProposal()">Approve Proposal</button>
+              <button class="btn btn-secondary" type="button" id="configProposalRejectBtn" onclick="rejectLatestProposal()">Reject Proposal</button>
+            </div>
+            <div class="config-proposal-action-result" id="configProposalActionResult" hidden></div>
 
             <div class="config-proposal-note" id="configProposalNote">This proposal is awaiting operator review.</div>
           </div>

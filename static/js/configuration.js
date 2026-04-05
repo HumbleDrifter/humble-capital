@@ -162,6 +162,87 @@ function titleCase(value) {
     .join(" ");
 }
 
+function snapshotCurrentConfigForm() {
+  const generationMode = normalizeProposalAutomationMode(
+    document.getElementById("config_proposal_generation_mode")?.value,
+    PROPOSAL_GENERATION_MODES,
+    "manual"
+  );
+  const applyMode = normalizeProposalAutomationMode(
+    document.getElementById("config_proposal_apply_mode")?.value,
+    PROPOSAL_APPLY_MODES,
+    "manual"
+  );
+  const minConfidence = normalizeProposalAutomationMode(
+    document.getElementById("config_proposal_min_confidence")?.value,
+    PROPOSAL_MIN_CONFIDENCE_VALUES,
+    "high"
+  );
+
+  return {
+    satellite_total_target: normalizePercentInput("satellite_total_target"),
+    satellite_total_max: normalizePercentInput("satellite_total_max"),
+    min_cash_reserve: normalizePercentInput("min_cash_reserve"),
+    trade_min_value_usd: document.getElementById("trade_min_value_usd")?.value || "",
+    max_active_satellites: document.getElementById("max_active_satellites")?.value || "",
+    max_new_satellites_per_cycle: document.getElementById("max_new_satellites_per_cycle")?.value || "",
+    config_proposal_generation_mode: generationMode,
+    config_proposal_apply_mode: applyMode,
+    config_proposal_min_confidence: minConfidence
+  };
+}
+
+function summarizeConfigChanges(previousConfig, nextConfig) {
+  const formatValue = (value, type) => {
+    if (type === "percent") return hasNumericValue(value) ? formatPct(value) : "—";
+    if (type === "usd") return hasNumericValue(value) ? formatUsd(value) : "—";
+    if (type === "integer") return hasNumericValue(value) ? String(Math.round(Number(value))) : "—";
+    if (type === "mode") {
+      const normalized = String(value || "").trim().toLowerCase();
+      if (!normalized) return "—";
+      if (normalized === "manual") return "Manual";
+      if (normalized === "auto") return "Auto";
+      if (normalized === "after_approval") return "After Approval";
+      if (normalized === "medium") return "Medium";
+      if (normalized === "high") return "High";
+      return titleCase(normalized);
+    }
+    return value === null || value === undefined || value === "" ? "—" : String(value);
+  };
+
+  const defs = [
+    ["satellite_total_target", "Satellite target", "percent"],
+    ["satellite_total_max", "Satellite max", "percent"],
+    ["min_cash_reserve", "Reserve", "percent"],
+    ["trade_min_value_usd", "Trade floor", "usd"],
+    ["max_active_satellites", "Active satellites", "integer"],
+    ["max_new_satellites_per_cycle", "New satellites per cycle", "integer"],
+    ["config_proposal_generation_mode", "Recommendation drafting", "mode"],
+    ["config_proposal_apply_mode", "After approval", "mode"],
+    ["config_proposal_min_confidence", "Minimum confidence", "mode"]
+  ];
+
+  const changes = [];
+  for (const [key, label, type] of defs) {
+    const prevRaw = previousConfig?.[key];
+    const nextRaw = nextConfig?.[key];
+    const prevValue = hasNumericValue(prevRaw) ? Number(prevRaw) : prevRaw;
+    const nextValue = hasNumericValue(nextRaw) ? Number(nextRaw) : nextRaw;
+    if (String(prevValue ?? "") === String(nextValue ?? "")) continue;
+    changes.push(`${label}: ${formatValue(prevValue, type)} → ${formatValue(nextValue, type)}`);
+  }
+
+  if (!changes.length) {
+    return "No meaningful changes were saved.";
+  }
+
+  const visibleChanges = changes.slice(0, 4).join(" • ");
+  if (changes.length > 4) {
+    return `${visibleChanges} • +${changes.length - 4} more`;
+  }
+  return visibleChanges;
+}
+
 function overviewStateTone(state) {
   const normalized = String(state || "").toLowerCase();
   if (normalized === "healthy") return "positive";
@@ -924,6 +1005,22 @@ function renderAutomationOverview() {
     guardrailState = "restricted";
   }
 
+  let systemConfidence = "Moderate confidence";
+  let systemConfidenceState = "warn";
+  if (guardrailState === "restricted") {
+    systemConfidence = "Defensive posture";
+    systemConfidenceState = "negative";
+  } else if (pendingCount > 0) {
+    systemConfidence = "Pending review";
+    systemConfidenceState = "warn";
+  } else if (generationMode === "auto" && applyMode === "manual" && minConfidence === "high") {
+    systemConfidence = "High confidence";
+    systemConfidenceState = "positive";
+  } else if (generationMode === "manual") {
+    systemConfidence = "Operator review mode";
+    systemConfidenceState = "warn";
+  }
+
   let latestAction = "No recent automation activity yet.";
   if (LATEST_PROPOSAL && LATEST_PROPOSAL.id) {
     const event = relevantProposalEvent(LATEST_PROPOSAL);
@@ -934,7 +1031,7 @@ function renderAutomationOverview() {
 
   let nextAction = "Generate a recommendation when you want a fresh automation review.";
   if (LATEST_PROPOSAL && LATEST_PROPOSAL.status === "pending") {
-    nextAction = "Review the pending recommendation before any settings change.";
+    nextAction = "A recommendation is waiting for review. Open the proposal details before any settings change.";
   } else if (LATEST_PROPOSAL && LATEST_PROPOSAL.status === "approved") {
     nextAction = applyMode === "after_approval"
       ? "The next approved recommendation should apply automatically after approval."
@@ -974,13 +1071,20 @@ function renderAutomationOverview() {
   if (badgeEl) {
     if (pendingCount > 0) {
       badgeEl.hidden = false;
-      badgeEl.textContent = `${pendingCount} pending recommendation${pendingCount === 1 ? "" : "s"}`;
+      badgeEl.textContent = `${pendingCount} pending recommendation${pendingCount === 1 ? "" : "s"} to review`;
       badgeEl.className = `configuration-shell-badge ${pendingCount > 1 ? "warn" : "accent"}`;
     } else {
       badgeEl.hidden = false;
       badgeEl.textContent = "No pending recommendations";
       badgeEl.className = "configuration-shell-badge positive";
     }
+  }
+
+  const confidenceEl = document.getElementById("configOverviewSystemConfidence");
+  if (confidenceEl) {
+    const tone = overviewStateTone(systemConfidenceState);
+    confidenceEl.textContent = systemConfidence;
+    confidenceEl.className = `configuration-shell-micro${tone ? ` ${tone}` : ""}`;
   }
 }
 
@@ -1176,13 +1280,19 @@ function applyConfigPreset(name, options = {}) {
 
   setPresetActiveState(name);
   const sourceLabel = String(options.sourceLabel || "").trim();
-  if (sourceLabel) {
+  if (sourceLabel === "Safe Mode") {
+    setPresetStatus("Safe Mode reduces exposure and raises protective limits in the form. Save Configuration to make it live.");
+  } else if (sourceLabel) {
     setPresetStatus(`${sourceLabel} recommended the ${preset.label} preset. It has been staged in the form but not saved.`);
   } else {
     setPresetStatus(`${preset.label} preset staged. Changes are not saved until you click Save Configuration.`);
   }
   if (!options.silentStatus) {
-    const statusLead = sourceLabel ? `${sourceLabel} staged the ${preset.label} preset.` : `${preset.label} preset applied to current fields.`;
+    const statusLead = sourceLabel === "Safe Mode"
+      ? "Safe Mode loaded lower-risk values into the current fields."
+      : sourceLabel
+        ? `${sourceLabel} staged the ${preset.label} preset.`
+        : `${preset.label} preset applied to current fields.`;
     setStatus(`${statusLead} Review and save when ready.`);
   }
 }
@@ -1241,41 +1351,30 @@ async function setAssetMode(productId, mode) {
 
 async function saveRiskControls() {
   try {
-    const generationMode = normalizeProposalAutomationMode(
-      document.getElementById("config_proposal_generation_mode")?.value,
-      PROPOSAL_GENERATION_MODES,
-      "manual"
-    );
-    const applyMode = normalizeProposalAutomationMode(
-      document.getElementById("config_proposal_apply_mode")?.value,
-      PROPOSAL_APPLY_MODES,
-      "manual"
-    );
-    const minConfidence = normalizeProposalAutomationMode(
-      document.getElementById("config_proposal_min_confidence")?.value,
-      PROPOSAL_MIN_CONFIDENCE_VALUES,
-      "high"
-    );
+    const nextConfig = snapshotCurrentConfigForm();
+    const changeSummary = summarizeConfigChanges(CURRENT_CONFIG, nextConfig);
 
     await fetchJson("/api/admin/asset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "set_risk",
-        satellite_total_max: normalizePercentInput("satellite_total_max"),
-        satellite_total_target: normalizePercentInput("satellite_total_target"),
-        min_cash_reserve: normalizePercentInput("min_cash_reserve"),
-        trade_min_value_usd: document.getElementById("trade_min_value_usd")?.value || "",
-        max_active_satellites: document.getElementById("max_active_satellites")?.value || "",
-        max_new_satellites_per_cycle: document.getElementById("max_new_satellites_per_cycle")?.value || "",
-        config_proposal_generation_mode: generationMode,
-        config_proposal_apply_mode: applyMode,
-        config_proposal_min_confidence: minConfidence,
+        satellite_total_max: nextConfig.satellite_total_max,
+        satellite_total_target: nextConfig.satellite_total_target,
+        min_cash_reserve: nextConfig.min_cash_reserve,
+        trade_min_value_usd: nextConfig.trade_min_value_usd,
+        max_active_satellites: nextConfig.max_active_satellites,
+        max_new_satellites_per_cycle: nextConfig.max_new_satellites_per_cycle,
+        config_proposal_generation_mode: nextConfig.config_proposal_generation_mode,
+        config_proposal_apply_mode: nextConfig.config_proposal_apply_mode,
+        config_proposal_min_confidence: nextConfig.config_proposal_min_confidence,
         ...(API_SECRET ? { secret: API_SECRET } : {})
       })
     }, 20000);
-    setStatus("Guardrails and proposal automation settings saved.");
     await loadConfiguration();
+    LATEST_AUTOMATION_MESSAGE = `Saved changes • ${changeSummary}`;
+    renderAutomationOverview();
+    setStatus(`Saved changes • ${changeSummary}`);
   } catch (err) {
     console.error(err);
     setStatus(`Risk control save failed: ${err.message}`, true);

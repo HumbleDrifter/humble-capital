@@ -26,11 +26,20 @@
     <div class="configuration-overview-grid">
       <div class="configuration-shell-card">
         <div class="configuration-card-kicker">Automation Status</div>
-        <div class="configuration-shell-title">Proposal engine</div>
+        <div class="configuration-shell-title-row">
+          <div class="configuration-shell-title">Proposal engine</div>
+          <div class="configuration-help">
+            <button class="configuration-help-button" type="button" aria-label="Automation status help">i</button>
+            <div class="configuration-help-tooltip" role="tooltip">
+              Shows whether recommendations are drafted automatically or only when you ask for them.
+            </div>
+          </div>
+        </div>
         <div class="configuration-shell-value" id="configOverviewAutomationStatus">Reviewing</div>
         <div class="configuration-shell-badge-row">
           <span class="configuration-shell-badge" id="configOverviewPendingBadge" hidden>No pending recommendations</span>
         </div>
+        <div class="configuration-shell-micro" id="configOverviewSystemConfidence">System confidence is reviewing the current posture.</div>
         <div class="configuration-shell-note">Shows whether proposals are generated automatically or only when you trigger them.</div>
       </div>
       <div class="configuration-shell-card">
@@ -47,7 +56,15 @@
       </div>
       <div class="configuration-shell-card">
         <div class="configuration-card-kicker">Guardrail Status</div>
-        <div class="configuration-shell-title">Current operating limits</div>
+        <div class="configuration-shell-title-row">
+          <div class="configuration-shell-title">Current operating limits</div>
+          <div class="configuration-help">
+            <button class="configuration-help-button" type="button" aria-label="Guardrail status help">i</button>
+            <div class="configuration-help-tooltip" role="tooltip">
+              Guardrails are the limits that cap exposure, preserve cash, and filter out trades that are too small.
+            </div>
+          </div>
+        </div>
         <div class="configuration-shell-value" id="configOverviewGuardrails">Reviewing</div>
         <div class="configuration-shell-note">Summarizes the current allocation target, hard cap, reserve, and trade floor.</div>
       </div>
@@ -59,7 +76,15 @@
       </div>
       <div class="configuration-shell-card">
         <div class="configuration-card-kicker">Next Action</div>
-        <div class="configuration-shell-title">What happens next</div>
+        <div class="configuration-shell-title-row">
+          <div class="configuration-shell-title">What happens next</div>
+          <div class="configuration-help">
+            <button class="configuration-help-button" type="button" aria-label="Next action help">i</button>
+            <div class="configuration-help-tooltip" role="tooltip">
+              This is the most likely next operator step based on pending recommendations and the current operating mode.
+            </div>
+          </div>
+        </div>
         <div class="configuration-shell-value" id="configOverviewNextAction">Reviewing the next likely operator step.</div>
         <div class="configuration-shell-note">Plain-language summary of the next likely recommendation or review step.</div>
       </div>
@@ -86,7 +111,13 @@
         <button class="btn btn-secondary config-preset-btn" type="button" data-preset="aggressive" onclick="applyConfigPreset('aggressive')">Aggressive</button>
       </div>
       <div class="configuration-preset-utility">
-        <button class="btn btn-secondary" type="button" onclick="applyConfigPreset('conservative', { sourceLabel: 'Safe Mode' })">Stage Safe Mode</button>
+        <button class="btn btn-secondary" type="button" onclick="applyConfigPreset('conservative', { sourceLabel: 'Safe Mode' })">Activate Safe Mode</button>
+        <div class="configuration-help">
+          <button class="configuration-help-button" type="button" aria-label="Safe mode help">i</button>
+          <div class="configuration-help-tooltip" role="tooltip">
+            Safe Mode stages lower-exposure settings in the form. Nothing goes live until you save the configuration.
+          </div>
+        </div>
       </div>
       <div class="configuration-preset-status" id="presetStatus">No preset staged. Manual edits remain available.</div>
     </div>
@@ -165,7 +196,15 @@
 
       <div class="config-proposal-automation-grid">
         <div class="form-card config-proposal-automation-card">
-          <label for="config_proposal_generation_mode">Draft Recommendations</label>
+          <div class="configuration-label-row">
+            <label for="config_proposal_generation_mode">Draft Recommendations</label>
+            <div class="configuration-help">
+              <button class="configuration-help-button" type="button" aria-label="Recommendation drafting help">i</button>
+              <div class="configuration-help-tooltip" role="tooltip">
+                Auto drafting creates a recommendation when the rules qualify a safe change. Manual drafting waits for you to trigger it.
+              </div>
+            </div>
+          </div>
           <select id="config_proposal_generation_mode">
             <option value="manual">Manual</option>
             <option value="auto">Auto</option>
@@ -175,7 +214,15 @@
         </div>
 
         <div class="form-card config-proposal-automation-card">
-          <label for="config_proposal_apply_mode">After Approval</label>
+          <div class="configuration-label-row">
+            <label for="config_proposal_apply_mode">After Approval</label>
+            <div class="configuration-help">
+              <button class="configuration-help-button" type="button" aria-label="After approval help">i</button>
+              <div class="configuration-help-tooltip" role="tooltip">
+                Choose whether approved changes apply immediately or wait for a separate confirmation step.
+              </div>
+            </div>
+          </div>
           <select id="config_proposal_apply_mode">
             <option value="manual">Wait for confirmation</option>
             <option value="after_approval">After Approval</option>

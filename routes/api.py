@@ -31,7 +31,13 @@ from portfolio import (
     portfolio_summary,
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
-from services.config_proposal_service import approve_config_proposal, generate_review_proposals, reject_config_proposal
+from services.config_proposal_service import (
+    apply_config_proposal,
+    approve_config_proposal,
+    evaluate_auto_draft_review_proposals,
+    generate_review_proposals,
+    reject_config_proposal,
+)
 from services.satellite_decision_engine import build_satellite_decisions
 from shadow_rotation_report import build_shadow_rotation_report
 from storage import get_portfolio_history_since
@@ -1940,11 +1946,44 @@ def api_config_proposals_generate():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+@api_bp.route("/api/config_proposals/auto_draft", methods=["POST"])
+@require_admin_auth
+def api_config_proposals_auto_draft():
+    try:
+        result = evaluate_auto_draft_review_proposals()
+        return jsonify({
+            "ok": bool(result.get("ok", False)),
+            "status": result.get("status"),
+            "proposal_id": result.get("proposal_id"),
+            "expired_count": result.get("expired_count", 0),
+            "superseded_count": result.get("superseded_count", 0),
+            "notification_sent": bool(result.get("notification_sent", False)),
+            "created_count": result.get("created_count", 0),
+            "deduped_count": result.get("deduped_count", 0),
+            "noop_count": result.get("noop_count", 0),
+            "generation_mode": result.get("generation_mode"),
+            "apply_mode": result.get("apply_mode"),
+            "min_confidence": result.get("min_confidence"),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @api_bp.route("/api/config_proposals/<proposal_id>/approve", methods=["POST"])
 @require_admin_auth
 def api_config_proposals_approve(proposal_id):
     try:
         result = approve_config_proposal(proposal_id, actor=_proposal_actor())
+        return jsonify(result), (200 if result.get("ok") else 400)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "proposal_id": str(proposal_id or "").strip()}), 500
+
+
+@api_bp.route("/api/config_proposals/<proposal_id>/apply", methods=["POST"])
+@require_admin_auth
+def api_config_proposals_apply(proposal_id):
+    try:
+        result = apply_config_proposal(proposal_id, applied_by=_proposal_actor())
         return jsonify(result), (200 if result.get("ok") else 400)
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc), "proposal_id": str(proposal_id or "").strip()}), 500

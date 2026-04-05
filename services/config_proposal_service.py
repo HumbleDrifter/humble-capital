@@ -213,6 +213,11 @@ def _shadow_candidate_summary(candidates):
     return "These satellite candidates meet review thresholds but are not yet live in the allowlist."
 
 
+def _auto_draft_allowed(config=None):
+    settings = get_config_proposal_automation_settings(config=config)
+    return settings.get("generation_mode") == "auto"
+
+
 def _range_to_start_ts(range_name):
     name = str(range_name or DEFAULT_ADVISORY_RANGE).strip().lower()
     now = int(time.time())
@@ -367,7 +372,7 @@ def build_config_proposal(range_name=DEFAULT_ADVISORY_RANGE):
     }
 
 
-def build_shadow_allowlist_proposal(window_hours=24):
+def build_shadow_allowlist_proposal(window_hours=24, min_confidence=None):
     report = _safe_dict(build_shadow_rotation_report(window_hours=window_hours))
     candidates = _decision_driven_shadow_candidates(report, window_hours=window_hours)
     if not candidates:
@@ -382,6 +387,21 @@ def build_shadow_allowlist_proposal(window_hours=24):
         }
 
     confidence = "high" if any(str(_safe_dict(item).get("confidence_band", "")).strip().lower() == "high" for item in candidates) else "medium"
+    required_confidence = _normalize_confidence_value(
+        min_confidence,
+        {"medium", "high"},
+        "",
+    )
+    if required_confidence and _confidence_rank(confidence) < _confidence_rank(required_confidence):
+        return {
+            "ok": True,
+            "status": "skipped_low_confidence",
+            "reason": "confidence_below_threshold",
+            "confidence": confidence,
+            "required_confidence": required_confidence,
+            "proposal": None,
+        }
+
     blocked_reasons = _safe_list(report.get("blocked_reason_breakdown"))
     top_blocker = str(_safe_dict(blocked_reasons[0]).get("reason", "") or "").strip() if blocked_reasons else ""
     replacement_count = sum(1 for item in candidates if str(_safe_dict(item).get("decision", "") or "").strip().lower() == "recommend_replacement")
@@ -596,9 +616,9 @@ def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFA
     }
 
 
-def generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES):
+def generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES, min_confidence=None):
     expired_count = expire_stale_proposals(proposal_type=SHADOW_ALLOWLIST_PROPOSAL_TYPE)
-    built = build_shadow_allowlist_proposal(window_hours=window_hours)
+    built = build_shadow_allowlist_proposal(window_hours=window_hours, min_confidence=min_confidence)
 
     if built.get("status") == "noop":
         return {
@@ -606,6 +626,17 @@ def generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=DEFAULT_PROP
             "status": "noop",
             "reason": built.get("reason", "no_shadow_eligible_candidates"),
             "expired_count": expired_count,
+            "proposal": None,
+        }
+
+    if built.get("status") == "skipped_low_confidence":
+        return {
+            "ok": True,
+            "status": "skipped_low_confidence",
+            "reason": built.get("reason", "confidence_below_threshold"),
+            "expired_count": expired_count,
+            "confidence": built.get("confidence"),
+            "required_confidence": built.get("required_confidence"),
             "proposal": None,
         }
 
@@ -674,7 +705,7 @@ def generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=DEFAULT_PROP
 
 def generate_review_proposals(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES, min_confidence=None):
     config_result = generate_config_proposal(range_name=range_name, ttl_minutes=ttl_minutes, min_confidence=min_confidence)
-    shadow_result = generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=ttl_minutes)
+    shadow_result = generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=ttl_minutes, min_confidence=min_confidence)
     results = [config_result, shadow_result]
 
     created = [item for item in results if str(item.get("status", "")).strip().lower() == "created"]
@@ -709,6 +740,43 @@ def generate_review_proposals(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEF
         "noop_count": sum(1 for item in results if str(item.get("status", "")).strip().lower() == "noop"),
         "config_guardrail": config_result,
         "satellite_enable_recommendation": shadow_result,
+    }
+
+
+def evaluate_auto_draft_review_proposals(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES):
+    config = _safe_dict(load_asset_config())
+    settings = get_config_proposal_automation_settings(config=config)
+    if not _auto_draft_allowed(config=config):
+        return {
+            "ok": True,
+            "status": "manual_mode",
+            "generation_mode": settings.get("generation_mode"),
+            "apply_mode": settings.get("apply_mode"),
+            "min_confidence": settings.get("min_confidence"),
+            "proposal_id": None,
+        }
+
+    result = generate_review_proposals(
+        range_name=range_name,
+        ttl_minutes=ttl_minutes,
+        min_confidence=settings.get("min_confidence"),
+    )
+    status = str(result.get("status", "") or "").strip().lower()
+    mapped_status = (
+        "drafted" if status == "created"
+        else "already_matches_current_state" if status in {"deduped", "deduped_recent"}
+        else "confidence_below_threshold" if (
+            str(_safe_dict(result.get("config_guardrail")).get("status", "") or "").strip().lower() == "skipped_low_confidence"
+            and str(_safe_dict(result.get("satellite_enable_recommendation")).get("status", "") or "").strip().lower() in {"noop", "skipped_low_confidence"}
+        )
+        else status or "noop"
+    )
+    return {
+        **result,
+        "status": mapped_status,
+        "generation_mode": settings.get("generation_mode"),
+        "apply_mode": settings.get("apply_mode"),
+        "min_confidence": settings.get("min_confidence"),
     }
 
 
@@ -748,6 +816,42 @@ def apply_config_proposal(proposal_id, applied_by=None):
         }
 
     current_status = str(existing.get("status") or "").strip() or None
+    proposal = _safe_dict(existing.get("proposal"))
+    proposal_type = str(existing.get("proposal_type") or proposal.get("proposal_type") or PROPOSAL_TYPE).strip() or PROPOSAL_TYPE
+
+    if current_status == "applied":
+        return {
+            "ok": True,
+            "reason": "already_applied",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+            "status": current_status,
+        }
+
+    if current_status == "pending":
+        return {
+            "ok": False,
+            "reason": "cannot_apply_until_approved",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
+    if current_status == "rejected":
+        return {
+            "ok": False,
+            "reason": "rejected",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
+    if current_status == "superseded":
+        return {
+            "ok": False,
+            "reason": "superseded",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
     if current_status != "approved":
         return {
             "ok": False,
@@ -766,7 +870,14 @@ def apply_config_proposal(proposal_id, applied_by=None):
             "current_status": refreshed.get("status", "expired"),
         }
 
-    proposal = _safe_dict(existing.get("proposal"))
+    if proposal_type != PROPOSAL_TYPE:
+        return {
+            "ok": False,
+            "reason": "review_only_proposal",
+            "proposal_id": proposal_id,
+            "current_status": current_status,
+        }
+
     changes = [item for item in _safe_list(proposal.get("changes")) if str(_safe_dict(item).get("key", "") or "").strip() in ALLOWED_CHANGE_KEYS]
 
     if not changes:

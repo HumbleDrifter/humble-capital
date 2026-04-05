@@ -42,7 +42,21 @@
   <section class="panel opportunities-board-panel">
     <div class="section-header compact-header">
       <div>
-        <h3>Opportunities Board</h3>
+        <div class="opportunity-board-title-row">
+          <h3>Opportunities Board</h3>
+          <div class="opportunity-control-help">
+            <button
+              class="opportunity-control-help-button"
+              type="button"
+              aria-label="Opportunity control mode information"
+            >i</button>
+            <div class="opportunity-control-tooltip" role="tooltip">
+              Enable: Always include this opportunity in active trading consideration.<br>
+              Auto: Let the system decide based on score, regime, and configured rules.<br>
+              Disable: Exclude this opportunity from active trading consideration.
+            </div>
+          </div>
+        </div>
         <p class="section-subtitle">Active, watching, and paused opportunities stay organized into clear columns while controls remain available on every card.</p>
       </div>
     </div>

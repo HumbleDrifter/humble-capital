@@ -159,6 +159,7 @@ function normalizeRegime(value) {
 function regimeTone(value) {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "bull") return "bull";
+  if (normalized === "bear") return "bear";
   if (normalized === "neutral") return "neutral";
   if (normalized === "risk_off") return "risk-off";
   return "unknown";
@@ -258,7 +259,7 @@ function renderSummary(data, groups) {
     <div class="opportunity-summary-card">
       <div class="opportunity-summary-label">Regime</div>
       <div class="opportunity-summary-value">
-        <span class="opportunity-regime-badge ${escapeHtml(regimeClass)}">${escapeHtml(regimeText)}</span>
+        <span class="opportunity-summary-regime ${escapeHtml(regimeClass)}">${escapeHtml(regimeText)}</span>
       </div>
     </div>
   `;

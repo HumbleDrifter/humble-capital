@@ -715,7 +715,6 @@ def _build_meme_rotation():
             if (
                 asset.get("value_total_usd", 0.0) > 0
                 or item.get("_allowed")
-                or item.get("_active_buy_universe")
                 or item.get("_core")
             )
             else 6.0,

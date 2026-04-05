@@ -203,6 +203,8 @@ def evaluate_shadow_candidate(row: dict) -> dict:
         shadow_block_reason = "low_regime_fit"
     elif allowed:
         eligibility_reason = "Already allowed in the live review set."
+    elif not active_buy_universe:
+        eligibility_reason = "Meets review thresholds but is not yet live in the active universe."
     else:
         eligibility_reason = "Meets score, liquidity, volatility, and regime-fit review thresholds."
 
@@ -223,6 +225,7 @@ def evaluate_shadow_candidate(row: dict) -> dict:
         "confidence_band": confidence_band or "unknown",
         "liquidity_bucket": liquidity_bucket or "unknown",
         "volatility_bucket": volatility_bucket or "unknown",
+        "active_buy_universe": active_buy_universe,
         "shadow_eligible": shadow_eligible,
         "shadow_eligibility_reason": eligibility_reason,
         "shadow_block_reason": shadow_block_reason,

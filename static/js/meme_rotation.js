@@ -70,6 +70,42 @@ function fmtNumber(v) {
   });
 }
 
+function numericOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function resolve24hMove(row) {
+  const candidates = [
+    row.price_change_24h,
+    row.price_change_24h_pct,
+    row.change_24h,
+    row.move_24h
+  ];
+
+  for (const value of candidates) {
+    const numeric = numericOrNull(value);
+    if (numeric != null) return numeric;
+  }
+
+  return null;
+}
+
+function resolveUniverseCount(data) {
+  const explicitCount = numericOrNull(data.candidate_count);
+  if (explicitCount != null) return explicitCount;
+
+  if (Array.isArray(data.active_satellite_buy_universe)) {
+    return data.active_satellite_buy_universe.length;
+  }
+
+  if (Array.isArray(data.candidates)) {
+    return data.candidates.length;
+  }
+
+  return null;
+}
+
 function sortCandidates(rows, sortKey) {
   const items = [...rows];
 
@@ -78,7 +114,7 @@ function sortCandidates(rows, sortKey) {
   } else if (sortKey === "held_value") {
     items.sort((a, b) => Number(b.held_value_usd || 0) - Number(a.held_value_usd || 0));
   } else if (sortKey === "change_24h") {
-    items.sort((a, b) => Number(b.change_24h || b.move_24h || 0) - Number(a.change_24h || a.move_24h || 0));
+    items.sort((a, b) => (resolve24hMove(b) ?? Number.NEGATIVE_INFINITY) - (resolve24hMove(a) ?? Number.NEGATIVE_INFINITY));
   } else {
     items.sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
   }
@@ -277,14 +313,12 @@ function renderStatus(data, systemData) {
   if (!status) return;
 
   const cache = data._cache?.source || "unknown";
-  const universeCount = Array.isArray(data.active_satellite_buy_universe)
-    ? data.active_satellite_buy_universe.length
-    : 0;
+  const universeCount = resolveUniverseCount(data);
   const scannerEnabled = Boolean(systemData?.admin_state?.meme_rotation_enabled);
 
   status.innerHTML = `
     <span class="badge accent">${escapeHtml(cache)}</span>
-    <span class="badge good">universe ${universeCount}</span>
+    <span class="badge good">universe ${universeCount == null ? "—" : escapeHtml(String(universeCount))}</span>
     <span class="badge ${scannerEnabled ? "good" : "warn"}">${scannerEnabled ? "scanner live" : "scanner paused"}</span>
   `;
 }
@@ -292,6 +326,7 @@ function renderStatus(data, systemData) {
 function opportunityCard(row) {
   const productId = row.product_id || row.symbol || "—";
   const tone = opportunityTone(row.score);
+  const move24h = resolve24hMove(row);
   return `
     <article class="opportunity-card ${tone}">
       <div class="opportunity-card-head">
@@ -324,7 +359,7 @@ function opportunityCard(row) {
         </div>
         <div class="opportunity-metric">
           <span class="opportunity-metric-label">24H Move</span>
-          <strong>${fmtPct(row.change_24h || 0)}</strong>
+          <strong>${move24h == null ? "N/A" : fmtPct(move24h)}</strong>
         </div>
         <div class="opportunity-metric">
           <span class="opportunity-metric-label">Unrealized</span>

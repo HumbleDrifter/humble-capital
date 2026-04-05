@@ -3336,6 +3336,14 @@ tbody tr:last-child td {
   word-break: normal;
 }
 
+.page-opportunities .opportunity-subline .badge,
+.page-opportunities .opportunity-pill-row .pill {
+  width: fit-content;
+  max-width: 100%;
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
 .opportunity-card * {
   position: relative;
 }

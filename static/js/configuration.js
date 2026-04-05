@@ -534,6 +534,13 @@ function proposalTypeLabel(value) {
   return titleCase(normalized || "unknown");
 }
 
+function isProposalApplyCapable(proposal) {
+  const proposalRecord = safeObject(proposal);
+  const nestedProposal = safeObject(proposalRecord.proposal);
+  const proposalType = String(nestedProposal.proposal_type || proposalRecord.proposal_type || "").trim().toLowerCase();
+  return proposalType === "config_guardrail";
+}
+
 function setProposalAutomationMessageFromStatus(result) {
   const status = String(result?.status || "").trim().toLowerCase();
   if (status === "created" || status === "drafted") {
@@ -622,6 +629,7 @@ function renderProposalLatest(data) {
   const isSatelliteEnableProposal = proposal.proposal.proposal_type === "satellite_enable_recommendation";
   const isPending = proposal.status === "pending";
   const isApproved = proposal.status === "approved";
+  const isApplyCapable = isProposalApplyCapable(proposal);
   const statusEl = document.getElementById("configProposalStatus");
   if (statusEl) {
     statusEl.textContent = proposalStatusLabel(proposal.status || "—");
@@ -694,15 +702,15 @@ function renderProposalLatest(data) {
   const approveBtn = document.getElementById("configProposalApproveBtn");
   const applyBtn = document.getElementById("configProposalApplyBtn");
   const rejectBtn = document.getElementById("configProposalRejectBtn");
-  if (actionsEl) actionsEl.hidden = !(isPending || isApproved);
+  if (actionsEl) actionsEl.hidden = !(isPending || (isApproved && isApplyCapable));
   if (approveBtn) {
     approveBtn.disabled = !isPending;
     approveBtn.hidden = !isPending;
     approveBtn.dataset.proposalId = proposal.id || "";
   }
   if (applyBtn) {
-    applyBtn.disabled = !isApproved;
-    applyBtn.hidden = !isApproved;
+    applyBtn.disabled = !(isApproved && isApplyCapable);
+    applyBtn.hidden = !(isApproved && isApplyCapable);
     applyBtn.dataset.proposalId = proposal.id || "";
   }
   if (rejectBtn) {
@@ -711,7 +719,7 @@ function renderProposalLatest(data) {
     rejectBtn.dataset.proposalId = proposal.id || "";
   }
   const actionResultEl = document.getElementById("configProposalActionResult");
-  if (!(isPending || isApproved) && !(actionResultEl && actionResultEl.dataset.userMessage)) {
+  if (!(isPending || (isApproved && isApplyCapable)) && !(actionResultEl && actionResultEl.dataset.userMessage)) {
     setProposalActionResult("");
   }
 
@@ -1524,6 +1532,7 @@ async function updateLatestProposalStatus(action) {
     setProposalActionResult(action === "apply" ? "No approved proposal is available to apply." : "No pending proposal is available to review.", true, true);
     return;
   }
+  const proposalApplyCapable = isProposalApplyCapable(LATEST_PROPOSAL);
 
   const approveBtn = document.getElementById("configProposalApproveBtn");
   const applyBtn = document.getElementById("configProposalApplyBtn");
@@ -1552,8 +1561,17 @@ async function updateLatestProposalStatus(action) {
         setProposalActionResult("Proposal approved and applied based on the current After Approval setting.", false, true);
       } else if (result?.auto_apply_attempted && result?.auto_apply_ok === false) {
         setProposalActionResult("Proposal was approved, but the automatic apply step needs review.", true, true);
+      } else if (!proposalApplyCapable) {
+        setProposalActionResult("Proposal approved. This proposal is review-only and does not have a separate apply step.", false, true);
       } else {
-        setProposalActionResult("Proposal approved. Apply remains a separate operator step.", false, true);
+        await loadProposalState();
+        const shouldApplyNow = window.confirm("Proposal approved. Do you want to apply it now?");
+        if (shouldApplyNow) {
+          await applyLatestProposal();
+          return;
+        }
+        setProposalActionResult("Proposal approved. You can apply it later from this panel.", false, true);
+        return;
       }
     } else if (action === "apply") {
       const status = String(result?.status || "").trim().toLowerCase();

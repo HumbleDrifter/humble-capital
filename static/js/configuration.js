@@ -1492,7 +1492,7 @@ async function loadConfiguration() {
 
   try {
     await Promise.all([loadTradableAssets(), loadConfigState(), loadPortfolioSnapshot()]);
-    await Promise.all([loadAdvisoryState(), loadProposalState(), loadOptionsHealth()]);
+    await Promise.all([loadAdvisoryState(), loadProposalState(), loadOptionsHealth(), loadOptionsTelemetry()]);
     drawAssetRows();
     applyPresetFromUrlIfPresent();
     setStatus(`Loaded ${ASSETS.length} tradable USD assets. Portfolio guardrails and advanced sections are ready.`);
@@ -1755,10 +1755,12 @@ async function executeLatestOptionsProposal() {
       );
     }
     await loadProposalState();
+    await loadOptionsTelemetry();
   } catch (err) {
     console.error(err);
     setProposalActionResult(`Options execution failed: ${err.message}`, true, true);
     await loadProposalState();
+    await loadOptionsTelemetry();
   }
 }
 
@@ -1781,17 +1783,54 @@ async function createTestOptionsProposal() {
         ? `Test options proposal ${result.proposal_id || ""} created with status ${result.status}.`
         : `Matching test options proposal ${result.proposal_id || ""} already exists with status ${result.status}.`;
       setOptionsHealthResult(message.trim(), false);
-      await loadProposalState();
+      await Promise.all([loadProposalState(), loadOptionsHealth()]);
       return;
     }
 
     setOptionsHealthResult(
-      `Test options proposal failed: ${String(result.reason || result.error || result.status || `HTTP ${result._httpStatus || "unknown"}`).trim()}.`,
+      `Test options proposal failed: ${String(
+        result.reason || result.error || result.status || `HTTP ${result._httpStatus || "unknown"}`
+      ).trim()}.`,
       true
     );
   } catch (err) {
     console.error(err);
     setOptionsHealthResult(`Test options proposal failed: ${err.message}`, true);
+  }
+}
+
+async function syncOptionsState() {
+  setOptionsHealthResult("Syncing options state from IBKR paper session...");
+  try {
+    const result = await requestJson("/api/options/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 30000);
+
+    if (result.ok) {
+      if (result.health) {
+        renderOptionsHealth(result.health);
+      }
+      setOptionsHealthResult(
+        `Options sync complete. Orders ${Number(result.orders_count || 0)} • Positions ${Number(result.positions_count || 0)}.`,
+        false
+      );
+      await Promise.all([loadOptionsTelemetry(), loadOptionsHealth()]);
+      return;
+    }
+
+    setOptionsHealthResult(
+      `Options sync failed: ${String(
+        result.reason || result.error || result.status || `HTTP ${result._httpStatus || "unknown"}`
+      ).trim()}.`,
+      true
+    );
+    await loadOptionsHealth();
+  } catch (err) {
+    console.error(err);
+    setOptionsHealthResult(`Options sync failed: ${err.message}`, true);
+    await loadOptionsHealth();
   }
 }
 
@@ -1839,10 +1878,104 @@ function renderOptionsHealth(data) {
   });
 
   if (payload.ok) {
-    setOptionsHealthResult("IBKR options paper-trading health is ready for operator testing.");
+    const readiness = payload.last_ready_at ? ` Last ready ${formatProposalDate(payload.last_ready_at)}.` : "";
+    setOptionsHealthResult(`IBKR options paper-trading health is ready for operator testing.${readiness}`.trim());
   } else {
-    const reason = String(payload.reason || payload.error || "not_ready").trim();
+    const reason = String(payload.reason || payload.error || payload.last_error || "not_ready").trim();
     setOptionsHealthResult(`IBKR options paper-trading is not ready: ${reason}.`, true);
+  }
+}
+
+function renderOptionsExecutionHistory(items) {
+  const host = document.getElementById("optionsExecutionsHistory");
+  if (!host) return;
+  const rows = Array.isArray(items) ? items.slice(0, 8) : [];
+  if (!rows.length) {
+    host.innerHTML = `<div class="config-proposal-history-empty">No options execution activity yet.</div>`;
+    return;
+  }
+  host.innerHTML = rows.map((item) => `
+    <div class="config-proposal-history-row">
+      <div class="config-proposal-history-main">
+        <div class="config-proposal-history-top">
+          <span class="config-proposal-id">${escapeHtml(item.underlying || "—")}</span>
+          <span class="config-proposal-status ${item.ok ? "positive" : "negative"}">${escapeHtml(item.ok ? (item.status || "ok") : (item.reason || "failed"))}</span>
+        </div>
+        <div class="config-proposal-history-summary">${escapeHtml(`${item.strategy || "option"} • ${item.order_type || "LIMIT"} ${hasNumericValue(item.limit_price) ? formatUSD(item.limit_price) : "—"} • ${item.order_id || "no order id"}${item.error ? ` • ${item.error}` : ""}`)}</div>
+      </div>
+      <div class="config-proposal-history-meta">
+        <div><span class="config-proposal-label">Proposal</span><span class="config-proposal-value">${escapeHtml(item.proposal_id || "—")}</span></div>
+        <div><span class="config-proposal-label">Created</span><span class="config-proposal-value">${escapeHtml(formatProposalDate(item.created_at || item.ts))}</span></div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderOptionsOrdersHistory(items) {
+  const host = document.getElementById("optionsOrdersHistory");
+  if (!host) return;
+  const rows = Array.isArray(items) ? items.slice(0, 8) : [];
+  if (!rows.length) {
+    host.innerHTML = `<div class="config-proposal-history-empty">No options order records yet.</div>`;
+    return;
+  }
+  host.innerHTML = rows.map((item) => `
+    <div class="config-proposal-history-row">
+      <div class="config-proposal-history-main">
+        <div class="config-proposal-history-top">
+          <span class="config-proposal-id">${escapeHtml(item.underlying || "—")}</span>
+          <span class="config-proposal-status">${escapeHtml(item.status || "—")}</span>
+        </div>
+        <div class="config-proposal-history-summary">${escapeHtml(`${item.strategy || "option"} • ${item.order_type || "LIMIT"} ${hasNumericValue(item.limit_price) ? formatUSD(item.limit_price) : "—"} • ${item.broker_order_id || item.record_key || "no broker order id"}`)}</div>
+      </div>
+      <div class="config-proposal-history-meta">
+        <div><span class="config-proposal-label">Proposal</span><span class="config-proposal-value">${escapeHtml(item.proposal_id || "—")}</span></div>
+        <div><span class="config-proposal-label">Updated</span><span class="config-proposal-value">${escapeHtml(formatProposalDate(item.updated_at || item.created_at))}</span></div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderOptionsPositionsHistory(items) {
+  const host = document.getElementById("optionsPositionsHistory");
+  if (!host) return;
+  const rows = Array.isArray(items) ? items.slice(0, 10) : [];
+  if (!rows.length) {
+    host.innerHTML = `<div class="config-proposal-history-empty">No open options positions snapshot yet.</div>`;
+    return;
+  }
+  host.innerHTML = rows.map((item) => `
+    <div class="config-proposal-history-row">
+      <div class="config-proposal-history-main">
+        <div class="config-proposal-history-top">
+          <span class="config-proposal-id">${escapeHtml(item.underlying || "—")}</span>
+          <span class="config-proposal-status">${escapeHtml(item.side || "—")}</span>
+        </div>
+        <div class="config-proposal-history-summary">${escapeHtml(`${item.expiry || "—"} ${hasNumericValue(item.strike) ? Number(item.strike).toFixed(2) : "—"} ${item.right_code || "—"} • qty ${hasNumericValue(item.quantity) ? Number(item.quantity).toFixed(2) : "—"} • avg ${hasNumericValue(item.avg_cost) ? formatUSD(item.avg_cost) : "—"}`)}</div>
+      </div>
+      <div class="config-proposal-history-meta">
+        <div><span class="config-proposal-label">Status</span><span class="config-proposal-value">${escapeHtml(item.status || "—")}</span></div>
+        <div><span class="config-proposal-label">Updated</span><span class="config-proposal-value">${escapeHtml(formatProposalDate(item.updated_at))}</span></div>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadOptionsTelemetry() {
+  try {
+    const [executions, orders, positions] = await Promise.all([
+      fetchJson("/api/options/executions?limit=8", {}, 20000),
+      fetchJson("/api/options/orders?limit=8", {}, 20000),
+      fetchJson("/api/options/positions", {}, 20000)
+    ]);
+    renderOptionsExecutionHistory(executions?.items || []);
+    renderOptionsOrdersHistory(orders?.items || []);
+    renderOptionsPositionsHistory(positions?.items || []);
+  } catch (err) {
+    console.warn("Options telemetry load failed:", err.message);
+    renderOptionsExecutionHistory([]);
+    renderOptionsOrdersHistory([]);
+    renderOptionsPositionsHistory([]);
   }
 }
 
@@ -1881,7 +2014,9 @@ window.applyConfigPreset = applyConfigPreset;
 window.evaluateAutoDraftNow = evaluateAutoDraftNow;
 window.generateProposalNow = generateProposalNow;
 window.loadOptionsHealth = loadOptionsHealth;
+window.loadOptionsTelemetry = loadOptionsTelemetry;
 window.createTestOptionsProposal = createTestOptionsProposal;
+window.syncOptionsState = syncOptionsState;
 window.approveLatestProposal = approveLatestProposal;
 window.applyLatestProposal = applyLatestProposal;
 window.executeLatestOptionsProposal = executeLatestOptionsProposal;

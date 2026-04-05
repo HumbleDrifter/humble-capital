@@ -1,6 +1,7 @@
 import os
 import threading
 import traceback
+from datetime import datetime, timezone
 
 from env_runtime import load_runtime_env
 
@@ -11,6 +12,8 @@ load_runtime_env(override=True)
 _SHARED_IB = None
 _SHARED_RUNTIME_KEY = None
 _SHARED_IB_LOCK = threading.RLock()
+_LAST_ERROR = None
+_LAST_READY_AT = None
 
 
 class ContractQualificationError(Exception):
@@ -40,6 +43,10 @@ def _safe_float(value, default=0.0):
         return float(default)
 
 
+def _utcnow_iso():
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
 def get_ibkr_runtime_config():
     load_runtime_env(override=True)
     paper_mode = _env_bool("IBKR_PAPER_TRADING", True)
@@ -60,7 +67,19 @@ class IBKRAdapter(BrokerAdapter):
     name = "ibkr"
 
     def __init__(self, runtime_config=None):
+        # Keep runtime configuration explicit here so call sites can inject paper/live settings safely.
         self.runtime_config = runtime_config or get_ibkr_runtime_config()
+
+    def _mark_ready(self):
+        global _LAST_READY_AT, _LAST_ERROR
+        with _SHARED_IB_LOCK:
+            _LAST_READY_AT = _utcnow_iso()
+            _LAST_ERROR = None
+
+    def _set_last_error(self, error):
+        global _LAST_ERROR
+        with _SHARED_IB_LOCK:
+            _LAST_ERROR = str(error or "").strip() or None
 
     def _runtime_key(self):
         runtime = dict(self.runtime_config or {})
@@ -89,6 +108,7 @@ class IBKRAdapter(BrokerAdapter):
                         _SHARED_IB = None
                         _SHARED_RUNTIME_KEY = None
                     elif ib.isConnected():
+                        self._mark_ready()
                         return ib
                 except Exception:
                     ib = None
@@ -96,16 +116,21 @@ class IBKRAdapter(BrokerAdapter):
                     _SHARED_RUNTIME_KEY = None
 
             ib = IB()
-            ib.connect(
-                runtime.get("host"),
-                int(runtime.get("port") or 0),
-                clientId=int(runtime.get("client_id") or 0),
-                account=(runtime.get("account") or None),
-                readonly=False,
-                timeout=10,
-            )
+            try:
+                ib.connect(
+                    runtime.get("host"),
+                    int(runtime.get("port") or 0),
+                    clientId=int(runtime.get("client_id") or 0),
+                    account=(runtime.get("account") or None),
+                    readonly=False,
+                    timeout=10,
+                )
+            except Exception as exc:
+                self._set_last_error(exc)
+                raise
             _SHARED_IB = ib
             _SHARED_RUNTIME_KEY = runtime_key
+            self._mark_ready()
             return ib
 
     def _reset_shared_connection(self):
@@ -123,7 +148,7 @@ class IBKRAdapter(BrokerAdapter):
                 pass
 
     def _connection_status(self):
-        global _SHARED_IB, _SHARED_RUNTIME_KEY
+        global _SHARED_IB, _SHARED_RUNTIME_KEY, _LAST_ERROR, _LAST_READY_AT
         with _SHARED_IB_LOCK:
             connected = False
             runtime_matches = False
@@ -136,12 +161,16 @@ class IBKRAdapter(BrokerAdapter):
             return {
                 "connected": connected,
                 "runtime_matches": runtime_matches,
+                "usable": bool(connected and runtime_matches),
+                "last_error": _LAST_ERROR,
+                "last_ready_at": _LAST_READY_AT,
             }
 
     def health_status(self):
         runtime = dict(self.runtime_config or {})
         connection = self._connection_status()
         reason = ""
+        options_enabled = _env_bool("OPTIONS_ENABLED", False)
         import_error = None
         try:
             import ib_insync  # noqa: F401
@@ -149,22 +178,26 @@ class IBKRAdapter(BrokerAdapter):
             import_error = str(exc)
         if not runtime.get("enabled"):
             reason = "ibkr_disabled"
-        elif not _env_bool("OPTIONS_ENABLED", False):
+        elif not options_enabled:
             reason = "options_disabled"
         elif import_error:
             reason = "ib_insync_unavailable"
         elif not connection.get("connected"):
             reason = "not_connected"
         return {
-            "ok": bool(runtime.get("enabled")) and not bool(import_error) and bool(connection.get("connected")),
+            "ok": bool(runtime.get("enabled")) and bool(options_enabled) and not bool(import_error) and bool(connection.get("connected")),
             "ibkr_enabled": bool(runtime.get("enabled")),
-            "options_enabled": _env_bool("OPTIONS_ENABLED", False),
+            "options_enabled": options_enabled,
             "paper_mode": bool(runtime.get("paper_mode")),
             "host": str(runtime.get("host") or "").strip(),
             "port": int(runtime.get("port") or 0),
             "connected": bool(connection.get("connected")),
             "account": str(runtime.get("account") or "").strip(),
-            "reason": reason or None,
+            "reason": reason or connection.get("last_error") or None,
+            "connection_reused": bool(connection.get("connected") and connection.get("runtime_matches")),
+            "connection_reuse_capable": True,
+            "last_error": import_error or connection.get("last_error"),
+            "last_ready_at": connection.get("last_ready_at"),
         }
 
     def _build_single_contract(self, ib, Option, order, leg):
@@ -249,6 +282,26 @@ class IBKRAdapter(BrokerAdapter):
 
         status = str(getattr(getattr(trade, "orderStatus", None), "status", "") or "Submitted").strip() or "Submitted"
         order_id = getattr(getattr(trade, "order", None), "orderId", None)
+        contract_summary = {
+            "secType": str(getattr(contract, "secType", "") or "").strip(),
+            "symbol": str(getattr(contract, "symbol", "") or "").strip().upper(),
+            "expiry": str(getattr(contract, "lastTradeDateOrContractMonth", "") or "").strip(),
+            "strike": _safe_float(getattr(contract, "strike", 0.0)),
+            "right_code": str(getattr(contract, "right", "") or "").strip().upper(),
+            "exchange": str(getattr(contract, "exchange", "") or "").strip(),
+            "currency": str(getattr(contract, "currency", "") or "").strip(),
+        }
+        legs_summary = [
+            {
+                "side": str((leg or {}).get("side", "") or "").strip().upper(),
+                "quantity": int((leg or {}).get("quantity", 0) or 0),
+                "expiry": str((leg or {}).get("expiry", "") or "").strip(),
+                "strike": _safe_float((leg or {}).get("strike", 0.0)),
+                "right_code": str((leg or {}).get("right_code", (leg or {}).get("right", "")) or "").strip().upper(),
+            }
+            for leg in legs
+        ]
+        self._mark_ready()
         return broker_result(
             True,
             broker=self.name,
@@ -258,6 +311,107 @@ class IBKRAdapter(BrokerAdapter):
             order_type="LIMIT",
             limit_price=limit_price,
             tif=str(order.get("tif", "DAY")).strip().upper() or "DAY",
+            contract_summary=contract_summary,
+            legs_summary=legs_summary,
+        )
+
+    def sync_options_state(self):
+        runtime = dict(self.runtime_config or {})
+        if not runtime.get("enabled"):
+            return broker_result(False, reason="ibkr_disabled", broker=self.name, orders=[], positions=[])
+
+        try:
+            from ib_insync import IB
+        except Exception as exc:
+            self._set_last_error(exc)
+            return broker_result(False, reason="ib_insync_unavailable", broker=self.name, error=str(exc), orders=[], positions=[])
+
+        try:
+            ib = self._get_connection(IB)
+            open_orders = list(ib.reqAllOpenOrders() or [])
+            positions = list(ib.positions() or [])
+            self._mark_ready()
+        except Exception as exc:
+            self._set_last_error(exc)
+            return broker_result(False, reason="ibkr_sync_failed", broker=self.name, error=str(exc), orders=[], positions=[])
+
+        order_rows = []
+        for trade in open_orders:
+            contract = getattr(trade, "contract", None)
+            order_obj = getattr(trade, "order", None)
+            order_status = getattr(trade, "orderStatus", None)
+            sec_type = str(getattr(contract, "secType", "") or "").strip().upper()
+            if sec_type not in {"OPT", "BAG"}:
+                continue
+            order_rows.append(
+                {
+                    "broker_order_id": str(getattr(order_obj, "orderId", "") or "").strip(),
+                    "created_at": _utcnow_iso(),
+                    "updated_at": _utcnow_iso(),
+                    "underlying": str(getattr(contract, "symbol", "") or "").strip().upper(),
+                    "strategy": "combo" if sec_type == "BAG" else "single_leg",
+                    "broker": self.name,
+                    "asset_class": "option",
+                    "order_type": str(getattr(order_obj, "orderType", "LMT") or "LMT").strip().upper(),
+                    "limit_price": _safe_float(getattr(order_obj, "lmtPrice", 0.0)),
+                    "tif": str(getattr(order_obj, "tif", "DAY") or "DAY").strip().upper(),
+                    "status": str(getattr(order_status, "status", "") or "").strip() or "Open",
+                    "source": "ibkr_sync",
+                    "contract_summary": {
+                        "secType": sec_type,
+                        "symbol": str(getattr(contract, "symbol", "") or "").strip().upper(),
+                        "expiry": str(getattr(contract, "lastTradeDateOrContractMonth", "") or "").strip(),
+                        "strike": _safe_float(getattr(contract, "strike", 0.0)),
+                        "right_code": str(getattr(contract, "right", "") or "").strip().upper(),
+                    },
+                    "legs": [],
+                }
+            )
+
+        position_rows = []
+        for item in positions:
+            contract = getattr(item, "contract", None)
+            sec_type = str(getattr(contract, "secType", "") or "").strip().upper()
+            if sec_type != "OPT":
+                continue
+            qty = _safe_float(getattr(item, "position", 0.0))
+            position_rows.append(
+                {
+                    "contract_key": (
+                        f"{str(getattr(contract, 'symbol', '') or '').strip().upper()}|"
+                        f"{str(getattr(contract, 'lastTradeDateOrContractMonth', '') or '').strip()}|"
+                        f"{_safe_float(getattr(contract, 'strike', 0.0))}|"
+                        f"{str(getattr(contract, 'right', '') or '').strip().upper()}"
+                    ),
+                    "updated_at": _utcnow_iso(),
+                    "broker": self.name,
+                    "account": str(getattr(item, "account", "") or "").strip() or str(runtime.get("account") or "").strip(),
+                    "underlying": str(getattr(contract, "symbol", "") or "").strip().upper(),
+                    "expiry": str(getattr(contract, "lastTradeDateOrContractMonth", "") or "").strip(),
+                    "strike": _safe_float(getattr(contract, "strike", 0.0)),
+                    "right_code": str(getattr(contract, "right", "") or "").strip().upper(),
+                    "quantity": abs(qty),
+                    "side": "LONG" if qty >= 0 else "SHORT",
+                    "avg_cost": _safe_float(getattr(item, "avgCost", 0.0)),
+                    "market_price": 0.0,
+                    "market_value": 0.0,
+                    "status": "OPEN",
+                }
+            )
+
+        return broker_result(
+            True,
+            broker=self.name,
+            mode="paper" if runtime.get("paper_mode") else "live",
+            orders=order_rows,
+            positions=position_rows,
+            connection_reused=bool(self._connection_status().get("usable")),
+            reconnect_attempted=False,
+            last_ready_at=self._connection_status().get("last_ready_at"),
+            summary={
+                "orders_count": len(order_rows),
+                "positions_count": len(position_rows),
+            },
         )
 
     def place_options_order(self, order):
@@ -274,6 +428,7 @@ class IBKRAdapter(BrokerAdapter):
         try:
             from ib_insync import Bag, ComboLeg, IB, LimitOrder, Option
         except Exception as exc:
+            self._set_last_error(exc)
             return broker_result(False, reason="ib_insync_unavailable", broker=self.name, error=str(exc))
 
         connection_reused = False
@@ -290,6 +445,7 @@ class IBKRAdapter(BrokerAdapter):
                     "reconnect_attempted": reconnect_attempted,
                 }
         except ContractQualificationError as exc:
+            self._set_last_error(exc)
             return broker_result(
                 False,
                 reason="contract_qualification_failed",
@@ -312,6 +468,7 @@ class IBKRAdapter(BrokerAdapter):
                         "reconnect_attempted": reconnect_attempted,
                     }
             except ContractQualificationError as retry_exc:
+                self._set_last_error(retry_exc)
                 return broker_result(
                     False,
                     reason="contract_qualification_failed",
@@ -322,6 +479,7 @@ class IBKRAdapter(BrokerAdapter):
                 )
             except Exception as retry_exc:
                 traceback.print_exc()
+                self._set_last_error(retry_exc or exc)
                 return broker_result(
                     False,
                     reason="ibkr_retry_failed",
@@ -332,6 +490,7 @@ class IBKRAdapter(BrokerAdapter):
                 )
         except Exception as exc:
             traceback.print_exc()
+            self._set_last_error(exc)
             return broker_result(
                 False,
                 reason="ibkr_order_failed",

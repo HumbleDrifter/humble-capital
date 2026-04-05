@@ -3692,6 +3692,8 @@ tbody tr:last-child td {
 .shadow-eligible-header-actions {
   display: flex;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .shadow-eligible-result {

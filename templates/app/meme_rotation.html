@@ -50,7 +50,8 @@
         <p class="section-subtitle">High-quality shadow candidates that meet review thresholds but are not yet live in the allowlist.</p>
       </div>
       <div class="shadow-eligible-header-actions">
-        <button class="btn btn-primary" type="button" id="shadowEligibleProposalBtn" onclick="generateReviewProposal()">Generate Review Proposal</button>
+        <button class="btn btn-primary" type="button" id="shadowEligibleProposalBtn" onclick="handleReviewProposalAction()">Generate Review Proposal</button>
+        <a class="btn btn-secondary" id="shadowEligibleAutomationLink" href="/configuration?section=proposal-status">Review in Automation</a>
       </div>
     </div>
     <div id="shadowEligibleProposalResult" class="shadow-eligible-result">Review-ready candidates can be bundled into an approval proposal.</div>

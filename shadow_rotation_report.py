@@ -166,6 +166,7 @@ def evaluate_shadow_candidate(row: dict) -> dict:
     volatility_bucket = str(row.get("volatility_bucket") or "").strip().lower()
     regime_fit_score = row.get("regime_fit_score")
     overextension_penalty = row.get("overextension_penalty")
+    held = bool(row.get("held"))
     allowed = bool(row.get("allowed"))
     blocked = bool(row.get("blocked"))
     active_buy_universe = bool(row.get("active_buy_universe"))
@@ -227,6 +228,7 @@ def evaluate_shadow_candidate(row: dict) -> dict:
         "confidence_band": confidence_band or "unknown",
         "liquidity_bucket": liquidity_bucket or "unknown",
         "volatility_bucket": volatility_bucket or "unknown",
+        "held": held,
         "active_buy_universe": active_buy_universe,
         "shadow_eligible": shadow_eligible,
         "shadow_eligibility_reason": eligibility_reason,

@@ -1,4 +1,5 @@
 const API_SECRET = (window.MEME_ROTATION_CONFIG && window.MEME_ROTATION_CONFIG.apiSecret) || "";
+let CURRENT_PENDING_SATELLITE_PROPOSAL = null;
 
 function authUrl(path) {
   if (!API_SECRET) return path;
@@ -90,6 +91,10 @@ function titleCase(value) {
     .join(" ");
 }
 
+function safeObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 function numericOrNull(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
@@ -142,6 +147,85 @@ function resolveOpportunityScore(row) {
   }
 
   return 0;
+}
+
+function resolvePendingSatelliteProposal(items) {
+  const proposals = Array.isArray(items) ? items : [];
+  for (const item of proposals) {
+    const proposal = safeObject(item);
+    const nestedProposal = safeObject(proposal.proposal);
+    const proposalType = String(nestedProposal.proposal_type || proposal.proposal_type || "").trim().toLowerCase();
+    const status = String(proposal.status || "").trim().toLowerCase();
+    const id = String(proposal.id || "").trim();
+    if (proposalType === "satellite_enable_recommendation" && status === "pending" && id) {
+      return {
+        id,
+        status,
+        proposal_type: proposalType,
+        summary_text: String(proposal.summary_text || nestedProposal.summary || "").trim()
+      };
+    }
+  }
+  return null;
+}
+
+function buildShadowPortfolioContext(row, opportunitiesData, systemData, configData, reviewReadyRows) {
+  const config = safeObject(configData);
+  const portfolioSummary = safeObject(systemData?.portfolio_summary);
+  const held = Boolean(row?.held);
+  const activeUniverseCount = Array.isArray(opportunitiesData?.active_satellite_buy_universe)
+    ? opportunitiesData.active_satellite_buy_universe.length
+    : 0;
+  const maxActive = numericOrNull(config.max_active_satellites);
+  const maxNewPerCycle = numericOrNull(config.max_new_satellites_per_cycle);
+  const satelliteTarget = numericOrNull(config.satellite_total_target);
+  const satelliteMax = numericOrNull(config.satellite_total_max);
+  const satelliteWeight = numericOrNull(
+    portfolioSummary.satellite_weight
+    ?? portfolioSummary.satellite_alloc
+    ?? portfolioSummary.satellite_weight_total
+  );
+  const newReviewReadyCount = Array.isArray(reviewReadyRows)
+    ? reviewReadyRows.filter((item) => !item?.held).length
+    : 0;
+
+  let heldContext = held ? "Already held" : "New candidate";
+  let slotPressure = held ? "Held slot preserved" : "Room available";
+  if (!held && maxActive != null) {
+    if (activeUniverseCount >= maxActive) {
+      slotPressure = "Slots full";
+    } else if (activeUniverseCount >= Math.max(maxActive - 1, 0)) {
+      slotPressure = "Limited room";
+    }
+  }
+
+  let portfolioPressure = "Normal";
+  if (satelliteWeight != null && satelliteMax != null && satelliteWeight >= satelliteMax) {
+    portfolioPressure = "High";
+  } else if (satelliteWeight != null && satelliteTarget != null && satelliteWeight >= satelliteTarget) {
+    portfolioPressure = "Moderate";
+  }
+
+  const noteParts = [
+    held ? "Already held in the portfolio." : "Adds new satellite exposure."
+  ];
+  if (row?.active_buy_universe === false) {
+    noteParts.push("Not live in the active universe yet.");
+  }
+  if (!held && maxNewPerCycle != null) {
+    if (newReviewReadyCount > maxNewPerCycle) {
+      noteParts.push(`Cycle entry pressure is elevated (${newReviewReadyCount}/${Math.round(maxNewPerCycle)} review-ready names).`);
+    } else {
+      noteParts.push("Cycle entry room is available.");
+    }
+  }
+
+  return {
+    heldContext,
+    slotPressure,
+    portfolioPressure,
+    portfolioContextNote: noteParts.join(" ")
+  };
 }
 
 function sortCandidates(rows, sortKey) {
@@ -457,24 +541,12 @@ function renderShadowRotationReport(data) {
 
 function renderShadowEligibleCandidates(data) {
   const host = document.getElementById("shadowEligibleCandidates");
-  const button = document.getElementById("shadowEligibleProposalBtn");
   const resultEl = document.getElementById("shadowEligibleProposalResult");
   if (!host) return;
 
   const rows = Array.isArray(data?.shadow_eligible_candidates)
     ? data.shadow_eligible_candidates.slice(0, Math.max(5, Number(data?.top_n || 0)))
     : [];
-
-  if (button) {
-    button.disabled = !rows.length;
-  }
-  if (resultEl && !rows.length) {
-    resultEl.textContent = "No review-ready candidates are available for proposal generation right now.";
-    resultEl.className = "shadow-eligible-result";
-  } else if (resultEl && !resultEl.dataset.userMessage) {
-    resultEl.textContent = "Review-ready candidates can be bundled into an approval proposal.";
-    resultEl.className = "shadow-eligible-result";
-  }
 
   if (!rows.length) {
     host.innerHTML = `<div class="dashboard-shadow-fallback">No review-ready shadow candidates are waiting for enable right now.</div>`;
@@ -495,11 +567,15 @@ function renderShadowEligibleCandidates(data) {
           <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>
           <span class="pill">${escapeHtml(titleCase(row.liquidity_bucket || "unknown"))} liquidity</span>
           <span class="pill">${escapeHtml(titleCase(row.volatility_bucket || "unknown"))} volatility</span>
+          <span class="pill">${escapeHtml(row.heldContext || "New candidate")}</span>
+          <span class="pill">${escapeHtml(row.slotPressure || "Room available")}</span>
+          <span class="pill">${escapeHtml(`Portfolio pressure: ${String(row.portfolioPressure || "Normal").toLowerCase()}`)}</span>
         </div>
       </div>
       <div class="shadow-eligible-reasons">
         <div class="shadow-eligible-reason"><strong>Qualifies:</strong> ${escapeHtml(row.shadow_eligibility_reason || "Review thresholds met.")}</div>
         <div class="shadow-eligible-reason"><strong>Not live yet:</strong> ${escapeHtml(titleCase(row.shadow_block_reason || "not_allowed"))}</div>
+        <div class="shadow-eligible-reason"><strong>Portfolio:</strong> ${escapeHtml(row.portfolioContextNote || "Portfolio context is neutral.")}</div>
       </div>
     </div>
   `).join("");
@@ -542,14 +618,47 @@ function renderShadowNearMissCandidates(data) {
           <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>
           <span class="pill">${escapeHtml(titleCase(row.liquidity_bucket || "unknown"))} liquidity</span>
           <span class="pill">${escapeHtml(titleCase(row.volatility_bucket || "unknown"))} volatility</span>
+          <span class="pill">${escapeHtml(row.heldContext || "New candidate")}</span>
+          <span class="pill">${escapeHtml(row.slotPressure || "Room available")}</span>
+          <span class="pill">${escapeHtml(`Portfolio pressure: ${String(row.portfolioPressure || "Normal").toLowerCase()}`)}</span>
         </div>
       </div>
       <div class="shadow-eligible-reasons">
         <div class="shadow-eligible-reason"><strong>Primary miss:</strong> ${escapeHtml(titleCase(row.primary_fail_reason || row.shadow_block_reason || "unknown"))}</div>
         <div class="shadow-eligible-reason"><strong>Why it missed:</strong> ${escapeHtml(row.fail_explanation || row.shadow_eligibility_reason || "Review threshold not met.")}</div>
+        <div class="shadow-eligible-reason"><strong>Portfolio:</strong> ${escapeHtml(row.portfolioContextNote || "Portfolio context is neutral.")}</div>
       </div>
     </div>
   `).join("");
+}
+
+function renderShadowProposalActionState(shadowData, recentProposalItems) {
+  const button = document.getElementById("shadowEligibleProposalBtn");
+  const resultEl = document.getElementById("shadowEligibleProposalResult");
+  if (!button || !resultEl) return;
+
+  const rows = Array.isArray(shadowData?.shadow_eligible_candidates)
+    ? shadowData.shadow_eligible_candidates
+    : [];
+  const pendingProposal = resolvePendingSatelliteProposal(recentProposalItems);
+  CURRENT_PENDING_SATELLITE_PROPOSAL = pendingProposal;
+
+  button.textContent = pendingProposal ? "Approve Proposal" : "Generate Review Proposal";
+  button.disabled = !pendingProposal && !rows.length;
+
+  if (resultEl.dataset.userMessage) return;
+
+  if (pendingProposal) {
+    setShadowEligibleProposalResult(
+      `Pending satellite-enable proposal ${pendingProposal.id} is ready for approval.`,
+      false,
+      false
+    );
+  } else if (!rows.length) {
+    setShadowEligibleProposalResult("No review-ready candidates are available for proposal generation right now.", false, false);
+  } else {
+    setShadowEligibleProposalResult("Review-ready candidates can be bundled into an approval proposal.", false, false);
+  }
 }
 
 function opportunityCard(row) {
@@ -736,18 +845,77 @@ async function generateReviewProposal() {
   }
 }
 
+async function approveReviewProposal() {
+  const proposalId = String(CURRENT_PENDING_SATELLITE_PROPOSAL?.id || "").trim();
+  if (!proposalId) {
+    setShadowEligibleProposalResult("No pending satellite-enable proposal is available for approval right now.", true, true);
+    return;
+  }
+
+  const button = document.getElementById("shadowEligibleProposalBtn");
+  if (button) button.disabled = true;
+  setShadowEligibleProposalResult(`Approving proposal ${proposalId}...`, false, true);
+
+  try {
+    const result = await fetchJson(`/api/config_proposals/${encodeURIComponent(proposalId)}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 30000);
+
+    if (result?.auto_apply_attempted && result?.auto_apply_ok) {
+      setShadowEligibleProposalResult("Proposal approved and applied based on the current After Approval setting.", false, true);
+    } else if (result?.auto_apply_attempted && result?.auto_apply_ok === false) {
+      setShadowEligibleProposalResult("Proposal was approved, but the automatic apply step needs review.", true, true);
+    } else {
+      setShadowEligibleProposalResult("Proposal approved. Apply remains a separate operator step.", false, true);
+    }
+  } catch (err) {
+    console.error(err);
+    setShadowEligibleProposalResult(`Proposal approval failed: ${err.message}`, true, true);
+  } finally {
+    await refreshMemeRotation();
+  }
+}
+
+async function handleReviewProposalAction() {
+  if (CURRENT_PENDING_SATELLITE_PROPOSAL?.id) {
+    await approveReviewProposal();
+    return;
+  }
+  await generateReviewProposal();
+}
+
 async function refreshMemeRotation() {
   try {
-    const [data, systemData, shadowRotationData] = await Promise.all([
+    const [data, systemData, shadowRotationData, configData, proposalData] = await Promise.all([
       fetchJson("/api/meme_rotation"),
       fetchJson("/api/system_snapshot").catch(() => ({})),
-      fetchJson("/api/shadow_rotation_report").catch(() => ({}))
+      fetchJson("/api/shadow_rotation_report").catch(() => ({})),
+      fetchJson("/api/config").catch(() => ({ config: {} })),
+      fetchJson("/api/config_proposals/recent?limit=10").catch(() => ({ items: [] }))
     ]);
+    const config = safeObject(configData?.config);
+    const recentProposals = Array.isArray(proposalData?.items) ? proposalData.items : [];
+    const eligibleRows = Array.isArray(shadowRotationData?.shadow_eligible_candidates)
+      ? shadowRotationData.shadow_eligible_candidates
+      : [];
+    const enrichRows = (rows) => rows.map((row) => ({
+      ...row,
+      ...buildShadowPortfolioContext(row, data, systemData || {}, config, eligibleRows)
+    }));
+    const enrichedShadowData = {
+      ...safeObject(shadowRotationData),
+      shadow_eligible_candidates: enrichRows(eligibleRows),
+      shadow_near_miss_candidates: enrichRows(Array.isArray(shadowRotationData?.shadow_near_miss_candidates) ? shadowRotationData.shadow_near_miss_candidates : [])
+    };
+
     renderStatus(data, systemData || {});
     renderScannerStatus(systemData || {});
-    renderShadowRotationReport(shadowRotationData || {});
-    renderShadowEligibleCandidates(shadowRotationData || {});
-    renderShadowNearMissCandidates(shadowRotationData || {});
+    renderShadowRotationReport(enrichedShadowData || {});
+    renderShadowProposalActionState(enrichedShadowData || {}, recentProposals);
+    renderShadowEligibleCandidates(enrichedShadowData || {});
+    renderShadowNearMissCandidates(enrichedShadowData || {});
     renderScoreLegend(data);
     renderGroups(data);
   } catch (err) {
@@ -759,6 +927,7 @@ async function refreshMemeRotation() {
   }
 }
 
+window.handleReviewProposalAction = handleReviewProposalAction;
 window.generateReviewProposal = generateReviewProposal;
 window.refreshMemeRotation = refreshMemeRotation;
 window.setOpportunityMode = setOpportunityMode;

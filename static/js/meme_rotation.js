@@ -457,11 +457,24 @@ function renderShadowRotationReport(data) {
 
 function renderShadowEligibleCandidates(data) {
   const host = document.getElementById("shadowEligibleCandidates");
+  const button = document.getElementById("shadowEligibleProposalBtn");
+  const resultEl = document.getElementById("shadowEligibleProposalResult");
   if (!host) return;
 
   const rows = Array.isArray(data?.shadow_eligible_candidates)
     ? data.shadow_eligible_candidates.slice(0, Math.max(5, Number(data?.top_n || 0)))
     : [];
+
+  if (button) {
+    button.disabled = !rows.length;
+  }
+  if (resultEl && !rows.length) {
+    resultEl.textContent = "No review-ready candidates are available for proposal generation right now.";
+    resultEl.className = "shadow-eligible-result";
+  } else if (resultEl && !resultEl.dataset.userMessage) {
+    resultEl.textContent = "Review-ready candidates can be bundled into an approval proposal.";
+    resultEl.className = "shadow-eligible-result";
+  }
 
   if (!rows.length) {
     host.innerHTML = `<div class="dashboard-shadow-fallback">No review-ready shadow candidates are waiting for enable right now.</div>`;
@@ -490,6 +503,18 @@ function renderShadowEligibleCandidates(data) {
       </div>
     </div>
   `).join("");
+}
+
+function setShadowEligibleProposalResult(message, isError = false, sticky = false) {
+  const el = document.getElementById("shadowEligibleProposalResult");
+  if (!el) return;
+  el.textContent = message;
+  el.className = isError ? "shadow-eligible-result error" : "shadow-eligible-result";
+  if (sticky) {
+    el.dataset.userMessage = "true";
+  } else {
+    delete el.dataset.userMessage;
+  }
 }
 
 function renderShadowNearMissCandidates(data) {
@@ -674,6 +699,43 @@ async function toggleOpportunityScanner() {
   }
 }
 
+async function generateReviewProposal() {
+  const button = document.getElementById("shadowEligibleProposalBtn");
+  if (button?.disabled) {
+    setShadowEligibleProposalResult("No review-ready candidates are available for proposal generation right now.");
+    return;
+  }
+
+  if (button) button.disabled = true;
+  setShadowEligibleProposalResult("Generating review proposal...", false, true);
+
+  try {
+    const result = await fetchJson("/api/config_proposals/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 30000);
+
+    const status = String(result?.status || "").trim().toLowerCase();
+    if (status === "created") {
+      const createdCount = Number(result?.created_count || 0);
+      const delivery = result?.notification_sent === false ? " Telegram delivery needs review." : "";
+      setShadowEligibleProposalResult(`${createdCount || 1} review proposal${createdCount === 1 || !createdCount ? "" : "s"} created.${result.proposal_id ? ` Latest ${result.proposal_id}.` : ""}${delivery}`.trim(), false, true);
+    } else if (status === "deduped" || status === "deduped_recent") {
+      setShadowEligibleProposalResult(`Existing pending proposal ${result.proposal_id || ""} already matches the current advisory state.`.trim(), false, true);
+    } else if (status === "noop") {
+      setShadowEligibleProposalResult("No proposal was generated because no review-ready candidates qualified.", false, true);
+    } else {
+      setShadowEligibleProposalResult(`Proposal generation returned status: ${status || "unknown"}.`, false, true);
+    }
+  } catch (err) {
+    console.error(err);
+    setShadowEligibleProposalResult(`Proposal generation failed: ${err.message}`, true, true);
+  } finally {
+    await refreshMemeRotation();
+  }
+}
+
 async function refreshMemeRotation() {
   try {
     const [data, systemData, shadowRotationData] = await Promise.all([
@@ -697,6 +759,7 @@ async function refreshMemeRotation() {
   }
 }
 
+window.generateReviewProposal = generateReviewProposal;
 window.refreshMemeRotation = refreshMemeRotation;
 window.setOpportunityMode = setOpportunityMode;
 window.toggleOpportunityScanner = toggleOpportunityScanner;

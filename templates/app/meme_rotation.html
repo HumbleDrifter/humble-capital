@@ -49,7 +49,11 @@
         <h3>Recommended for Enable</h3>
         <p class="section-subtitle">High-quality shadow candidates that meet review thresholds but are not yet live in the allowlist.</p>
       </div>
+      <div class="shadow-eligible-header-actions">
+        <button class="btn btn-primary" type="button" id="shadowEligibleProposalBtn" onclick="generateReviewProposal()">Generate Review Proposal</button>
+      </div>
     </div>
+    <div id="shadowEligibleProposalResult" class="shadow-eligible-result">Review-ready candidates can be bundled into an approval proposal.</div>
     <div id="shadowEligibleCandidates" class="shadow-eligible-list">
       <div class="dashboard-shadow-fallback">Loading review candidates...</div>
     </div>

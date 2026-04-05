@@ -3661,6 +3661,22 @@ tbody tr:last-child td {
   gap: 12px;
 }
 
+.shadow-eligible-header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.shadow-eligible-result {
+  margin-bottom: 12px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.shadow-eligible-result.error {
+  color: var(--bad);
+}
+
 .shadow-eligible-row {
   display: flex;
   align-items: flex-start;

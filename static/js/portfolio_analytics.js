@@ -1,4 +1,5 @@
 const API_SECRET = (window.PORTFOLIO_ANALYTICS_CONFIG && window.PORTFOLIO_ANALYTICS_CONFIG.apiSecret) || "";
+let lastAnalyticsRefreshAt = 0;
 
 function authUrl(path) {
   if (!API_SECRET) return path;
@@ -209,18 +210,6 @@ function renderHistory(data) {
   const points = data.points || [];
   const type = data.series_type || "realized_pnl";
 
-  if (type === "equity_fallback") {
-    title.textContent = "Equity Snapshot";
-    if (meta) meta.textContent = "No pnl_history rows yet. Showing a current-equity fallback point.";
-    host.innerHTML = `
-      <div class="kpi-card">
-        <div class="kpi-label">Current Portfolio Value</div>
-        <div class="kpi-value">${fmtUsd((points[0] || {}).equity_usd || 0)}</div>
-      </div>
-    `;
-    return;
-  }
-
   if (type === "empty") {
     title.textContent = "History Unavailable";
     if (meta) meta.textContent = "No portfolio history series is available yet.";
@@ -228,23 +217,32 @@ function renderHistory(data) {
     return;
   }
 
-  title.textContent = "Realized PnL History";
-
   if (!points.length) {
-    if (meta) meta.textContent = "No realized PnL history found.";
-    host.innerHTML = `<div class="muted">No pnl_history rows are available yet.</div>`;
+    title.textContent = type === "portfolio_value" ? "Portfolio Value History" : "Realized PnL History";
+    if (meta) {
+      meta.textContent = type === "portfolio_value"
+        ? "No portfolio value history found."
+        : "No realized PnL history found.";
+    }
+    host.innerHTML = `<div class="muted">No history data found for the selected range.</div>`;
     return;
   }
 
-  if (meta) {
-    meta.textContent = `${points.length} realized PnL point(s) in selected range`;
+  if (type === "portfolio_value") {
+    title.textContent = "Portfolio Value History";
+    if (meta) meta.textContent = `${points.length} portfolio value point(s) in selected range`;
+    host.innerHTML = buildSvgLine(points, "equity_usd", fmtUsd);
+    return;
   }
 
+  title.textContent = "Realized PnL History";
+  if (meta) meta.textContent = `${points.length} realized PnL point(s) in selected range`;
   host.innerHTML = buildSvgLine(points, "realized_pnl", fmtUsd);
 }
 
 async function refreshAnalytics() {
   try {
+    lastAnalyticsRefreshAt = Date.now();
     const range = document.getElementById("historyRange")?.value || "30d";
 
     const [summary, allocations, history] = await Promise.all([
@@ -264,3 +262,9 @@ async function refreshAnalytics() {
 
 window.refreshAnalytics = refreshAnalytics;
 refreshAnalytics();
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (Date.now() - lastAnalyticsRefreshAt < 15000) return;
+  refreshAnalytics();
+});

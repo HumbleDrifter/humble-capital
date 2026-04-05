@@ -1,12 +1,8 @@
 {% extends "base_app.html" %}
 
-{% block topbar_actions %}
-<button class="btn btn-secondary" onclick="refreshAnalytics()">Refresh Now</button>
-{% endblock %}
-
 {% block content %}
-<div class="grid cols-12">
-  <section class="panel span-12">
+<div class="grid cols-12 analytics-layout">
+  <section class="panel span-12 analytics-summary-panel">
     <div class="section-header">
       <div>
         <h2>Portfolio Analytics</h2>
@@ -54,7 +50,7 @@
     </div>
   </section>
 
-  <section class="panel span-8">
+  <section class="panel span-8 analytics-history-panel">
     <div class="section-header">
       <div>
         <h2 id="historyChartTitle">Realized PnL History</h2>
@@ -64,7 +60,7 @@
     <div id="historyChartHost"></div>
   </section>
 
-  <section class="panel span-4">
+  <section class="panel span-4 analytics-stats-panel">
     <div class="section-header">
       <div>
         <h2>Portfolio Stats</h2>
@@ -72,17 +68,32 @@
       </div>
     </div>
 
-    <div class="statusline">
-      <div>Assets: <span class="mono" id="paAssetCount">0</span></div>
-      <div>Trades Logged: <span class="mono" id="paTradeCount">0</span></div>
-      <div>PnL Points: <span class="mono" id="paPnlPoints">0</span></div>
-      <div>Regime: <span class="mono" id="paRegime">—</span></div>
-      <div>Top Asset: <span class="mono" id="paTopAsset">—</span></div>
+    <div class="analytics-stats-grid">
+      <div class="analytics-stat-card">
+        <div class="analytics-stat-label">Assets</div>
+        <div class="analytics-stat-value mono" id="paAssetCount">0</div>
+      </div>
+      <div class="analytics-stat-card">
+        <div class="analytics-stat-label">Trades Logged</div>
+        <div class="analytics-stat-value mono" id="paTradeCount">0</div>
+      </div>
+      <div class="analytics-stat-card">
+        <div class="analytics-stat-label">PnL Points</div>
+        <div class="analytics-stat-value mono" id="paPnlPoints">0</div>
+      </div>
+      <div class="analytics-stat-card analytics-stat-card-regime">
+        <div class="analytics-stat-label">Regime</div>
+        <div class="analytics-stat-value" id="paRegime">—</div>
+      </div>
+      <div class="analytics-stat-card analytics-stat-card-wide">
+        <div class="analytics-stat-label">Top Asset</div>
+        <div class="analytics-stat-value mono" id="paTopAsset">—</div>
+      </div>
     </div>
 
     <div class="divider"></div>
 
-    <div id="analyticsConsole" class="mono tiny">Portfolio stats will appear here.</div>
+    <div id="analyticsConsole" class="analytics-stats-console mono tiny">Portfolio stats will appear here.</div>
   </section>
 
   <section class="panel span-12">

@@ -32,6 +32,7 @@ from portfolio import (
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
 from services.config_proposal_service import approve_config_proposal, generate_review_proposals, reject_config_proposal
+from services.satellite_decision_engine import build_satellite_decisions
 from shadow_rotation_report import build_shadow_rotation_report
 from storage import get_portfolio_history_since
 from storage import get_latest_config_proposal_any_status, list_recent_config_proposals
@@ -877,6 +878,57 @@ def _build_meme_rotation():
             "reason": reason,
         })
 
+    satellite_decision_summary = {}
+    try:
+        configured_max_active = _safe_int(
+            cfg.get("max_active_satellites")
+            or ((cfg.get("meme_rotation") or {}).get("max_active"))
+            or shadow_target_count,
+            0,
+        ) or None
+        decision_bundle = build_satellite_decisions(
+            shadow_ranked,
+            cycles=None,
+            current_system_selections=current_system_selections,
+            configured_max_active=configured_max_active,
+            recent_proposals=list_recent_config_proposals(limit=10, proposal_type=None),
+        )
+        decision_items = decision_bundle.get("items") if isinstance(decision_bundle, dict) else []
+        decision_map = {
+            str(row.get("product_id") or "").strip(): row
+            for row in (decision_items if isinstance(decision_items, list) else [])
+            if str(row.get("product_id") or "").strip()
+        }
+        satellite_decision_summary = (
+            decision_bundle.get("summary")
+            if isinstance(decision_bundle, dict) and isinstance(decision_bundle.get("summary"), dict)
+            else {}
+        )
+
+        for candidate in candidates:
+            decision_row = decision_map.get(str(candidate.get("product_id") or "").strip())
+            if not decision_row:
+                continue
+            candidate.update({
+                "decision": decision_row.get("decision"),
+                "decision_reason": decision_row.get("decision_reason"),
+                "decision_blockers": decision_row.get("decision_blockers") if isinstance(decision_row.get("decision_blockers"), list) else [],
+                "decision_confidence": decision_row.get("decision_confidence"),
+                "replacement_target": decision_row.get("replacement_target"),
+                "replacement_score_delta": decision_row.get("replacement_score_delta"),
+                "stability_hits": decision_row.get("stability_hits"),
+                "stability_window_cycles": decision_row.get("stability_window_cycles"),
+                "active_satellite_count": decision_row.get("active_satellite_count"),
+                "configured_max_active": decision_row.get("configured_max_active"),
+                "slots_remaining": decision_row.get("slots_remaining"),
+                "held_context": decision_row.get("held_context"),
+                "slot_pressure": decision_row.get("slot_pressure"),
+                "portfolio_pressure": decision_row.get("portfolio_pressure"),
+                "portfolio_context_note": decision_row.get("portfolio_context_note"),
+            })
+    except Exception as exc:
+        _log_api(f"satellite decision engine enrichment skipped: {exc}")
+
     _append_shadow_rotation_log({
         "logged_at": int(_now()),
         "rotation_generated_at": _safe_int(rotation.get("generated_at")),
@@ -926,6 +978,7 @@ def _build_meme_rotation():
         "market_regime": summary.get("market_regime"),
         "active_satellite_buy_universe": sorted(active_buy_universe),
         "current_system_selections": current_system_selections,
+        "satellite_decision_summary": satellite_decision_summary,
         "candidates": candidates,
         "freshness": _freshness_from_payload(snapshot),
     }

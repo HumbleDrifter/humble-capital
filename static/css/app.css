@@ -3437,6 +3437,21 @@ tbody tr:last-child td {
   margin-top: 4px;
 }
 
+.system-universe-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.system-universe-label {
+  margin-bottom: 8px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 #serviceHealth,
 #cacheHealth,
 #heatmapStatus {
@@ -3444,7 +3459,8 @@ tbody tr:last-child td {
   gap: 12px;
 }
 
-#diagnostics {
+#diagnostics,
+#tradableUniverseLists {
   margin: 0;
   padding: 14px;
   min-height: 220px;
@@ -5313,6 +5329,10 @@ tbody tr:last-child td {
   .configuration-action-row .btn {
     flex: 1 1 0;
     min-width: 0;
+  }
+
+  .system-universe-grid {
+    grid-template-columns: 1fr;
   }
 
   .mobile-topbar-actions {

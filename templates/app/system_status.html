@@ -2,11 +2,13 @@
 
 {% block topbar_actions %}
 <button class="btn btn-secondary" onclick="refreshSystemStatus()">Refresh</button>
+<button class="btn btn-secondary" onclick="refreshTradableUniverse()">Refresh Server Universe</button>
 <button class="btn btn-primary" onclick="refreshCaches()">Refresh Caches</button>
 {% endblock %}
 
 {% block mobile_topbar_actions %}
 <button class="btn btn-secondary" onclick="refreshSystemStatus()">Refresh</button>
+<button class="btn btn-secondary" onclick="refreshTradableUniverse()">Universe</button>
 <button class="btn btn-primary" onclick="refreshCaches()">Caches</button>
 {% endblock %}
 
@@ -66,6 +68,45 @@
     </div>
 
     <pre id="diagnostics">Loading...</pre>
+  </section>
+
+  <section class="panel span-12 system-status-universe">
+    <div class="section-header">
+      <div>
+        <h2>Tradable Universe Sync</h2>
+        <p class="section-subtitle">
+          Read-only view of the server-authoritative tradable universe and drift versus local config expectations.
+        </p>
+      </div>
+      <div class="service-actions">
+        <button class="btn btn-secondary" onclick="refreshTradableUniverse()">
+          Refresh Server Universe
+        </button>
+      </div>
+    </div>
+
+    <div id="tradableUniverseStatus" class="status-console">
+      Ready to fetch the current server tradable universe.
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="system-universe-grid">
+      <div>
+        <div class="system-universe-label">Summary</div>
+        <div id="tradableUniverseSummary" class="status-console">Waiting for server data.</div>
+      </div>
+
+      <div>
+        <div class="system-universe-label">Drift</div>
+        <div id="tradableUniverseDrift" class="status-console">Waiting for comparison data.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="system-universe-label">Server Lists</div>
+    <pre id="tradableUniverseLists">Waiting for server data.</pre>
   </section>
 
 </div>

@@ -7,6 +7,9 @@ let HOLDINGS_BY_PRODUCT = {};
 let TOTAL_ASSET_VALUE_USD = 0;
 let ACTIVE_PRESET = "";
 let URL_PRESET_APPLIED = false;
+let CURRENT_CONFIG = {};
+let LATEST_PROPOSAL = null;
+let LATEST_AUTOMATION_MESSAGE = "";
 const PERCENT_FIELD_IDS = [
   "satellite_total_target",
   "satellite_total_max",
@@ -147,6 +150,14 @@ function isPercentFieldId(id) {
 function normalizeProposalAutomationMode(value, allowedValues, fallback) {
   const normalized = String(value || "").trim().toLowerCase();
   return allowedValues.includes(normalized) ? normalized : fallback;
+}
+
+function titleCase(value) {
+  return String(value || "")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function clampPercentValue(value) {
@@ -424,10 +435,12 @@ function renderProposalLatest(data) {
   const emptyEl = document.getElementById("configProposalEmptyState");
   const contentEl = document.getElementById("configProposalLatestContent");
   const proposal = data ? normalizeConfigProposalRecord(data) : null;
+  LATEST_PROPOSAL = proposal && proposal.id ? proposal : null;
 
   if (!proposal || !proposal.id) {
     if (emptyEl) emptyEl.hidden = false;
     if (contentEl) contentEl.hidden = true;
+    renderAutomationOverview();
     return;
   }
 
@@ -483,6 +496,8 @@ function renderProposalLatest(data) {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
   });
+
+  renderAutomationOverview();
 }
 
 function renderProposalHistory(items) {
@@ -836,6 +851,70 @@ function renderProposalAutomationSettings(cfg) {
   if (minConfidenceEl) minConfidenceEl.value = minConfidence;
 }
 
+function renderAutomationOverview() {
+  const cfg = CURRENT_CONFIG || {};
+  const generationMode = normalizeProposalAutomationMode(
+    cfg?.config_proposal_generation_mode,
+    PROPOSAL_GENERATION_MODES,
+    document.getElementById("config_proposal_generation_mode")?.value || "manual"
+  );
+  const applyMode = normalizeProposalAutomationMode(
+    cfg?.config_proposal_apply_mode,
+    PROPOSAL_APPLY_MODES,
+    document.getElementById("config_proposal_apply_mode")?.value || "manual"
+  );
+  const minConfidence = normalizeProposalAutomationMode(
+    cfg?.config_proposal_min_confidence,
+    PROPOSAL_MIN_CONFIDENCE_VALUES,
+    document.getElementById("config_proposal_min_confidence")?.value || "high"
+  );
+
+  const tradingMode =
+    ASSETS.length
+      ? `${ASSETS.length} markets • ${ALLOWED_SATELLITES.length} enabled • ${BLOCKED_SATELLITES.length} blocked • ${CORE_ASSETS.length} core`
+      : "Reviewing tradable market coverage";
+  const automationStatus =
+    generationMode === "auto"
+      ? `Auto proposals live • ${titleCase(minConfidence)} confidence minimum`
+      : "Manual proposals only";
+  const approvalPosture =
+    applyMode === "after_approval"
+      ? "Approved proposals apply immediately"
+      : "Approval and apply remain separate";
+
+  const target = cfg?.satellite_total_target;
+  const max = cfg?.satellite_total_max;
+  const reserve = cfg?.min_cash_reserve;
+  const tradeFloor = cfg?.trade_min_value_usd;
+  const guardrails = [
+    hasNumericValue(target) ? `Target ${formatPct(target)}` : "",
+    hasNumericValue(max) ? `Max ${formatPct(max)}` : "",
+    hasNumericValue(reserve) ? `Reserve ${formatPct(reserve)}` : "",
+    hasNumericValue(tradeFloor) ? `Floor ${formatUsd(tradeFloor)}` : ""
+  ].filter(Boolean).join(" • ") || "Reviewing current operating limits";
+
+  let latestAction = "No recent automation activity yet.";
+  if (LATEST_PROPOSAL && LATEST_PROPOSAL.id) {
+    const event = relevantProposalEvent(LATEST_PROPOSAL);
+    latestAction = `${titleCase(LATEST_PROPOSAL.status || "pending")} • ${formatProposalDate(event.value)}`;
+  } else if (LATEST_AUTOMATION_MESSAGE) {
+    latestAction = LATEST_AUTOMATION_MESSAGE;
+  }
+
+  const valueMap = {
+    configOverviewAutomationStatus: automationStatus,
+    configOverviewTradingMode: tradingMode,
+    configOverviewApprovalPosture: approvalPosture,
+    configOverviewGuardrails: guardrails,
+    configOverviewLastAction: latestAction
+  };
+
+  Object.entries(valueMap).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
+}
+
 function getAssetMode(productId) {
   if (CORE_ASSETS.includes(productId)) {
     return { key: "core", badge: '<span class="badge accent2">core</span>' };
@@ -871,6 +950,7 @@ function updateAssetMeta() {
 
   const metaEl = document.getElementById("assetSearchMeta");
   if (metaEl) metaEl.textContent = `Showing ${FILTERED_ASSETS.length} of ${ASSETS.length} tradable USD assets`;
+  renderAutomationOverview();
 }
 
 function drawAssetRows() {
@@ -966,12 +1046,14 @@ async function loadProposalState() {
 async function loadConfigState() {
   const cfgData = await fetchJson("/api/config", {}, 20000);
   const cfg = cfgData.config || {};
+  CURRENT_CONFIG = cfg;
   ALLOWED_SATELLITES = Array.isArray(cfg.satellite_allowed) ? cfg.satellite_allowed.slice() : [];
   BLOCKED_SATELLITES = Array.isArray(cfg.satellite_blocked) ? cfg.satellite_blocked.slice() : [];
   CORE_ASSETS = Object.keys(cfg.core_assets || {});
   renderRiskConfig(cfg);
   renderProposalAutomationSettings(cfg);
   updateConfigurationSummary();
+  renderAutomationOverview();
 }
 
 async function loadTradableAssets() {
@@ -1135,6 +1217,8 @@ function setProposalAutomationResult(message, isError = false) {
   if (!el) return;
   el.textContent = message;
   el.className = isError ? "config-proposal-automation-result error" : "config-proposal-automation-result";
+  LATEST_AUTOMATION_MESSAGE = message;
+  renderAutomationOverview();
 }
 
 async function generateProposalNow() {

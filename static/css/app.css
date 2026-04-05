@@ -2515,6 +2515,19 @@ tbody tr:last-child td {
   line-height: 1.7;
 }
 
+.configuration-primary-note-safety {
+  border-color: rgba(96, 165, 250, 0.12);
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.08), transparent 36%),
+    linear-gradient(180deg, rgba(16, 25, 38, 0.96), rgba(10, 16, 25, 0.96));
+}
+
+.configuration-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .configuration-basic-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2670,7 +2683,7 @@ tbody tr:last-child td {
 
 .config-proposal-automation-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-top: 14px;
 }
@@ -5042,6 +5055,10 @@ tbody tr:last-child td {
     grid-template-columns: 1fr 1fr;
   }
 
+  .configuration-overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .configuration-basic-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5279,6 +5296,10 @@ tbody tr:last-child td {
 
   .configuration-hero-grid,
   .configuration-advanced-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .configuration-overview-grid {
     grid-template-columns: 1fr;
   }
 

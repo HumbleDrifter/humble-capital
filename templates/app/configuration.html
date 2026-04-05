@@ -17,7 +17,7 @@
     <div class="section-header">
       <div>
         <h2>Automation Workspace</h2>
-        <p class="section-subtitle">Start with plain-language controls for risk posture and proposal behavior, then open the advanced workspace only when you need deeper operational detail.</p>
+        <p class="section-subtitle">Use this page as the control center for trading posture, approvals, and safety settings. Start with the overview, adjust the everyday controls, and open advanced sections only when you need deeper tuning.</p>
       </div>
     </div>
 
@@ -25,47 +25,36 @@
 
     <div class="divider"></div>
 
-    <div class="configuration-basic-grid">
+    <div class="configuration-overview-grid">
       <div class="configuration-shell-card">
-        <div class="configuration-card-kicker">Markets</div>
-        <div class="configuration-shell-title">Tradable market universe</div>
-        <div class="configuration-shell-value mono" id="assetUniverseCount">loading...</div>
-        <div class="configuration-shell-note">Spot products currently available to the automation stack.</div>
+        <div class="configuration-card-kicker">Automation Status</div>
+        <div class="configuration-shell-title">Proposal engine</div>
+        <div class="configuration-shell-value" id="configOverviewAutomationStatus">Reviewing</div>
+        <div class="configuration-shell-note">Shows whether proposals are generated automatically or only when you trigger them.</div>
       </div>
       <div class="configuration-shell-card">
-        <div class="configuration-card-kicker">Connected Brokers</div>
-        <div class="configuration-shell-title">Execution connections</div>
-        <div class="configuration-shell-value">Live terminal stack</div>
-        <div class="configuration-shell-note">Broker connectivity stays server-managed and unchanged in this phase.</div>
+        <div class="configuration-card-kicker">Trading Mode</div>
+        <div class="configuration-shell-title">Market coverage</div>
+        <div class="configuration-shell-value mono" id="configOverviewTradingMode">Reviewing</div>
+        <div class="configuration-shell-note">Summarizes tradable markets and how many names are enabled, blocked, or managed as core.</div>
       </div>
       <div class="configuration-shell-card">
-        <div class="configuration-card-kicker">Risk Profile</div>
-        <div class="configuration-shell-title">Everyday guardrails</div>
-        <div class="configuration-shell-value">Preset + manual review</div>
-        <div class="configuration-shell-note">Use the profile below to stage broad operating posture before saving.</div>
-      </div>
-      <div class="form-card config-proposal-automation-card">
-        <div class="configuration-card-kicker">Automation Mode</div>
-        <div class="configuration-shell-title">Proposal workflow</div>
-        <label for="config_proposal_generation_mode" class="configuration-shell-label">Generation Mode</label>
-        <select id="config_proposal_generation_mode">
-          <option value="manual">Manual</option>
-          <option value="auto">Auto</option>
-        </select>
-        <div class="field-help">Manual generation: proposals are created only when you trigger them.</div>
-        <div class="field-help">Auto generation: proposals are created automatically when advisory rules pass.</div>
+        <div class="configuration-card-kicker">Approval Posture</div>
+        <div class="configuration-shell-title">Operator review</div>
+        <div class="configuration-shell-value" id="configOverviewApprovalPosture">Reviewing</div>
+        <div class="configuration-shell-note">Clarifies whether approved proposals still need a second manual apply step.</div>
       </div>
       <div class="configuration-shell-card">
-        <div class="configuration-card-kicker">Opportunity Style</div>
-        <div class="configuration-shell-title">Rotation posture</div>
-        <div class="configuration-shell-value mono" id="assetModeSummary">loading...</div>
-        <div class="configuration-shell-note">Satellite capacity and universe tuning shape how aggressively new names enter rotation.</div>
+        <div class="configuration-card-kicker">Guardrail Status</div>
+        <div class="configuration-shell-title">Current operating limits</div>
+        <div class="configuration-shell-value" id="configOverviewGuardrails">Reviewing</div>
+        <div class="configuration-shell-note">Summarizes the current allocation target, hard cap, reserve, and trade floor.</div>
       </div>
       <div class="configuration-shell-card">
-        <div class="configuration-card-kicker">Notifications</div>
-        <div class="configuration-shell-title">Operator alerts</div>
-        <div class="configuration-shell-value">Telegram workflow</div>
-        <div class="configuration-shell-note">Proposal notifications, approvals, and confirmations remain manual and reviewable.</div>
+        <div class="configuration-card-kicker">Latest Activity</div>
+        <div class="configuration-shell-title">Recent automation action</div>
+        <div class="configuration-shell-value" id="configOverviewLastAction">No recent automation activity yet.</div>
+        <div class="configuration-shell-note">Shows the most recent proposal outcome or generation result already visible in this workspace.</div>
       </div>
     </div>
   </section>
@@ -73,8 +62,8 @@
   <section class="panel span-12 configuration-core-panel" id="config-section-core-controls" data-config-section="core-controls">
     <div class="section-header">
       <div>
-        <h2>Basic Controls</h2>
-        <p class="section-subtitle">These are the everyday controls most operators use: broad risk posture, trade floor, and proposal workflow settings.</p>
+        <h2>Primary Controls</h2>
+        <p class="section-subtitle">These are the everyday controls most operators actually use: set the broad posture first, then save when you are comfortable with the limits.</p>
       </div>
     </div>
 
@@ -94,9 +83,9 @@
 
     <div class="divider"></div>
 
-    <div class="configuration-primary-note">
-      <div class="configuration-primary-note-title">Risk Profile</div>
-      <div class="configuration-primary-note-copy">Set the overall operating posture here first. Advanced rotation and universe controls stay available below, but hidden until you need them.</div>
+    <div class="configuration-primary-note configuration-primary-note-safety">
+      <div class="configuration-primary-note-title">Safety Limits</div>
+      <div class="configuration-primary-note-copy">These limits govern how much satellite exposure the system can carry, how much cash stays in reserve, and how small trades should be filtered out.</div>
     </div>
 
     <div class="divider"></div>
@@ -151,20 +140,30 @@
   <section class="panel span-12 config-proposal-panel">
     <div class="section-header">
       <div>
-        <h2>Automation &amp; Proposals</h2>
-        <p class="section-subtitle">Control proposal behavior and review approvals when needed.</p>
+        <h2>Safety &amp; Approvals</h2>
+        <p class="section-subtitle">Review how proposals are generated, how approvals are handled, and what the latest proposal activity looks like.</p>
       </div>
     </div>
 
     <div class="config-proposal-automation-panel">
       <div class="config-proposal-automation-head">
         <div>
-          <div class="config-proposal-eyebrow">Proposal Automation</div>
-          <div class="config-proposal-automation-copy">Choose how proposals are generated and whether approval should immediately apply approved guardrail changes.</div>
+          <div class="config-proposal-eyebrow">Primary Workflow</div>
+          <div class="config-proposal-automation-copy">Choose whether the system drafts proposals automatically, decide how approvals should behave, and trigger a fresh proposal when you want to review the latest guidance.</div>
         </div>
       </div>
 
       <div class="config-proposal-automation-grid">
+        <div class="form-card config-proposal-automation-card">
+          <label for="config_proposal_generation_mode">Proposal Generation</label>
+          <select id="config_proposal_generation_mode">
+            <option value="manual">Manual</option>
+            <option value="auto">Auto</option>
+          </select>
+          <div class="field-help">Manual keeps proposal generation operator-triggered.</div>
+          <div class="field-help">Auto drafts proposals when the advisory rules qualify a safe change.</div>
+        </div>
+
         <div class="form-card config-proposal-automation-card">
           <label for="config_proposal_apply_mode">Apply Mode</label>
           <select id="config_proposal_apply_mode">

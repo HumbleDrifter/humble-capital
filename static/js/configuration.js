@@ -981,10 +981,10 @@ function renderAutomationOverview() {
   const reserve = cfg?.min_cash_reserve;
   const tradeFloor = cfg?.trade_min_value_usd;
   const guardrails = [
-    hasNumericValue(target) ? `Target ${formatPct(target)}` : "",
-    hasNumericValue(max) ? `Max ${formatPct(max)}` : "",
-    hasNumericValue(reserve) ? `Reserve ${formatPct(reserve)}` : "",
-    hasNumericValue(tradeFloor) ? `Floor ${formatUsd(tradeFloor)}` : ""
+    hasNumericValue(target) ? `Satellite Target ${formatPct(target)}` : "",
+    hasNumericValue(max) ? `Satellite Max ${formatPct(max)}` : "",
+    hasNumericValue(reserve) ? `Cash Reserve ${formatPct(reserve)}` : "",
+    hasNumericValue(tradeFloor) ? `Minimum Trade ${formatUsd(tradeFloor)}` : ""
   ].filter(Boolean).join(" • ") || "Reviewing current operating limits";
 
   const pendingCount = RECENT_PROPOSALS.filter((proposal) => proposal.status === "pending").length;

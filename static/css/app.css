@@ -2663,7 +2663,7 @@ tbody tr:last-child td {
 }
 
 .configuration-advanced-toggle summary::after {
-  content: "+";
+  content: "";
   flex: 0 0 auto;
   width: 28px;
   height: 28px;
@@ -2674,12 +2674,10 @@ tbody tr:last-child td {
   padding: 0;
   border-radius: 999px;
   border: 1px solid rgba(52, 211, 153, 0.16);
-  background: rgba(52, 211, 153, 0.08);
-  color: #d9fff0;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 0;
-  text-align: center;
+  background:
+    linear-gradient(#d9fff0, #d9fff0) center / 12px 2px no-repeat,
+    linear-gradient(#d9fff0, #d9fff0) center / 2px 12px no-repeat,
+    rgba(52, 211, 153, 0.08);
 }
 
 .configuration-advanced-toggle[open] {
@@ -3120,7 +3118,7 @@ tbody tr:last-child td {
 }
 
 .advanced-config-group summary::after {
-  content: "+";
+  content: "";
   flex: 0 0 auto;
   width: 30px;
   height: 30px;
@@ -3131,15 +3129,16 @@ tbody tr:last-child td {
   padding: 0;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-soft);
-  font-size: 18px;
-  line-height: 0;
-  text-align: center;
+  background:
+    linear-gradient(var(--text-soft), var(--text-soft)) center / 12px 2px no-repeat,
+    linear-gradient(var(--text-soft), var(--text-soft)) center / 2px 12px no-repeat,
+    rgba(255, 255, 255, 0.03);
 }
 
 .advanced-config-group[open] summary::after {
-  content: "−";
+  background:
+    linear-gradient(var(--text-soft), var(--text-soft)) center / 12px 2px no-repeat,
+    rgba(255, 255, 255, 0.03);
 }
 
 .advanced-config-group summary strong {

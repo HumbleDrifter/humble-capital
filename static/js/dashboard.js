@@ -118,6 +118,12 @@ function fmtSignedPct(v, alreadyPercent = false) {
   return `${prefix}${value.toFixed(2)}%`;
 }
 
+function fmtPctValue(value, digits = 1) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "—";
+  return `${numeric.toFixed(digits)}%`;
+}
+
 function formatUnixTime(ts) {
   const n = Number(ts || 0);
   if (!n) return "—";
@@ -1249,6 +1255,75 @@ function renderExecutionActivity(systemData) {
   `).join("");
 }
 
+function renderShadowRotationReport(data) {
+  const host = document.getElementById("dashboardShadowRotation");
+  if (!host) return;
+
+  const cycles = Number(data?.cycles_analyzed || 0);
+  if (!cycles) {
+    host.innerHTML = `<div class="dashboard-shadow-fallback">No recent 24h shadow-rotation cycles are available yet.</div>`;
+    return;
+  }
+
+  const topPicks = Array.isArray(data?.top_shadow_picks) ? data.top_shadow_picks.slice(0, 3) : [];
+  const blockers = Array.isArray(data?.blocked_high_ranked_shadow_candidates)
+    ? data.blocked_high_ranked_shadow_candidates.slice(0, 3)
+    : [];
+  const blockedReasons = Array.isArray(data?.blocked_reason_breakdown) ? data.blocked_reason_breakdown : [];
+  const takeaways = Array.isArray(data?.quick_takeaways) ? data.quick_takeaways : [];
+  const topBlocker = blockedReasons.length ? blockedReasons[0].reason : "none";
+  const lastUpdatedTs = Number(data?.last_updated_ts || data?.generated_at || 0);
+
+  host.innerHTML = `
+    <div class="dashboard-shadow-head">
+      <div>
+        <div class="dashboard-shadow-title">Shadow Rotation Monitor</div>
+        <div class="dashboard-shadow-subtitle">24h constraint-gap view for live versus shadow satellite picks.</div>
+      </div>
+      <div class="dashboard-shadow-updated">Updated ${escapeHtml(formatUnixTime(lastUpdatedTs))}</div>
+    </div>
+
+    <div class="dashboard-shadow-summary-grid">
+      <div class="dashboard-shadow-stat">
+        <div class="dashboard-shadow-stat-label">Cycles</div>
+        <div class="dashboard-shadow-stat-value">${cycles}</div>
+      </div>
+      <div class="dashboard-shadow-stat">
+        <div class="dashboard-shadow-stat-label">Live Empty</div>
+        <div class="dashboard-shadow-stat-value">${fmtPctValue(data?.empty_live_selection_rate_pct)}</div>
+      </div>
+      <div class="dashboard-shadow-stat">
+        <div class="dashboard-shadow-stat-label">Disagreement</div>
+        <div class="dashboard-shadow-stat-value">${fmtPctValue(data?.shadow_live_disagreement_rate_pct)}</div>
+      </div>
+      <div class="dashboard-shadow-stat">
+        <div class="dashboard-shadow-stat-label">Avg Overlap</div>
+        <div class="dashboard-shadow-stat-value">${Number(data?.average_overlap_count || 0).toFixed(2)}</div>
+      </div>
+    </div>
+
+    <div class="dashboard-shadow-chip-row">
+      <span class="dashboard-shadow-chip">Top blocker <strong>${escapeHtml(topBlocker)}</strong></span>
+      ${topPicks.map((row) => `
+        <span class="dashboard-shadow-chip">${escapeHtml(row.product_id || "—")} <strong>${Number(row.count || 0)}</strong></span>
+      `).join("")}
+    </div>
+
+    <div class="dashboard-shadow-list">
+      <div class="dashboard-shadow-row">
+        <span class="dashboard-shadow-row-label">Top Shadow Picks</span>
+        <span class="dashboard-shadow-row-value">${topPicks.length ? topPicks.map((row) => `${row.product_id} (${row.count})`).join(" • ") : "No recurring picks yet"}</span>
+      </div>
+      <div class="dashboard-shadow-row">
+        <span class="dashboard-shadow-row-label">Blocked High-Rank Names</span>
+        <span class="dashboard-shadow-row-value">${blockers.length ? blockers.map((row) => `${row.product_id} (${row.count})`).join(" • ") : "No repeated blockers yet"}</span>
+      </div>
+    </div>
+
+    <div class="dashboard-shadow-takeaway">${escapeHtml(takeaways[0] || "Shadow rotation monitoring is active.")}</div>
+  `;
+}
+
 async function refreshAll(showBadgeMessage = false) {
   const selectedHistoryPath = `/api/portfolio/history?range=${encodeURIComponent(selectedHistoryRange)}`;
   const history7Path = "/api/portfolio/history?range=7d";
@@ -1256,11 +1331,12 @@ async function refreshAll(showBadgeMessage = false) {
   const historyAllPath = "/api/portfolio/history?range=all";
   const historyPaths = Array.from(new Set([selectedHistoryPath, history7Path, history30Path, historyAllPath]));
 
-  const [systemRes, portfolioRes, rebalanceRes, opportunitiesRes, ...historyResults] = await Promise.all([
+  const [systemRes, portfolioRes, rebalanceRes, opportunitiesRes, shadowRotationRes, ...historyResults] = await Promise.all([
     fetchJsonSafe("/api/system_snapshot?recent_count=8"),
     fetchJsonSafe("/api/portfolio"),
     fetchJsonSafe("/api/rebalance/preview"),
     fetchJsonSafe("/api/meme_rotation"),
+    fetchJsonSafe("/api/shadow_rotation_report"),
     ...historyPaths.map((path) => fetchJsonSafe(path))
   ]);
 
@@ -1270,12 +1346,13 @@ async function refreshAll(showBadgeMessage = false) {
   const history30Res = historyByPath[history30Path] || historyRes;
   const historyAllRes = historyByPath[historyAllPath] || historyRes;
 
-  const failures = [systemRes, portfolioRes, rebalanceRes, opportunitiesRes, ...historyResults].filter((x) => !x.ok);
+  const failures = [systemRes, portfolioRes, rebalanceRes, opportunitiesRes, shadowRotationRes, ...historyResults].filter((x) => !x.ok);
 
   const systemData = systemRes.data || {};
   const portfolioData = portfolioRes.data || {};
   const rebalanceData = rebalanceRes.data || {};
   const opportunitiesData = opportunitiesRes.data || {};
+  const shadowRotationData = shadowRotationRes.data || {};
   const historyData = historyRes.data || {};
   const history7Data = history7Res.data || {};
   const history30Data = history30Res.data || {};
@@ -1308,6 +1385,8 @@ async function refreshAll(showBadgeMessage = false) {
   } else {
     renderExecutionActivity({});
   }
+
+  renderShadowRotationReport(shadowRotationData);
 
   if (!systemRes.ok && !portfolioRes.ok && !rebalanceRes.ok && !historyRes.ok) return;
 }

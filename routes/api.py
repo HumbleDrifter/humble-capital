@@ -32,6 +32,7 @@ from portfolio import (
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
 from services.config_proposal_service import generate_config_proposal
+from shadow_rotation_report import build_shadow_rotation_report
 from storage import get_portfolio_history_since
 from storage import get_latest_config_proposal_any_status, list_recent_config_proposals
 
@@ -844,8 +845,39 @@ def _build_meme_rotation():
         ),
         reverse=True,
     )
+    shadow_analysis_top_count = min(8, len(shadow_ranked))
+    shadow_top_candidates = shadow_ranked[:shadow_analysis_top_count]
     shadow_target_count = len(current_system_selections) or int((cfg.get("meme_rotation") or {}).get("max_active", 8) or 8)
     shadow_top_selection_ids = [row["product_id"] for row in shadow_ranked[:shadow_target_count]]
+    shadow_top_allowed_count = sum(1 for row in shadow_top_candidates if bool(row.get("allowed")))
+    shadow_top_blocked_count = sum(1 for row in shadow_top_candidates if not bool(row.get("allowed")))
+    shadow_top_held_count = sum(1 for row in shadow_top_candidates if bool(row.get("held")))
+    shadow_top_new_candidates_count = sum(1 for row in shadow_top_candidates if not bool(row.get("held")))
+
+    blocked_high_score_candidates = []
+    for row in shadow_top_candidates:
+        if row.get("product_id") in current_system_selections:
+            continue
+
+        if bool(row.get("blocked")):
+            reason = "blocked"
+        elif row.get("enabled") is False:
+            reason = "disabled"
+        elif bool(row.get("core")):
+            reason = "core_asset"
+        elif not bool(row.get("active_buy_universe")) and not bool(row.get("held")):
+            reason = "not_in_active_universe"
+        elif not bool(row.get("allowed")) and not bool(row.get("held")):
+            reason = "not_allowed"
+        else:
+            reason = "below_current_selection_cutoff"
+
+        blocked_high_score_candidates.append({
+            "product_id": row.get("product_id"),
+            "net_score": row.get("net_score"),
+            "reason": reason,
+        })
+
     _append_shadow_rotation_log({
         "logged_at": int(_now()),
         "rotation_generated_at": _safe_int(rotation.get("generated_at")),
@@ -855,6 +887,11 @@ def _build_meme_rotation():
         "candidate_count": candidate_count,
         "current_system_selections": current_system_selections,
         "shadow_top_selection_ids": shadow_top_selection_ids,
+        "shadow_top_allowed_count": shadow_top_allowed_count,
+        "shadow_top_blocked_count": shadow_top_blocked_count,
+        "shadow_top_held_count": shadow_top_held_count,
+        "shadow_top_new_candidates_count": shadow_top_new_candidates_count,
+        "blocked_high_score_candidates": blocked_high_score_candidates,
         "ranking_by_net_score": [
             {
                 "product_id": row.get("product_id"),
@@ -1584,6 +1621,10 @@ def _build_system_snapshot():
     }
 
 
+def _build_shadow_rotation_report():
+    return build_shadow_rotation_report(window_hours=24, top_n=8)
+
+
 # -------------------------------------------------------------------
 # Session/bootstrap helpers
 # -------------------------------------------------------------------
@@ -1700,6 +1741,15 @@ def api_config():
 def api_meme_rotation():
     try:
         return jsonify(_with_cache("meme_rotation", _build_meme_rotation, ttl_sec=10, stale_sec=120))
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/shadow_rotation_report", methods=["GET"])
+@require_secret
+def api_shadow_rotation_report():
+    try:
+        return jsonify(_with_cache("shadow_rotation_report", _build_shadow_rotation_report, ttl_sec=60, stale_sec=300))
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

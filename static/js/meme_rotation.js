@@ -70,6 +70,18 @@ function fmtNumber(v) {
   });
 }
 
+function fmtPctValue(value, digits = 1) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "—";
+  return `${numeric.toFixed(digits)}%`;
+}
+
+function formatUnixTime(ts) {
+  const numeric = Number(ts || 0);
+  if (!numeric) return "—";
+  return new Date(numeric * 1000).toLocaleString();
+}
+
 function numericOrNull(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
@@ -336,6 +348,75 @@ function renderStatus(data, systemData) {
   `;
 }
 
+function renderShadowRotationReport(data) {
+  const host = document.getElementById("dashboardShadowRotation");
+  if (!host) return;
+
+  const cycles = Number(data?.cycles_analyzed || 0);
+  if (!cycles) {
+    host.innerHTML = `<div class="dashboard-shadow-fallback">No recent 24h shadow-rotation cycles are available yet.</div>`;
+    return;
+  }
+
+  const topPicks = Array.isArray(data?.top_shadow_picks) ? data.top_shadow_picks.slice(0, 3) : [];
+  const blockers = Array.isArray(data?.blocked_high_ranked_shadow_candidates)
+    ? data.blocked_high_ranked_shadow_candidates.slice(0, 3)
+    : [];
+  const blockedReasons = Array.isArray(data?.blocked_reason_breakdown) ? data.blocked_reason_breakdown : [];
+  const takeaways = Array.isArray(data?.quick_takeaways) ? data.quick_takeaways : [];
+  const topBlocker = blockedReasons.length ? blockedReasons[0].reason : "none";
+  const lastUpdatedTs = Number(data?.last_updated_ts || data?.generated_at || 0);
+
+  host.innerHTML = `
+    <div class="dashboard-shadow-head">
+      <div>
+        <div class="dashboard-shadow-title">Shadow Rotation Monitor</div>
+        <div class="dashboard-shadow-subtitle">24h constraint-gap view for live versus shadow satellite picks.</div>
+      </div>
+      <div class="dashboard-shadow-updated">Updated ${escapeHtml(formatUnixTime(lastUpdatedTs))}</div>
+    </div>
+
+    <div class="dashboard-shadow-summary-grid">
+      <div class="dashboard-shadow-stat">
+        <div class="dashboard-shadow-stat-label">Cycles</div>
+        <div class="dashboard-shadow-stat-value">${cycles}</div>
+      </div>
+      <div class="dashboard-shadow-stat">
+        <div class="dashboard-shadow-stat-label">Live Empty</div>
+        <div class="dashboard-shadow-stat-value">${fmtPctValue(data?.empty_live_selection_rate_pct)}</div>
+      </div>
+      <div class="dashboard-shadow-stat">
+        <div class="dashboard-shadow-stat-label">Disagreement</div>
+        <div class="dashboard-shadow-stat-value">${fmtPctValue(data?.shadow_live_disagreement_rate_pct)}</div>
+      </div>
+      <div class="dashboard-shadow-stat">
+        <div class="dashboard-shadow-stat-label">Avg Overlap</div>
+        <div class="dashboard-shadow-stat-value">${Number(data?.average_overlap_count || 0).toFixed(2)}</div>
+      </div>
+    </div>
+
+    <div class="dashboard-shadow-chip-row">
+      <span class="dashboard-shadow-chip">Top blocker <strong>${escapeHtml(topBlocker)}</strong></span>
+      ${topPicks.map((row) => `
+        <span class="dashboard-shadow-chip">${escapeHtml(row.product_id || "—")} <strong>${Number(row.count || 0)}</strong></span>
+      `).join("")}
+    </div>
+
+    <div class="dashboard-shadow-list">
+      <div class="dashboard-shadow-row">
+        <span class="dashboard-shadow-row-label">Top Shadow Picks</span>
+        <span class="dashboard-shadow-row-value">${topPicks.length ? topPicks.map((row) => `${row.product_id} (${row.count})`).join(" • ") : "No recurring picks yet"}</span>
+      </div>
+      <div class="dashboard-shadow-row">
+        <span class="dashboard-shadow-row-label">Blocked High-Rank Names</span>
+        <span class="dashboard-shadow-row-value">${blockers.length ? blockers.map((row) => `${row.product_id} (${row.count})`).join(" • ") : "No repeated blockers yet"}</span>
+      </div>
+    </div>
+
+    <div class="dashboard-shadow-takeaway">${escapeHtml(takeaways[0] || "Shadow rotation monitoring is active.")}</div>
+  `;
+}
+
 function opportunityCard(row) {
   const productId = row.product_id || row.symbol || "—";
   const tone = opportunityTone(row.score);
@@ -484,12 +565,14 @@ async function toggleOpportunityScanner() {
 
 async function refreshMemeRotation() {
   try {
-    const [data, systemData] = await Promise.all([
+    const [data, systemData, shadowRotationData] = await Promise.all([
       fetchJson("/api/meme_rotation"),
-      fetchJson("/api/system_snapshot").catch(() => ({}))
+      fetchJson("/api/system_snapshot").catch(() => ({})),
+      fetchJson("/api/shadow_rotation_report").catch(() => ({}))
     ]);
     renderStatus(data, systemData || {});
     renderScannerStatus(systemData || {});
+    renderShadowRotationReport(shadowRotationData || {});
     renderScoreLegend(data);
     renderGroups(data);
   } catch (err) {

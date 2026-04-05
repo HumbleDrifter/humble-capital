@@ -239,23 +239,46 @@ def render_config_proposal_text(proposal_record):
     source = proposal.get("source", {}) if isinstance(proposal.get("source"), dict) else {}
     simulation = proposal.get("simulation", {}) if isinstance(proposal.get("simulation"), dict) else {}
     changes = proposal.get("changes", []) if isinstance(proposal.get("changes"), list) else []
+    candidates = proposal.get("candidates", []) if isinstance(proposal.get("candidates"), list) else []
+    proposal_type = str(proposal.get("proposal_type") or proposal_record.get("proposal_type") or "config_guardrail").strip()
 
     proposal_id = str(proposal_record.get("id") or proposal.get("proposal_id") or "").strip() or "CFG-UNKNOWN"
     summary = str(proposal.get("summary") or proposal_record.get("summary_text") or "Config proposal ready for review.").strip()
     confidence = str(source.get("confidence", "low") or "low").strip().lower()
     expires_at = str(proposal_record.get("expires_at", "") or "").strip() or "not set"
 
-    lines = [
-        "⚙️ Config Proposal",
-        f"ID: {proposal_id}",
-        summary,
-        "",
-        f"Confidence: {confidence}",
-        f"Current Risk: {_fmt_score(source.get('risk_score', 0), source.get('risk_band', 'Moderate Risk'))}",
-        f"Projected Risk: {_fmt_score(simulation.get('projected_score', 0), simulation.get('projected_band', 'Moderate Risk'))}",
-    ]
+    if proposal_type == "satellite_enable_recommendation":
+        lines = [
+            "🛰️ Satellite Enable Recommendation",
+            f"ID: {proposal_id}",
+            summary,
+            "",
+            f"Confidence: {confidence}",
+            f"Candidates: {len(candidates)}",
+        ]
+    else:
+        lines = [
+            "⚙️ Config Proposal",
+            f"ID: {proposal_id}",
+            summary,
+            "",
+            f"Confidence: {confidence}",
+            f"Current Risk: {_fmt_score(source.get('risk_score', 0), source.get('risk_band', 'Moderate Risk'))}",
+            f"Projected Risk: {_fmt_score(simulation.get('projected_score', 0), simulation.get('projected_band', 'Moderate Risk'))}",
+        ]
 
-    if changes:
+    if proposal_type == "satellite_enable_recommendation" and candidates:
+        lines.append("")
+        lines.append("Recommended Candidates")
+        for item in candidates[:6]:
+            item = item if isinstance(item, dict) else {}
+            product_id = str(item.get("product_id", "Candidate") or "Candidate").strip()
+            score = float(item.get("net_score", 0.0) or 0.0)
+            confidence_band = str(item.get("confidence_band", "") or "").strip() or "unknown"
+            liquidity_bucket = str(item.get("liquidity_bucket", "") or "").strip() or "unknown"
+            volatility_bucket = str(item.get("volatility_bucket", "") or "").strip() or "unknown"
+            lines.append(f"• {product_id}: {score:.1f} · {confidence_band} confidence · {liquidity_bucket} liquidity · {volatility_bucket} volatility")
+    elif changes:
         lines.append("")
         lines.append("Changed Controls")
         for item in changes[:6]:

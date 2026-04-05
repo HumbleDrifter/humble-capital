@@ -15,12 +15,14 @@ from portfolio import (
     portfolio_summary,
     save_asset_config,
 )
+from shadow_rotation_report import build_shadow_rotation_report
 from storage import (
     expire_pending_config_proposals,
     find_pending_config_proposal_by_fingerprint,
     get_config_proposal_by_id,
     get_latest_pending_config_proposal,
     get_portfolio_history_since,
+    list_recent_config_proposals,
     list_pending_config_proposals,
     save_config_proposal,
     set_config_proposal_status,
@@ -30,6 +32,7 @@ from storage import (
 
 
 PROPOSAL_TYPE = "config_guardrail"
+SHADOW_ALLOWLIST_PROPOSAL_TYPE = "satellite_enable_recommendation"
 DEFAULT_ADVISORY_RANGE = "30d"
 DEFAULT_PROPOSAL_TTL_MINUTES = int(float(os.getenv("CONFIG_PROPOSAL_TTL_MINUTES", "120") or "120"))
 DEFAULT_PROPOSAL_GENERATION_MODE = "manual"
@@ -256,6 +259,64 @@ def build_config_proposal(range_name=DEFAULT_ADVISORY_RANGE):
     }
 
 
+def build_shadow_allowlist_proposal(window_hours=24):
+    report = _safe_dict(build_shadow_rotation_report(window_hours=window_hours))
+    candidates = _safe_list(report.get("shadow_eligible_candidates"))
+
+    if not candidates:
+        return {
+            "ok": True,
+            "status": "noop",
+            "reason": "no_shadow_eligible_candidates",
+            "proposal": None,
+        }
+
+    confidence = "high" if any(str(_safe_dict(item).get("confidence_band", "")).strip().lower() == "high" for item in candidates) else "medium"
+    blocked_reasons = _safe_list(report.get("blocked_reason_breakdown"))
+    top_blocker = str(_safe_dict(blocked_reasons[0]).get("reason", "") or "").strip() if blocked_reasons else ""
+
+    proposal = {
+        "proposal_type": SHADOW_ALLOWLIST_PROPOSAL_TYPE,
+        "source": {
+            "window_hours": int(report.get("window_hours", window_hours) or window_hours),
+            "top_n": int(report.get("top_n", len(candidates)) or len(candidates)),
+            "confidence": confidence,
+            "report_generated_at": report.get("generated_at"),
+        },
+        "summary": "These satellite candidates meet review thresholds but are not yet live in the allowlist.",
+        "reasons": _clean_text_list(report.get("quick_takeaways"), limit=3),
+        "notes": _clean_text_list(
+            [
+                f"Top blocker: {top_blocker}" if top_blocker else "",
+                f"Cycles analyzed: {int(report.get('cycles_analyzed', 0) or 0)}",
+            ],
+            limit=3,
+        ),
+        "candidates": [
+            {
+                "product_id": str(_safe_dict(item).get("product_id", "") or "").strip(),
+                "net_score": float(_safe_dict(item).get("net_score", 0.0) or 0.0),
+                "confidence_band": str(_safe_dict(item).get("confidence_band", "") or "").strip(),
+                "liquidity_bucket": str(_safe_dict(item).get("liquidity_bucket", "") or "").strip(),
+                "volatility_bucket": str(_safe_dict(item).get("volatility_bucket", "") or "").strip(),
+                "shadow_eligible": bool(_safe_dict(item).get("shadow_eligible")),
+                "shadow_eligibility_reason": str(_safe_dict(item).get("shadow_eligibility_reason", "") or "").strip(),
+                "shadow_block_reason": str(_safe_dict(item).get("shadow_block_reason", "") or "").strip(),
+            }
+            for item in candidates
+            if str(_safe_dict(item).get("product_id", "") or "").strip()
+        ],
+        "changes": [],
+        "simulation": {},
+    }
+
+    return {
+        "ok": True,
+        "status": "proposal_ready",
+        "proposal": proposal,
+    }
+
+
 def compute_config_proposal_fingerprint(proposal):
     proposal = _safe_dict(proposal)
     normalized = {
@@ -270,6 +331,18 @@ def compute_config_proposal_fingerprint(proposal):
             }
             for item in sorted(_safe_list(proposal.get("changes")), key=lambda x: str(_safe_dict(x).get("key", "")))
             if str(_safe_dict(item).get("key", "") or "").strip()
+        ],
+        "candidates": [
+            {
+                "product_id": str(_safe_dict(item).get("product_id", "") or "").strip(),
+                "net_score": float(_safe_dict(item).get("net_score", 0.0) or 0.0),
+                "confidence_band": str(_safe_dict(item).get("confidence_band", "") or "").strip(),
+                "liquidity_bucket": str(_safe_dict(item).get("liquidity_bucket", "") or "").strip(),
+                "volatility_bucket": str(_safe_dict(item).get("volatility_bucket", "") or "").strip(),
+                "shadow_block_reason": str(_safe_dict(item).get("shadow_block_reason", "") or "").strip(),
+            }
+            for item in sorted(_safe_list(proposal.get("candidates")), key=lambda x: str(_safe_dict(x).get("product_id", "")))
+            if str(_safe_dict(item).get("product_id", "") or "").strip()
         ],
     }
     raw = json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -286,6 +359,30 @@ def proposal_is_stale(proposal):
         return datetime.utcnow() >= datetime.strptime(expires_at, "%Y-%m-%dT%H:%M:%SZ")
     except Exception:
         return True
+
+
+def _parse_iso_datetime(value):
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        return None
+
+
+def _find_recent_matching_proposal(fingerprint, proposal_type=PROPOSAL_TYPE, window_minutes=180):
+    recent_items = list_recent_config_proposals(limit=5, proposal_type=proposal_type)
+    cutoff = datetime.utcnow() - timedelta(minutes=max(1, int(window_minutes or 180)))
+
+    for item in recent_items:
+        item = _safe_dict(item)
+        if str(item.get("fingerprint", "") or "").strip() != str(fingerprint or "").strip():
+            continue
+        created_at = _parse_iso_datetime(item.get("created_at"))
+        if created_at and created_at >= cutoff:
+            return item
+    return None
 
 
 def expire_stale_proposals(proposal_type=PROPOSAL_TYPE):
@@ -340,6 +437,16 @@ def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFA
             "proposal": existing,
         }
 
+    recent_match = _find_recent_matching_proposal(fingerprint, proposal_type=PROPOSAL_TYPE, window_minutes=ttl_minutes)
+    if recent_match:
+        return {
+            "ok": True,
+            "status": "deduped_recent",
+            "expired_count": expired_count,
+            "proposal_id": recent_match.get("id"),
+            "proposal": recent_match,
+        }
+
     pending = list_pending_config_proposals(PROPOSAL_TYPE)
     pending = [item for item in pending if item]
     pending = [item for item in pending if str(item.get("fingerprint", "") or "").strip() != fingerprint]
@@ -373,6 +480,122 @@ def generate_config_proposal(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFA
         "proposal_id": proposal_id,
         "proposal": saved,
         "notification_sent": notification_sent,
+    }
+
+
+def generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES):
+    expired_count = expire_stale_proposals(proposal_type=SHADOW_ALLOWLIST_PROPOSAL_TYPE)
+    built = build_shadow_allowlist_proposal(window_hours=window_hours)
+
+    if built.get("status") == "noop":
+        return {
+            "ok": True,
+            "status": "noop",
+            "reason": built.get("reason", "no_shadow_eligible_candidates"),
+            "expired_count": expired_count,
+            "proposal": None,
+        }
+
+    proposal = _safe_dict(built.get("proposal"))
+    fingerprint = compute_config_proposal_fingerprint(proposal)
+    existing = find_pending_config_proposal_by_fingerprint(fingerprint, proposal_type=SHADOW_ALLOWLIST_PROPOSAL_TYPE)
+
+    if existing and not proposal_is_stale(existing):
+        return {
+            "ok": True,
+            "status": "deduped",
+            "expired_count": expired_count,
+            "proposal_id": existing.get("id"),
+            "proposal": existing,
+        }
+
+    recent_match = _find_recent_matching_proposal(
+        fingerprint,
+        proposal_type=SHADOW_ALLOWLIST_PROPOSAL_TYPE,
+        window_minutes=ttl_minutes,
+    )
+    if recent_match:
+        return {
+            "ok": True,
+            "status": "deduped_recent",
+            "expired_count": expired_count,
+            "proposal_id": recent_match.get("id"),
+            "proposal": recent_match,
+        }
+
+    pending = list_pending_config_proposals(SHADOW_ALLOWLIST_PROPOSAL_TYPE)
+    pending = [item for item in pending if item]
+    pending = [item for item in pending if str(item.get("fingerprint", "") or "").strip() != fingerprint]
+    superseded_count = 0
+    if pending:
+        superseded_count = supersede_pending_config_proposals(SHADOW_ALLOWLIST_PROPOSAL_TYPE)
+
+    expires_at = _expires_at_iso(ttl_minutes)
+    summary_text = str(proposal.get("summary", "") or "").strip() or "Satellite enable recommendation ready for review."
+    proposal_id = save_config_proposal(
+        proposal=proposal,
+        summary_text=summary_text,
+        fingerprint=fingerprint,
+        proposal_type=SHADOW_ALLOWLIST_PROPOSAL_TYPE,
+        expires_at=expires_at,
+        status="pending",
+    )
+    saved = get_config_proposal_by_id(proposal_id)
+    notification_sent = False
+    try:
+        if saved:
+            notification_sent = bool(notify_config_proposal(saved))
+    except Exception:
+        notification_sent = False
+
+    return {
+        "ok": True,
+        "status": "created",
+        "expired_count": expired_count,
+        "superseded_count": superseded_count,
+        "proposal_id": proposal_id,
+        "proposal": saved,
+        "notification_sent": notification_sent,
+    }
+
+
+def generate_review_proposals(range_name=DEFAULT_ADVISORY_RANGE, ttl_minutes=DEFAULT_PROPOSAL_TTL_MINUTES, min_confidence=None):
+    config_result = generate_config_proposal(range_name=range_name, ttl_minutes=ttl_minutes, min_confidence=min_confidence)
+    shadow_result = generate_shadow_allowlist_proposal(window_hours=24, ttl_minutes=ttl_minutes)
+    results = [config_result, shadow_result]
+
+    created = [item for item in results if str(item.get("status", "")).strip().lower() == "created"]
+    deduped = [item for item in results if str(item.get("status", "")).strip().lower() in {"deduped", "deduped_recent"}]
+    primary = (
+        (shadow_result if str(shadow_result.get("status", "")).strip().lower() == "created" else None)
+        or (config_result if str(config_result.get("status", "")).strip().lower() == "created" else None)
+        or (shadow_result if str(shadow_result.get("status", "")).strip().lower() in {"deduped", "deduped_recent"} else None)
+        or (config_result if str(config_result.get("status", "")).strip().lower() in {"deduped", "deduped_recent"} else None)
+        or shadow_result
+        or config_result
+    )
+
+    if created:
+        aggregate_status = "created"
+    elif deduped:
+        aggregate_status = "deduped"
+    elif all(str(item.get("status", "")).strip().lower() == "noop" for item in results):
+        aggregate_status = "noop"
+    else:
+        aggregate_status = str(primary.get("status", "noop") or "noop")
+
+    return {
+        "ok": True,
+        "status": aggregate_status,
+        "proposal_id": primary.get("proposal_id"),
+        "expired_count": sum(int(item.get("expired_count", 0) or 0) for item in results),
+        "superseded_count": sum(int(item.get("superseded_count", 0) or 0) for item in results),
+        "notification_sent": any(bool(item.get("notification_sent", False)) for item in results),
+        "created_count": len(created),
+        "deduped_count": len(deduped),
+        "noop_count": sum(1 for item in results if str(item.get("status", "")).strip().lower() == "noop"),
+        "config_guardrail": config_result,
+        "satellite_enable_recommendation": shadow_result,
     }
 
 

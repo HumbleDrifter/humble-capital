@@ -395,6 +395,7 @@ function normalizeConfigProposalRecord(value) {
   const proposalSource = safeObject(proposal.source);
   const simulation = safeObject(proposal.simulation);
   const changes = [];
+  const candidates = [];
 
   for (const item of Array.isArray(proposal.changes) ? proposal.changes : []) {
     const raw = safeObject(item);
@@ -408,6 +409,22 @@ function normalizeConfigProposalRecord(value) {
       proposed_value: raw.proposed_value,
       kind: String(raw.kind || "float").trim() || "float",
       format: String(raw.format || "text").trim() || "text"
+    });
+  }
+
+  for (const item of Array.isArray(proposal.candidates) ? proposal.candidates : []) {
+    const raw = safeObject(item);
+    const productId = String(raw.product_id || "").trim();
+    if (!productId) continue;
+    candidates.push({
+      product_id: productId,
+      net_score: hasNumericValue(raw.net_score) ? Number(raw.net_score) : null,
+      confidence_band: String(raw.confidence_band || "").trim(),
+      liquidity_bucket: String(raw.liquidity_bucket || "").trim(),
+      volatility_bucket: String(raw.volatility_bucket || "").trim(),
+      shadow_eligible: Boolean(raw.shadow_eligible),
+      shadow_eligibility_reason: String(raw.shadow_eligibility_reason || "").trim(),
+      shadow_block_reason: String(raw.shadow_block_reason || "").trim()
     });
   }
 
@@ -437,6 +454,7 @@ function normalizeConfigProposalRecord(value) {
       },
       summary: String(proposal.summary || "").trim(),
       reasons: cleanTextList(proposal.reasons, 3),
+      candidates,
       changes,
       simulation: {
         current_score: hasNumericValue(simulation.current_score) ? Number(simulation.current_score) : null,
@@ -539,6 +557,7 @@ function renderProposalLatest(data) {
   if (contentEl) contentEl.hidden = false;
 
   const statusTone = proposalStatusTone(proposal.status);
+  const isSatelliteEnableProposal = proposal.proposal.proposal_type === "satellite_enable_recommendation";
   const statusEl = document.getElementById("configProposalStatus");
   if (statusEl) {
     statusEl.textContent = proposal.status || "—";
@@ -554,7 +573,23 @@ function renderProposalLatest(data) {
       return value === null || value === undefined || value === "" ? "—" : String(value);
     };
 
-    changesHost.innerHTML = proposal.proposal.changes.length
+    changesHost.innerHTML = isSatelliteEnableProposal
+      ? (
+        proposal.proposal.candidates.length
+          ? proposal.proposal.candidates.map((item) => `
+            <div class="config-proposal-change-row">
+              <span class="config-proposal-change-label">${escapeHtml(item.product_id || "Candidate")}</span>
+              <span class="config-proposal-change-values">
+                ${escapeHtml(`Score ${hasNumericValue(item.net_score) ? Number(item.net_score).toFixed(1) : "—"} • ${item.confidence_band || "unknown"} confidence • ${item.liquidity_bucket || "unknown"} liquidity • ${item.volatility_bucket || "unknown"} volatility`)}
+              </span>
+            </div>
+          `).join("")
+          : `<div class="config-proposal-change-row">
+              <span class="config-proposal-change-label">Recommended Candidates</span>
+              <span class="config-proposal-change-values">—</span>
+            </div>`
+      )
+      : proposal.proposal.changes.length
       ? proposal.proposal.changes.map((item) => `
         <div class="config-proposal-change-row">
           <span class="config-proposal-change-label">${escapeHtml(item.label || "Control")}</span>
@@ -573,14 +608,16 @@ function renderProposalLatest(data) {
     configProposalId: proposal.id || "—",
     configProposalSummary: proposal.summary_text || proposal.proposal.summary || "—",
     configProposalConfidence: proposal.proposal.source.confidence || "—",
-    configProposalCurrentRisk: formatProposalRisk(proposal.proposal.source.risk_score, proposal.proposal.source.risk_band),
-    configProposalProjectedRisk: formatProposalRisk(proposal.proposal.simulation.projected_score, proposal.proposal.simulation.projected_band),
+    configProposalCurrentRisk: isSatelliteEnableProposal ? `${proposal.proposal.candidates.length || 0} review-ready` : formatProposalRisk(proposal.proposal.source.risk_score, proposal.proposal.source.risk_band),
+    configProposalProjectedRisk: isSatelliteEnableProposal ? "Approval only" : formatProposalRisk(proposal.proposal.simulation.projected_score, proposal.proposal.simulation.projected_band),
     configProposalScoreDelta: formatProposalScoreDelta(proposal.proposal.simulation.score_delta),
     configProposalCreatedAt: formatProposalDate(proposal.created_at),
     configProposalExpiresAt: formatProposalDate(proposal.expires_at),
     configProposalApprovedBy: proposal.approved_by || "—",
     configProposalAppliedBy: proposal.applied_by || "—",
-    configProposalNote: proposalStatusNote(proposal.status)
+    configProposalNote: isSatelliteEnableProposal
+      ? "This recommendation is approval-only and will not change the live allowlist until an explicit operator action is taken."
+      : proposalStatusNote(proposal.status)
   };
 
   Object.entries(valueMap).forEach(([id, value]) => {
@@ -1403,11 +1440,12 @@ async function generateProposalNow() {
     const status = String(result?.status || "").trim().toLowerCase();
     if (status === "created") {
       const delivery = result?.notification_sent === false ? " Telegram delivery needs review." : "";
-      setProposalAutomationResult(`New proposal ${result.proposal_id || ""} created.${delivery}`.trim());
-    } else if (status === "deduped") {
+      const createdCount = Number(result?.created_count || 0);
+      setProposalAutomationResult(`${createdCount || 1} review proposal${createdCount === 1 || !createdCount ? "" : "s"} created.${result.proposal_id ? ` Latest ${result.proposal_id}.` : ""}${delivery}`.trim());
+    } else if (status === "deduped" || status === "deduped_recent") {
       setProposalAutomationResult(`Existing pending proposal ${result.proposal_id || ""} already matches the current advisory state.`.trim());
     } else if (status === "noop") {
-      setProposalAutomationResult("No proposal was generated because no new allowlisted changes qualified.");
+      setProposalAutomationResult("No proposal was generated because no new guardrail or satellite review changes qualified.");
     } else {
       setProposalAutomationResult(`Proposal generation returned status: ${status || "unknown"}.`);
     }

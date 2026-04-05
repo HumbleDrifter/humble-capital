@@ -350,18 +350,30 @@ def get_latest_config_proposal_any_status(proposal_type="config_guardrail"):
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
-               proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
-               applied_at, applied_by, expired_at, superseded_at
-        FROM config_proposals
-        WHERE proposal_type = ?
-        ORDER BY created_at DESC, id DESC
-        LIMIT 1
-        """,
-        (str(proposal_type or "config_guardrail"),),
-    )
+    if proposal_type in (None, "", "all"):
+        cur.execute(
+            """
+            SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
+                   proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
+                   applied_at, applied_by, expired_at, superseded_at
+            FROM config_proposals
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """
+        )
+    else:
+        cur.execute(
+            """
+            SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
+                   proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
+                   applied_at, applied_by, expired_at, superseded_at
+            FROM config_proposals
+            WHERE proposal_type = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+            (str(proposal_type or "config_guardrail"),),
+        )
     row = cur.fetchone()
     conn.close()
 
@@ -376,21 +388,34 @@ def list_recent_config_proposals(limit=5, proposal_type="config_guardrail"):
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
-               proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
-               applied_at, applied_by, expired_at, superseded_at
-        FROM config_proposals
-        WHERE proposal_type = ?
-        ORDER BY created_at DESC, id DESC
-        LIMIT ?
-        """,
-        (
-            str(proposal_type or "config_guardrail"),
-            max(1, int(limit or 5)),
-        ),
-    )
+    if proposal_type in (None, "", "all"):
+        cur.execute(
+            """
+            SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
+                   proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
+                   applied_at, applied_by, expired_at, superseded_at
+            FROM config_proposals
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+            """,
+            (max(1, int(limit or 5)),),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT id, proposal_type, created_at, expires_at, status, fingerprint,
+                   proposal_json, summary_text, approved_at, approved_by, rejected_at, rejected_by,
+                   applied_at, applied_by, expired_at, superseded_at
+            FROM config_proposals
+            WHERE proposal_type = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+            """,
+            (
+                str(proposal_type or "config_guardrail"),
+                max(1, int(limit or 5)),
+            ),
+        )
     rows = cur.fetchall()
     conn.close()
 

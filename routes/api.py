@@ -31,7 +31,7 @@ from portfolio import (
     portfolio_summary,
 )
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
-from services.config_proposal_service import generate_config_proposal
+from services.config_proposal_service import generate_review_proposals
 from shadow_rotation_report import build_shadow_rotation_report
 from storage import get_portfolio_history_since
 from storage import get_latest_config_proposal_any_status, list_recent_config_proposals
@@ -1840,7 +1840,7 @@ def api_config_proposals_latest():
     try:
         return jsonify({
             "ok": True,
-            "proposal": get_latest_config_proposal_any_status() or None,
+            "proposal": get_latest_config_proposal_any_status(proposal_type=None) or None,
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc), "proposal": None}), 500
@@ -1853,7 +1853,7 @@ def api_config_proposals_recent():
         limit = max(1, min(10, _safe_int(request.args.get("limit"), 5)))
         return jsonify({
             "ok": True,
-            "items": list_recent_config_proposals(limit=limit),
+            "items": list_recent_config_proposals(limit=limit, proposal_type=None),
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc), "items": []}), 500
@@ -1863,7 +1863,7 @@ def api_config_proposals_recent():
 @require_admin_auth
 def api_config_proposals_generate():
     try:
-        result = generate_config_proposal()
+        result = generate_review_proposals()
         return jsonify({
             "ok": bool(result.get("ok", False)),
             "status": result.get("status"),
@@ -1871,6 +1871,9 @@ def api_config_proposals_generate():
             "expired_count": result.get("expired_count", 0),
             "superseded_count": result.get("superseded_count", 0),
             "notification_sent": bool(result.get("notification_sent", False)),
+            "created_count": result.get("created_count", 0),
+            "deduped_count": result.get("deduped_count", 0),
+            "noop_count": result.get("noop_count", 0),
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

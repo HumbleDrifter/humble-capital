@@ -3460,6 +3460,13 @@ tbody tr:last-child td {
   margin-top: 10px;
 }
 
+.system-manifest-generator {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
 .system-manifest-format-control {
   display: inline-flex;
   flex-direction: column;
@@ -3493,7 +3500,8 @@ tbody tr:last-child td {
 
 #diagnostics,
 #tradableUniverseLists,
-#tradingViewManifestLists {
+#tradingViewManifestLists,
+#pineTemplatePreview {
   margin: 0;
   padding: 14px;
   min-height: 220px;
@@ -5369,6 +5377,10 @@ tbody tr:last-child td {
   }
 
   .system-manifest-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .system-manifest-generator {
     grid-template-columns: 1fr;
   }
 

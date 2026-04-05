@@ -185,6 +185,36 @@
 
     <div class="divider"></div>
 
+    <div class="system-universe-label">Pine Template Generator</div>
+    <div class="system-manifest-generator">
+      <label class="system-manifest-format-control" for="pineTemplateGroup">
+        <span class="system-universe-label">Group</span>
+        <select id="pineTemplateGroup">
+          <option value="core_buy">Core Buy</option>
+          <option value="core_exit">Core Exit</option>
+          <option value="satellite_buy">Satellite Buy</option>
+          <option value="satellite_exit">Satellite Exit</option>
+          <option value="sniper_buy">Sniper Buy</option>
+        </select>
+      </label>
+      <label class="system-manifest-format-control" for="pineTemplateSource">
+        <span class="system-universe-label">Source</span>
+        <select id="pineTemplateSource">
+          <option value="manifest">Manifest Group</option>
+          <option value="expected">Expected Group</option>
+          <option value="add">Add List</option>
+          <option value="remove">Remove List</option>
+        </select>
+      </label>
+      <div class="system-manifest-actions">
+        <button class="btn btn-secondary" type="button" onclick="refreshPineTemplatePreview()">Generate Pine Template</button>
+        <button class="btn btn-primary" type="button" onclick="copyPineTemplate()">Copy Pine Template</button>
+      </div>
+    </div>
+    <pre id="pineTemplatePreview">Select a group and source to generate a Pine-ready snippet.</pre>
+
+    <div class="divider"></div>
+
     <div class="system-universe-label">Raw Group Lists</div>
     <pre id="tradingViewManifestLists">Waiting for server data.</pre>
   </section>

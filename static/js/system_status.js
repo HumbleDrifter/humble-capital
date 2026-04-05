@@ -274,6 +274,44 @@ function suggestionForGroup(groupKey) {
     .find((item) => item.key === groupKey) || null;
 }
 
+function setPineTemplatePreview(text, isError = false) {
+  const el = document.getElementById("pineTemplatePreview");
+  if (!el) return;
+  el.textContent = text;
+  el.className = isError ? "status-console error" : "";
+}
+
+function pineTemplateSelection() {
+  return {
+    groupKey: String(document.getElementById("pineTemplateGroup")?.value || "core_buy").trim(),
+    source: String(document.getElementById("pineTemplateSource")?.value || "manifest").trim().toLowerCase()
+  };
+}
+
+function valuesForPineSource(groupKey, source) {
+  const suggestion = suggestionForGroup(groupKey);
+  if (!suggestion) return [];
+  if (source === "expected") return suggestion.expected || [];
+  if (source === "add") return suggestion.add || [];
+  if (source === "remove") return suggestion.remove || [];
+  return manifestGroupValues(groupKey);
+}
+
+function buildPineTemplate(groupKey, source) {
+  const values = normalizeSymbolList(valuesForPineSource(groupKey, source));
+  if (!values.length) return "";
+
+  const variableName = `${String(groupKey || "group").trim().toLowerCase()}_${String(source || "manifest").trim().toLowerCase()}_symbols`;
+  const arrayValues = values.map((item) => `"${item}"`).join(", ");
+  const csvValues = values.join(", ");
+
+  return [
+    `// ${groupKey} • ${source}`,
+    `var ${variableName} = array.from(${arrayValues})`,
+    `// CSV: ${csvValues}`
+  ].join("\n");
+}
+
 function renderTradingViewSuggestions(manifest, universe) {
   const host = document.getElementById("tradingViewManifestSuggestions");
   if (!host) return;
@@ -299,10 +337,32 @@ ${!item.hasChanges ? "No changes needed." : ""}
       </div>
     </div>
   `).join("");
+
+  refreshPineTemplatePreview();
 }
 
 function setManifestActionStatus(message, isError = false) {
   renderManifestText("tradingViewManifestActionStatus", message, isError);
+}
+
+function refreshPineTemplatePreview() {
+  const { groupKey, source } = pineTemplateSelection();
+  if (!CURRENT_TRADINGVIEW_MANIFEST && source === "manifest") {
+    setPineTemplatePreview("Fetch the TradingView manifest before generating a Pine template.", true);
+    return;
+  }
+  if (!CURRENT_TRADINGVIEW_MANIFEST || !CURRENT_TRADABLE_UNIVERSE) {
+    setPineTemplatePreview("Load both the server tradable universe and TradingView manifest to generate Pine templates.", true);
+    return;
+  }
+
+  const snippet = buildPineTemplate(groupKey, source);
+  if (!snippet) {
+    setPineTemplatePreview(`No symbols are available for ${groupKey} using the ${source} source.`, true);
+    return;
+  }
+
+  setPineTemplatePreview(snippet, false);
 }
 
 async function copyExpectedManifestGroup(groupKey) {
@@ -323,6 +383,25 @@ async function copyExpectedManifestGroup(groupKey) {
   } catch (err) {
     console.error(err);
     setManifestActionStatus(`Copy failed for expected ${groupKey}: ${err.message}`, true);
+  }
+}
+
+async function copyPineTemplate() {
+  const { groupKey, source } = pineTemplateSelection();
+  const snippet = buildPineTemplate(groupKey, source);
+  if (!snippet) {
+    setManifestActionStatus(`No Pine template is available for ${groupKey} using the ${source} source.`, true);
+    refreshPineTemplatePreview();
+    return;
+  }
+
+  try {
+    await copyTextToClipboard(snippet);
+    setManifestActionStatus(`Copied Pine template for ${groupKey} (${source}).`);
+    refreshPineTemplatePreview();
+  } catch (err) {
+    console.error(err);
+    setManifestActionStatus(`Copy failed for Pine template ${groupKey}: ${err.message}`, true);
   }
 }
 
@@ -525,6 +604,7 @@ function renderTradingViewManifestError(message) {
   renderManifestText("tradingViewManifestSummary", "Unavailable.", true);
   renderManifestText("tradingViewManifestNotes", "Unable to load server manifest notes.", true);
   setManifestActionStatus("Manifest tools are unavailable until a valid manifest is loaded.", true);
+  setPineTemplatePreview("Unable to generate Pine templates until a valid manifest is loaded.", true);
   const groupsHost = document.getElementById("tradingViewManifestGroups");
   if (groupsHost) {
     groupsHost.innerHTML = `<div class="status-console error">${message}</div>`;
@@ -650,6 +730,8 @@ window.refreshTradingViewManifest = refreshTradingViewManifest;
 window.copyExpectedManifestGroup = copyExpectedManifestGroup;
 window.copyManifestGroup = copyManifestGroup;
 window.copyManifestRawLists = copyManifestRawLists;
+window.refreshPineTemplatePreview = refreshPineTemplatePreview;
+window.copyPineTemplate = copyPineTemplate;
 window.copySuggestionList = copySuggestionList;
 window.exportManifestJson = exportManifestJson;
 

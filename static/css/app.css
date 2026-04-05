@@ -876,7 +876,7 @@ tbody tr:last-child td {
 }
 
 .dashboard-briefing-panel .performance-summary-card {
-  margin-bottom: 0;
+  margin: 0;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -889,7 +889,7 @@ tbody tr:last-child td {
   flex-direction: column;
   height: 100%;
   flex: 1;
-  gap: 16px;
+  gap: 20px;
 }
 
 .dashboard-briefing-primary,
@@ -1134,8 +1134,8 @@ tbody tr:last-child td {
 }
 
 .performance-summary-card {
-  margin-bottom: 18px;
-  padding: 20px;
+  margin: 0;
+  padding: 16px 18px;
   border-radius: 20px;
   border: 1px solid rgba(52, 211, 153, 0.12);
   background:
@@ -1199,7 +1199,8 @@ tbody tr:last-child td {
 }
 
 .dashboard-current-preset {
-  padding: 14px 16px;
+  margin: 0;
+  padding: 16px 18px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background:
@@ -1234,8 +1235,8 @@ tbody tr:last-child td {
   grid-template-columns: 120px minmax(0, 1fr);
   gap: 16px;
   align-items: center;
-  margin-bottom: 16px;
-  padding: 16px;
+  margin: 0;
+  padding: 16px 18px;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background:
@@ -1734,8 +1735,8 @@ tbody tr:last-child td {
 }
 
 .needs-attention-panel {
-  margin-bottom: 12px;
-  padding: 12px 14px;
+  margin: 0;
+  padding: 16px 18px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
@@ -1802,8 +1803,8 @@ tbody tr:last-child td {
 }
 
 .dashboard-guidance-card {
-  margin-bottom: 14px;
-  padding: 14px 16px;
+  margin: 0;
+  padding: 16px 18px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background:

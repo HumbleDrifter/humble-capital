@@ -8,7 +8,8 @@ from pathlib import Path
 
 WINDOW_HOURS = 24
 TOP_N = 8
-SHADOW_ELIGIBILITY_MIN_NET_SCORE = 70.0
+# First conservative tuning pass: slightly widen review eligibility based on near-miss monitoring.
+SHADOW_ELIGIBILITY_MIN_NET_SCORE = 65.0
 SHADOW_ELIGIBILITY_MIN_REGIME_FIT = 50.0
 SHADOW_ELIGIBILITY_MAX_OVEREXTENSION_PENALTY = 14.0
 SHADOW_ELIGIBLE_CONFIDENCE_BANDS = {"medium", "high"}

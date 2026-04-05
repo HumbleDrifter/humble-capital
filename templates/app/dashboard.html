@@ -67,45 +67,61 @@
       </div>
     </div>
 
-    <div class="performance-summary-card" id="performanceSummaryCard">
-      <div class="performance-summary-head">
-        <div>
-          <div class="performance-summary-eyebrow">Performance Summary</div>
-          <div class="performance-summary-title">Loading portfolio performance...</div>
-        </div>
-      </div>
-      <div class="performance-risk-strip" id="performanceRiskStrip">
-        <div class="performance-risk-score-wrap">
-          <div class="performance-risk-score-label">Risk Score</div>
-          <div class="performance-risk-score" id="performanceRiskScore">--</div>
-        </div>
-        <div class="performance-risk-copy">
-          <div class="performance-risk-band" id="performanceRiskBand">Evaluating risk posture...</div>
-          <div class="performance-risk-notes" id="performanceRiskNotes">
-            <span class="performance-risk-note">Waiting for portfolio and history inputs.</span>
+    <div class="panel-body">
+      <div class="performance-summary-card" id="performanceSummaryCard">
+        <div class="dashboard-briefing-content">
+          <div class="dashboard-briefing-primary">
+            <div class="performance-summary-head">
+              <div>
+                <div class="performance-summary-eyebrow">Performance Summary</div>
+              </div>
+            </div>
+            <div class="performance-risk-strip" id="performanceRiskStrip">
+              <div class="performance-risk-score-wrap">
+                <div class="performance-risk-score-label-row">
+                  <div class="performance-risk-score-label">Risk Score</div>
+                  <div class="performance-risk-info">
+                    <button
+                      class="performance-risk-info-button"
+                      type="button"
+                      aria-label="Risk score scale information"
+                    >i</button>
+                    <div class="performance-risk-tooltip" role="tooltip">
+                      Risk score uses a 0–100 scale. Higher scores indicate higher portfolio risk.
+                    </div>
+                  </div>
+                </div>
+                <div class="performance-risk-score" id="performanceRiskScore">--</div>
+              </div>
+              <div class="performance-risk-copy">
+                <div class="performance-risk-band" id="performanceRiskBand">Evaluating risk posture...</div>
+              </div>
+            </div>
+            <div class="dashboard-current-preset">
+              <div class="dashboard-current-preset-label">Current Preset</div>
+              <div class="dashboard-current-preset-value" id="dashboardCurrentPreset">Reviewing</div>
+            </div>
+          </div>
+          <div class="dashboard-briefing-secondary">
+            <div class="dashboard-guidance-card" id="dashboardGuidanceCard">
+              <div class="dashboard-guidance-head">
+                <div>
+                  <div class="dashboard-guidance-eyebrow">Configuration Guidance</div>
+                  <div class="dashboard-guidance-title" id="dashboardGuidanceTitle">Reviewing the current guardrail posture...</div>
+                </div>
+                <div class="dashboard-guidance-badge" id="dashboardGuidanceConfidence">low confidence</div>
+              </div>
+              <div class="dashboard-guidance-summary" id="dashboardGuidanceSummary">
+                The dashboard keeps the live risk snapshot here and sends detailed recommendations to Configuration.
+              </div>
+              <div class="dashboard-guidance-actions" id="dashboardGuidanceActions"></div>
+            </div>
+            <div class="needs-attention-panel" id="needsAttentionPanel" hidden>
+              <div class="needs-attention-title">Needs Attention</div>
+              <div class="needs-attention-strip" id="needsAttentionStrip"></div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="dashboard-current-preset">
-        <div class="dashboard-current-preset-label">Current Preset</div>
-        <div class="dashboard-current-preset-value" id="dashboardCurrentPreset">Unavailable</div>
-      </div>
-      <div class="dashboard-guidance-card" id="dashboardGuidanceCard">
-        <div class="dashboard-guidance-head">
-          <div>
-            <div class="dashboard-guidance-eyebrow">Configuration Guidance</div>
-            <div class="dashboard-guidance-title" id="dashboardGuidanceTitle">Reviewing the current guardrail posture...</div>
-          </div>
-          <div class="dashboard-guidance-badge" id="dashboardGuidanceConfidence">low confidence</div>
-        </div>
-        <div class="dashboard-guidance-summary" id="dashboardGuidanceSummary">
-          The dashboard keeps the live risk snapshot here and sends detailed recommendations to Configuration.
-        </div>
-        <div class="dashboard-guidance-actions" id="dashboardGuidanceActions"></div>
-      </div>
-      <div class="needs-attention-panel" id="needsAttentionPanel" hidden>
-        <div class="needs-attention-title">Needs Attention</div>
-        <div class="needs-attention-strip" id="needsAttentionStrip"></div>
       </div>
     </div>
   </section>

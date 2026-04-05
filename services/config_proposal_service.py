@@ -15,7 +15,8 @@ from portfolio import (
     portfolio_summary,
     save_asset_config,
 )
-from shadow_rotation_report import build_shadow_rotation_report
+from services.satellite_decision_engine import build_satellite_decisions
+from shadow_rotation_report import build_shadow_rotation_report, load_recent_cycles, resolve_dynamic_top_n, resolve_log_path
 from storage import (
     expire_pending_config_proposals,
     find_pending_config_proposal_by_fingerprint,
@@ -103,6 +104,113 @@ def _clean_text_list(values, limit=3):
         if len(out) >= limit:
             break
     return out
+
+
+def _decision_actionable(item):
+    item = _safe_dict(item)
+    decision = str(item.get("decision", "") or "").strip().lower()
+    blockers = [str(value or "").strip() for value in _safe_list(item.get("decision_blockers")) if str(value or "").strip()]
+    if decision not in {"recommend_for_enable", "recommend_replacement"}:
+        return False
+    if blockers:
+        return False
+    if decision == "recommend_replacement" and not str(item.get("replacement_target", "") or "").strip():
+        return False
+    return True
+
+
+def _normalize_shadow_candidate_for_proposal(item):
+    item = _safe_dict(item)
+    return {
+        "product_id": str(item.get("product_id", "") or "").strip(),
+        "net_score": float(item.get("net_score", 0.0) or 0.0),
+        "confidence_band": str(item.get("confidence_band", "") or "").strip(),
+        "liquidity_bucket": str(item.get("liquidity_bucket", "") or "").strip(),
+        "volatility_bucket": str(item.get("volatility_bucket", "") or "").strip(),
+        "shadow_eligible": bool(item.get("shadow_eligible")),
+        "shadow_eligibility_reason": str(item.get("shadow_eligibility_reason", "") or "").strip(),
+        "shadow_block_reason": str(item.get("shadow_block_reason", "") or "").strip(),
+        "decision": str(item.get("decision", "") or "").strip(),
+        "decision_reason": str(item.get("decision_reason", "") or "").strip(),
+        "decision_confidence": str(item.get("decision_confidence", "") or "").strip(),
+        "decision_blockers": _clean_text_list(item.get("decision_blockers"), limit=4),
+        "replacement_target": str(item.get("replacement_target", "") or "").strip(),
+        "replacement_score_delta": float(item.get("replacement_score_delta", 0.0) or 0.0) if item.get("replacement_score_delta") is not None else None,
+        "portfolio_context_note": str(item.get("portfolio_context_note", "") or "").strip(),
+        "held_context": str(item.get("held_context", "") or "").strip(),
+        "slot_pressure": str(item.get("slot_pressure", "") or "").strip(),
+        "portfolio_pressure": str(item.get("portfolio_pressure", "") or "").strip(),
+        "stability_hits": int(item.get("stability_hits", 0) or 0),
+        "stability_window_cycles": int(item.get("stability_window_cycles", 0) or 0),
+        "active_satellite_count": int(item.get("active_satellite_count", 0) or 0),
+        "configured_max_active": int(item.get("configured_max_active", 0) or 0) if item.get("configured_max_active") is not None else None,
+    }
+
+
+def _fallback_shadow_candidates(report):
+    candidates = []
+    for item in _safe_list(_safe_dict(report).get("shadow_eligible_candidates")):
+        item = _safe_dict(item)
+        product_id = str(item.get("product_id", "") or "").strip()
+        if not product_id:
+            continue
+        candidates.append(
+            _normalize_shadow_candidate_for_proposal(
+                {
+                    **item,
+                    "decision": item.get("decision") or "recommend_for_enable",
+                    "decision_reason": item.get("decision_reason") or item.get("shadow_eligibility_reason") or "Meets review thresholds and merits operator review.",
+                    "decision_confidence": item.get("decision_confidence") or item.get("confidence_band") or "medium",
+                    "decision_blockers": item.get("decision_blockers") or [],
+                }
+            )
+        )
+    return candidates
+
+
+def _decision_driven_shadow_candidates(report, window_hours=24):
+    report = _safe_dict(report)
+    try:
+        cycles, _malformed = load_recent_cycles(resolve_log_path(), window_hours)
+        if not cycles:
+            return []
+
+        latest_cycle = max(cycles, key=lambda cycle: int(_safe_dict(cycle).get("logged_at") or 0))
+        latest_rows = _safe_list(_safe_dict(latest_cycle).get("ranking_by_net_score"))
+        if not latest_rows:
+            return []
+
+        recent_proposals = list_recent_config_proposals(limit=10, proposal_type=None)
+        configured_max_active = int(report.get("top_n", 0) or 0) or resolve_dynamic_top_n(cycles)
+        decision_bundle = _safe_dict(
+            build_satellite_decisions(
+                latest_rows,
+                cycles=cycles,
+                current_system_selections=_safe_list(latest_cycle.get("current_system_selections")),
+                configured_max_active=configured_max_active,
+                recent_proposals=recent_proposals,
+            )
+        )
+        candidates = [
+            _normalize_shadow_candidate_for_proposal(item)
+            for item in _safe_list(decision_bundle.get("items"))
+            if _decision_actionable(item) and str(_safe_dict(item).get("product_id", "") or "").strip()
+        ]
+        return candidates
+    except Exception:
+        return []
+
+
+def _shadow_candidate_summary(candidates):
+    actionable = [_safe_dict(item) for item in _safe_list(candidates)]
+    replacements = [item for item in actionable if str(item.get("decision", "") or "").strip().lower() == "recommend_replacement"]
+    enable_ready = [item for item in actionable if str(item.get("decision", "") or "").strip().lower() == "recommend_for_enable"]
+
+    if replacements and enable_ready:
+        return f"{len(actionable)} satellite candidates are ready for review, including {len(replacements)} replacement recommendation{'s' if len(replacements) != 1 else ''}."
+    if replacements:
+        return f"{len(replacements)} satellite replacement recommendation{'s' if len(replacements) != 1 else ''} are ready for review."
+    return "These satellite candidates meet review thresholds but are not yet live in the allowlist."
 
 
 def _range_to_start_ts(range_name):
@@ -261,7 +369,9 @@ def build_config_proposal(range_name=DEFAULT_ADVISORY_RANGE):
 
 def build_shadow_allowlist_proposal(window_hours=24):
     report = _safe_dict(build_shadow_rotation_report(window_hours=window_hours))
-    candidates = _safe_list(report.get("shadow_eligible_candidates"))
+    candidates = _decision_driven_shadow_candidates(report, window_hours=window_hours)
+    if not candidates:
+        candidates = _fallback_shadow_candidates(report)
 
     if not candidates:
         return {
@@ -274,6 +384,16 @@ def build_shadow_allowlist_proposal(window_hours=24):
     confidence = "high" if any(str(_safe_dict(item).get("confidence_band", "")).strip().lower() == "high" for item in candidates) else "medium"
     blocked_reasons = _safe_list(report.get("blocked_reason_breakdown"))
     top_blocker = str(_safe_dict(blocked_reasons[0]).get("reason", "") or "").strip() if blocked_reasons else ""
+    replacement_count = sum(1 for item in candidates if str(_safe_dict(item).get("decision", "") or "").strip().lower() == "recommend_replacement")
+    decision_reasons = _clean_text_list([_safe_dict(item).get("decision_reason") for item in candidates], limit=3)
+    decision_notes = _clean_text_list(
+        [
+            f"{str(_safe_dict(item).get('product_id', '') or '').strip()}: {str(_safe_dict(item).get('portfolio_context_note', '') or '').strip()}"
+            for item in candidates
+            if str(_safe_dict(item).get("product_id", "") or "").strip() and str(_safe_dict(item).get("portfolio_context_note", "") or "").strip()
+        ],
+        limit=3,
+    )
 
     proposal = {
         "proposal_type": SHADOW_ALLOWLIST_PROPOSAL_TYPE,
@@ -282,30 +402,19 @@ def build_shadow_allowlist_proposal(window_hours=24):
             "top_n": int(report.get("top_n", len(candidates)) or len(candidates)),
             "confidence": confidence,
             "report_generated_at": report.get("generated_at"),
+            "decision_engine": True,
+            "replacement_recommendation_count": replacement_count,
         },
-        "summary": "These satellite candidates meet review thresholds but are not yet live in the allowlist.",
-        "reasons": _clean_text_list(report.get("quick_takeaways"), limit=3),
+        "summary": _shadow_candidate_summary(candidates),
+        "reasons": _clean_text_list(decision_reasons + _safe_list(report.get("quick_takeaways")), limit=3),
         "notes": _clean_text_list(
             [
                 f"Top blocker: {top_blocker}" if top_blocker else "",
                 f"Cycles analyzed: {int(report.get('cycles_analyzed', 0) or 0)}",
-            ],
+            ] + decision_notes,
             limit=3,
         ),
-        "candidates": [
-            {
-                "product_id": str(_safe_dict(item).get("product_id", "") or "").strip(),
-                "net_score": float(_safe_dict(item).get("net_score", 0.0) or 0.0),
-                "confidence_band": str(_safe_dict(item).get("confidence_band", "") or "").strip(),
-                "liquidity_bucket": str(_safe_dict(item).get("liquidity_bucket", "") or "").strip(),
-                "volatility_bucket": str(_safe_dict(item).get("volatility_bucket", "") or "").strip(),
-                "shadow_eligible": bool(_safe_dict(item).get("shadow_eligible")),
-                "shadow_eligibility_reason": str(_safe_dict(item).get("shadow_eligibility_reason", "") or "").strip(),
-                "shadow_block_reason": str(_safe_dict(item).get("shadow_block_reason", "") or "").strip(),
-            }
-            for item in candidates
-            if str(_safe_dict(item).get("product_id", "") or "").strip()
-        ],
+        "candidates": [_normalize_shadow_candidate_for_proposal(item) for item in candidates if str(_safe_dict(item).get("product_id", "") or "").strip()],
         "changes": [],
         "simulation": {},
     }
@@ -340,6 +449,10 @@ def compute_config_proposal_fingerprint(proposal):
                 "liquidity_bucket": str(_safe_dict(item).get("liquidity_bucket", "") or "").strip(),
                 "volatility_bucket": str(_safe_dict(item).get("volatility_bucket", "") or "").strip(),
                 "shadow_block_reason": str(_safe_dict(item).get("shadow_block_reason", "") or "").strip(),
+                "decision": str(_safe_dict(item).get("decision", "") or "").strip(),
+                "decision_confidence": str(_safe_dict(item).get("decision_confidence", "") or "").strip(),
+                "decision_blockers": _clean_text_list(_safe_dict(item).get("decision_blockers"), limit=4),
+                "replacement_target": str(_safe_dict(item).get("replacement_target", "") or "").strip(),
             }
             for item in sorted(_safe_list(proposal.get("candidates")), key=lambda x: str(_safe_dict(x).get("product_id", "")))
             if str(_safe_dict(item).get("product_id", "") or "").strip()

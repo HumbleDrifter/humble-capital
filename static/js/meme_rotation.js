@@ -232,6 +232,20 @@ function statusText(row) {
   return "Watching";
 }
 
+function normalizeStateBadges(row) {
+  const badges = [statusText(row)];
+  if (row.core) badges.push("Core");
+  if (row.active_buy_universe && !row.held && !row.allowed && !row.core) badges.push("Ready");
+
+  const seen = new Set();
+  return badges.filter((label) => {
+    const normalized = String(label || "").trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
 function groupForCandidate(row) {
   if (row.blocked || row.enabled === false) return "paused";
   if (row.held || row.allowed || row.active_buy_universe || row.core) return "active";
@@ -271,12 +285,9 @@ function actionButtons(row) {
 }
 
 function flagPills(row) {
-  const flags = [];
-  if (row.allowed) flags.push('<span class="pill">allowed</span>');
-  if (row.blocked) flags.push('<span class="pill">blocked</span>');
-  if (row.core) flags.push('<span class="pill">core</span>');
-  if (row.active_buy_universe) flags.push('<span class="pill">ready</span>');
-  return flags.join("");
+  return normalizeStateBadges(row)
+    .map((label) => `<span class="pill">${escapeHtml(label)}</span>`)
+    .join("");
 }
 
 function renderSummary(data, groups) {
@@ -318,7 +329,7 @@ function renderScoreLegend(data) {
     <div class="opportunity-score-legend-head">
       <div>
         <div class="opportunity-score-legend-title-row">
-          <div class="opportunity-summary-label">Top Score Right Now</div>
+          <div class="opportunity-summary-label">Top Intelligence Score</div>
           <div class="opportunity-control-help">
             <button
               class="opportunity-control-help-button"
@@ -539,7 +550,6 @@ function opportunityCard(row) {
       </div>
 
       <div class="opportunity-pill-row">
-        <span class="pill">${escapeHtml(statusText(row))}</span>
         ${flagPills(row)}
       </div>
 

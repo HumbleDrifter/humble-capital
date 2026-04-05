@@ -132,6 +132,22 @@
 
     <div class="divider"></div>
 
+    <div class="service-actions">
+      <button class="btn btn-secondary" onclick="copyManifestGroup('core_buy')">Copy Core Buy</button>
+      <button class="btn btn-secondary" onclick="copyManifestGroup('core_exit')">Copy Core Exit</button>
+      <button class="btn btn-secondary" onclick="copyManifestGroup('satellite_buy')">Copy Satellite Buy</button>
+      <button class="btn btn-secondary" onclick="copyManifestGroup('satellite_exit')">Copy Satellite Exit</button>
+      <button class="btn btn-secondary" onclick="copyManifestGroup('sniper_buy')">Copy Sniper Buy</button>
+      <button class="btn btn-secondary" onclick="copyManifestRawLists()">Copy Raw Lists</button>
+      <button class="btn btn-primary" onclick="exportManifestJson()">Export Manifest JSON</button>
+    </div>
+
+    <div id="tradingViewManifestActionStatus" class="status-console">
+      Copy and export tools are ready when manifest data is loaded.
+    </div>
+
+    <div class="divider"></div>
+
     <div class="system-universe-grid">
       <div>
         <div class="system-universe-label">Summary</div>

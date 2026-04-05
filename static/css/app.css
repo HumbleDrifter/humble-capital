@@ -3453,6 +3453,10 @@ tbody tr:last-child td {
   min-width: 0;
 }
 
+.system-status-universe .service-actions + .status-console {
+  margin-top: 12px;
+}
+
 .system-universe-label {
   margin-bottom: 8px;
   color: var(--text-dim);

@@ -1,4 +1,5 @@
 const API_SECRET = (window.SYSTEM_STATUS_CONFIG && window.SYSTEM_STATUS_CONFIG.apiSecret) || "";
+let CURRENT_TRADINGVIEW_MANIFEST = null;
 
 function authUrl(path) {
   if (!API_SECRET) return path;
@@ -180,6 +181,115 @@ function renderManifestText(id, text, isError = false) {
   el.className = isError ? "status-console error" : "status-console";
 }
 
+function setManifestActionStatus(message, isError = false) {
+  renderManifestText("tradingViewManifestActionStatus", message, isError);
+}
+
+function manifestGroupValues(groupName) {
+  const manifest = CURRENT_TRADINGVIEW_MANIFEST || {};
+  const groups = manifest.strategy_groups || {};
+  return normalizeSymbolList(groups[groupName] || []);
+}
+
+function manifestRawListsText() {
+  const manifest = CURRENT_TRADINGVIEW_MANIFEST || {};
+  const groups = manifest.strategy_groups || {};
+  return [
+    "core_buy",
+    fmtList(groups.core_buy),
+    "",
+    "core_exit",
+    fmtList(groups.core_exit),
+    "",
+    "satellite_buy",
+    fmtList(groups.satellite_buy),
+    "",
+    "satellite_exit",
+    fmtList(groups.satellite_exit),
+    "",
+    "sniper_buy",
+    fmtList(groups.sniper_buy)
+  ].join("\n");
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "absolute";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
+
+async function copyManifestGroup(groupName) {
+  const values = manifestGroupValues(groupName);
+  if (!CURRENT_TRADINGVIEW_MANIFEST) {
+    setManifestActionStatus("Fetch the TradingView manifest before copying strategy groups.", true);
+    return;
+  }
+  if (!values.length) {
+    setManifestActionStatus(`No symbols are available for ${groupName}.`, true);
+    return;
+  }
+
+  try {
+    await copyTextToClipboard(values.join(", "));
+    setManifestActionStatus(`Copied ${groupName} (${values.length} symbol${values.length === 1 ? "" : "s"}).`);
+  } catch (err) {
+    console.error(err);
+    setManifestActionStatus(`Copy failed for ${groupName}: ${err.message}`, true);
+  }
+}
+
+async function copyManifestRawLists() {
+  if (!CURRENT_TRADINGVIEW_MANIFEST) {
+    setManifestActionStatus("Fetch the TradingView manifest before copying raw lists.", true);
+    return;
+  }
+
+  try {
+    await copyTextToClipboard(manifestRawListsText());
+    setManifestActionStatus("Copied raw TradingView manifest lists.");
+  } catch (err) {
+    console.error(err);
+    setManifestActionStatus(`Copy failed for raw lists: ${err.message}`, true);
+  }
+}
+
+function exportManifestJson() {
+  if (!CURRENT_TRADINGVIEW_MANIFEST) {
+    setManifestActionStatus("Fetch the TradingView manifest before exporting JSON.", true);
+    return;
+  }
+
+  try {
+    const manifest = CURRENT_TRADINGVIEW_MANIFEST || {};
+    const stamp = Number(manifest.generated_at || 0);
+    const safeStamp = stamp ? new Date(stamp * 1000).toISOString().replace(/[:.]/g, "-") : "latest";
+    const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `tradingview_manifest_${safeStamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setManifestActionStatus("Exported TradingView manifest JSON.");
+  } catch (err) {
+    console.error(err);
+    setManifestActionStatus(`Export failed: ${err.message}`, true);
+  }
+}
+
 function renderTradingViewManifest(data) {
   const manifest = data || {};
   const summary = manifest.summary || {};
@@ -187,6 +297,7 @@ function renderTradingViewManifest(data) {
   const groups = manifest.strategy_groups || {};
   const groupsHost = document.getElementById("tradingViewManifestGroups");
   const listsEl = document.getElementById("tradingViewManifestLists");
+  CURRENT_TRADINGVIEW_MANIFEST = manifest;
 
   renderManifestText(
     "tradingViewManifestStatus",
@@ -236,29 +347,18 @@ function renderTradingViewManifest(data) {
   }
 
   if (listsEl) {
-    listsEl.textContent = [
-      "core_buy",
-      fmtList(groups.core_buy),
-      "",
-      "core_exit",
-      fmtList(groups.core_exit),
-      "",
-      "satellite_buy",
-      fmtList(groups.satellite_buy),
-      "",
-      "satellite_exit",
-      fmtList(groups.satellite_exit),
-      "",
-      "sniper_buy",
-      fmtList(groups.sniper_buy)
-    ].join("\n");
+    listsEl.textContent = manifestRawListsText();
   }
+
+  setManifestActionStatus("Manifest tools are ready. You can copy strategy groups or export JSON.");
 }
 
 function renderTradingViewManifestError(message) {
+  CURRENT_TRADINGVIEW_MANIFEST = null;
   renderManifestText("tradingViewManifestStatus", `TradingView manifest load failed: ${message}`, true);
   renderManifestText("tradingViewManifestSummary", "Unavailable.", true);
   renderManifestText("tradingViewManifestNotes", "Unable to load server manifest notes.", true);
+  setManifestActionStatus("Manifest tools are unavailable until a valid manifest is loaded.", true);
   const groupsHost = document.getElementById("tradingViewManifestGroups");
   if (groupsHost) {
     groupsHost.innerHTML = `<div class="status-console error">${message}</div>`;
@@ -377,5 +477,8 @@ window.refreshSystemStatus = refreshSystemStatus;
 window.refreshCaches = refreshCaches;
 window.refreshTradableUniverse = refreshTradableUniverse;
 window.refreshTradingViewManifest = refreshTradingViewManifest;
+window.copyManifestGroup = copyManifestGroup;
+window.copyManifestRawLists = copyManifestRawLists;
+window.exportManifestJson = exportManifestJson;
 
 refreshSystemStatus();

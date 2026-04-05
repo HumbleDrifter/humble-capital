@@ -173,6 +173,102 @@ function renderTradableUniverseError(message) {
   }
 }
 
+function renderManifestText(id, text, isError = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = isError ? "status-console error" : "status-console";
+}
+
+function renderTradingViewManifest(data) {
+  const manifest = data || {};
+  const summary = manifest.summary || {};
+  const notes = manifest.notes || {};
+  const groups = manifest.strategy_groups || {};
+  const groupsHost = document.getElementById("tradingViewManifestGroups");
+  const listsEl = document.getElementById("tradingViewManifestLists");
+
+  renderManifestText(
+    "tradingViewManifestStatus",
+    `TradingView manifest loaded. Generated ${fmtTs(manifest.generated_at)}${manifest.snapshot_timestamp ? ` • Snapshot ${fmtTs(manifest.snapshot_timestamp)}` : ""}.`
+  );
+
+  renderManifestText(
+    "tradingViewManifestSummary",
+    [
+      `Generated: ${fmtTs(manifest.generated_at)}`,
+      `Snapshot: ${fmtTs(manifest.snapshot_timestamp)}`,
+      `Source: ${manifest.source || "—"} v${manifest.version ?? "—"}`,
+      `Satellite mode: ${manifest.satellite_mode || "—"}`,
+      `Core buy: ${summary.core_buy_count ?? normalizeSymbolList(groups.core_buy || []).length}`,
+      `Core exit: ${summary.core_exit_count ?? normalizeSymbolList(groups.core_exit || []).length}`,
+      `Satellite buy: ${summary.satellite_buy_count ?? normalizeSymbolList(groups.satellite_buy || []).length}`,
+      `Satellite exit: ${summary.satellite_exit_count ?? normalizeSymbolList(groups.satellite_exit || []).length}`,
+      `Sniper buy: ${summary.sniper_buy_count ?? normalizeSymbolList(groups.sniper_buy || []).length}`
+    ].join("\n")
+  );
+
+  renderManifestText(
+    "tradingViewManifestNotes",
+    [
+      notes.purpose || "Server-authoritative TradingView maintenance manifest.",
+      notes.satellite_buy_definition || "",
+      notes.satellite_exit_definition || "",
+      notes.sniper_buy_definition || ""
+    ].filter(Boolean).join("\n")
+  );
+
+  if (groupsHost) {
+    const groupEntries = [
+      ["Core Buy", groups.core_buy],
+      ["Core Exit", groups.core_exit],
+      ["Satellite Buy", groups.satellite_buy],
+      ["Satellite Exit", groups.satellite_exit],
+      ["Sniper Buy", groups.sniper_buy]
+    ];
+
+    groupsHost.innerHTML = groupEntries.map(([label, values]) => `
+      <div class="system-manifest-card">
+        <div class="system-universe-label">${label}</div>
+        <div class="status-console">${fmtList(values)}</div>
+      </div>
+    `).join("");
+  }
+
+  if (listsEl) {
+    listsEl.textContent = [
+      "core_buy",
+      fmtList(groups.core_buy),
+      "",
+      "core_exit",
+      fmtList(groups.core_exit),
+      "",
+      "satellite_buy",
+      fmtList(groups.satellite_buy),
+      "",
+      "satellite_exit",
+      fmtList(groups.satellite_exit),
+      "",
+      "sniper_buy",
+      fmtList(groups.sniper_buy)
+    ].join("\n");
+  }
+}
+
+function renderTradingViewManifestError(message) {
+  renderManifestText("tradingViewManifestStatus", `TradingView manifest load failed: ${message}`, true);
+  renderManifestText("tradingViewManifestSummary", "Unavailable.", true);
+  renderManifestText("tradingViewManifestNotes", "Unable to load server manifest notes.", true);
+  const groupsHost = document.getElementById("tradingViewManifestGroups");
+  if (groupsHost) {
+    groupsHost.innerHTML = `<div class="status-console error">${message}</div>`;
+  }
+  const listsEl = document.getElementById("tradingViewManifestLists");
+  if (listsEl) {
+    listsEl.textContent = message;
+  }
+}
+
 function renderStatus(data) {
   const badges = document.getElementById("statusBadges");
   const health = document.getElementById("serviceHealth");
@@ -251,6 +347,17 @@ async function refreshTradableUniverse() {
   }
 }
 
+async function refreshTradingViewManifest() {
+  try {
+    renderManifestText("tradingViewManifestStatus", "Fetching TradingView manifest...");
+    const data = await fetchJson("/api/system/tradingview_manifest");
+    renderTradingViewManifest(data);
+  } catch (err) {
+    console.error(err);
+    renderTradingViewManifestError(err.message);
+  }
+}
+
 async function refreshSystemStatus() {
   try {
     const data = await fetchJson("/api/status");
@@ -263,10 +370,12 @@ async function refreshSystemStatus() {
   }
 
   await refreshTradableUniverse();
+  await refreshTradingViewManifest();
 }
 
 window.refreshSystemStatus = refreshSystemStatus;
 window.refreshCaches = refreshCaches;
 window.refreshTradableUniverse = refreshTradableUniverse;
+window.refreshTradingViewManifest = refreshTradingViewManifest;
 
 refreshSystemStatus();

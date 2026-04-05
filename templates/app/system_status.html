@@ -3,12 +3,14 @@
 {% block topbar_actions %}
 <button class="btn btn-secondary" onclick="refreshSystemStatus()">Refresh</button>
 <button class="btn btn-secondary" onclick="refreshTradableUniverse()">Refresh Server Universe</button>
+<button class="btn btn-secondary" onclick="refreshTradingViewManifest()">Refresh TradingView Manifest</button>
 <button class="btn btn-primary" onclick="refreshCaches()">Refresh Caches</button>
 {% endblock %}
 
 {% block mobile_topbar_actions %}
 <button class="btn btn-secondary" onclick="refreshSystemStatus()">Refresh</button>
 <button class="btn btn-secondary" onclick="refreshTradableUniverse()">Universe</button>
+<button class="btn btn-secondary" onclick="refreshTradingViewManifest()">Manifest</button>
 <button class="btn btn-primary" onclick="refreshCaches()">Caches</button>
 {% endblock %}
 
@@ -107,6 +109,52 @@
 
     <div class="system-universe-label">Server Lists</div>
     <pre id="tradableUniverseLists">Waiting for server data.</pre>
+  </section>
+
+  <section class="panel span-12 system-status-universe">
+    <div class="section-header">
+      <div>
+        <h2>TradingView Manifest Sync</h2>
+        <p class="section-subtitle">
+          Read-only export of the server TradingView maintenance manifest with grouped strategy symbol sets.
+        </p>
+      </div>
+      <div class="service-actions">
+        <button class="btn btn-secondary" onclick="refreshTradingViewManifest()">
+          Refresh TradingView Manifest
+        </button>
+      </div>
+    </div>
+
+    <div id="tradingViewManifestStatus" class="status-console">
+      Ready to fetch the current server TradingView manifest.
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="system-universe-grid">
+      <div>
+        <div class="system-universe-label">Summary</div>
+        <div id="tradingViewManifestSummary" class="status-console">Waiting for server data.</div>
+      </div>
+
+      <div>
+        <div class="system-universe-label">Notes</div>
+        <div id="tradingViewManifestNotes" class="status-console">Waiting for server data.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="system-universe-label">Strategy Groups</div>
+    <div id="tradingViewManifestGroups" class="system-manifest-grid">
+      <div class="status-console">Waiting for server data.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="system-universe-label">Raw Group Lists</div>
+    <pre id="tradingViewManifestLists">Waiting for server data.</pre>
   </section>
 
 </div>

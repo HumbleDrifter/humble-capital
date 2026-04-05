@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import shlex
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -367,11 +368,33 @@ def _read_remote_env(client, remote_env_path):
 
 def _write_remote_env(client, remote_env_path, env_text):
     sftp = client.open_sftp()
-    tmp_path = f"{remote_env_path}.tmp"
+    tmp_path = f"{remote_env_path}.tmp.{os.getpid()}.{int(time.time())}"
     try:
         with sftp.open(tmp_path, "w") as handle:
             handle.write(env_text)
-        sftp.rename(tmp_path, remote_env_path)
+            handle.flush()
+        try:
+            posix_rename = getattr(sftp, "posix_rename", None)
+            if callable(posix_rename):
+                posix_rename(tmp_path, remote_env_path)
+            else:
+                raise OSError("posix_rename unavailable")
+        except Exception:
+            try:
+                sftp.remove(remote_env_path)
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                message = str(exc or "").strip().lower()
+                if "no such file" not in message and "not found" not in message:
+                    raise
+            sftp.rename(tmp_path, remote_env_path)
+    except Exception:
+        try:
+            sftp.remove(tmp_path)
+        except Exception:
+            pass
+        raise
     finally:
         sftp.close()
 

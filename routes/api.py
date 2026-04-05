@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import sqlite3
 import threading
@@ -21,6 +22,7 @@ from portfolio import (
     build_auto_adaptive_recommendation,
     build_portfolio_history_analytics,
     build_portfolio_risk_score,
+    get_rotation_products,
     get_portfolio_snapshot,
     normalize_adaptive_suggestions_payload,
     normalize_auto_adaptive_payload,
@@ -38,10 +40,13 @@ api_bp = Blueprint("api", __name__)
 BASE_DIR = str(preferred_env_path().parent.resolve())
 ASSET_CONFIG_PATH = os.path.join(BASE_DIR, "asset_config.json")
 MEME_ROTATION_PATH = os.path.join(BASE_DIR, "meme_rotation.json")
+SATELLITE_ROTATION_SHADOW_LOG_PATH = os.path.join(BASE_DIR, "satellite_rotation_shadow.jsonl")
 TRADING_DB_PATH = os.getenv("TRADINGBOT_DB_PATH", os.path.join(BASE_DIR, "trading.db"))
 
 _API_CACHE_LOCK = threading.Lock()
 _API_CACHE = {}
+_SHADOW_ROTATION_LOG_LOCK = threading.Lock()
+_LAST_SHADOW_ROTATION_LOG_KEY = None
 
 
 def _log_api(msg):
@@ -319,6 +324,39 @@ def _safe_float(value, default=0.0):
         return default
 
 
+def _clamp_score(value, low=0.0, high=100.0):
+    return max(low, min(high, float(value)))
+
+
+def _normalize_score(value, low, high, default=50.0):
+    if value is None:
+        return float(default)
+    low = float(low)
+    high = float(high)
+    if high <= low:
+        return float(default)
+    scaled = ((float(value) - low) / (high - low)) * 100.0
+    return _clamp_score(scaled)
+
+
+def _log_normalize_score(value, low, high, default=0.0):
+    numeric = _safe_float(value)
+    if numeric <= 0:
+        return float(default)
+    low = max(float(low), 1.0)
+    high = max(float(high), low + 1.0)
+    scaled = ((math.log10(numeric) - math.log10(low)) / (math.log10(high) - math.log10(low))) * 100.0
+    return _clamp_score(scaled)
+
+
+def _bucket_from_score(score, thresholds):
+    numeric = float(score)
+    for minimum, label in thresholds:
+        if numeric >= minimum:
+            return label
+    return thresholds[-1][1]
+
+
 def _normalized_choice(value, allowed, default=""):
     normalized = str(value or "").strip().lower()
     return normalized if normalized in allowed else default
@@ -563,12 +601,192 @@ def _build_meme_rotation():
                 return value
         return None
 
+    def _tag_score(value, mapping, default=50.0):
+        normalized = str(value or "").strip().lower()
+        return float(mapping.get(normalized, default))
+
+    def _compute_shadow_scores(item, asset):
+        score_breakdown = item.get("score_breakdown", {}) if isinstance(item.get("score_breakdown"), dict) else {}
+        legacy_score = _safe_float(item.get("score"))
+        trend_score_raw = item.get("trend_score")
+        momentum_bonus = _safe_float(_first_present(item.get("momentum_bonus"), score_breakdown.get("momentum_bonus")))
+        change_24h = _first_present(item.get("change_24h"), item.get("price_change_24h_pct"), item.get("price_change_24h"))
+        change_24h = None if change_24h is None else _safe_float(change_24h)
+        market_cap = _safe_float(item.get("market_cap"))
+        total_volume = _safe_float(item.get("total_volume"))
+        turnover_ratio = (total_volume / market_cap) if market_cap > 0 else 0.0
+        momentum_tag_score = _tag_score(
+            item.get("momentum_tag"),
+            {
+                "surging": 100,
+                "strong": 85,
+                "bullish": 75,
+                "neutral": 50,
+                "cooling": 35,
+                "weak": 20,
+                "crashing": 5,
+            },
+        )
+        volume_tag_score = _tag_score(
+            item.get("volume_tag"),
+            {
+                "explosive": 100,
+                "active": 78,
+                "normal": 58,
+                "thin": 28,
+                "illiquid": 10,
+            },
+        )
+        legacy_score_norm = _normalize_score(legacy_score, 0.0, 30.0, default=40.0)
+        momentum_bonus_norm = _normalize_score(momentum_bonus, 0.0, 12.0, default=40.0)
+        price_momentum_norm = _normalize_score(change_24h, -15.0, 20.0, default=50.0)
+        market_cap_norm = _log_normalize_score(market_cap, 1_000_000, 15_000_000_000, default=25.0)
+        volume_norm = _log_normalize_score(total_volume, 100_000, 1_000_000_000, default=10.0)
+        turnover_norm = _normalize_score(turnover_ratio, 0.01, 0.75, default=25.0)
+
+        trend_quality = (
+            _clamp_score(_safe_float(trend_score_raw))
+            if trend_score_raw is not None
+            else round((legacy_score_norm * 0.65) + (momentum_tag_score * 0.35), 2)
+        )
+        momentum_score = round((price_momentum_norm * 0.60) + (momentum_tag_score * 0.25) + (momentum_bonus_norm * 0.15), 2)
+        relative_strength = round((price_momentum_norm * 0.70) + (volume_tag_score * 0.30), 2)
+        liquidity_quality = round((volume_norm * 0.55) + (turnover_norm * 0.25) + (market_cap_norm * 0.20), 2)
+
+        if summary.get("market_regime") == "bull":
+            regime_fit_score = (
+                88.0 if (change_24h is not None and change_24h >= 0 and not bool(item.get("pump_protected", False)))
+                else 52.0 if change_24h is not None and change_24h >= 0
+                else 26.0
+            )
+        elif summary.get("market_regime") == "neutral":
+            regime_fit_score = 72.0 if change_24h is not None and change_24h >= -2.0 else 42.0
+        else:
+            regime_fit_score = (
+                38.0 if bool(item.get("pump_protected", False)) or (change_24h is not None and abs(change_24h) <= 5.0)
+                else 18.0
+            )
+
+        abs_move_24h = abs(change_24h) if change_24h is not None else 0.0
+        volatility_bucket = _bucket_from_score(
+            abs_move_24h,
+            [
+                (35.0, "extreme"),
+                (18.0, "elevated"),
+                (8.0, "active"),
+                (0.0, "stable"),
+            ],
+        )
+        liquidity_bucket = _bucket_from_score(
+            liquidity_quality,
+            [
+                (75.0, "high"),
+                (45.0, "medium"),
+                (0.0, "low"),
+            ],
+        )
+
+        volatility_penalty = round(
+            {
+                "stable": 4.0,
+                "active": 10.0,
+                "elevated": 18.0,
+                "extreme": 30.0,
+            }[volatility_bucket],
+            2,
+        )
+        overextension_penalty = round(
+            max(
+                0.0,
+                (
+                    18.0 if bool(item.get("pump_protected", False)) else 0.0
+                ) + (
+                    22.0 if change_24h is not None and change_24h >= 45.0 else
+                    14.0 if change_24h is not None and change_24h >= 25.0 else
+                    7.0 if change_24h is not None and change_24h >= 15.0 else
+                    0.0
+                ),
+            ),
+            2,
+        )
+        churn_penalty = round(
+            0.0
+            if (
+                asset.get("value_total_usd", 0.0) > 0
+                or item.get("_allowed")
+                or item.get("_active_buy_universe")
+                or item.get("_core")
+            )
+            else 6.0,
+            2,
+        )
+
+        component_scores = {
+            "momentum_score": round(momentum_score, 2),
+            "trend_quality": round(trend_quality, 2),
+            "relative_strength": round(relative_strength, 2),
+            "liquidity_quality": round(liquidity_quality, 2),
+            "regime_fit_score": round(regime_fit_score, 2),
+        }
+        gross_raw = sum(component_scores.values())
+        gross_score = round(gross_raw / len(component_scores), 2)
+        total_penalty = volatility_penalty + overextension_penalty + churn_penalty
+        net_score = round(_clamp_score((gross_raw - total_penalty) / len(component_scores)), 2)
+        confidence_band = (
+            "high" if net_score >= 85.0 else
+            "medium" if net_score >= 70.0 else
+            "low" if net_score >= 55.0 else
+            "watch_only"
+        )
+
+        return {
+            **component_scores,
+            "gross_score": gross_score,
+            "net_score": net_score,
+            "confidence_band": confidence_band,
+            "volatility_bucket": volatility_bucket,
+            "liquidity_bucket": liquidity_bucket,
+            "regime_fit_score": round(regime_fit_score, 2),
+            "overextension_penalty": overextension_penalty,
+            "volatility_penalty": volatility_penalty,
+            "churn_penalty": churn_penalty,
+        }
+
+    def _append_shadow_rotation_log(log_payload):
+        global _LAST_SHADOW_ROTATION_LOG_KEY
+        log_key = (
+            log_payload.get("rotation_generated_at"),
+            log_payload.get("rotation_updated_at"),
+            log_payload.get("snapshot_timestamp"),
+            log_payload.get("candidate_count"),
+        )
+        with _SHADOW_ROTATION_LOG_LOCK:
+            if log_key == _LAST_SHADOW_ROTATION_LOG_KEY:
+                return
+            with open(SATELLITE_ROTATION_SHADOW_LOG_PATH, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps(log_payload, ensure_ascii=False) + "\n")
+            _LAST_SHADOW_ROTATION_LOG_KEY = log_key
+
     for item in rotation.get("candidates", []):
         product_id = _normalize_product_id(item.get("product_id"))
         if not product_id:
             continue
 
         asset = asset_rows.get(product_id, {})
+        allowed_flag = product_id in allowed
+        blocked_flag = product_id in blocked
+        core_flag = product_id in core_assets
+        active_buy_universe_flag = product_id in active_buy_universe
+        shadow_scores = _compute_shadow_scores(
+            {
+                **item,
+                "_allowed": allowed_flag,
+                "_blocked": blocked_flag,
+                "_core": core_flag,
+                "_active_buy_universe": active_buy_universe_flag,
+            },
+            asset,
+        )
 
         candidates.append({
             "product_id": product_id,
@@ -587,10 +805,10 @@ def _build_meme_rotation():
             "portfolio_weight": float(asset.get("weight_total", 0.0) or 0.0),
             "class": asset.get("class"),
             "held": product_id in held_assets,
-            "allowed": product_id in allowed,
-            "blocked": product_id in blocked,
-            "core": product_id in core_assets,
-            "active_buy_universe": product_id in active_buy_universe,
+            "allowed": allowed_flag,
+            "blocked": blocked_flag,
+            "core": core_flag,
+            "active_buy_universe": active_buy_universe_flag,
             "unrealized_pnl_pct": (
                 asset.get("unrealized_pnl_pct")
                 if asset.get("unrealized_pnl_pct") is not None
@@ -604,6 +822,7 @@ def _build_meme_rotation():
                 "Held" if product_id in held_assets else
                 "Watching"
             ),
+            **shadow_scores,
         })
 
     candidates.sort(
@@ -615,6 +834,53 @@ def _build_meme_rotation():
     )
 
     candidate_count = len(candidates)
+    current_system_selections = [item["product_id"] for item in get_rotation_products(snapshot)]
+    shadow_ranked = sorted(
+        candidates,
+        key=lambda x: (
+            float(x.get("net_score", 0.0) or 0.0),
+            float(x.get("gross_score", 0.0) or 0.0),
+            float(x.get("score", 0.0) or 0.0),
+        ),
+        reverse=True,
+    )
+    shadow_target_count = len(current_system_selections) or int((cfg.get("meme_rotation") or {}).get("max_active", 8) or 8)
+    shadow_top_selection_ids = [row["product_id"] for row in shadow_ranked[:shadow_target_count]]
+    _append_shadow_rotation_log({
+        "logged_at": int(_now()),
+        "rotation_generated_at": _safe_int(rotation.get("generated_at")),
+        "rotation_updated_at": _safe_int(rotation.get("updated_at")),
+        "snapshot_timestamp": _safe_int(snapshot.get("timestamp")),
+        "market_regime": summary.get("market_regime"),
+        "candidate_count": candidate_count,
+        "current_system_selections": current_system_selections,
+        "shadow_top_selection_ids": shadow_top_selection_ids,
+        "ranking_by_net_score": [
+            {
+                "product_id": row.get("product_id"),
+                "legacy_score": row.get("score"),
+                "gross_score": row.get("gross_score"),
+                "net_score": row.get("net_score"),
+                "confidence_band": row.get("confidence_band"),
+                "volatility_bucket": row.get("volatility_bucket"),
+                "liquidity_bucket": row.get("liquidity_bucket"),
+                "regime_fit_score": row.get("regime_fit_score"),
+                "momentum_score": row.get("momentum_score"),
+                "trend_quality": row.get("trend_quality"),
+                "relative_strength": row.get("relative_strength"),
+                "liquidity_quality": row.get("liquidity_quality"),
+                "volatility_penalty": row.get("volatility_penalty"),
+                "overextension_penalty": row.get("overextension_penalty"),
+                "churn_penalty": row.get("churn_penalty"),
+                "status": row.get("status"),
+                "held": bool(row.get("held")),
+                "allowed": bool(row.get("allowed")),
+                "blocked": bool(row.get("blocked")),
+                "active_buy_universe": bool(row.get("active_buy_universe")),
+            }
+            for row in shadow_ranked
+        ],
+    })
 
     return {
         "ok": True,
@@ -623,6 +889,7 @@ def _build_meme_rotation():
         "candidate_count": candidate_count,
         "market_regime": summary.get("market_regime"),
         "active_satellite_buy_universe": sorted(active_buy_universe),
+        "current_system_selections": current_system_selections,
         "candidates": candidates,
         "freshness": _freshness_from_payload(snapshot),
     }

@@ -278,13 +278,22 @@ function renderScoreLegend(data) {
   host.innerHTML = `
     <div class="opportunity-score-legend-head">
       <div>
-        <div class="opportunity-summary-label">Top Score Right Now</div>
+        <div class="opportunity-score-legend-title-row">
+          <div class="opportunity-summary-label">Top Score Right Now</div>
+          <div class="opportunity-control-help">
+            <button
+              class="opportunity-control-help-button"
+              type="button"
+              aria-label="Score range information"
+            >i</button>
+            <div class="opportunity-control-tooltip" role="tooltip">
+              85+ = High conviction<br>
+              65-84 = Building setup<br>
+              Below 65 = Early / lower confidence
+            </div>
+          </div>
+        </div>
         <div class="opportunity-summary-value">${fmtNumber(topScore)}</div>
-      </div>
-      <div class="opportunity-score-legend-bands">
-        <span class="opportunity-score-legend-band high">85+ = High conviction</span>
-        <span class="opportunity-score-legend-band strong">65-84 = Building setup</span>
-        <span class="opportunity-score-legend-band early">Below 65 = Early / lower confidence</span>
       </div>
     </div>
     <p class="opportunity-score-legend-note">Higher scores indicate stronger opportunity quality based on current scanner inputs.</p>

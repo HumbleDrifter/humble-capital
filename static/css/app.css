@@ -1369,9 +1369,9 @@ tbody tr:last-child td {
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 14px 32px rgba(0, 0, 0, 0.24);
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.55;
   text-transform: none;
   letter-spacing: 0;
   opacity: 0;
@@ -3240,46 +3240,14 @@ tbody tr:last-child td {
 .opportunity-score-legend-head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
 }
 
-.opportunity-score-legend-bands {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.opportunity-score-legend-band {
+.opportunity-score-legend-title-row {
   display: inline-flex;
   align-items: center;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-soft);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.opportunity-score-legend-band.high {
-  border-color: rgba(16, 185, 129, 0.28);
-  background: rgba(16, 185, 129, 0.12);
-  color: #d8fff0;
-}
-
-.opportunity-score-legend-band.strong {
-  border-color: rgba(22, 163, 74, 0.22);
-  background: rgba(22, 163, 74, 0.1);
-  color: #dff7e9;
-}
-
-.opportunity-score-legend-band.early {
-  border-color: rgba(148, 163, 184, 0.18);
-  background: rgba(148, 163, 184, 0.08);
-  color: #d5dfec;
+  gap: 10px;
 }
 
 .opportunity-score-legend-note {
@@ -3341,9 +3309,9 @@ tbody tr:last-child td {
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 14px 32px rgba(0, 0, 0, 0.24);
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.55;
   text-transform: none;
   letter-spacing: 0;
   opacity: 0;

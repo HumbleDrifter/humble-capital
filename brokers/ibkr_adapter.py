@@ -166,14 +166,23 @@ class IBKRAdapter(BrokerAdapter):
                 "last_ready_at": _LAST_READY_AT,
             }
 
+    def _log_health_failure(self, reason, error=None):
+        detail = str(error or reason or "").strip() or "unknown"
+        message = f"[IBKR health] connection failed: {detail}"
+        print(message)
+
     def health_status(self):
         runtime = dict(self.runtime_config or {})
         connection = self._connection_status()
         reason = ""
         options_enabled = _env_bool("OPTIONS_ENABLED", False)
         import_error = None
+        managed_accounts = []
+        account = str(runtime.get("account") or "").strip()
+        connected = False
+        connection_reused = False
         try:
-            import ib_insync  # noqa: F401
+            from ib_insync import IB
         except Exception as exc:
             import_error = str(exc)
         if not runtime.get("enabled"):
@@ -182,20 +191,47 @@ class IBKRAdapter(BrokerAdapter):
             reason = "options_disabled"
         elif import_error:
             reason = "ib_insync_unavailable"
-        elif not connection.get("connected"):
+        else:
+            try:
+                if connection.get("usable"):
+                    connection_reused = True
+                    with _SHARED_IB_LOCK:
+                        ib = _SHARED_IB
+                else:
+                    ib = self._get_connection(IB)
+
+                connected = bool(ib is not None and ib.isConnected())
+                managed_accounts = [str(item).strip() for item in (ib.managedAccounts() or []) if str(item).strip()] if connected else []
+                if not account and managed_accounts:
+                    account = managed_accounts[0]
+                if connected:
+                    self._mark_ready()
+                    reason = ""
+                else:
+                    reason = "not_connected"
+                connection = self._connection_status()
+            except Exception as exc:
+                self._set_last_error(exc)
+                self._log_health_failure("live_probe_failed", exc)
+                connection = self._connection_status()
+                connected = False
+                reason = str(exc).strip() or "not_connected"
+        if not reason and not connected and not connection.get("connected"):
             reason = "not_connected"
+        connected = bool(connected or connection.get("connected"))
         return {
-            "ok": bool(runtime.get("enabled")) and bool(options_enabled) and not bool(import_error) and bool(connection.get("connected")),
+            "ok": bool(runtime.get("enabled")) and bool(options_enabled) and not bool(import_error) and connected,
             "ibkr_enabled": bool(runtime.get("enabled")),
             "options_enabled": options_enabled,
             "paper_mode": bool(runtime.get("paper_mode")),
             "host": str(runtime.get("host") or "").strip(),
             "port": int(runtime.get("port") or 0),
-            "connected": bool(connection.get("connected")),
-            "account": str(runtime.get("account") or "").strip(),
+            "connected": connected,
+            "account": account,
             "reason": reason or connection.get("last_error") or None,
-            "connection_reused": bool(connection.get("connected") and connection.get("runtime_matches")),
+            "connection_reused": bool(connection_reused or (connected and connection.get("runtime_matches"))),
             "connection_reuse_capable": True,
+            "managed_accounts": managed_accounts,
             "last_error": import_error or connection.get("last_error"),
             "last_ready_at": connection.get("last_ready_at"),
         }

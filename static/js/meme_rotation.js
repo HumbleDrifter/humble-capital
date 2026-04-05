@@ -532,6 +532,7 @@ function opportunityCard(row) {
           </div>
         </div>
         <div class="opportunity-score-wrap">
+          <div class="opportunity-score-kicker">Intelligence Score</div>
           <div class="opportunity-score">${fmtNumber(score)}</div>
           <div class="tiny">${escapeHtml(scoreLabel(score))} confidence</div>
         </div>

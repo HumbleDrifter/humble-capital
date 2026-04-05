@@ -389,6 +389,15 @@ function riskBandTone(band) {
   return "";
 }
 
+function riskScoreClass(score) {
+  if (!hasNumericValue(score)) return "";
+  const value = Number(score);
+  if (value <= 24) return "risk-low";
+  if (value <= 49) return "risk-moderate";
+  if (value <= 74) return "risk-elevated";
+  return "risk-high";
+}
+
 function priorityTone(priority) {
   const normalized = String(priority || "").toLowerCase();
   if (normalized === "low") return "positive";
@@ -745,27 +754,15 @@ function renderPerformanceSummary(portfolioData, historyData, history7Data, hist
   }
   if (riskScoreEl) {
     riskScoreEl.textContent = scoreValue == null ? "--" : String(Math.round(scoreValue));
+    riskScoreEl.className = `performance-risk-score${riskScoreClass(scoreValue) ? ` ${riskScoreClass(scoreValue)}` : ""}`;
   }
   if (riskBandEl) {
     riskBandEl.textContent = scoreBand;
     riskBandEl.className = `performance-risk-band${riskBandTone(scoreBand) ? ` ${riskBandTone(scoreBand)}` : ""}`;
   }
   if (riskNotesEl) {
-    const liveContextNote = "Risk score is blending allocation, reserve, drawdown, and regime inputs.";
-    const waitingContextNote = "Risk score will update as live portfolio context refreshes.";
-    const normalizedNotes = scoreNotes
-      .map((note) => normalizeRiskScoreNote(note))
-      .filter(Boolean);
-    const notes = normalizedNotes.length
-      ? normalizedNotes.map((note) => (
-          note === waitingContextNote && hasLivePortfolioContext
-            ? liveContextNote
-            : note
-        ))
-      : [hasLivePortfolioContext ? liveContextNote : waitingContextNote];
-    riskNotesEl.innerHTML = notes
-        .map((note) => `<span class="performance-risk-note">${escapeHtml(note)}</span>`)
-        .join("");
+    const scaleNote = "Risk score blends allocation, reserve, drawdown, and regime inputs. Scale: 0-24 low, 25-49 moderate, 50-74 elevated, 75-100 high.";
+    riskNotesEl.innerHTML = `<span class="performance-risk-note">${escapeHtml(scaleNote)}</span>`;
   }
   if (currentPresetEl) {
     currentPresetEl.textContent = currentPreset;

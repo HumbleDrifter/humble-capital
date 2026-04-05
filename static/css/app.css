@@ -1281,6 +1281,26 @@ tbody tr:last-child td {
   text-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
 }
 
+.performance-risk-score.risk-low {
+  color: #34d399;
+  text-shadow: 0 12px 30px rgba(16, 185, 129, 0.22);
+}
+
+.performance-risk-score.risk-moderate {
+  color: #facc15;
+  text-shadow: 0 12px 30px rgba(250, 204, 21, 0.2);
+}
+
+.performance-risk-score.risk-elevated {
+  color: #fb923c;
+  text-shadow: 0 12px 30px rgba(251, 146, 60, 0.2);
+}
+
+.performance-risk-score.risk-high {
+  color: #f87171;
+  text-shadow: 0 12px 30px rgba(248, 113, 113, 0.2);
+}
+
 .performance-risk-copy {
   min-width: 0;
 }

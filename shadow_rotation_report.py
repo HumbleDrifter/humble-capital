@@ -14,6 +14,7 @@ SHADOW_ELIGIBILITY_MAX_OVEREXTENSION_PENALTY = 14.0
 SHADOW_ELIGIBLE_CONFIDENCE_BANDS = {"medium", "high"}
 SHADOW_ELIGIBLE_LIQUIDITY_BUCKETS = {"high", "medium"}
 SHADOW_INELIGIBLE_VOLATILITY_BUCKETS = {"extreme"}
+SHADOW_NEAR_MISS_MIN_NET_SCORE = 55.0
 DEFAULT_SERVER_LOG_PATH = Path("/root/tradingbot/satellite_rotation_shadow.jsonl")
 DEFAULT_SERVER_CONFIG_PATH = Path("/root/tradingbot/asset_config.json")
 REPO_ROOT = Path(__file__).resolve().parent
@@ -229,6 +230,8 @@ def evaluate_shadow_candidate(row: dict) -> dict:
         "shadow_eligible": shadow_eligible,
         "shadow_eligibility_reason": eligibility_reason,
         "shadow_block_reason": shadow_block_reason,
+        "primary_fail_reason": "" if shadow_eligible else shadow_block_reason,
+        "fail_explanation": "" if shadow_eligible else eligibility_reason,
     }
 
 
@@ -345,6 +348,7 @@ def build_shadow_rotation_report(
             "already_held_shadow_candidates": [],
             "active_universe_shadow_candidates": [],
             "shadow_eligible_candidates": [],
+            "shadow_near_miss_candidates": [],
             "quick_takeaways": ["No shadow log file found."],
         }
 
@@ -417,6 +421,18 @@ def build_shadow_rotation_report(
         row for row in shadow_eligible_candidates
         if row.get("shadow_eligible")
     ][:resolved_top_n]
+    shadow_near_miss_candidates = [
+        row for row in [
+            evaluate_shadow_candidate(row)
+            for row in latest_ranking
+            if str(row.get("product_id") or "").strip()
+        ]
+        if (
+            not row.get("shadow_eligible")
+            and row.get("primary_fail_reason") not in {"blocked_by_policy", "already_allowed"}
+            and float(row.get("net_score", 0.0) or 0.0) >= SHADOW_NEAR_MISS_MIN_NET_SCORE
+        )
+    ][:resolved_top_n]
 
     return {
         "ok": True,
@@ -442,6 +458,7 @@ def build_shadow_rotation_report(
         "already_held_shadow_candidates": summarize_counter(held_shadow_counter, limit=10, show_pct_total=cycles_count, key_name="product_id"),
         "active_universe_shadow_candidates": summarize_counter(active_universe_shadow_counter, limit=10, show_pct_total=cycles_count, key_name="product_id"),
         "shadow_eligible_candidates": shadow_eligible_candidates,
+        "shadow_near_miss_candidates": shadow_near_miss_candidates,
         "quick_takeaways": build_takeaways(
             cycles_count=cycles_count,
             empty_live_cycles=empty_live_cycles,

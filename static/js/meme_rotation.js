@@ -462,6 +462,41 @@ function renderShadowEligibleCandidates(data) {
   `).join("");
 }
 
+function renderShadowNearMissCandidates(data) {
+  const host = document.getElementById("shadowNearMissCandidates");
+  if (!host) return;
+
+  const rows = Array.isArray(data?.shadow_near_miss_candidates)
+    ? data.shadow_near_miss_candidates.slice(0, Math.max(5, Number(data?.top_n || 0)))
+    : [];
+
+  if (!rows.length) {
+    host.innerHTML = `<div class="dashboard-shadow-fallback">No strong near-miss shadow candidates are waiting for review right now.</div>`;
+    return;
+  }
+
+  host.innerHTML = rows.map((row) => `
+    <div class="shadow-eligible-row">
+      <div class="shadow-eligible-main">
+        <div class="shadow-eligible-head">
+          <div class="shadow-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
+          <span class="badge warn">Almost Ready</span>
+        </div>
+        <div class="shadow-eligible-meta">
+          <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
+          <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>
+          <span class="pill">${escapeHtml(titleCase(row.liquidity_bucket || "unknown"))} liquidity</span>
+          <span class="pill">${escapeHtml(titleCase(row.volatility_bucket || "unknown"))} volatility</span>
+        </div>
+      </div>
+      <div class="shadow-eligible-reasons">
+        <div class="shadow-eligible-reason"><strong>Primary miss:</strong> ${escapeHtml(titleCase(row.primary_fail_reason || row.shadow_block_reason || "unknown"))}</div>
+        <div class="shadow-eligible-reason"><strong>Why it missed:</strong> ${escapeHtml(row.fail_explanation || row.shadow_eligibility_reason || "Review threshold not met.")}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
 function opportunityCard(row) {
   const productId = row.product_id || row.symbol || "—";
   const tone = opportunityTone(row.score);
@@ -619,6 +654,7 @@ async function refreshMemeRotation() {
     renderScannerStatus(systemData || {});
     renderShadowRotationReport(shadowRotationData || {});
     renderShadowEligibleCandidates(shadowRotationData || {});
+    renderShadowNearMissCandidates(shadowRotationData || {});
     renderScoreLegend(data);
     renderGroups(data);
   } catch (err) {

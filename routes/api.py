@@ -1622,7 +1622,7 @@ def _build_system_snapshot():
 
 
 def _build_shadow_rotation_report():
-    return build_shadow_rotation_report(window_hours=24, top_n=8)
+    return build_shadow_rotation_report(window_hours=24)
 
 
 # -------------------------------------------------------------------

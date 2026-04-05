@@ -9,8 +9,10 @@ from pathlib import Path
 WINDOW_HOURS = 24
 TOP_N = 8
 DEFAULT_SERVER_LOG_PATH = Path("/root/tradingbot/satellite_rotation_shadow.jsonl")
+DEFAULT_SERVER_CONFIG_PATH = Path("/root/tradingbot/asset_config.json")
 REPO_ROOT = Path(__file__).resolve().parent
 REPO_LOG_PATH = REPO_ROOT / "satellite_rotation_shadow.jsonl"
+REPO_CONFIG_PATH = REPO_ROOT / "asset_config.json"
 
 
 def resolve_log_path(log_path: str | Path | None = None) -> Path:
@@ -26,6 +28,31 @@ def resolve_log_path(log_path: str | Path | None = None) -> Path:
         if candidate.exists():
             return candidate
     return candidates[0] if candidates else REPO_LOG_PATH
+
+
+def resolve_asset_config_path(config_path: str | Path | None = None) -> Path:
+    if config_path:
+        return Path(config_path)
+
+    env_value = os.getenv("ASSET_CONFIG_PATH", "").strip()
+    candidates = []
+    if env_value:
+        candidates.append(Path(env_value))
+    candidates.extend([REPO_CONFIG_PATH, DEFAULT_SERVER_CONFIG_PATH])
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0] if candidates else REPO_CONFIG_PATH
+
+
+def load_asset_config(config_path: Path) -> dict:
+    if not config_path.exists():
+        return {}
+
+    try:
+        return json.loads(config_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 def load_recent_cycles(log_path: Path, window_hours: int = WINDOW_HOURS) -> tuple[list[dict], int]:
@@ -123,6 +150,43 @@ def derive_blocked_candidates(cycle: dict, top_n: int = TOP_N) -> list[dict]:
     return derived
 
 
+def resolve_dynamic_top_n(
+    cycles: list[dict],
+    configured_max_active: int | None = None,
+    config_path: str | Path | None = None,
+) -> int:
+    if isinstance(configured_max_active, int) and configured_max_active > 0:
+        return configured_max_active
+
+    config = load_asset_config(resolve_asset_config_path(config_path))
+    configured = config.get("max_active_satellites")
+    try:
+        configured = int(configured)
+    except Exception:
+        configured = None
+    if configured and configured > 0:
+        return configured
+
+    meme_rotation_cfg = config.get("meme_rotation", {}) if isinstance(config.get("meme_rotation"), dict) else {}
+    configured_meme = meme_rotation_cfg.get("max_active")
+    try:
+        configured_meme = int(configured_meme)
+    except Exception:
+        configured_meme = None
+    if configured_meme and configured_meme > 0:
+        return configured_meme
+
+    live_counts = [
+        len(cycle.get("current_system_selections") or [])
+        for cycle in cycles
+        if len(cycle.get("current_system_selections") or []) > 0
+    ]
+    if live_counts:
+        return max(live_counts)
+
+    return TOP_N
+
+
 def build_takeaways(
     cycles_count: int,
     empty_live_cycles: int,
@@ -163,14 +227,22 @@ def build_takeaways(
     return takeaways[:4] if takeaways else ["No strong takeaways yet from the sampled window."]
 
 
-def build_shadow_rotation_report(window_hours: int = WINDOW_HOURS, top_n: int = TOP_N, log_path: str | Path | None = None) -> dict:
+def build_shadow_rotation_report(
+    window_hours: int = WINDOW_HOURS,
+    top_n: int | None = None,
+    log_path: str | Path | None = None,
+    configured_max_active: int | None = None,
+    config_path: str | Path | None = None,
+) -> dict:
     resolved_log_path = resolve_log_path(log_path)
     cycles, malformed = load_recent_cycles(resolved_log_path, window_hours)
+    resolved_top_n = resolve_dynamic_top_n(cycles, configured_max_active=configured_max_active, config_path=config_path) if top_n is None else max(1, int(top_n))
 
     if not resolved_log_path.exists():
         return {
             "ok": True,
             "window_hours": window_hours,
+            "top_n": resolved_top_n,
             "log_path": str(resolved_log_path),
             "generated_at": int(time.time()),
             "last_updated_ts": None,
@@ -231,7 +303,7 @@ def build_shadow_rotation_report(window_hours: int = WINDOW_HOURS, top_n: int = 
         live_pick_counter.update(cycle.get("current_system_selections") or [])
 
         ranking = cycle.get("ranking_by_net_score") or []
-        for row in ranking[:top_n]:
+        for row in ranking[:resolved_top_n]:
             product_id = str(row.get("product_id") or "").strip()
             if not product_id:
                 continue
@@ -240,7 +312,7 @@ def build_shadow_rotation_report(window_hours: int = WINDOW_HOURS, top_n: int = 
             if bool(row.get("active_buy_universe")):
                 active_universe_shadow_counter.update([product_id])
 
-        for row in derive_blocked_candidates(cycle, top_n=top_n):
+        for row in derive_blocked_candidates(cycle, top_n=resolved_top_n):
             product_id = str(row.get("product_id") or "").strip()
             reason = str(row.get("reason") or "unknown").strip() or "unknown"
             if not product_id:
@@ -255,7 +327,7 @@ def build_shadow_rotation_report(window_hours: int = WINDOW_HOURS, top_n: int = 
     return {
         "ok": True,
         "window_hours": window_hours,
-        "top_n": top_n,
+        "top_n": resolved_top_n,
         "log_path": str(resolved_log_path),
         "generated_at": int(time.time()),
         "last_updated_ts": last_updated_ts,
@@ -282,6 +354,6 @@ def build_shadow_rotation_report(window_hours: int = WINDOW_HOURS, top_n: int = 
             average_overlap=average_overlap,
             blocked_counter=blocked_reason_counter,
             regime_counter=regime_counter,
-            top_n=top_n,
+            top_n=resolved_top_n,
         ),
     }

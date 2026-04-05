@@ -1,5 +1,6 @@
 const API_SECRET = (window.SYSTEM_STATUS_CONFIG && window.SYSTEM_STATUS_CONFIG.apiSecret) || "";
 let CURRENT_TRADINGVIEW_MANIFEST = null;
+let CURRENT_TRADABLE_UNIVERSE = null;
 
 function authUrl(path) {
   if (!API_SECRET) return path;
@@ -104,10 +105,32 @@ function buildTradableUniverseDrift(serverData, config) {
   };
 }
 
+function expectedTradingViewGroups(universe) {
+  const data = universe || {};
+  const coreAssets = normalizeSymbolList(data.core_assets || []);
+  const satelliteAllowed = normalizeSymbolList(data.satellite_allowed || []);
+  const activeUniverse = normalizeSymbolList(data.active_satellite_buy_universe || []);
+  const currentSelections = normalizeSymbolList(data.current_system_selections || []);
+  const managedSatelliteExit = normalizeSymbolList([
+    ...satelliteAllowed,
+    ...activeUniverse,
+    ...currentSelections
+  ]);
+
+  return {
+    core_buy: coreAssets,
+    core_exit: coreAssets,
+    satellite_buy: activeUniverse,
+    satellite_exit: managedSatelliteExit,
+    sniper_buy: activeUniverse
+  };
+}
+
 function renderTradableUniverse(serverData, config) {
   const universe = serverData || {};
   const summary = universe.summary || {};
   const drift = buildTradableUniverseDrift(universe, config);
+  CURRENT_TRADABLE_UNIVERSE = universe;
 
   renderUniverseText(
     "tradableUniverseStatus",
@@ -162,9 +185,12 @@ function renderTradableUniverse(serverData, config) {
       `${fmtList(universe.current_system_selections)}`
     ].join("\n");
   }
+
+  renderTradingViewSuggestions(CURRENT_TRADINGVIEW_MANIFEST, universe);
 }
 
 function renderTradableUniverseError(message) {
+  CURRENT_TRADABLE_UNIVERSE = null;
   renderUniverseText("tradableUniverseStatus", `Server universe load failed: ${message}`, true);
   renderUniverseText("tradableUniverseSummary", "Unavailable.", true);
   renderUniverseText("tradableUniverseDrift", "Unable to compare local config against server state.", true);
@@ -172,6 +198,7 @@ function renderTradableUniverseError(message) {
   if (listsEl) {
     listsEl.textContent = message;
   }
+  renderTradingViewSuggestions(CURRENT_TRADINGVIEW_MANIFEST, null);
 }
 
 function renderManifestText(id, text, isError = false) {
@@ -179,6 +206,54 @@ function renderManifestText(id, text, isError = false) {
   if (!el) return;
   el.textContent = text;
   el.className = isError ? "status-console error" : "status-console";
+}
+
+function buildTradingViewSuggestions(manifest, universe) {
+  const strategyGroups = (manifest || {}).strategy_groups || {};
+  const expectedGroups = expectedTradingViewGroups(universe || {});
+  const groupOrder = [
+    ["Core Buy", "core_buy"],
+    ["Core Exit", "core_exit"],
+    ["Satellite Buy", "satellite_buy"],
+    ["Satellite Exit", "satellite_exit"],
+    ["Sniper Buy", "sniper_buy"]
+  ];
+
+  return groupOrder.map(([label, key]) => {
+    const expected = normalizeSymbolList(expectedGroups[key] || []);
+    const actual = normalizeSymbolList(strategyGroups[key] || []);
+    const add = diffList(expected, actual);
+    const remove = diffList(actual, expected);
+    return {
+      label,
+      key,
+      add,
+      remove,
+      hasChanges: add.length > 0 || remove.length > 0
+    };
+  });
+}
+
+function renderTradingViewSuggestions(manifest, universe) {
+  const host = document.getElementById("tradingViewManifestSuggestions");
+  if (!host) return;
+
+  if (!manifest || !universe) {
+    host.innerHTML = `<div class="status-console">Load both the server tradable universe and TradingView manifest to see maintenance suggestions.</div>`;
+    return;
+  }
+
+  const suggestions = buildTradingViewSuggestions(manifest, universe);
+  host.innerHTML = suggestions.map((item) => `
+    <div class="system-manifest-card">
+      <div class="system-universe-label">${item.label}</div>
+      <div class="status-console${item.hasChanges ? "" : ""}">
+Add: ${fmtList(item.add)}
+Remove: ${fmtList(item.remove)}
+${!item.hasChanges ? "No changes needed." : ""}
+      </div>
+    </div>
+  `).join("");
 }
 
 function setManifestActionStatus(message, isError = false) {
@@ -350,6 +425,7 @@ function renderTradingViewManifest(data) {
     listsEl.textContent = manifestRawListsText();
   }
 
+  renderTradingViewSuggestions(manifest, CURRENT_TRADABLE_UNIVERSE);
   setManifestActionStatus("Manifest tools are ready. You can copy strategy groups or export JSON.");
 }
 
@@ -362,6 +438,10 @@ function renderTradingViewManifestError(message) {
   const groupsHost = document.getElementById("tradingViewManifestGroups");
   if (groupsHost) {
     groupsHost.innerHTML = `<div class="status-console error">${message}</div>`;
+  }
+  const suggestionsHost = document.getElementById("tradingViewManifestSuggestions");
+  if (suggestionsHost) {
+    suggestionsHost.innerHTML = `<div class="status-console error">Unable to build TradingView maintenance suggestions until a valid manifest is loaded.</div>`;
   }
   const listsEl = document.getElementById("tradingViewManifestLists");
   if (listsEl) {

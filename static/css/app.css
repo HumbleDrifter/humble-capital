@@ -1380,9 +1380,9 @@ tbody tr:last-child td {
 }
 
 .performance-risk-band {
-  font-size: 24px;
+  font-size: 38px;
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 0.95;
   letter-spacing: -0.03em;
   color: #f4fbff;
   text-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);

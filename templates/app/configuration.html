@@ -1,12 +1,10 @@
 {% extends "base_app.html" %}
 
 {% block topbar_actions %}
-<button class="btn btn-secondary" type="button" onclick="refreshAssets()">Refresh</button>
 <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Configuration</button>
 {% endblock %}
 
 {% block mobile_topbar_actions %}
-<button class="btn btn-secondary" type="button" onclick="refreshAssets()">Refresh</button>
 <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Configuration</button>
 {% endblock %}
 
@@ -30,6 +28,9 @@
         <div class="configuration-card-kicker">Automation Status</div>
         <div class="configuration-shell-title">Proposal engine</div>
         <div class="configuration-shell-value" id="configOverviewAutomationStatus">Reviewing</div>
+        <div class="configuration-shell-badge-row">
+          <span class="configuration-shell-badge" id="configOverviewPendingBadge" hidden>No pending recommendations</span>
+        </div>
         <div class="configuration-shell-note">Shows whether proposals are generated automatically or only when you trigger them.</div>
       </div>
       <div class="configuration-shell-card">
@@ -56,6 +57,12 @@
         <div class="configuration-shell-value" id="configOverviewLastAction">No recent automation activity yet.</div>
         <div class="configuration-shell-note">Shows the most recent proposal outcome or generation result already visible in this workspace.</div>
       </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Next Action</div>
+        <div class="configuration-shell-title">What happens next</div>
+        <div class="configuration-shell-value" id="configOverviewNextAction">Reviewing the next likely operator step.</div>
+        <div class="configuration-shell-note">Plain-language summary of the next likely recommendation or review step.</div>
+      </div>
     </div>
   </section>
 
@@ -77,6 +84,9 @@
         <button class="btn btn-secondary config-preset-btn" type="button" data-preset="conservative" onclick="applyConfigPreset('conservative')">Conservative</button>
         <button class="btn btn-secondary config-preset-btn" type="button" data-preset="balanced" onclick="applyConfigPreset('balanced')">Balanced</button>
         <button class="btn btn-secondary config-preset-btn" type="button" data-preset="aggressive" onclick="applyConfigPreset('aggressive')">Aggressive</button>
+      </div>
+      <div class="configuration-preset-utility">
+        <button class="btn btn-secondary" type="button" onclick="applyConfigPreset('conservative', { sourceLabel: 'Safe Mode' })">Stage Safe Mode</button>
       </div>
       <div class="configuration-preset-status" id="presetStatus">No preset staged. Manual edits remain available.</div>
     </div>
@@ -140,47 +150,47 @@
   <section class="panel span-12 config-proposal-panel">
     <div class="section-header">
       <div>
-        <h2>Safety &amp; Approvals</h2>
-        <p class="section-subtitle">Review how proposals are generated, how approvals are handled, and what the latest proposal activity looks like.</p>
+        <h2>Recommendations &amp; Approval</h2>
+        <p class="section-subtitle">See whether the system drafts recommendations on its own, whether approval is required, and whether approved changes wait for another confirmation.</p>
       </div>
     </div>
 
     <div class="config-proposal-automation-panel">
       <div class="config-proposal-automation-head">
         <div>
-          <div class="config-proposal-eyebrow">Primary Workflow</div>
-          <div class="config-proposal-automation-copy">Choose whether the system drafts proposals automatically, decide how approvals should behave, and trigger a fresh proposal when you want to review the latest guidance.</div>
+          <div class="config-proposal-eyebrow">Recommendation Controls</div>
+          <div class="config-proposal-automation-copy">Decide whether the system drafts recommendations automatically, what happens after you approve them, and when a fresh recommendation should be generated.</div>
         </div>
       </div>
 
       <div class="config-proposal-automation-grid">
         <div class="form-card config-proposal-automation-card">
-          <label for="config_proposal_generation_mode">Proposal Generation</label>
+          <label for="config_proposal_generation_mode">Draft Recommendations</label>
           <select id="config_proposal_generation_mode">
             <option value="manual">Manual</option>
             <option value="auto">Auto</option>
           </select>
-          <div class="field-help">Manual keeps proposal generation operator-triggered.</div>
-          <div class="field-help">Auto drafts proposals when the advisory rules qualify a safe change.</div>
+          <div class="field-help">Manual means nothing is drafted until you ask for it.</div>
+          <div class="field-help">Auto means the system drafts a recommendation when the advisory rules qualify a safe change.</div>
         </div>
 
         <div class="form-card config-proposal-automation-card">
-          <label for="config_proposal_apply_mode">Apply Mode</label>
+          <label for="config_proposal_apply_mode">After Approval</label>
           <select id="config_proposal_apply_mode">
-            <option value="manual">Manual</option>
+            <option value="manual">Wait for confirmation</option>
             <option value="after_approval">After Approval</option>
           </select>
-          <div class="field-help">Manual apply: approval and apply remain separate.</div>
-          <div class="field-help">Apply after approval: approved proposals are applied immediately after approval using the existing safe allowlist.</div>
+          <div class="field-help">Wait for confirmation keeps approval and apply as two separate operator steps.</div>
+          <div class="field-help">After Approval applies approved changes immediately using the existing safe allowlist.</div>
         </div>
 
         <div class="form-card config-proposal-automation-card">
-          <label for="config_proposal_min_confidence">Proposal Minimum Confidence</label>
+          <label for="config_proposal_min_confidence">Draft Only When Confidence Is</label>
           <select id="config_proposal_min_confidence">
             <option value="medium">Medium</option>
             <option value="high">High</option>
           </select>
-          <div class="field-help">Auto mode only creates proposals when advisory confidence meets this threshold.</div>
+          <div class="field-help">Auto drafting only creates recommendations when advisory confidence meets this threshold.</div>
         </div>
       </div>
 

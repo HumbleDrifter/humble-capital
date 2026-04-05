@@ -2524,7 +2524,7 @@ tbody tr:last-child td {
 
 .configuration-overview-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -2563,6 +2563,59 @@ tbody tr:last-child td {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.5;
+}
+
+.configuration-shell-value.positive {
+  color: var(--good);
+}
+
+.configuration-shell-value.warn {
+  color: #fde68a;
+}
+
+.configuration-shell-value.negative {
+  color: #fca5a5;
+}
+
+.configuration-shell-badge-row {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.configuration-shell-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.configuration-shell-badge.positive {
+  border-color: rgba(16, 185, 129, 0.24);
+  background: rgba(16, 185, 129, 0.1);
+  color: #c9ffeb;
+}
+
+.configuration-shell-badge.warn {
+  border-color: rgba(251, 191, 36, 0.22);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fde68a;
+}
+
+.configuration-shell-badge.accent {
+  border-color: rgba(96, 165, 250, 0.22);
+  background: rgba(96, 165, 250, 0.1);
+  color: #bfdbfe;
 }
 
 .configuration-shell-note {
@@ -2614,8 +2667,9 @@ tbody tr:last-child td {
   flex: 0 0 auto;
   width: 28px;
   height: 28px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   border: 1px solid rgba(52, 211, 153, 0.16);
   background: rgba(52, 211, 153, 0.08);
@@ -2623,6 +2677,7 @@ tbody tr:last-child td {
   font-size: 18px;
   font-weight: 700;
   line-height: 1;
+  text-align: center;
 }
 
 .configuration-advanced-toggle[open] {
@@ -2686,6 +2741,10 @@ tbody tr:last-child td {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-top: 14px;
+}
+
+.configuration-preset-utility {
+  margin-top: 12px;
 }
 
 .config-proposal-automation-card .field-help + .field-help {
@@ -3063,14 +3122,16 @@ tbody tr:last-child td {
   flex: 0 0 auto;
   width: 30px;
   height: 30px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-soft);
   font-size: 18px;
   line-height: 1;
+  text-align: center;
 }
 
 .advanced-config-group[open] summary::after {

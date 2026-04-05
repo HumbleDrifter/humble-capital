@@ -10,6 +10,8 @@ let URL_PRESET_APPLIED = false;
 let CURRENT_CONFIG = {};
 let LATEST_PROPOSAL = null;
 let LATEST_AUTOMATION_MESSAGE = "";
+let RECENT_PROPOSALS = [];
+let LAST_CONFIGURATION_REFRESH_AT = 0;
 const PERCENT_FIELD_IDS = [
   "satellite_total_target",
   "satellite_total_max",
@@ -158,6 +160,14 @@ function titleCase(value) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function overviewStateTone(state) {
+  const normalized = String(state || "").toLowerCase();
+  if (normalized === "healthy") return "positive";
+  if (normalized === "constrained") return "warn";
+  if (normalized === "restricted") return "negative";
+  return "";
 }
 
 function clampPercentValue(value) {
@@ -505,8 +515,10 @@ function renderProposalHistory(items) {
   if (!host) return;
 
   const proposals = Array.isArray(items) ? items.map(normalizeConfigProposalRecord).filter((item) => item.id).slice(0, 5) : [];
+  RECENT_PROPOSALS = proposals;
   if (!proposals.length) {
     host.innerHTML = `<div class="config-proposal-history-empty">No recent proposal history yet.</div>`;
+    renderAutomationOverview();
     return;
   }
 
@@ -529,6 +541,7 @@ function renderProposalHistory(items) {
       </div>
     `;
   }).join("");
+  renderAutomationOverview();
 }
 
 function priorityTone(priority) {
@@ -879,8 +892,8 @@ function renderAutomationOverview() {
       : "Manual proposals only";
   const approvalPosture =
     applyMode === "after_approval"
-      ? "Approved proposals apply immediately"
-      : "Approval and apply remain separate";
+      ? "Approval required • approved changes apply immediately"
+      : "Approval required • approved changes wait for confirmation";
 
   const target = cfg?.satellite_total_target;
   const max = cfg?.satellite_total_max;
@@ -893,6 +906,24 @@ function renderAutomationOverview() {
     hasNumericValue(tradeFloor) ? `Floor ${formatUsd(tradeFloor)}` : ""
   ].filter(Boolean).join(" • ") || "Reviewing current operating limits";
 
+  const pendingCount = RECENT_PROPOSALS.filter((proposal) => proposal.status === "pending").length;
+  let automationState = "constrained";
+  if (generationMode === "auto" && minConfidence === "medium") {
+    automationState = "healthy";
+  } else if (generationMode === "manual") {
+    automationState = "constrained";
+  }
+
+  let approvalState = applyMode === "manual" ? "healthy" : "constrained";
+
+  let guardrailState = "healthy";
+  if ((hasNumericValue(reserve) && Number(reserve) >= 0.15) || (hasNumericValue(max) && Number(max) <= 0.35)) {
+    guardrailState = "constrained";
+  }
+  if ((hasNumericValue(reserve) && Number(reserve) >= 0.25) || (hasNumericValue(max) && Number(max) <= 0.20)) {
+    guardrailState = "restricted";
+  }
+
   let latestAction = "No recent automation activity yet.";
   if (LATEST_PROPOSAL && LATEST_PROPOSAL.id) {
     const event = relevantProposalEvent(LATEST_PROPOSAL);
@@ -901,18 +932,56 @@ function renderAutomationOverview() {
     latestAction = LATEST_AUTOMATION_MESSAGE;
   }
 
+  let nextAction = "Generate a recommendation when you want a fresh automation review.";
+  if (LATEST_PROPOSAL && LATEST_PROPOSAL.status === "pending") {
+    nextAction = "Review the pending recommendation before any settings change.";
+  } else if (LATEST_PROPOSAL && LATEST_PROPOSAL.status === "approved") {
+    nextAction = applyMode === "after_approval"
+      ? "The next approved recommendation should apply automatically after approval."
+      : "Apply the approved recommendation when you are ready for the change to go live.";
+  } else if (generationMode === "auto") {
+    nextAction = "The system will draft a recommendation automatically when the advisory rules qualify a safe change.";
+  }
+
   const valueMap = {
     configOverviewAutomationStatus: automationStatus,
     configOverviewTradingMode: tradingMode,
     configOverviewApprovalPosture: approvalPosture,
     configOverviewGuardrails: guardrails,
-    configOverviewLastAction: latestAction
+    configOverviewLastAction: latestAction,
+    configOverviewNextAction: nextAction
   };
 
   Object.entries(valueMap).forEach(([id, value]) => {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
   });
+
+  const toneMap = {
+    configOverviewAutomationStatus: automationState,
+    configOverviewApprovalPosture: approvalState,
+    configOverviewGuardrails: guardrailState
+  };
+
+  Object.entries(toneMap).forEach(([id, state]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const tone = overviewStateTone(state);
+    el.className = `configuration-shell-value${tone ? ` ${tone}` : ""}`;
+  });
+
+  const badgeEl = document.getElementById("configOverviewPendingBadge");
+  if (badgeEl) {
+    if (pendingCount > 0) {
+      badgeEl.hidden = false;
+      badgeEl.textContent = `${pendingCount} pending recommendation${pendingCount === 1 ? "" : "s"}`;
+      badgeEl.className = `configuration-shell-badge ${pendingCount > 1 ? "warn" : "accent"}`;
+    } else {
+      badgeEl.hidden = false;
+      badgeEl.textContent = "No pending recommendations";
+      badgeEl.className = "configuration-shell-badge positive";
+    }
+  }
 }
 
 function getAssetMode(productId) {
@@ -1076,6 +1145,7 @@ async function loadConfiguration() {
     drawAssetRows();
     applyPresetFromUrlIfPresent();
     setStatus(`Loaded ${ASSETS.length} tradable USD assets. Portfolio guardrails and advanced sections are ready.`);
+    LAST_CONFIGURATION_REFRESH_AT = Date.now();
   } catch (err) {
     console.error(err);
     if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="bad">Asset load failed: ${escapeHtml(err.message)}</td></tr>`;
@@ -1264,4 +1334,10 @@ window.addEventListener("DOMContentLoaded", () => {
   bindPercentFieldBehavior();
   loadConfiguration();
   applyConfigurationFocus();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (Date.now() - LAST_CONFIGURATION_REFRESH_AT < 15000) return;
+  loadConfiguration();
 });

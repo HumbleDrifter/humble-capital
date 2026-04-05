@@ -889,8 +889,8 @@ def _build_portfolio_history():
             return False
 
         anchors_close = abs(prev_total - next_total) / anchor_high <= 0.20
-        sharp_plunge = row_total < anchor_low * 0.50
-        sharp_spike = row_total > anchor_high * 2.0
+        sharp_plunge = row_total < anchor_low * 0.95
+        sharp_spike = row_total > anchor_high * 1.05
         return anchors_close and (sharp_plunge or sharp_spike)
 
     def _filter_portfolio_value_points(points):

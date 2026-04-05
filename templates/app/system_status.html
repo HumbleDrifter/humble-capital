@@ -133,6 +133,15 @@
     <div class="divider"></div>
 
     <div class="service-actions">
+      <label class="system-manifest-format-control" for="tradingViewManifestFormat">
+        <span class="system-universe-label">Copy Format</span>
+        <select id="tradingViewManifestFormat">
+          <option value="csv">CSV</option>
+          <option value="lines">Lines</option>
+          <option value="quoted">Quoted CSV</option>
+          <option value="pine">Pine Array</option>
+        </select>
+      </label>
       <button class="btn btn-secondary" onclick="copyManifestGroup('core_buy')">Copy Core Buy</button>
       <button class="btn btn-secondary" onclick="copyManifestGroup('core_exit')">Copy Core Exit</button>
       <button class="btn btn-secondary" onclick="copyManifestGroup('satellite_buy')">Copy Satellite Buy</button>

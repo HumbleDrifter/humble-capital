@@ -67,6 +67,39 @@ function fmtList(values, emptyLabel = "none") {
   return items.length ? items.join(", ") : emptyLabel;
 }
 
+function selectedManifestFormat() {
+  const el = document.getElementById("tradingViewManifestFormat");
+  return String(el?.value || "csv").trim().toLowerCase();
+}
+
+function manifestFormatLabel(mode) {
+  const normalized = String(mode || "csv").trim().toLowerCase();
+  if (normalized === "lines") return "Lines";
+  if (normalized === "quoted") return "Quoted CSV";
+  if (normalized === "pine") return "Pine Array";
+  return "CSV";
+}
+
+function formatSymbolList(values, mode = "csv") {
+  const items = normalizeSymbolList(values);
+  const normalized = String(mode || "csv").trim().toLowerCase();
+  if (!items.length) return "";
+
+  if (normalized === "lines") {
+    return items.join("\n");
+  }
+
+  if (normalized === "quoted") {
+    return items.map((item) => `"${item}"`).join(", ");
+  }
+
+  if (normalized === "pine") {
+    return `array.from(${items.map((item) => `"${item}"`).join(", ")})`;
+  }
+
+  return items.join(", ");
+}
+
 function renderUniverseText(id, text, isError = false) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -274,6 +307,7 @@ function setManifestActionStatus(message, isError = false) {
 
 async function copyExpectedManifestGroup(groupKey) {
   const suggestion = suggestionForGroup(groupKey);
+  const format = selectedManifestFormat();
   if (!suggestion) {
     setManifestActionStatus("Load both the server tradable universe and TradingView manifest before copying expected groups.", true);
     return;
@@ -284,8 +318,8 @@ async function copyExpectedManifestGroup(groupKey) {
   }
 
   try {
-    await copyTextToClipboard(suggestion.expected.join(", "));
-    setManifestActionStatus(`Copied expected ${groupKey} set (${suggestion.expected.length} symbol${suggestion.expected.length === 1 ? "" : "s"}).`);
+    await copyTextToClipboard(formatSymbolList(suggestion.expected, format));
+    setManifestActionStatus(`Copied expected ${groupKey} set as ${manifestFormatLabel(format)} (${suggestion.expected.length} symbol${suggestion.expected.length === 1 ? "" : "s"}).`);
   } catch (err) {
     console.error(err);
     setManifestActionStatus(`Copy failed for expected ${groupKey}: ${err.message}`, true);
@@ -338,6 +372,7 @@ async function copyTextToClipboard(text) {
 
 async function copySuggestionList(groupKey, mode) {
   const suggestion = suggestionForGroup(groupKey);
+  const format = selectedManifestFormat();
   if (!suggestion) {
     setManifestActionStatus("Load both the server tradable universe and TradingView manifest before copying suggestions.", true);
     return;
@@ -350,8 +385,8 @@ async function copySuggestionList(groupKey, mode) {
   }
 
   try {
-    await copyTextToClipboard(values.join(", "));
-    setManifestActionStatus(`Copied ${mode} list for ${groupKey} (${values.length} symbol${values.length === 1 ? "" : "s"}).`);
+    await copyTextToClipboard(formatSymbolList(values, format));
+    setManifestActionStatus(`Copied ${mode} list for ${groupKey} as ${manifestFormatLabel(format)} (${values.length} symbol${values.length === 1 ? "" : "s"}).`);
   } catch (err) {
     console.error(err);
     setManifestActionStatus(`Copy failed for ${groupKey} ${mode} list: ${err.message}`, true);
@@ -360,6 +395,7 @@ async function copySuggestionList(groupKey, mode) {
 
 async function copyManifestGroup(groupName) {
   const values = manifestGroupValues(groupName);
+  const format = selectedManifestFormat();
   if (!CURRENT_TRADINGVIEW_MANIFEST) {
     setManifestActionStatus("Fetch the TradingView manifest before copying strategy groups.", true);
     return;
@@ -370,8 +406,8 @@ async function copyManifestGroup(groupName) {
   }
 
   try {
-    await copyTextToClipboard(values.join(", "));
-    setManifestActionStatus(`Copied ${groupName} (${values.length} symbol${values.length === 1 ? "" : "s"}).`);
+    await copyTextToClipboard(formatSymbolList(values, format));
+    setManifestActionStatus(`Copied ${groupName} as ${manifestFormatLabel(format)} (${values.length} symbol${values.length === 1 ? "" : "s"}).`);
   } catch (err) {
     console.error(err);
     setManifestActionStatus(`Copy failed for ${groupName}: ${err.message}`, true);

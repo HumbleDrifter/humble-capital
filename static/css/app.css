@@ -2670,13 +2670,15 @@ tbody tr:last-child td {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
+  padding: 0;
   border-radius: 999px;
   border: 1px solid rgba(52, 211, 153, 0.16);
   background: rgba(52, 211, 153, 0.08);
   color: #d9fff0;
   font-size: 18px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 0;
   text-align: center;
 }
 
@@ -3125,12 +3127,14 @@ tbody tr:last-child td {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
+  padding: 0;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-soft);
   font-size: 18px;
-  line-height: 1;
+  line-height: 0;
   text-align: center;
 }
 

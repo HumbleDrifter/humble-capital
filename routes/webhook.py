@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 from dotenv import load_dotenv
 
 from execution import product_id_exists
+from portfolio import get_active_satellite_buy_universe, get_portfolio_snapshot, is_satellite_buy_eligible, is_sniper_buy_eligible
 from rebalancer import dispatch_signal_action
 from notify import notify_execution_result
 
@@ -185,6 +186,87 @@ def _result_has_successful_fill(result_wrapper) -> bool:
     return status == "FILLED"
 
 
+def _log_webhook_ignored(product_id, action, signal_type, reason, detail=""):
+    message = (
+        f"[webhook] ignored_signal product_id={product_id} "
+        f"action={action} signal_type={signal_type} reason={reason}"
+    )
+    if detail:
+        message += f" detail={detail}"
+    print(message)
+
+
+def _safe_snapshot():
+    try:
+        snapshot = get_portfolio_snapshot()
+    except Exception as exc:
+        return None, f"snapshot_unavailable:{exc}"
+
+    if not isinstance(snapshot, dict):
+        return None, "snapshot_invalid"
+
+    config = snapshot.get("config")
+    positions = snapshot.get("positions")
+    if not isinstance(config, dict) or not isinstance(positions, dict):
+        return None, "snapshot_incomplete"
+
+    return snapshot, None
+
+
+def _webhook_symbol_tradability(product_id, action, signal_type):
+    if not product_id:
+        return False, "missing_product_id", "No symbol was provided."
+
+    if not product_id_exists(product_id):
+        return False, "invalid_symbol", "Symbol is not recognized by the execution venue."
+
+    snapshot, snapshot_error = _safe_snapshot()
+    if snapshot is None:
+        return False, "tradability_unavailable", snapshot_error or "Current tradability state could not be loaded."
+
+    config = snapshot.get("config") or {}
+    positions = snapshot.get("positions") or {}
+    core_assets = set((config.get("core_assets") or {}).keys())
+    blocked_assets = set(config.get("satellite_blocked") or [])
+    allowed_assets = set(config.get("satellite_allowed") or [])
+    active_buy_universe = set(get_active_satellite_buy_universe(snapshot) or [])
+    has_position = product_id in positions
+
+    if action == "BUY":
+        if product_id in blocked_assets:
+            return False, "blocked_by_current_state", "Symbol is currently blocked in satellite controls."
+
+        if signal_type == "CORE_BUY_WINDOW":
+            if product_id not in core_assets:
+                return False, "not_core_asset", "Core buy signal received for a symbol that is not configured as core."
+            return True, "core_buy_eligible", "Configured core asset is eligible for a core buy path."
+
+        if signal_type == "SNIPER_BUY":
+            if not is_sniper_buy_eligible(product_id, snapshot):
+                return False, "not_sniper_eligible", "Symbol is not currently eligible for sniper buys."
+            return True, "sniper_buy_eligible", "Symbol is currently eligible for sniper buys."
+
+        if not is_satellite_buy_eligible(product_id, snapshot):
+            if product_id in core_assets:
+                return False, "not_satellite_eligible", "Symbol is configured as a core asset rather than a satellite buy candidate."
+            if product_id in allowed_assets and product_id not in active_buy_universe:
+                return False, "not_live_in_active_universe", "Symbol is allowed but not currently live in the active satellite buy universe."
+            return False, "not_currently_tradable", "Symbol is not currently eligible in the active satellite buy universe."
+
+        return True, "satellite_buy_eligible", "Symbol is currently eligible in the active satellite buy universe."
+
+    if action in {"TRIM", "EXIT"}:
+        if has_position:
+            return True, "position_managed", "Symbol has an existing position and may be reduced or exited."
+        if product_id in core_assets:
+            return True, "core_managed", "Configured core asset may be reduced or exited."
+        if product_id in active_buy_universe or product_id in allowed_assets:
+            return True, "managed_asset", "Managed symbol may be reduced or exited."
+        return False, "not_managed_asset", "Symbol is not currently managed in portfolio state."
+
+    return False, "unsupported_action", f"Webhook action {action} is not tradability-gated."
+
+
 @webhook_bp.route("/webhook", methods=["POST"])
 def webhook():
     load_dotenv("/root/tradingbot/.env", override=True)
@@ -250,6 +332,32 @@ def webhook():
 
     if _is_duplicate(product_id, action, signal_type, timeframe):
         return jsonify({"ok": False, "reason": "duplicate_alert_window"}), 200
+
+    tradable_ok, tradability_reason, tradability_detail = _webhook_symbol_tradability(
+        product_id=product_id,
+        action=action,
+        signal_type=signal_type,
+    )
+    if not tradable_ok:
+        _log_webhook_ignored(
+            product_id=product_id,
+            action=action,
+            signal_type=signal_type,
+            reason=tradability_reason,
+            detail=tradability_detail,
+        )
+        return jsonify(
+            {
+                "ok": False,
+                "ignored": True,
+                "reason": "symbol_not_tradable",
+                "tradability_reason": tradability_reason,
+                "detail": tradability_detail,
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+            }
+        ), 200
 
     try:
         result = dispatch_signal_action(

@@ -1968,17 +1968,48 @@ function warnOptionsTelemetryUnavailableOnce() {
   console.warn("options telemetry unavailable");
 }
 
+async function requestOptionalTelemetryJson(path, options = {}, timeoutMs = 30000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(authUrl(path), {
+      credentials: "same-origin",
+      ...options,
+      signal: controller.signal
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const text = await res.text();
+    if (!text) return {};
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      warnOptionsTelemetryUnavailableOnce();
+      return null;
+    }
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function loadOptionsTelemetry() {
   try {
     const [executions, orders, positions] = await Promise.all([
-      requestJson("/api/options/executions?limit=8", {}, 20000).catch(() => null),
-      requestJson("/api/options/orders?limit=8", {}, 20000).catch(() => null),
-      requestJson("/api/options/positions", {}, 20000).catch(() => null)
+      requestOptionalTelemetryJson("/api/options/executions?limit=8", {}, 20000),
+      requestOptionalTelemetryJson("/api/options/orders?limit=8", {}, 20000),
+      requestOptionalTelemetryJson("/api/options/positions", {}, 20000)
     ]);
     const telemetryUnavailable =
-      !executions?._httpOk ||
-      !orders?._httpOk ||
-      !positions?._httpOk ||
+      executions === null ||
+      orders === null ||
+      positions === null ||
       executions?.ok === false ||
       orders?.ok === false ||
       positions?.ok === false;
@@ -1987,10 +2018,10 @@ async function loadOptionsTelemetry() {
       warnOptionsTelemetryUnavailableOnce();
     }
 
-    renderOptionsExecutionHistory(executions?._httpOk && executions?.ok !== false ? executions?.items || [] : []);
-    renderOptionsOrdersHistory(orders?._httpOk && orders?.ok !== false ? orders?.items || [] : []);
-    renderOptionsPositionsHistory(positions?._httpOk && positions?.ok !== false ? positions?.items || [] : []);
-  } catch (err) {
+    renderOptionsExecutionHistory(executions && executions?.ok !== false ? executions?.items || [] : []);
+    renderOptionsOrdersHistory(orders && orders?.ok !== false ? orders?.items || [] : []);
+    renderOptionsPositionsHistory(positions && positions?.ok !== false ? positions?.items || [] : []);
+  } catch {
     warnOptionsTelemetryUnavailableOnce();
     renderOptionsExecutionHistory([]);
     renderOptionsOrdersHistory([]);

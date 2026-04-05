@@ -468,14 +468,6 @@ def _with_cache(name, builder, ttl_sec=30.0, stale_sec=300.0):
 
 def _build_status():
     state = get_cached_portfolio_state()
-    if state.get("ok"):
-        persist_current_portfolio_snapshot(
-            {
-                "timestamp": state.get("timestamp") or int(_now()),
-                "total_value_usd": state.get("total_value_usd", 0.0),
-                "usd_cash": state.get("usd_cash", 0.0),
-            }
-        )
     return {
         "ok": True,
         "service": "tradingbot",
@@ -683,6 +675,7 @@ def _build_portfolio_summary_v2():
 
     try:
         snapshot = get_portfolio_snapshot()
+        persist_current_portfolio_snapshot(snapshot)
         summary = portfolio_summary(snapshot)
         freshness = _freshness_from_payload(snapshot)
 
@@ -841,8 +834,50 @@ def _build_portfolio_history():
                 "auto_adaptive": normalize_auto_adaptive_payload(auto_adaptive, fallback_reason=str(exc)),
             }
 
+    def _is_isolated_history_glitch(prev_row, row, next_row):
+        prev_total = _safe_float(prev_row.get("total_value_usd"))
+        row_total = _safe_float(row.get("total_value_usd"))
+        next_total = _safe_float(next_row.get("total_value_usd"))
+
+        if prev_total <= 0 or row_total <= 0 or next_total <= 0:
+            return False
+
+        anchor_high = max(prev_total, next_total)
+        anchor_low = min(prev_total, next_total)
+        if anchor_high <= 0:
+            return False
+
+        anchors_close = abs(prev_total - next_total) / anchor_high <= 0.20
+        sharp_plunge = row_total < anchor_low * 0.50
+        sharp_spike = row_total > anchor_high * 2.0
+        return anchors_close and (sharp_plunge or sharp_spike)
+
+    def _filter_portfolio_history_rows(rows):
+        filtered = []
+        dropped = 0
+
+        for idx, row in enumerate(rows):
+            total_value = _safe_float(row.get("total_value_usd"))
+            cash_value = _safe_float(row.get("cash_value_usd"))
+
+            if total_value <= 0 or cash_value < 0 or cash_value > total_value:
+                dropped += 1
+                continue
+
+            if 0 < idx < len(rows) - 1 and _is_isolated_history_glitch(rows[idx - 1], row, rows[idx + 1]):
+                dropped += 1
+                continue
+
+            filtered.append(row)
+
+        if dropped:
+            _log_api(f"filtered {dropped} invalid portfolio_history row(s) from API response")
+
+        return filtered
+
     try:
         history_rows = get_portfolio_history_since(start_ts=start_ts)
+        history_rows = _filter_portfolio_history_rows(history_rows)
         analytics = build_portfolio_history_analytics(history_rows, source="portfolio_history")
         advisory_payload = _advisory_payload(analytics)
         risk_score = advisory_payload["risk_score"]

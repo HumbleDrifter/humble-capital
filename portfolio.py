@@ -761,6 +761,51 @@ def _snapshot_to_history_row(snapshot):
     }
 
 
+def _snapshot_has_complete_history_inputs(snapshot):
+    if not isinstance(snapshot, dict):
+        return False
+
+    if "positions" not in snapshot or "config" not in snapshot:
+        return False
+
+    positions = snapshot.get("positions") or {}
+    if not isinstance(positions, dict):
+        return False
+
+    for pos in positions.values():
+        qty_total = safe_float(pos.get("base_qty_total", 0.0) or 0.0)
+        if qty_total <= 0:
+            continue
+
+        price_usd = safe_float(pos.get("price_usd", 0.0) or 0.0)
+        value_total_usd = safe_float(pos.get("value_total_usd", 0.0) or 0.0)
+        if price_usd <= 0 or value_total_usd < 0:
+            return False
+
+    return True
+
+
+def _is_valid_history_row(snapshot, row):
+    if not _snapshot_has_complete_history_inputs(snapshot):
+        return False
+
+    total_value_usd = safe_float(row.get("total_value_usd", 0.0))
+    cash_value_usd = safe_float(row.get("cash_value_usd", 0.0))
+    positions_value_usd = safe_float(row.get("positions_value_usd", 0.0))
+    ts = int(row.get("ts") or 0)
+
+    if ts <= 0:
+        return False
+    if total_value_usd <= 0:
+        return False
+    if cash_value_usd < 0 or positions_value_usd < 0:
+        return False
+    if cash_value_usd > total_value_usd:
+        return False
+
+    return True
+
+
 def build_portfolio_history_analytics(history_rows, source="portfolio_history", note=None):
     rows = []
     for row in history_rows or []:
@@ -1546,6 +1591,10 @@ def persist_current_portfolio_snapshot(snapshot=None):
     row = _snapshot_to_history_row(snapshot)
 
     try:
+        if not _is_valid_history_row(snapshot, row):
+            _log_portfolio("skipping portfolio_history write because snapshot valuation inputs are incomplete")
+            return False
+
         latest_rows = get_portfolio_history_since(limit=1)
         latest = latest_rows[-1] if latest_rows else None
 

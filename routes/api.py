@@ -1683,6 +1683,75 @@ def _build_shadow_rotation_report():
     return build_shadow_rotation_report(window_hours=24)
 
 
+def _build_tradable_universe():
+    snapshot = get_portfolio_snapshot()
+    if not isinstance(snapshot, dict):
+        raise RuntimeError("portfolio snapshot unavailable")
+
+    config = load_asset_config() or {}
+    summary = portfolio_summary(snapshot)
+
+    core_assets = sorted(
+        str(product_id).upper().strip()
+        for product_id in (config.get("core_assets") or {}).keys()
+        if str(product_id or "").strip()
+    )
+    satellite_allowed = sorted(
+        str(product_id).upper().strip()
+        for product_id in (config.get("satellite_allowed") or [])
+        if str(product_id or "").strip()
+    )
+    satellite_blocked = sorted(
+        str(product_id).upper().strip()
+        for product_id in (config.get("satellite_blocked") or [])
+        if str(product_id or "").strip()
+    )
+
+    active_satellite_buy_universe = sorted(
+        set(
+            str(product_id).upper().strip()
+            for product_id in (
+                summary.get("active_satellite_buy_universe")
+                or snapshot.get("active_satellite_buy_universe")
+                or []
+            )
+            if str(product_id or "").strip()
+        )
+    )
+
+    current_system_selections = sorted(
+        set(
+            str((row or {}).get("product_id") or "").upper().strip()
+            for row in (get_rotation_products(snapshot) or [])
+            if str((row or {}).get("product_id") or "").strip()
+        )
+    )
+
+    return {
+        "ok": True,
+        "generated_at": int(_now()),
+        "snapshot_timestamp": _safe_int(snapshot.get("timestamp")),
+        "satellite_mode": str(config.get("satellite_mode", "rotation") or "rotation"),
+        "core_assets": core_assets,
+        "satellite_allowed": satellite_allowed,
+        "satellite_blocked": satellite_blocked,
+        "active_satellite_buy_universe": active_satellite_buy_universe,
+        "current_system_selections": current_system_selections,
+        "summary": {
+            "core_asset_count": len(core_assets),
+            "satellite_allowed_count": len(satellite_allowed),
+            "satellite_blocked_count": len(satellite_blocked),
+            "active_satellite_buy_universe_count": len(active_satellite_buy_universe),
+            "current_system_selection_count": len(current_system_selections),
+        },
+        "meta": {
+            "source": "tradable_universe_v1",
+            "active_buy_universe_is_live_eligible_set": True,
+            "current_system_selections_are_rotation_selection_set": True,
+        },
+    }
+
+
 def _proposal_actor():
     return (
         str(session.get("username") or "").strip()
@@ -1756,6 +1825,19 @@ def api_system_snapshot():
         return jsonify(_with_cache("system_snapshot", _build_system_snapshot, ttl_sec=15, stale_sec=120))
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/system/tradable_universe", methods=["GET"])
+@require_secret
+def api_system_tradable_universe():
+    try:
+        return jsonify(_with_cache("tradable_universe", _build_tradable_universe, ttl_sec=15, stale_sec=120))
+    except Exception as exc:
+        return jsonify({
+            "ok": False,
+            "error": str(exc),
+            "source": "tradable_universe_v1",
+        }), 500
 
 
 @api_bp.route("/api/portfolio", methods=["GET"])

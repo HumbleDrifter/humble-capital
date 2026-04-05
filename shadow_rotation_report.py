@@ -8,6 +8,12 @@ from pathlib import Path
 
 WINDOW_HOURS = 24
 TOP_N = 8
+SHADOW_ELIGIBILITY_MIN_NET_SCORE = 70.0
+SHADOW_ELIGIBILITY_MIN_REGIME_FIT = 50.0
+SHADOW_ELIGIBILITY_MAX_OVEREXTENSION_PENALTY = 14.0
+SHADOW_ELIGIBLE_CONFIDENCE_BANDS = {"medium", "high"}
+SHADOW_ELIGIBLE_LIQUIDITY_BUCKETS = {"high", "medium"}
+SHADOW_INELIGIBLE_VOLATILITY_BUCKETS = {"extreme"}
 DEFAULT_SERVER_LOG_PATH = Path("/root/tradingbot/satellite_rotation_shadow.jsonl")
 DEFAULT_SERVER_CONFIG_PATH = Path("/root/tradingbot/asset_config.json")
 REPO_ROOT = Path(__file__).resolve().parent
@@ -150,6 +156,79 @@ def derive_blocked_candidates(cycle: dict, top_n: int = TOP_N) -> list[dict]:
     return derived
 
 
+def evaluate_shadow_candidate(row: dict) -> dict:
+    product_id = str(row.get("product_id") or "").strip()
+    net_score = row.get("net_score")
+    confidence_band = str(row.get("confidence_band") or "").strip().lower()
+    liquidity_bucket = str(row.get("liquidity_bucket") or "").strip().lower()
+    volatility_bucket = str(row.get("volatility_bucket") or "").strip().lower()
+    regime_fit_score = row.get("regime_fit_score")
+    overextension_penalty = row.get("overextension_penalty")
+    allowed = bool(row.get("allowed"))
+    blocked = bool(row.get("blocked"))
+    active_buy_universe = bool(row.get("active_buy_universe"))
+
+    net_score_numeric = float(net_score or 0.0)
+    regime_fit_numeric = float(regime_fit_score or 0.0)
+    overextension_numeric = float(overextension_penalty or 0.0)
+
+    if blocked:
+        shadow_block_reason = "blocked_by_policy"
+    elif allowed:
+        shadow_block_reason = "already_allowed"
+    elif not active_buy_universe:
+        shadow_block_reason = "not_in_active_universe"
+    else:
+        shadow_block_reason = "not_allowed"
+
+    if blocked:
+        eligibility_reason = "Blocked by policy and excluded from review promotion."
+    elif net_score_numeric < SHADOW_ELIGIBILITY_MIN_NET_SCORE:
+        eligibility_reason = "Below the review score threshold."
+        shadow_block_reason = "low_score"
+    elif confidence_band not in SHADOW_ELIGIBLE_CONFIDENCE_BANDS:
+        eligibility_reason = "Confidence is still below the review threshold."
+        shadow_block_reason = "low_score"
+    elif liquidity_bucket not in SHADOW_ELIGIBLE_LIQUIDITY_BUCKETS:
+        eligibility_reason = "Liquidity is too weak for review promotion."
+        shadow_block_reason = "low_liquidity"
+    elif volatility_bucket in SHADOW_INELIGIBLE_VOLATILITY_BUCKETS:
+        eligibility_reason = "Volatility is too extreme for a safe allowlist review."
+        shadow_block_reason = "extreme_volatility"
+    elif overextension_numeric > SHADOW_ELIGIBILITY_MAX_OVEREXTENSION_PENALTY:
+        eligibility_reason = "Recent extension risk is still too elevated."
+        shadow_block_reason = "overextended"
+    elif regime_fit_numeric < SHADOW_ELIGIBILITY_MIN_REGIME_FIT:
+        eligibility_reason = "Regime fit is too weak for review promotion."
+        shadow_block_reason = "low_regime_fit"
+    elif allowed:
+        eligibility_reason = "Already allowed in the live review set."
+    else:
+        eligibility_reason = "Meets score, liquidity, volatility, and regime-fit review thresholds."
+
+    shadow_eligible = (
+        not blocked
+        and not allowed
+        and net_score_numeric >= SHADOW_ELIGIBILITY_MIN_NET_SCORE
+        and confidence_band in SHADOW_ELIGIBLE_CONFIDENCE_BANDS
+        and liquidity_bucket in SHADOW_ELIGIBLE_LIQUIDITY_BUCKETS
+        and volatility_bucket not in SHADOW_INELIGIBLE_VOLATILITY_BUCKETS
+        and overextension_numeric <= SHADOW_ELIGIBILITY_MAX_OVEREXTENSION_PENALTY
+        and regime_fit_numeric >= SHADOW_ELIGIBILITY_MIN_REGIME_FIT
+    )
+
+    return {
+        "product_id": product_id,
+        "net_score": round(net_score_numeric, 2),
+        "confidence_band": confidence_band or "unknown",
+        "liquidity_bucket": liquidity_bucket or "unknown",
+        "volatility_bucket": volatility_bucket or "unknown",
+        "shadow_eligible": shadow_eligible,
+        "shadow_eligibility_reason": eligibility_reason,
+        "shadow_block_reason": shadow_block_reason,
+    }
+
+
 def resolve_dynamic_top_n(
     cycles: list[dict],
     configured_max_active: int | None = None,
@@ -262,6 +341,7 @@ def build_shadow_rotation_report(
             "blocked_reason_breakdown": [],
             "already_held_shadow_candidates": [],
             "active_universe_shadow_candidates": [],
+            "shadow_eligible_candidates": [],
             "quick_takeaways": ["No shadow log file found."],
         }
 
@@ -323,6 +403,17 @@ def build_shadow_rotation_report(
     average_overlap = round(avg(overlap_counts), 2)
     average_shadow_only = round(avg(shadow_only_counts), 2)
     average_live_only = round(avg(live_only_counts), 2)
+    latest_cycle = max(cycles, key=lambda cycle: int(cycle.get("logged_at") or 0)) if cycles else None
+    latest_ranking = list((latest_cycle or {}).get("ranking_by_net_score") or [])
+    shadow_eligible_candidates = [
+        evaluate_shadow_candidate(row)
+        for row in latest_ranking
+        if str(row.get("product_id") or "").strip()
+    ]
+    shadow_eligible_candidates = [
+        row for row in shadow_eligible_candidates
+        if row.get("shadow_eligible")
+    ][:resolved_top_n]
 
     return {
         "ok": True,
@@ -347,6 +438,7 @@ def build_shadow_rotation_report(
         "blocked_reason_breakdown": summarize_counter(blocked_reason_counter, limit=6, show_pct_total=cycles_count, key_name="reason"),
         "already_held_shadow_candidates": summarize_counter(held_shadow_counter, limit=10, show_pct_total=cycles_count, key_name="product_id"),
         "active_universe_shadow_candidates": summarize_counter(active_universe_shadow_counter, limit=10, show_pct_total=cycles_count, key_name="product_id"),
+        "shadow_eligible_candidates": shadow_eligible_candidates,
         "quick_takeaways": build_takeaways(
             cycles_count=cycles_count,
             empty_live_cycles=empty_live_cycles,

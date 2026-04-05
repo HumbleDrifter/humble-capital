@@ -82,6 +82,14 @@ function formatUnixTime(ts) {
   return new Date(numeric * 1000).toLocaleString();
 }
 
+function titleCase(value) {
+  return String(value || "")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function numericOrNull(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
@@ -370,8 +378,8 @@ function renderShadowRotationReport(data) {
   host.innerHTML = `
     <div class="dashboard-shadow-head">
       <div>
-        <div class="dashboard-shadow-title">Shadow Rotation Monitor</div>
-        <div class="dashboard-shadow-subtitle">24h constraint-gap view for live versus shadow satellite picks.</div>
+        <div class="dashboard-shadow-title">Satellite Intelligence Monitor</div>
+        <div class="dashboard-shadow-subtitle">24h intelligence view of satellite selection, constraints, and missed opportunities.</div>
       </div>
       <div class="dashboard-shadow-updated">Updated ${escapeHtml(formatUnixTime(lastUpdatedTs))}</div>
     </div>
@@ -415,6 +423,38 @@ function renderShadowRotationReport(data) {
 
     <div class="dashboard-shadow-takeaway">${escapeHtml(takeaways[0] || "Shadow rotation monitoring is active.")}</div>
   `;
+}
+
+function renderShadowEligibleCandidates(data) {
+  const host = document.getElementById("shadowEligibleCandidates");
+  if (!host) return;
+
+  const rows = Array.isArray(data?.shadow_eligible_candidates)
+    ? data.shadow_eligible_candidates.slice(0, Math.max(5, Number(data?.top_n || 0)))
+    : [];
+
+  if (!rows.length) {
+    host.innerHTML = `<div class="dashboard-shadow-fallback">No review-ready shadow candidates are waiting for enable right now.</div>`;
+    return;
+  }
+
+  host.innerHTML = rows.map((row) => `
+    <div class="shadow-eligible-row">
+      <div class="shadow-eligible-main">
+        <div class="shadow-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
+        <div class="shadow-eligible-meta">
+          <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
+          <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>
+          <span class="pill">${escapeHtml(titleCase(row.liquidity_bucket || "unknown"))} liquidity</span>
+          <span class="pill">${escapeHtml(titleCase(row.volatility_bucket || "unknown"))} volatility</span>
+        </div>
+      </div>
+      <div class="shadow-eligible-reasons">
+        <div class="shadow-eligible-reason"><strong>Qualifies:</strong> ${escapeHtml(row.shadow_eligibility_reason || "Review thresholds met.")}</div>
+        <div class="shadow-eligible-reason"><strong>Not live yet:</strong> ${escapeHtml(titleCase(row.shadow_block_reason || "not_allowed"))}</div>
+      </div>
+    </div>
+  `).join("");
 }
 
 function opportunityCard(row) {
@@ -573,6 +613,7 @@ async function refreshMemeRotation() {
     renderStatus(data, systemData || {});
     renderScannerStatus(systemData || {});
     renderShadowRotationReport(shadowRotationData || {});
+    renderShadowEligibleCandidates(shadowRotationData || {});
     renderScoreLegend(data);
     renderGroups(data);
   } catch (err) {

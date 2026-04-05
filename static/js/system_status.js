@@ -268,10 +268,87 @@ function buildTradingViewSuggestions(manifest, universe) {
   });
 }
 
+function assistantStatusForSuggestion(item) {
+  const addCount = Array.isArray(item?.add) ? item.add.length : 0;
+  const removeCount = Array.isArray(item?.remove) ? item.remove.length : 0;
+
+  if (!addCount && !removeCount) {
+    return {
+      label: "Ready",
+      tone: "good",
+      recommendation: "Manifest group matches expected server state."
+    };
+  }
+  if (addCount && removeCount) {
+    return {
+      label: "Needs Update",
+      tone: "warn",
+      recommendation: "Copy Expected and update TradingView watchlist or alert symbols."
+    };
+  }
+  if (addCount) {
+    return {
+      label: "Missing Symbols",
+      tone: "warn",
+      recommendation: "Copy Add List and add these symbols."
+    };
+  }
+  return {
+    label: "Extra Symbols",
+    tone: "bad",
+    recommendation: "Copy Remove List and remove stale symbols."
+  };
+}
+
+function buildTradingViewAssistantState(manifest, universe) {
+  if (!manifest || !universe) return null;
+
+  const items = buildTradingViewSuggestions(manifest, universe).map((item) => {
+    const status = assistantStatusForSuggestion(item);
+    return {
+      ...item,
+      status_label: status.label,
+      status_tone: status.tone,
+      recommendation: status.recommendation
+    };
+  });
+
+  return {
+    items,
+    inSyncCount: items.filter((item) => !item.hasChanges).length,
+    needsUpdateCount: items.filter((item) => item.hasChanges).length,
+    urgentGroups: items.filter((item) => item.hasChanges).map((item) => item.label)
+  };
+}
+
 function suggestionForGroup(groupKey) {
   if (!CURRENT_TRADINGVIEW_MANIFEST || !CURRENT_TRADABLE_UNIVERSE) return null;
   return buildTradingViewSuggestions(CURRENT_TRADINGVIEW_MANIFEST, CURRENT_TRADABLE_UNIVERSE)
     .find((item) => item.key === groupKey) || null;
+}
+
+function applyGeneratorSelections(groupKey, source) {
+  const pineGroup = document.getElementById("pineTemplateGroup");
+  const pineSource = document.getElementById("pineTemplateSource");
+  const alertGroup = document.getElementById("alertPayloadGroup");
+  const alertSource = document.getElementById("alertPayloadSource");
+
+  if (pineGroup) pineGroup.value = groupKey;
+  if (pineSource) pineSource.value = source;
+  if (alertGroup) alertGroup.value = groupKey;
+  if (alertSource) alertSource.value = source;
+}
+
+async function copyAssistantPine(groupKey, source) {
+  applyGeneratorSelections(groupKey, source);
+  refreshPineTemplatePreview();
+  await copyPineTemplate();
+}
+
+async function copyAssistantAlertPayload(groupKey, source) {
+  applyGeneratorSelections(groupKey, source);
+  refreshAlertPayloadPreview();
+  await copyAlertPayloadPreview();
 }
 
 function setPineTemplatePreview(text, isError = false) {
@@ -378,12 +455,53 @@ function buildAlertPayloadPreview(groupKey, source, mode) {
   ].filter(Boolean).join("\n");
 }
 
+function renderTradingViewAssistant(manifest, universe) {
+  const summaryEl = document.getElementById("tradingViewAssistantSummary");
+  const cardsEl = document.getElementById("tradingViewAssistantCards");
+  if (!summaryEl || !cardsEl) return;
+
+  const assistant = buildTradingViewAssistantState(manifest, universe);
+  if (!assistant) {
+    summaryEl.textContent = "Load both the server tradable universe and TradingView manifest to generate setup guidance.";
+    cardsEl.innerHTML = `<div class="status-console">Assistant guidance will appear after both server datasets are loaded.</div>`;
+    return;
+  }
+
+  summaryEl.textContent = [
+    `Groups in sync: ${assistant.inSyncCount}`,
+    `Groups needing updates: ${assistant.needsUpdateCount}`,
+    `Most urgent groups: ${assistant.urgentGroups.length ? assistant.urgentGroups.join(", ") : "none"}`
+  ].join("\n");
+
+  cardsEl.innerHTML = assistant.items.map((item) => `
+    <div class="system-manifest-card">
+      <div class="system-assistant-card-top">
+        <div class="system-universe-label">${item.label}</div>
+        <span class="badge ${item.status_tone}">${item.status_label}</span>
+      </div>
+      <div class="status-console">
+Add: ${item.add.length}
+Remove: ${item.remove.length}
+Recommendation: ${item.recommendation}
+      </div>
+      <div class="system-manifest-actions">
+        <button class="btn btn-secondary" type="button" onclick="copyExpectedManifestGroup('${item.key}')">Copy Expected</button>
+        <button class="btn btn-secondary" type="button" onclick="copySuggestionList('${item.key}', 'add')">Copy Add</button>
+        <button class="btn btn-secondary" type="button" onclick="copySuggestionList('${item.key}', 'remove')">Copy Remove</button>
+        <button class="btn btn-secondary" type="button" onclick="copyAssistantPine('${item.key}', '${item.hasChanges ? "expected" : "manifest"}')">Copy Pine</button>
+        <button class="btn btn-primary" type="button" onclick="copyAssistantAlertPayload('${item.key}', '${item.hasChanges ? "expected" : "manifest"}')">Copy Alert Payload</button>
+      </div>
+    </div>
+  `).join("");
+}
+
 function renderTradingViewSuggestions(manifest, universe) {
   const host = document.getElementById("tradingViewManifestSuggestions");
   if (!host) return;
 
   if (!manifest || !universe) {
     host.innerHTML = `<div class="status-console">Load both the server tradable universe and TradingView manifest to see maintenance suggestions.</div>`;
+    renderTradingViewAssistant(manifest, universe);
     return;
   }
 
@@ -406,6 +524,7 @@ ${!item.hasChanges ? "No changes needed." : ""}
 
   refreshPineTemplatePreview();
   refreshAlertPayloadPreview();
+  renderTradingViewAssistant(manifest, universe);
 }
 
 function setManifestActionStatus(message, isError = false) {
@@ -720,6 +839,7 @@ function renderTradingViewManifestError(message) {
   if (suggestionsHost) {
     suggestionsHost.innerHTML = `<div class="status-console error">Unable to build TradingView maintenance suggestions until a valid manifest is loaded.</div>`;
   }
+  renderTradingViewAssistant(null, CURRENT_TRADABLE_UNIVERSE);
   const listsEl = document.getElementById("tradingViewManifestLists");
   if (listsEl) {
     listsEl.textContent = message;
@@ -834,6 +954,8 @@ window.refreshSystemStatus = refreshSystemStatus;
 window.refreshCaches = refreshCaches;
 window.refreshTradableUniverse = refreshTradableUniverse;
 window.refreshTradingViewManifest = refreshTradingViewManifest;
+window.copyAssistantPine = copyAssistantPine;
+window.copyAssistantAlertPayload = copyAssistantAlertPayload;
 window.copyExpectedManifestGroup = copyExpectedManifestGroup;
 window.copyManifestGroup = copyManifestGroup;
 window.copyManifestRawLists = copyManifestRawLists;

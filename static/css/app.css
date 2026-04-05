@@ -908,6 +908,52 @@ tbody tr:last-child td {
   gap: 14px;
 }
 
+.allocation-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.allocation-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.allocation-legend-swatch {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.allocation-legend-swatch.core {
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
+}
+
+.allocation-legend-swatch.opportunities {
+  background: linear-gradient(180deg, #10b981, #059669);
+}
+
+.allocation-legend-swatch.cash {
+  background: linear-gradient(180deg, #334155, #1f2937);
+}
+
+.allocation-legend-label {
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 .dashboard-allocation-split {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

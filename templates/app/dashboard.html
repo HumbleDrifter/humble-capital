@@ -1,13 +1,5 @@
 {% extends "base_app.html" %}
 
-{% block topbar_actions %}
-<button class="btn btn-secondary dashboard-refresh-btn" type="button" onclick="refreshAll(true)">Refresh Console</button>
-{% endblock %}
-
-{% block mobile_topbar_actions %}
-<button class="btn btn-secondary dashboard-refresh-btn" type="button" onclick="refreshAll(true)">Refresh Console</button>
-{% endblock %}
-
 {% block content %}
 <div class="grid cols-12 dashboard-grid dashboard-terminal-grid">
 
@@ -136,6 +128,20 @@
 
     <div class="dashboard-allocation-header">
       <div id="allocationText" class="tiny"></div>
+      <div class="allocation-legend" aria-label="Allocation legend">
+        <span class="allocation-legend-item">
+          <span class="allocation-legend-swatch core" aria-hidden="true"></span>
+          <span class="allocation-legend-label">Core</span>
+        </span>
+        <span class="allocation-legend-item">
+          <span class="allocation-legend-swatch opportunities" aria-hidden="true"></span>
+          <span class="allocation-legend-label">Opportunities</span>
+        </span>
+        <span class="allocation-legend-item">
+          <span class="allocation-legend-swatch cash" aria-hidden="true"></span>
+          <span class="allocation-legend-label">Cash</span>
+        </span>
+      </div>
       <div class="dashboard-allocation-split">
         <div class="dashboard-allocation-split-item">
           <span class="dashboard-allocation-split-label">Core</span>

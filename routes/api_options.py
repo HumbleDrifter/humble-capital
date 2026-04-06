@@ -10,7 +10,14 @@ from services.config_proposal_service import (
     generate_options_order_proposal,
     proposal_is_stale,
 )
-from storage import get_config_proposal_by_id
+from storage import (
+    get_config_proposal_by_id,
+    list_open_options_positions,
+    list_recent_options_executions,
+    list_recent_options_orders,
+    replace_options_positions_snapshot,
+    save_options_order_record,
+)
 from workers.execution_queue import submit_job
 
 api_options_bp = Blueprint("api_options", __name__)
@@ -37,7 +44,7 @@ def _choose_test_expiry(risk):
     max_dte = max(min_dte, _safe_int(risk.get("max_dte", 45), 45))
     if min_dte == 0 and not bool(risk.get("allow_0dte")):
         min_dte = 1
-    target_dte = min(max(min_dte, 7), max_dte)
+    target_dte = min(max(min_dte + 3, 10), max_dte)
     return (datetime.now(timezone.utc).date() + timedelta(days=target_dte)).strftime("%Y%m%d")
 
 
@@ -110,8 +117,73 @@ def api_options_ibkr_health():
                 "connected": False,
                 "account": str(runtime.get("account") or "").strip(),
                 "reason": str(exc),
+                "connection_reused": False,
+                "connection_reuse_capable": True,
+                "last_error": str(exc),
+                "last_ready_at": None,
             }
         ), 500
+
+
+@api_options_bp.route("/api/options/executions", methods=["GET"])
+@require_admin_auth
+def api_options_executions():
+    try:
+        limit = max(1, min(50, _safe_int(request.args.get("limit"), 10)))
+        items = list_recent_options_executions(limit=limit)
+        return jsonify({"ok": True, "items": items, "count": len(items)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "items": []}), 500
+
+
+@api_options_bp.route("/api/options/orders", methods=["GET"])
+@require_admin_auth
+def api_options_orders():
+    try:
+        limit = max(1, min(50, _safe_int(request.args.get("limit"), 10)))
+        items = list_recent_options_orders(limit=limit)
+        return jsonify({"ok": True, "items": items, "count": len(items)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "items": []}), 500
+
+
+@api_options_bp.route("/api/options/positions", methods=["GET"])
+@require_admin_auth
+def api_options_positions():
+    try:
+        items = list_open_options_positions()
+        return jsonify({"ok": True, "items": items, "count": len(items)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "items": []}), 500
+
+
+@api_options_bp.route("/api/options/sync", methods=["POST"])
+@require_admin_auth
+def api_options_sync():
+    try:
+        adapter = IBKRAdapter(get_ibkr_runtime_config())
+        result = adapter.sync_options_state()
+        if not result.get("ok"):
+            return jsonify(result), 400
+
+        orders = list(result.get("orders") or [])
+        positions = list(result.get("positions") or [])
+        for item in orders:
+            save_options_order_record(item)
+        positions_count = replace_options_positions_snapshot(positions)
+        health = adapter.health_status()
+        return jsonify(
+            {
+                "ok": True,
+                "status": "synced",
+                "orders_count": len(orders),
+                "positions_count": positions_count,
+                "health": health,
+                "summary": result.get("summary") if isinstance(result.get("summary"), dict) else {},
+            }
+        )
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "status": "sync_failed"}), 500
 
 
 @api_options_bp.route("/api/options/proposals/test_submit", methods=["POST"])
@@ -158,6 +230,24 @@ def api_options_proposals_execute(proposal_id):
                 "proposal_id": str(proposal_id or "").strip(),
                 "approval_verified": True,
                 "requested_by": _proposal_actor(),
+            }
+        )
+        save_options_order_record(
+            {
+                "proposal_id": str(proposal_id or "").strip(),
+                "underlying": str(order.get("underlying") or "").strip().upper(),
+                "strategy": str(order.get("strategy") or "").strip().lower(),
+                "broker": "ibkr",
+                "asset_class": "option",
+                "order_type": str(order.get("order_type") or "").strip().upper(),
+                "limit_price": float(order.get("limit_price") or 0.0),
+                "tif": str(order.get("tif") or "").strip().upper(),
+                "status": "Queued",
+                "source": str(order.get("source") or "proposal_execute").strip() or "proposal_execute",
+                "contract_summary": {
+                    "symbol": str(order.get("underlying") or "").strip().upper(),
+                },
+                "legs": list(order.get("legs") or []),
             }
         )
 

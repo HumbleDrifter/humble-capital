@@ -286,8 +286,41 @@
       <div class="configuration-action-row config-proposal-automation-actions">
         <button class="btn btn-secondary" type="button" onclick="loadOptionsHealth()">Refresh IBKR Health</button>
         <button class="btn btn-secondary" type="button" onclick="createTestOptionsProposal()">Create Test Options Proposal</button>
+        <button class="btn btn-secondary" type="button" onclick="syncOptionsState()">Sync Options State</button>
       </div>
       <div class="config-proposal-automation-result" id="optionsHealthResult">Options paper-trading health has not been checked yet.</div>
+
+      <div class="divider"></div>
+
+      <div class="config-proposal-history-panel">
+        <div class="section-header compact-header">
+          <div>
+            <h3 style="margin:0;">Options Telemetry</h3>
+            <p class="section-subtitle" style="margin:4px 0 0 0;">Recent execution attempts, tracked option orders, and the latest open positions snapshot from paper sync.</p>
+          </div>
+        </div>
+
+        <div class="config-proposal-grid">
+          <div>
+            <div class="config-proposal-label">Recent Executions</div>
+            <div class="config-proposal-history" id="optionsExecutionsHistory">
+              <div class="config-proposal-history-empty">No options execution activity yet.</div>
+            </div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Recent Orders</div>
+            <div class="config-proposal-history" id="optionsOrdersHistory">
+              <div class="config-proposal-history-empty">No options order records yet.</div>
+            </div>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <div class="config-proposal-label">Open Positions</div>
+            <div class="config-proposal-history" id="optionsPositionsHistory">
+              <div class="config-proposal-history-empty">No open options positions snapshot yet.</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="divider"></div>

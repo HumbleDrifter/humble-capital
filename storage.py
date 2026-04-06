@@ -137,6 +137,7 @@ def init_db():
 
     conn.commit()
     conn.close()
+    ensure_options_tracking_tables()
 
 
 def init_user_table():
@@ -1204,3 +1205,388 @@ def mark_harvest(product_id, ts=None):
     ts = int(ts or time.time())
     upsert_asset_state(product_id, last_harvest_ts=ts)
     return get_asset_state(product_id)
+
+
+def ensure_options_tracking_tables():
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS options_executions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT NOT NULL,
+        ts INTEGER NOT NULL,
+        proposal_id TEXT,
+        underlying TEXT,
+        strategy TEXT,
+        broker TEXT,
+        order_type TEXT,
+        limit_price REAL NOT NULL DEFAULT 0,
+        status TEXT,
+        ok INTEGER NOT NULL DEFAULT 0,
+        reason TEXT,
+        order_id TEXT,
+        reconnect_attempted INTEGER NOT NULL DEFAULT 0,
+        connection_reused INTEGER NOT NULL DEFAULT 0,
+        error TEXT,
+        source TEXT,
+        raw_json TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_options_executions_created
+    ON options_executions (ts DESC, id DESC)
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS options_orders (
+        record_key TEXT PRIMARY KEY,
+        broker_order_id TEXT,
+        proposal_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        underlying TEXT,
+        strategy TEXT,
+        broker TEXT,
+        asset_class TEXT,
+        order_type TEXT,
+        limit_price REAL NOT NULL DEFAULT 0,
+        tif TEXT,
+        status TEXT,
+        source TEXT,
+        contract_summary_json TEXT,
+        legs_json TEXT,
+        raw_json TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_options_orders_updated
+    ON options_orders (updated_at DESC, broker_order_id DESC)
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS options_positions (
+        contract_key TEXT PRIMARY KEY,
+        updated_at TEXT NOT NULL,
+        broker TEXT,
+        account TEXT,
+        underlying TEXT,
+        expiry TEXT,
+        strike REAL NOT NULL DEFAULT 0,
+        right_code TEXT,
+        quantity REAL NOT NULL DEFAULT 0,
+        side TEXT,
+        avg_cost REAL NOT NULL DEFAULT 0,
+        market_price REAL NOT NULL DEFAULT 0,
+        market_value REAL NOT NULL DEFAULT 0,
+        status TEXT,
+        raw_json TEXT
+    )
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_options_positions_underlying
+    ON options_positions (underlying, expiry, strike)
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def _normalize_options_execution_row(row):
+    payload = {}
+    try:
+        payload = json.loads(row["raw_json"] or "{}")
+    except Exception:
+        payload = {}
+    return {
+        "id": int(row["id"] or 0),
+        "created_at": row["created_at"],
+        "ts": int(row["ts"] or 0),
+        "proposal_id": str(row["proposal_id"] or "").strip(),
+        "underlying": str(row["underlying"] or "").strip(),
+        "strategy": str(row["strategy"] or "").strip(),
+        "broker": str(row["broker"] or "").strip(),
+        "order_type": str(row["order_type"] or "").strip(),
+        "limit_price": float(row["limit_price"] or 0.0),
+        "status": str(row["status"] or "").strip(),
+        "ok": bool(int(row["ok"] or 0)),
+        "reason": str(row["reason"] or "").strip(),
+        "order_id": str(row["order_id"] or "").strip(),
+        "reconnect_attempted": bool(int(row["reconnect_attempted"] or 0)),
+        "connection_reused": bool(int(row["connection_reused"] or 0)),
+        "error": str(row["error"] or "").strip(),
+        "source": str(row["source"] or "").strip(),
+        "raw": payload if isinstance(payload, dict) else {},
+    }
+
+
+def save_options_execution(record):
+    ensure_options_tracking_tables()
+    record = record if isinstance(record, dict) else {}
+    ts = int(record.get("ts") or time.time())
+    created_at = str(record.get("created_at") or "").strip() or utcnow_iso()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO options_executions (
+            created_at, ts, proposal_id, underlying, strategy, broker, order_type,
+            limit_price, status, ok, reason, order_id, reconnect_attempted,
+            connection_reused, error, source, raw_json
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            created_at,
+            ts,
+            str(record.get("proposal_id") or "").strip() or None,
+            str(record.get("underlying") or "").strip().upper() or None,
+            str(record.get("strategy") or "").strip().lower() or None,
+            str(record.get("broker") or "").strip().lower() or None,
+            str(record.get("order_type") or "").strip().upper() or None,
+            float(record.get("limit_price") or 0.0),
+            str(record.get("status") or "").strip() or None,
+            1 if bool(record.get("ok")) else 0,
+            str(record.get("reason") or "").strip() or None,
+            str(record.get("order_id") or "").strip() or None,
+            1 if bool(record.get("reconnect_attempted")) else 0,
+            1 if bool(record.get("connection_reused")) else 0,
+            str(record.get("error") or "").strip() or None,
+            str(record.get("source") or "").strip() or None,
+            json.dumps(record, ensure_ascii=False),
+        ),
+    )
+    conn.commit()
+    row_id = cur.lastrowid
+    conn.close()
+    return int(row_id or 0)
+
+
+def list_recent_options_executions(limit=10):
+    ensure_options_tracking_tables()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT id, created_at, ts, proposal_id, underlying, strategy, broker, order_type,
+               limit_price, status, ok, reason, order_id, reconnect_attempted,
+               connection_reused, error, source, raw_json
+        FROM options_executions
+        ORDER BY ts DESC, id DESC
+        LIMIT ?
+        """,
+        (max(1, int(limit or 10)),),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [_normalize_options_execution_row(row) for row in rows or []]
+
+
+def _options_order_record_key(record):
+    record = record if isinstance(record, dict) else {}
+    broker_order_id = str(record.get("broker_order_id") or record.get("order_id") or "").strip()
+    if broker_order_id:
+        return f"broker:{broker_order_id}"
+    proposal_id = str(record.get("proposal_id") or "").strip()
+    underlying = str(record.get("underlying") or "").strip().upper()
+    strategy = str(record.get("strategy") or "").strip().lower()
+    source = str(record.get("source") or "").strip().lower()
+    created_at = str(record.get("created_at") or utcnow_iso()).strip()
+    return f"proposal:{proposal_id}|{underlying}|{strategy}|{source}|{created_at}"
+
+
+def save_options_order_record(item):
+    ensure_options_tracking_tables()
+    record = item if isinstance(item, dict) else {}
+    created_at = str(record.get("created_at") or "").strip() or utcnow_iso()
+    updated_at = str(record.get("updated_at") or "").strip() or created_at
+    record_key = _options_order_record_key({**record, "created_at": created_at})
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO options_orders (
+            record_key, broker_order_id, proposal_id, created_at, updated_at, underlying,
+            strategy, broker, asset_class, order_type, limit_price, tif, status, source,
+            contract_summary_json, legs_json, raw_json
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(record_key) DO UPDATE SET
+            broker_order_id = excluded.broker_order_id,
+            proposal_id = excluded.proposal_id,
+            updated_at = excluded.updated_at,
+            underlying = excluded.underlying,
+            strategy = excluded.strategy,
+            broker = excluded.broker,
+            asset_class = excluded.asset_class,
+            order_type = excluded.order_type,
+            limit_price = excluded.limit_price,
+            tif = excluded.tif,
+            status = excluded.status,
+            source = excluded.source,
+            contract_summary_json = excluded.contract_summary_json,
+            legs_json = excluded.legs_json,
+            raw_json = excluded.raw_json
+        """,
+        (
+            record_key,
+            str(record.get("broker_order_id") or record.get("order_id") or "").strip() or None,
+            str(record.get("proposal_id") or "").strip() or None,
+            created_at,
+            updated_at,
+            str(record.get("underlying") or "").strip().upper() or None,
+            str(record.get("strategy") or "").strip().lower() or None,
+            str(record.get("broker") or "").strip().lower() or None,
+            str(record.get("asset_class") or "option").strip().lower() or None,
+            str(record.get("order_type") or "").strip().upper() or None,
+            float(record.get("limit_price") or 0.0),
+            str(record.get("tif") or "").strip().upper() or None,
+            str(record.get("status") or "").strip() or None,
+            str(record.get("source") or "").strip() or None,
+            json.dumps(record.get("contract_summary") or {}, ensure_ascii=False),
+            json.dumps(record.get("legs") or record.get("legs_summary") or [], ensure_ascii=False),
+            json.dumps(record, ensure_ascii=False),
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return record_key
+
+
+def list_recent_options_orders(limit=10):
+    ensure_options_tracking_tables()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT record_key, broker_order_id, proposal_id, created_at, updated_at, underlying,
+               strategy, broker, asset_class, order_type, limit_price, tif, status, source,
+               contract_summary_json, legs_json, raw_json
+        FROM options_orders
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT ?
+        """,
+        (max(1, int(limit or 10)),),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    out = []
+    for row in rows or []:
+        try:
+            contract_summary = json.loads(row["contract_summary_json"] or "{}")
+        except Exception:
+            contract_summary = {}
+        try:
+            legs = json.loads(row["legs_json"] or "[]")
+        except Exception:
+            legs = []
+        try:
+            raw = json.loads(row["raw_json"] or "{}")
+        except Exception:
+            raw = {}
+        out.append(
+            {
+                "record_key": str(row["record_key"] or "").strip(),
+                "broker_order_id": str(row["broker_order_id"] or "").strip(),
+                "proposal_id": str(row["proposal_id"] or "").strip(),
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "underlying": str(row["underlying"] or "").strip(),
+                "strategy": str(row["strategy"] or "").strip(),
+                "broker": str(row["broker"] or "").strip(),
+                "asset_class": str(row["asset_class"] or "").strip(),
+                "order_type": str(row["order_type"] or "").strip(),
+                "limit_price": float(row["limit_price"] or 0.0),
+                "tif": str(row["tif"] or "").strip(),
+                "status": str(row["status"] or "").strip(),
+                "source": str(row["source"] or "").strip(),
+                "contract_summary": contract_summary if isinstance(contract_summary, dict) else {},
+                "legs": legs if isinstance(legs, list) else [],
+                "raw": raw if isinstance(raw, dict) else {},
+            }
+        )
+    return out
+
+
+def replace_options_positions_snapshot(positions):
+    ensure_options_tracking_tables()
+    rows = positions if isinstance(positions, list) else []
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM options_positions")
+    for item in rows:
+        item = item if isinstance(item, dict) else {}
+        cur.execute(
+            """
+            INSERT INTO options_positions (
+                contract_key, updated_at, broker, account, underlying, expiry, strike,
+                right_code, quantity, side, avg_cost, market_price, market_value, status, raw_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(item.get("contract_key") or "").strip(),
+                str(item.get("updated_at") or utcnow_iso()).strip(),
+                str(item.get("broker") or "").strip().lower() or None,
+                str(item.get("account") or "").strip() or None,
+                str(item.get("underlying") or "").strip().upper() or None,
+                str(item.get("expiry") or "").strip() or None,
+                float(item.get("strike") or 0.0),
+                str(item.get("right_code") or item.get("right") or "").strip().upper() or None,
+                float(item.get("quantity") or 0.0),
+                str(item.get("side") or "").strip().upper() or None,
+                float(item.get("avg_cost") or 0.0),
+                float(item.get("market_price") or 0.0),
+                float(item.get("market_value") or 0.0),
+                str(item.get("status") or "").strip() or None,
+                json.dumps(item, ensure_ascii=False),
+            ),
+        )
+    conn.commit()
+    conn.close()
+    return len(rows)
+
+
+def list_open_options_positions():
+    ensure_options_tracking_tables()
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT contract_key, updated_at, broker, account, underlying, expiry, strike,
+               right_code, quantity, side, avg_cost, market_price, market_value, status, raw_json
+        FROM options_positions
+        ORDER BY underlying ASC, expiry ASC, strike ASC
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    out = []
+    for row in rows or []:
+        try:
+            raw = json.loads(row["raw_json"] or "{}")
+        except Exception:
+            raw = {}
+        out.append(
+            {
+                "contract_key": str(row["contract_key"] or "").strip(),
+                "updated_at": row["updated_at"],
+                "broker": str(row["broker"] or "").strip(),
+                "account": str(row["account"] or "").strip(),
+                "underlying": str(row["underlying"] or "").strip(),
+                "expiry": str(row["expiry"] or "").strip(),
+                "strike": float(row["strike"] or 0.0),
+                "right_code": str(row["right_code"] or "").strip(),
+                "quantity": float(row["quantity"] or 0.0),
+                "side": str(row["side"] or "").strip(),
+                "avg_cost": float(row["avg_cost"] or 0.0),
+                "market_price": float(row["market_price"] or 0.0),
+                "market_value": float(row["market_value"] or 0.0),
+                "status": str(row["status"] or "").strip(),
+                "raw": raw if isinstance(raw, dict) else {},
+            }
+        )
+    return out

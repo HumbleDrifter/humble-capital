@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import queue
 import threading
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def submit_job(job):
     start_execution_worker()
-    _trade_queue.put(job)
+    _trade_queue.put_nowait(job)
     logger.info(
         "[execution_queue] submitted proposal_id=%s broker=%s asset_class=%s queue_size=%s",
         str((job or {}).get("proposal_id") or "").strip(),
@@ -26,6 +27,12 @@ def queue_size():
 
 
 def _worker_loop():
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    except Exception:
+        logger.exception("[execution_queue] failed creating event loop")
+        raise
     logger.info("[execution_queue] worker thread started")
     try:
         from services.execution_service import process_trade_job
@@ -46,6 +53,12 @@ def _worker_loop():
                 _trade_queue.qsize(),
             )
             process_trade_job(job)
+            logger.info(
+                "[execution_queue] processed proposal_id=%s broker=%s asset_class=%s",
+                str((job or {}).get("proposal_id") or "").strip(),
+                str((job or {}).get("broker") or "").strip(),
+                str((job or {}).get("asset_class") or "").strip(),
+            )
         except Exception:
             logger.exception(
                 "[execution_queue] job failed proposal_id=%s",

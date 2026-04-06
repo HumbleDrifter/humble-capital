@@ -48,6 +48,33 @@ def _choose_test_expiry(risk):
     return (datetime.now(timezone.utc).date() + timedelta(days=target_dte)).strftime("%Y%m%d")
 
 
+def _round_test_strike(reference_price):
+    price = max(1.0, float(reference_price or 0.0))
+    if price >= 250:
+        increment = 5.0
+    elif price >= 50:
+        increment = 2.5
+    else:
+        increment = 1.0
+    return round(round(price / increment) * increment, 2)
+
+
+def _default_test_strike_for_underlying(underlying):
+    reference_prices = {
+        "SPY": 550.0,
+        "QQQ": 500.0,
+        "IWM": 220.0,
+        "DIA": 430.0,
+        "AAPL": 220.0,
+        "MSFT": 450.0,
+        "NVDA": 120.0,
+        "TSLA": 250.0,
+        "AMZN": 200.0,
+        "META": 600.0,
+    }
+    return _round_test_strike(reference_prices.get(str(underlying or "").strip().upper(), 50.0))
+
+
 def _build_test_options_payload(overrides=None):
     overrides = overrides if isinstance(overrides, dict) else {}
     risk = get_options_risk_config()
@@ -57,7 +84,7 @@ def _build_test_options_payload(overrides=None):
     right = str(overrides.get("right") or "CALL").strip().upper() or "CALL"
     strike = float(overrides.get("strike", 0.0) or 0.0)
     if strike <= 0:
-        strike = 100.0
+        strike = _default_test_strike_for_underlying(underlying)
     quantity = max(1, _safe_int(overrides.get("quantity", 1), 1))
     limit_price = float(overrides.get("limit_price", 1.0) or 1.0)
 
@@ -258,6 +285,6 @@ def api_options_proposals_execute(proposal_id):
                 "proposal_id": str(proposal_id or "").strip(),
                 "message": "Approved options proposal queued for execution review.",
             }
-        )
+        ), 202
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc), "proposal_id": str(proposal_id or "").strip()}), 500

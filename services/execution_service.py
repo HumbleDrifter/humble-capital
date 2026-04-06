@@ -1,4 +1,5 @@
 import traceback
+import time
 
 from core.order_router import route_order
 from reconcile import reconcile_positions
@@ -25,7 +26,17 @@ def process_trade_job(job):
 
     try:
         if asset_class in {"option", "options"} or broker == "ibkr":
+            started_at = time.time()
+            print(
+                f"[options_execution] route_start proposal_id={proposal_id or 'n/a'} "
+                f"broker={broker or 'ibkr'} underlying={str(job.get('underlying') or '').upper()}"
+            )
             result = route_order(job)
+            print(
+                f"[options_execution] route_end proposal_id={proposal_id or 'n/a'} "
+                f"ok={result.get('ok')} status={result.get('status', '')} "
+                f"reason={result.get('reason', '')} elapsed_sec={time.time() - started_at:.2f}"
+            )
 
             if result.get("ok") and proposal_id:
                 existing = get_config_proposal_by_id(proposal_id)

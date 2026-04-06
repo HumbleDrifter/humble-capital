@@ -1,5 +1,8 @@
 .env
 *.env
+deploy/managed_env.local.toml
+deploy/*.preview.json
+deploy/*.deploy-report.json
 *.log
 *.db
 __pycache__/

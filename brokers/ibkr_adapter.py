@@ -1,6 +1,8 @@
 import asyncio
+import json
 import os
 import threading
+import time
 import traceback
 from datetime import datetime, timezone
 
@@ -15,6 +17,11 @@ _SHARED_RUNTIME_KEY = None
 _SHARED_IB_LOCK = threading.RLock()
 _LAST_ERROR = None
 _LAST_READY_AT = None
+_HEALTH_LOCK_TIMEOUT_SEC = 0.25
+_IBKR_CONNECT_TIMEOUT_SEC = 5
+_IBKR_REQUEST_TIMEOUT_SEC = 8
+_IBKR_QUALIFY_TIMEOUT_SEC = 8
+_IBKR_POST_SUBMIT_WAIT_SEC = 0.75
 
 
 class ContractQualificationError(Exception):
@@ -46,6 +53,35 @@ def _safe_float(value, default=0.0):
 
 def _utcnow_iso():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _log_ibkr_event(event, payload=None):
+    envelope = {
+        "ts": int(time.time()),
+        "component": "ibkr_adapter",
+        "event": str(event or "").strip() or "unknown",
+        "payload": payload if isinstance(payload, dict) else {},
+    }
+    print(json.dumps(envelope, sort_keys=True, ensure_ascii=False))
+
+
+def _run_with_timeout(func, timeout_sec, *args, **kwargs):
+    result = {"value": None, "error": None}
+
+    def _runner():
+        try:
+            result["value"] = func(*args, **kwargs)
+        except Exception as exc:
+            result["error"] = exc
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
+    thread.join(max(0.0, float(timeout_sec)))
+    if thread.is_alive():
+        raise TimeoutError(f"operation timed out after {float(timeout_sec):.1f}s")
+    if result["error"] is not None:
+        raise result["error"]
+    return result["value"]
 
 
 def get_ibkr_runtime_config():
@@ -103,48 +139,129 @@ class IBKRAdapter(BrokerAdapter):
             asyncio.set_event_loop(loop)
             return loop
 
+    def _snapshot_shared_state(self, timeout=None):
+        timeout = _HEALTH_LOCK_TIMEOUT_SEC if timeout is None else max(0.0, float(timeout))
+        acquired = _SHARED_IB_LOCK.acquire(timeout=timeout)
+        if not acquired:
+            return {
+                "lock_acquired": False,
+                "ib": None,
+                "runtime_key": None,
+                "last_error": _LAST_ERROR,
+                "last_ready_at": _LAST_READY_AT,
+            }
+        try:
+            return {
+                "lock_acquired": True,
+                "ib": _SHARED_IB,
+                "runtime_key": _SHARED_RUNTIME_KEY,
+                "last_error": _LAST_ERROR,
+                "last_ready_at": _LAST_READY_AT,
+            }
+        finally:
+            _SHARED_IB_LOCK.release()
+
     def _get_connection(self, IB):
-        global _SHARED_IB, _SHARED_RUNTIME_KEY
+        global _SHARED_IB, _SHARED_RUNTIME_KEY, _LAST_READY_AT, _LAST_ERROR
+        runtime = dict(self.runtime_config or {})
+        runtime_key = self._runtime_key()
+        stale_ib = None
+        snapshot = self._snapshot_shared_state(timeout=5.0)
+        existing = snapshot.get("ib")
+        existing_key = snapshot.get("runtime_key")
 
-        with _SHARED_IB_LOCK:
-            runtime = dict(self.runtime_config or {})
-            runtime_key = self._runtime_key()
-            ib = _SHARED_IB
+        if existing is not None:
+            try:
+                if existing_key == runtime_key and existing.isConnected():
+                    with _SHARED_IB_LOCK:
+                        _LAST_READY_AT = _utcnow_iso()
+                        _LAST_ERROR = None
+                    _log_ibkr_event(
+                        "connection_reuse",
+                        {
+                            "host": runtime.get("host"),
+                            "port": int(runtime.get("port") or 0),
+                            "client_id": int(runtime.get("client_id") or 0),
+                        },
+                    )
+                    return existing
+                stale_ib = existing
+            except Exception:
+                stale_ib = existing
 
-            # Keep the transport isolated here and reuse one compatible IB session when possible.
-            if ib is not None:
-                try:
-                    if _SHARED_RUNTIME_KEY != runtime_key and ib.isConnected():
-                        ib.disconnect()
-                        ib = None
-                        _SHARED_IB = None
-                        _SHARED_RUNTIME_KEY = None
-                    elif ib.isConnected():
-                        self._mark_ready()
-                        return ib
-                except Exception:
-                    ib = None
+        if stale_ib is not None:
+            with _SHARED_IB_LOCK:
+                if _SHARED_IB is stale_ib:
                     _SHARED_IB = None
                     _SHARED_RUNTIME_KEY = None
-
-            ib = IB()
             try:
-                self._ensure_thread_event_loop()
-                ib.connect(
-                    runtime.get("host"),
-                    int(runtime.get("port") or 0),
-                    clientId=int(runtime.get("client_id") or 0),
-                    account=(runtime.get("account") or None),
-                    readonly=False,
-                    timeout=10,
-                )
-            except Exception as exc:
-                self._set_last_error(exc)
-                raise
+                if stale_ib.isConnected():
+                    stale_ib.disconnect()
+            except Exception:
+                pass
+
+        ib = IB()
+        try:
+            self._ensure_thread_event_loop()
+            try:
+                ib.RequestTimeout = _IBKR_REQUEST_TIMEOUT_SEC
+            except Exception:
+                pass
+            _log_ibkr_event(
+                "connection_acquire_start",
+                {
+                    "host": runtime.get("host"),
+                    "port": int(runtime.get("port") or 0),
+                    "client_id": int(runtime.get("client_id") or 0),
+                },
+            )
+            ib.connect(
+                runtime.get("host"),
+                int(runtime.get("port") or 0),
+                clientId=int(runtime.get("client_id") or 0),
+                account=(runtime.get("account") or None),
+                readonly=False,
+                timeout=_IBKR_CONNECT_TIMEOUT_SEC,
+            )
+            _log_ibkr_event(
+                "connection_acquire_end",
+                {
+                    "host": runtime.get("host"),
+                    "port": int(runtime.get("port") or 0),
+                    "connected": bool(ib.isConnected()),
+                },
+            )
+        except Exception as exc:
+            _log_ibkr_event(
+                "connection_acquire_failed",
+                {
+                    "host": runtime.get("host"),
+                    "port": int(runtime.get("port") or 0),
+                    "error": str(exc),
+                },
+            )
+            self._set_last_error(exc)
+            raise
+
+        with _SHARED_IB_LOCK:
+            existing = _SHARED_IB
+            existing_key = _SHARED_RUNTIME_KEY
+            try:
+                if existing is not None and existing_key == runtime_key and existing.isConnected():
+                    try:
+                        if ib.isConnected():
+                            ib.disconnect()
+                    except Exception:
+                        pass
+                    _LAST_READY_AT = _utcnow_iso()
+                    _LAST_ERROR = None
+                    return existing
+            except Exception:
+                pass
             _SHARED_IB = ib
             _SHARED_RUNTIME_KEY = runtime_key
-            self._mark_ready()
-            return ib
+        self._mark_ready()
+        return ib
 
     def _reset_shared_connection(self):
         global _SHARED_IB, _SHARED_RUNTIME_KEY
@@ -152,32 +269,32 @@ class IBKRAdapter(BrokerAdapter):
             ib = _SHARED_IB
             _SHARED_IB = None
             _SHARED_RUNTIME_KEY = None
-            if ib is None:
-                return
-            try:
-                if ib.isConnected():
-                    ib.disconnect()
-            except Exception:
-                pass
+        if ib is None:
+            return
+        try:
+            if ib.isConnected():
+                ib.disconnect()
+        except Exception:
+            pass
 
     def _connection_status(self):
-        global _SHARED_IB, _SHARED_RUNTIME_KEY, _LAST_ERROR, _LAST_READY_AT
-        with _SHARED_IB_LOCK:
+        snapshot = self._snapshot_shared_state()
+        connected = False
+        runtime_matches = False
+        try:
+            connected = bool(snapshot.get("ib") is not None and snapshot.get("ib").isConnected())
+            runtime_matches = bool(snapshot.get("runtime_key") == self._runtime_key())
+        except Exception:
             connected = False
             runtime_matches = False
-            try:
-                connected = bool(_SHARED_IB is not None and _SHARED_IB.isConnected())
-                runtime_matches = bool(_SHARED_RUNTIME_KEY == self._runtime_key())
-            except Exception:
-                connected = False
-                runtime_matches = False
-            return {
-                "connected": connected,
-                "runtime_matches": runtime_matches,
-                "usable": bool(connected and runtime_matches),
-                "last_error": _LAST_ERROR,
-                "last_ready_at": _LAST_READY_AT,
-            }
+        return {
+            "connected": connected,
+            "runtime_matches": runtime_matches,
+            "usable": bool(connected and runtime_matches),
+            "last_error": snapshot.get("last_error"),
+            "last_ready_at": snapshot.get("last_ready_at"),
+            "lock_acquired": bool(snapshot.get("lock_acquired")),
+        }
 
     def _log_health_failure(self, reason, error=None):
         detail = str(error or reason or "").strip() or "unknown"
@@ -194,10 +311,12 @@ class IBKRAdapter(BrokerAdapter):
         account = str(runtime.get("account") or "").strip()
         connected = False
         connection_reused = False
+        ib = None
         try:
             from ib_insync import IB
         except Exception as exc:
             import_error = str(exc)
+
         if not runtime.get("enabled"):
             reason = "ibkr_disabled"
         elif not options_enabled:
@@ -208,16 +327,18 @@ class IBKRAdapter(BrokerAdapter):
             try:
                 if connection.get("usable"):
                     connection_reused = True
-                    with _SHARED_IB_LOCK:
-                        ib = _SHARED_IB
+                    ib = self._snapshot_shared_state(timeout=_HEALTH_LOCK_TIMEOUT_SEC).get("ib")
                 else:
+                    if not connection.get("lock_acquired"):
+                        reason = "health_check_busy"
+                        raise RuntimeError(reason)
                     ib = self._get_connection(IB)
 
                 connected = bool(ib is not None and ib.isConnected())
-                managed_accounts = [str(item).strip() for item in (ib.managedAccounts() or []) if str(item).strip()] if connected else []
-                if not account and managed_accounts:
-                    account = managed_accounts[0]
                 if connected:
+                    managed_accounts = [str(item).strip() for item in (ib.managedAccounts() or []) if str(item).strip()]
+                    if not account and managed_accounts:
+                        account = managed_accounts[0]
                     self._mark_ready()
                     reason = ""
                 else:
@@ -229,6 +350,7 @@ class IBKRAdapter(BrokerAdapter):
                 connection = self._connection_status()
                 connected = False
                 reason = str(exc).strip() or "not_connected"
+
         if not reason and not connected and not connection.get("connected"):
             reason = "not_connected"
         connected = bool(connected or connection.get("connected"))
@@ -249,7 +371,17 @@ class IBKRAdapter(BrokerAdapter):
             "last_ready_at": connection.get("last_ready_at"),
         }
 
+
     def _build_single_contract(self, ib, Option, order, leg):
+        _log_ibkr_event(
+            "contract_qualify_start",
+            {
+                "underlying": str(order.get("underlying", "")).strip().upper(),
+                "expiry": str(leg.get("expiry", "")).strip(),
+                "strike": _safe_float(leg.get("strike")),
+                "right_code": str(leg.get("right_code", leg.get("right", ""))).strip().upper(),
+            },
+        )
         contract = Option(
             symbol=str(order.get("underlying", "")).strip().upper(),
             lastTradeDateOrContractMonth=str(leg.get("expiry", "")).strip(),
@@ -259,14 +391,34 @@ class IBKRAdapter(BrokerAdapter):
             currency=str(leg.get("currency") or self.runtime_config.get("currency") or "USD").strip(),
             multiplier="100",
         )
-        qualified = ib.qualifyContracts(contract)
+        qualified = _run_with_timeout(ib.qualifyContracts, _IBKR_QUALIFY_TIMEOUT_SEC, contract)
         qualified_contract = qualified[0] if qualified else contract
         if not getattr(qualified_contract, "conId", None):
+            _log_ibkr_event(
+                "contract_qualify_failed",
+                {
+                    "underlying": str(order.get("underlying", "")).strip().upper(),
+                    "expiry": str(leg.get("expiry", "")).strip(),
+                    "strike": _safe_float(leg.get("strike")),
+                    "right_code": str(leg.get("right_code", leg.get("right", ""))).strip().upper(),
+                    "reason": "missing_con_id",
+                },
+            )
             raise ContractQualificationError(
                 f"failed to qualify option contract for {str(order.get('underlying', '')).strip().upper()} "
                 f"{str(leg.get('expiry', '')).strip()} {_safe_float(leg.get('strike'))} "
                 f"{str(leg.get('right_code', leg.get('right', ''))).strip().upper()}"
             )
+        _log_ibkr_event(
+            "contract_qualify_end",
+            {
+                "underlying": str(order.get("underlying", "")).strip().upper(),
+                "expiry": str(leg.get("expiry", "")).strip(),
+                "strike": _safe_float(leg.get("strike")),
+                "right_code": str(leg.get("right_code", leg.get("right", ""))).strip().upper(),
+                "con_id": int(getattr(qualified_contract, "conId", 0) or 0),
+            },
+        )
         return qualified_contract
 
     def _build_combo_contract(self, ib, Bag, ComboLeg, Option, order):
@@ -322,9 +474,26 @@ class IBKRAdapter(BrokerAdapter):
         )
 
         try:
+            _log_ibkr_event(
+                "order_submit_start",
+                {
+                    "underlying": str(order.get("underlying", "")).strip().upper(),
+                    "strategy": str(order.get("strategy", "")).strip().lower(),
+                    "limit_price": limit_price,
+                    "legs": len(legs),
+                },
+            )
             trade = ib.placeOrder(contract, ib_order)
-            ib.sleep(1.5)
+            ib.sleep(_IBKR_POST_SUBMIT_WAIT_SEC)
         except Exception as exc:
+            _log_ibkr_event(
+                "order_submit_failed",
+                {
+                    "underlying": str(order.get("underlying", "")).strip().upper(),
+                    "strategy": str(order.get("strategy", "")).strip().lower(),
+                    "error": str(exc),
+                },
+            )
             if "connect" in str(exc or "").lower() or "socket" in str(exc or "").lower() or "disconnect" in str(exc or "").lower():
                 raise ConnectionRetryableError(str(exc))
             raise
@@ -351,6 +520,15 @@ class IBKRAdapter(BrokerAdapter):
             for leg in legs
         ]
         self._mark_ready()
+        _log_ibkr_event(
+            "order_submit_end",
+            {
+                "underlying": str(order.get("underlying", "")).strip().upper(),
+                "strategy": str(order.get("strategy", "")).strip().lower(),
+                "status": status,
+                "order_id": str(order_id) if order_id is not None else None,
+            },
+        )
         return broker_result(
             True,
             broker=self.name,
@@ -490,16 +668,15 @@ class IBKRAdapter(BrokerAdapter):
         connection_reused = False
         reconnect_attempted = False
         try:
-            with _SHARED_IB_LOCK:
-                connection_state = self._connection_status()
-                connection_reused = bool(connection_state.get("connected") and connection_state.get("runtime_matches"))
-                ib = self._get_connection(IB)
-                result = self._submit_order_once(ib, LimitOrder, Bag, ComboLeg, Option, order)
-                return {
-                    **result,
-                    "connection_reused": connection_reused,
-                    "reconnect_attempted": reconnect_attempted,
-                }
+            connection_state = self._connection_status()
+            connection_reused = bool(connection_state.get("connected") and connection_state.get("runtime_matches"))
+            ib = self._get_connection(IB)
+            result = self._submit_order_once(ib, LimitOrder, Bag, ComboLeg, Option, order)
+            return {
+                **result,
+                "connection_reused": connection_reused,
+                "reconnect_attempted": reconnect_attempted,
+            }
         except ContractQualificationError as exc:
             self._set_last_error(exc)
             return broker_result(
@@ -515,14 +692,13 @@ class IBKRAdapter(BrokerAdapter):
             # Retry scope stays intentionally narrow: reset the shared session, reconnect once, and fail closed.
             self._reset_shared_connection()
             try:
-                with _SHARED_IB_LOCK:
-                    ib = self._get_connection(IB)
-                    result = self._submit_order_once(ib, LimitOrder, Bag, ComboLeg, Option, order)
-                    return {
-                        **result,
-                        "connection_reused": connection_reused,
-                        "reconnect_attempted": reconnect_attempted,
-                    }
+                ib = self._get_connection(IB)
+                result = self._submit_order_once(ib, LimitOrder, Bag, ComboLeg, Option, order)
+                return {
+                    **result,
+                    "connection_reused": connection_reused,
+                    "reconnect_attempted": reconnect_attempted,
+                }
             except ContractQualificationError as retry_exc:
                 self._set_last_error(retry_exc)
                 return broker_result(

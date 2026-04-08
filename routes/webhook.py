@@ -64,6 +64,54 @@ def _normalize_webhook_product_id(*values):
     return ""
 
 
+def _webhook_core_assets():
+    snapshot, snapshot_error = _safe_snapshot()
+    if snapshot is None:
+        _log_webhook_event(
+            "core_assets_unavailable",
+            {"reason": snapshot_error or "snapshot_unavailable"},
+        )
+        return set()
+    config = snapshot.get("config") or {}
+    core_assets = config.get("core_assets") or {}
+    if isinstance(core_assets, dict):
+        values = core_assets.keys()
+    elif isinstance(core_assets, list):
+        values = core_assets
+    else:
+        values = []
+    return {
+        str(product_id or "").upper().strip()
+        for product_id in values
+        if str(product_id or "").strip()
+    }
+
+
+def _normalize_buy_signal_type(product_id, action, signal_type):
+    action = str(action or "").upper().strip()
+    current_signal = str(signal_type or "").upper().strip()
+    buy_aliases = {"", "ENTRY", "BUY", "ENTRY_LONG", "LONG", "BUY_SIGNAL"}
+
+    if action != "BUY" or current_signal not in buy_aliases:
+        return current_signal
+
+    # Backward-compatible safety layer for stale/manual TradingView BUY alerts.
+    normalized_signal = (
+        "CORE_BUY_WINDOW"
+        if str(product_id or "").upper().strip() in _webhook_core_assets()
+        else "SATELLITE_BUY"
+    )
+    _log_webhook_event(
+        "signal_normalized",
+        {
+            "original_signal_type": current_signal,
+            "normalized_signal_type": normalized_signal,
+            "product_id": str(product_id or "").upper().strip(),
+        },
+    )
+    return normalized_signal
+
+
 def _get_env_int(name, default):
     try:
         return int(str(os.getenv(name, str(default)) or str(default)).strip())
@@ -366,6 +414,8 @@ def webhook():
         },
     )
 
+    signal_type = _normalize_buy_signal_type(product_id, action, signal_type)
+
     if not product_id:
         return jsonify({"ok": False, "reason": "missing_product_id"}), 400
 
@@ -378,8 +428,16 @@ def webhook():
         "SATELLITE_BUY",
         "SATELLITE_BUY_HEAVY",
         "SNIPER_BUY",
-	"APPROVED_REBALANCE_BUY",
+        "APPROVED_REBALANCE_BUY",
     }:
+        _log_webhook_event(
+            "unsupported_signal",
+            {
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+            },
+        )
         return jsonify({"ok": False, "reason": f"unsupported_signal_type={signal_type}"}), 400
 
     if action == "TRIM" and not signal_type:

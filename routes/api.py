@@ -17,6 +17,7 @@ from execution import (
     get_valid_product_ids,
     get_valid_products,
 )
+from decision_trace import list_decision_traces
 from portfolio import (
     build_adaptive_suggestions,
     build_auto_adaptive_recommendation,
@@ -2148,6 +2149,23 @@ def api_config():
 def api_assets_config():
     try:
         return jsonify(_with_cache("assets_config", _build_asset_config_rows, ttl_sec=10, stale_sec=120))
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "items": []}), 500
+
+
+@api_bp.route("/api/decision_trace", methods=["GET"])
+@require_secret
+def api_decision_trace():
+    try:
+        limit = max(1, min(100, _safe_int(request.args.get("limit"), 20)))
+        product_id = str(request.args.get("product_id") or "").strip().upper()
+        result_category = str(request.args.get("result_category") or "").strip().lower()
+        items = list_decision_traces(limit=limit, product_id=product_id, result_category=result_category)
+        return jsonify({
+            "ok": True,
+            "items": items,
+            "count": len(items),
+        })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc), "items": []}), 500
 

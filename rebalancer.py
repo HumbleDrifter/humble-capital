@@ -9,6 +9,7 @@ from execution import (
     get_quote_attempts,
     get_base_attempts,
 )
+from decision_trace import infer_asset_state, record_decision_trace
 
 from positions import compute_sell_base, compute_full_liquid_base
 
@@ -28,6 +29,7 @@ from portfolio import (
     get_satellite_allocation_budget_usd,
     get_satellite_max_weight,
     get_satellite_volatility_info,
+    get_sniper_buy_eligibility_detail,
     is_satellite_buy_eligible,
 )
 
@@ -46,6 +48,39 @@ def _log_rebalancer_event(event, payload=None):
         "payload": payload if isinstance(payload, dict) else {},
     }
     print(json.dumps(envelope, sort_keys=True, ensure_ascii=False))
+
+
+def _record_buy_trace(snapshot, result_category, reason_code, summary, **payload):
+    record_decision_trace(
+        {
+            "product_id": payload.get("product_id"),
+            "action": "BUY",
+            "signal_type": payload.get("signal_type"),
+            "strategy": payload.get("strategy"),
+            "timeframe": payload.get("timeframe"),
+            "asset_state": infer_asset_state(snapshot, payload.get("product_id")),
+            "is_valid_product": True,
+            "result_category": result_category,
+            "reason_code": reason_code,
+            "summary": summary,
+            **payload,
+        }
+    )
+
+
+def _derive_buy_block_reason(decision_context, signal_type):
+    sniper_reason = str(decision_context.get("sniper_eligibility_reason") or "").strip()
+    if str(signal_type or "").upper().strip() == "SNIPER_BUY" and sniper_reason and sniper_reason != "sniper_eligible":
+        return sniper_reason
+    if float(decision_context.get("free_cash_after_reserve_usd", 0.0) or 0.0) <= 0:
+        return "no_free_cash_after_reserve"
+    if float(decision_context.get("satellite_budget_usd", 0.0) or 0.0) <= 0 and str(decision_context.get("asset_class") or "") == "satellite":
+        return "satellite_budget_exhausted"
+    if float(decision_context.get("requested_buy_usd", 0.0) or 0.0) > 0 and float(decision_context.get("requested_buy_usd", 0.0) or 0.0) < float(decision_context.get("trade_min_value_usd", 0.0) or 0.0):
+        return "trade_below_minimum"
+    if float(decision_context.get("drawdown", 0.0) or 0.0) >= float(decision_context.get("freeze_level", 1.0) or 1.0):
+        return "drawdown_freeze"
+    return "buy_not_allowed"
 
 
 def get_max_quote_size(snapshot=None):
@@ -116,7 +151,10 @@ def _satellite_buy_context(product_id, signal_type, snapshot):
     vol_info = get_satellite_volatility_info(product_id, snapshot) or {}
     adjusted_allowed_usd = max(0.0, raw_allowed_usd * float(vol_info.get("volatility_multiplier", 1.0) or 1.0))
     sniper_cfg = snapshot.get("config", {}).get("sniper_mode", {}) or {}
-    if str(signal_type or "").upper().strip() == "SNIPER_BUY" and is_satellite_buy_eligible(product_id, snapshot):
+    sniper_detail = None
+    if str(signal_type or "").upper().strip() == "SNIPER_BUY":
+        sniper_detail = get_sniper_buy_eligibility_detail(product_id, snapshot)
+    if str(signal_type or "").upper().strip() == "SNIPER_BUY" and bool(sniper_detail and sniper_detail.get("ok")):
         adjusted_allowed_usd *= float(sniper_cfg.get("buy_scale", 0.35) or 0.35)
 
     payload.update(
@@ -138,6 +176,12 @@ def _satellite_buy_context(product_id, signal_type, snapshot):
             "raw_allowed_usd": raw_allowed_usd,
             "adjusted_allowed_usd": adjusted_allowed_usd,
             "allowed_buy_usd": float(allowed_satellite_buy_usd(product_id, snapshot, signal_type=signal_type) or 0.0),
+            "sniper_eligibility_reason": str((sniper_detail or {}).get("reason", "") or ""),
+            "sniper_relaxed": bool((sniper_detail or {}).get("relax_require_sniper_eligible")),
+            "score": (sniper_detail or {}).get("score"),
+            "threshold": (sniper_detail or {}).get("min_score"),
+            "pump_protected": (sniper_detail or {}).get("pump_protected"),
+            "sniper_eligible": bool((sniper_detail or {}).get("ok")) if isinstance(sniper_detail, dict) else None,
         }
     )
     return payload
@@ -175,6 +219,17 @@ def execute_buy(product_id, buy_usd, signal_type="SATELLITE_BUY", external_order
     buy_usd = min(float(buy_usd), get_max_quote_size(snapshot))
 
     if buy_usd <= 0:
+        _record_buy_trace(
+            snapshot,
+            "blocked",
+            "buy_usd_zero",
+            f"{product_id} — Blocked — Quote size resolved to zero",
+            product_id=product_id,
+            signal_type=signal_type,
+            requested_buy_usd=buy_usd,
+            max_quote_per_trade_usd=get_max_quote_size(snapshot),
+            free_cash_after_reserve_usd=float(get_free_cash_after_reserve(snapshot) or 0.0),
+        )
         return {
             "ok": False,
             "product_id": product_id,
@@ -223,6 +278,33 @@ def execute_buy(product_id, buy_usd, signal_type="SATELLITE_BUY", external_order
             "error": str(final_result.get("error", "") or ""),
         },
     )
+    if bool((result or {}).get("filled")) and filled_base > 0 and avg_fill_price > 0:
+        _record_buy_trace(
+            snapshot,
+            "bought",
+            "filled",
+            f"{product_id} — Bought — Core buy filled" if str(signal_type or "").upper().strip() == "CORE_BUY_WINDOW" else f"{product_id} — Bought — Buy filled",
+            product_id=product_id,
+            signal_type=signal_type,
+            requested_buy_usd=buy_usd,
+            allowed_buy_usd=buy_usd,
+            max_quote_per_trade_usd=get_max_quote_size(snapshot),
+            free_cash_after_reserve_usd=float(get_free_cash_after_reserve(snapshot) or 0.0),
+        )
+    else:
+        failure_reason = str(final_result.get("error") or final_result.get("status") or "execution_failed").strip() or "execution_failed"
+        _record_buy_trace(
+            snapshot,
+            "execution_failed",
+            failure_reason,
+            f"{product_id} — Execution Failed — {failure_reason}",
+            product_id=product_id,
+            signal_type=signal_type,
+            requested_buy_usd=buy_usd,
+            allowed_buy_usd=buy_usd,
+            max_quote_per_trade_usd=get_max_quote_size(snapshot),
+            free_cash_after_reserve_usd=float(get_free_cash_after_reserve(snapshot) or 0.0),
+        )
 
     if filled_base > 0 and avg_fill_price > 0:
         record_buy_fill(
@@ -494,6 +576,17 @@ def dispatch_signal_action(
     try:
         snapshot = get_portfolio_snapshot()
     except Exception as e:
+        if str(action or "").upper().strip() == "BUY":
+            _record_buy_trace(
+                {},
+                "execution_failed",
+                "snapshot_failed",
+                f"{product_id} — Execution Failed — Portfolio snapshot unavailable",
+                product_id=product_id,
+                signal_type=signal_type,
+                strategy=strategy,
+                timeframe=timeframe,
+            )
         return {
             "ok": False,
             "reason": "snapshot_failed",
@@ -507,6 +600,17 @@ def dispatch_signal_action(
     trading_enabled = os.getenv("TRADING_ENABLED", "false").lower() == "true"
 
     if not trading_enabled:
+        if action == "BUY":
+            _record_buy_trace(
+                snapshot,
+                "blocked",
+                "trading_disabled",
+                f"{product_id} — Blocked — Trading is disabled",
+                product_id=product_id,
+                signal_type=signal_type,
+                strategy=strategy,
+                timeframe=timeframe,
+            )
         return {
             "ok": False,
             "reason": "trading_disabled",
@@ -517,6 +621,17 @@ def dispatch_signal_action(
         }
 
     if action not in {"BUY", "TRIM", "EXIT"}:
+        if str(action or "").upper().strip() == "BUY":
+            _record_buy_trace(
+                snapshot,
+                "invalid",
+                "unsupported_action",
+                f"{product_id} — Invalid — Unsupported action",
+                product_id=product_id,
+                signal_type=signal_type,
+                strategy=strategy,
+                timeframe=timeframe,
+            )
         return {
             "ok": False,
             "reason": "unsupported_action",
@@ -532,7 +647,7 @@ def dispatch_signal_action(
             "SATELLITE_BUY",
             "SATELLITE_BUY_HEAVY",
             "SNIPER_BUY",
-	    "APPROVED_REBALANCE_BUY",
+            "APPROVED_REBALANCE_BUY",
         }
 
         if signal_type in core_buy_signals:
@@ -572,6 +687,16 @@ def dispatch_signal_action(
             asset_class = "satellite"
 
         else:
+            _record_buy_trace(
+                snapshot,
+                "invalid",
+                "unsupported_signal_type",
+                f"{product_id} — Invalid — Unsupported buy signal type",
+                product_id=product_id,
+                signal_type=signal_type,
+                strategy=strategy,
+                timeframe=timeframe,
+            )
             return {
                 "ok": False,
                 "reason": "unsupported_signal_type",
@@ -583,13 +708,45 @@ def dispatch_signal_action(
         decision_context["requested_buy_usd"] = buy_usd
         _log_rebalancer_event("buy_decision", decision_context)
 
+        if str(signal_type or "").upper().strip() == "SNIPER_BUY" and str(decision_context.get("sniper_eligibility_reason") or "").strip() not in {"", "sniper_eligible"}:
+            _log_rebalancer_event(
+                "sniper_eligibility_blocked",
+                {
+                    "product_id": product_id,
+                    "signal_type": signal_type,
+                    "reason": str(decision_context.get("sniper_eligibility_reason") or "").strip() or "unknown",
+                    "sniper_relaxed": bool(decision_context.get("sniper_relaxed")),
+                },
+            )
+
         if buy_usd <= 0:
+            block_reason = _derive_buy_block_reason(decision_context, signal_type)
             _log_rebalancer_event(
                 "buy_blocked",
                 {
                     **decision_context,
-                    "reason": "buy_not_allowed",
+                    "reason": block_reason,
                 },
+            )
+            _record_buy_trace(
+                snapshot,
+                "blocked",
+                block_reason,
+                "",
+                product_id=product_id,
+                signal_type=signal_type,
+                strategy=strategy,
+                timeframe=timeframe,
+                allowed_buy_usd=decision_context.get("allowed_buy_usd"),
+                requested_buy_usd=decision_context.get("requested_buy_usd"),
+                max_quote_per_trade_usd=decision_context.get("max_quote_per_trade_usd"),
+                free_cash_after_reserve_usd=decision_context.get("free_cash_after_reserve_usd"),
+                tradability_reason=decision_context.get("sniper_eligibility_reason"),
+                sniper_eligible=decision_context.get("sniper_eligible"),
+                score=decision_context.get("score"),
+                threshold=decision_context.get("threshold"),
+                pump_protected=decision_context.get("pump_protected"),
+                market_regime=decision_context.get("market_regime") or decision_context.get("regime"),
             )
             return {
                 "ok": False,

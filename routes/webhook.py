@@ -6,7 +6,14 @@ from flask import Blueprint, request, jsonify
 from dotenv import load_dotenv
 
 from execution import product_id_exists
-from portfolio import get_active_satellite_buy_universe, get_portfolio_snapshot, is_satellite_buy_eligible, is_sniper_buy_eligible
+from decision_trace import infer_asset_state, record_decision_trace
+from portfolio import (
+    get_active_satellite_buy_universe,
+    get_portfolio_snapshot,
+    get_sniper_buy_eligibility_detail,
+    is_satellite_buy_eligible,
+    is_sniper_buy_eligible,
+)
 from rebalancer import dispatch_signal_action
 from notify import notify_execution_result
 
@@ -300,6 +307,20 @@ def _safe_snapshot():
     return snapshot, None
 
 
+def _trace_buy_decision(result_category, reason_code, summary, **payload):
+    action = str(payload.get("action") or "").strip().upper()
+    if action != "BUY":
+        return
+    record_decision_trace(
+        {
+            "result_category": result_category,
+            "reason_code": reason_code,
+            "summary": summary,
+            **payload,
+        }
+    )
+
+
 def _webhook_symbol_tradability(product_id, action, signal_type):
     if not product_id:
         return False, "missing_product_id", "No symbol was provided."
@@ -329,8 +350,13 @@ def _webhook_symbol_tradability(product_id, action, signal_type):
             return True, "core_buy_eligible", "Configured core asset is eligible for a core buy path."
 
         if signal_type == "SNIPER_BUY":
-            if not is_sniper_buy_eligible(product_id, snapshot):
-                return False, "not_sniper_eligible", "Symbol is not currently eligible for sniper buys."
+            sniper_detail = get_sniper_buy_eligibility_detail(product_id, snapshot)
+            if not sniper_detail.get("ok"):
+                _log_webhook_event("sniper_eligibility_blocked", sniper_detail)
+                return False, "not_sniper_eligible", (
+                    f"Symbol is not currently eligible for sniper buys: "
+                    f"{str(sniper_detail.get('reason') or 'unknown').strip()}."
+                )
             return True, "sniper_buy_eligible", "Symbol is currently eligible for sniper buys."
 
         if not is_satellite_buy_eligible(product_id, snapshot):
@@ -391,7 +417,8 @@ def webhook():
         data.get("ticker"),
     )
     action = _norm(data.get("action") or data.get("side")).upper()
-    signal_type = _norm(data.get("signal_type") or data.get("signal")).upper()
+    original_signal_type = _norm(data.get("signal_type") or data.get("signal")).upper()
+    signal_type = original_signal_type
     timeframe = _norm(data.get("timeframe"))
     strategy = _norm(data.get("strategy"))
     price = data.get("price")
@@ -417,6 +444,17 @@ def webhook():
     signal_type = _normalize_buy_signal_type(product_id, action, signal_type)
 
     if not product_id:
+        _trace_buy_decision(
+            "invalid",
+            "missing_product_id",
+            "Unknown symbol — Invalid — No product id was provided",
+            product_id=product_id,
+            action=action,
+            signal_type=original_signal_type,
+            normalized_signal_type=signal_type,
+            strategy=strategy,
+            timeframe=timeframe,
+        )
         return jsonify({"ok": False, "reason": "missing_product_id"}), 400
 
     if action not in {"BUY", "TRIM", "EXIT"}:
@@ -438,6 +476,17 @@ def webhook():
                 "signal_type": signal_type,
             },
         )
+        _trace_buy_decision(
+            "invalid",
+            "unsupported_signal_type",
+            f"{product_id} — Invalid — Unsupported buy signal type",
+            product_id=product_id,
+            action=action,
+            signal_type=original_signal_type,
+            normalized_signal_type=signal_type,
+            strategy=strategy,
+            timeframe=timeframe,
+        )
         return jsonify({"ok": False, "reason": f"unsupported_signal_type={signal_type}"}), 400
 
     if action == "TRIM" and not signal_type:
@@ -447,6 +496,17 @@ def webhook():
         signal_type = "EXIT"
 
     if _order_already_processed(order_id):
+        _trace_buy_decision(
+            "ignored",
+            "duplicate_order_id",
+            f"{product_id} — Ignored — Duplicate order id ignored",
+            product_id=product_id,
+            action=action,
+            signal_type=original_signal_type,
+            normalized_signal_type=signal_type,
+            strategy=strategy,
+            timeframe=timeframe,
+        )
         return jsonify({"ok": False, "reason": "duplicate_order_id"}), 200
 
     exists = product_id_exists(product_id)
@@ -459,6 +519,18 @@ def webhook():
     )
 
     if _is_duplicate(product_id, action, signal_type, timeframe):
+        _trace_buy_decision(
+            "ignored",
+            "duplicate_alert_window",
+            f"{product_id} — Ignored — Duplicate alert ignored",
+            product_id=product_id,
+            action=action,
+            signal_type=original_signal_type,
+            normalized_signal_type=signal_type,
+            strategy=strategy,
+            timeframe=timeframe,
+            is_valid_product=bool(exists),
+        )
         return jsonify({"ok": False, "reason": "duplicate_alert_window"}), 200
 
     tradable_ok, tradability_reason, tradability_detail = _webhook_symbol_tradability(
@@ -483,6 +555,27 @@ def webhook():
                 "tradability_reason": tradability_reason,
                 "detail": tradability_detail,
             },
+        )
+        snapshot, _ = _safe_snapshot()
+        sniper_detail = get_sniper_buy_eligibility_detail(product_id, snapshot) if signal_type == "SNIPER_BUY" and snapshot else {}
+        _trace_buy_decision(
+            "invalid" if tradability_reason in {"invalid_symbol", "missing_product_id"} else "blocked",
+            tradability_reason,
+            f"{product_id or 'Unknown'} — {'Invalid' if tradability_reason in {'invalid_symbol', 'missing_product_id'} else 'Blocked'} — {tradability_detail}",
+            product_id=product_id,
+            action=action,
+            signal_type=original_signal_type,
+            normalized_signal_type=signal_type,
+            strategy=strategy,
+            timeframe=timeframe,
+            asset_state=infer_asset_state(snapshot, product_id) if snapshot else "",
+            is_valid_product=bool(exists),
+            tradability_reason=tradability_reason,
+            sniper_eligible=bool((sniper_detail or {}).get("ok")) if isinstance(sniper_detail, dict) else None,
+            score=(sniper_detail or {}).get("score") if isinstance(sniper_detail, dict) else None,
+            threshold=(sniper_detail or {}).get("min_score") if isinstance(sniper_detail, dict) else None,
+            pump_protected=(sniper_detail or {}).get("pump_protected") if isinstance(sniper_detail, dict) else None,
+            market_regime=(sniper_detail or {}).get("regime") if isinstance(sniper_detail, dict) else None,
         )
         return jsonify(
             {
@@ -526,7 +619,7 @@ def webhook():
             price=price,
             order_id=order_id,
             trim_pct=trim_pct,
-	    quote_size=data.get("quote_size"),
+            quote_size=data.get("quote_size"),
         )
 
         result_wrapper = result.get("result") if isinstance(result, dict) else None
@@ -543,6 +636,20 @@ def webhook():
                 "wrapper_ok": (result_wrapper or {}).get("ok") if isinstance(result_wrapper, dict) else None,
             },
         )
+        if action == "BUY" and not bool((result or {}).get("ok")):
+            _trace_buy_decision(
+                "execution_failed" if str((result or {}).get("reason") or "").strip() not in {"buy_not_allowed"} else "blocked",
+                str((result or {}).get("reason") or "execution_failed").strip(),
+                f"{product_id} — {'Blocked' if str((result or {}).get('reason') or '').strip() == 'buy_not_allowed' else 'Execution Failed'} — {str((result or {}).get('reason') or (result or {}).get('error') or 'No successful fill').strip()}",
+                product_id=product_id,
+                action=action,
+                signal_type=original_signal_type,
+                normalized_signal_type=signal_type,
+                strategy=strategy,
+                timeframe=timeframe,
+                is_valid_product=bool(exists),
+                requested_buy_usd=(result or {}).get("requested_buy_usd"),
+            )
 
         if _result_has_successful_fill(result_wrapper):
             if action == "BUY":
@@ -572,6 +679,18 @@ def webhook():
         print(
             f"[webhook] dispatch_exception product_id={product_id} "
             f"action={action} signal_type={signal_type} error={exc}"
+        )
+        _trace_buy_decision(
+            "execution_failed",
+            "dispatch_exception",
+            f"{product_id} — Execution Failed — Dispatch exception",
+            product_id=product_id,
+            action=action,
+            signal_type=original_signal_type,
+            normalized_signal_type=signal_type,
+            strategy=strategy,
+            timeframe=timeframe,
+            error=str(exc),
         )
         return jsonify(
             {

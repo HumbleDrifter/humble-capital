@@ -1088,23 +1088,11 @@ function opportunityPreviewTone(score) {
 }
 
 function opportunityPreviewScore(row) {
-  const candidates = [
-    row?.display_score,
-    row?.net_score,
-    row?.gross_score,
-    row?.score
-  ];
-
-  for (const value of candidates) {
-    const numeric = numericOrNull(value);
-    if (numeric != null) return numeric;
-  }
-
-  return 0;
+  return Number(row?.display_score ?? row?.score ?? 0);
 }
 
 function opportunityPreviewStatus(row) {
-  const canonical = String(row?.display_status || "").trim();
+  const canonical = String(row?.display_status ?? row?.status ?? "").trim();
   if (canonical) return canonical;
   if (row.blocked || row.enabled === false) return "Paused";
   if (row.core) return "Core (Portfolio)";
@@ -1115,7 +1103,7 @@ function opportunityPreviewStatus(row) {
 }
 
 function opportunityPreviewGroup(row) {
-  const canonical = String(row?.display_group || "").trim().toLowerCase();
+  const canonical = String(row?.display_group ?? row?.group ?? "").trim().toLowerCase();
   if (canonical) return canonical;
   if (row.blocked || row.enabled === false) return "paused";
   if (row.held || row.allowed || row.active_buy_universe || row.core) return "active";
@@ -1134,7 +1122,7 @@ function renderOpportunitiesPreview(opportunityData, systemData) {
   const previewRows = candidates
     .filter((row) => opportunityPreviewGroup(row) === "active")
     .sort((a, b) => (
-      opportunityPreviewScore(b) - opportunityPreviewScore(a)
+      Number(b?.display_score ?? b?.score ?? 0) - Number(a?.display_score ?? a?.score ?? 0)
       || Number(b.gross_score || 0) - Number(a.gross_score || 0)
       || Number(b.score || 0) - Number(a.score || 0)
     ))

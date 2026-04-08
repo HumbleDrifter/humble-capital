@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from dotenv import load_dotenv
@@ -18,6 +19,16 @@ from portfolio import (
     allowed_core_buy_usd,
     required_trim_usd,
     get_profit_harvest_candidates,
+    get_min_cash_reserve_usd,
+    get_free_cash_after_reserve,
+    get_deployable_cash_buckets,
+    get_asset_value,
+    get_core_shortfall_usd,
+    core_is_underweight,
+    get_satellite_allocation_budget_usd,
+    get_satellite_max_weight,
+    get_satellite_volatility_info,
+    is_satellite_buy_eligible,
 )
 
 from storage import record_buy_fill, record_sell_fill, mark_harvest
@@ -25,6 +36,16 @@ from storage import record_buy_fill, record_sell_fill, mark_harvest
 load_dotenv("/root/tradingbot/.env", override=True)
 
 MAX_QUOTE_SIZE = float(os.getenv("MAX_QUOTE_PER_TRADE_USD", "25"))
+
+
+def _log_rebalancer_event(event, payload=None):
+    envelope = {
+        "ts": int(time.time()),
+        "component": "rebalancer",
+        "event": str(event or "").strip() or "unknown",
+        "payload": payload if isinstance(payload, dict) else {},
+    }
+    print(json.dumps(envelope, sort_keys=True, ensure_ascii=False))
 
 
 def get_max_quote_size(snapshot=None):
@@ -44,6 +65,82 @@ def _extract_fill(result_wrapper):
     filled_base = float(final_result.get("filled_base", 0.0) or 0.0)
     avg_fill_price = float(final_result.get("avg_fill_price", 0.0) or 0.0)
     return filled_base, avg_fill_price
+
+
+def _common_buy_context(product_id, signal_type, snapshot):
+    budgets = get_deployable_cash_buckets(snapshot)
+    return {
+        "product_id": product_id,
+        "signal_type": signal_type,
+        "total_value_usd": float(snapshot.get("total_value_usd", 0.0) or 0.0),
+        "usd_cash": float(snapshot.get("usd_cash", 0.0) or 0.0),
+        "min_cash_reserve_usd": float(get_min_cash_reserve_usd(snapshot) or 0.0),
+        "free_cash_after_reserve_usd": float(get_free_cash_after_reserve(snapshot) or 0.0),
+        "core_budget_usd": float(budgets.get("core_budget_usd", 0.0) or 0.0),
+        "satellite_budget_usd": float(budgets.get("satellite_budget_usd", 0.0) or 0.0),
+        "regime": str(budgets.get("regime", "") or ""),
+        "max_quote_per_trade_usd": float(get_max_quote_size(snapshot) or 0.0),
+        "trade_min_value_usd": float(snapshot.get("config", {}).get("trade_min_value_usd", 10.0) or 10.0),
+    }
+
+
+def _core_buy_context(product_id, signal_type, snapshot):
+    payload = _common_buy_context(product_id, signal_type, snapshot)
+    payload.update(
+        {
+            "asset_class": "core",
+            "current_value_usd": float(get_asset_value(snapshot, product_id) or 0.0),
+            "shortfall_usd": float(get_core_shortfall_usd(product_id, snapshot) or 0.0),
+            "underweight": bool(core_is_underweight(product_id, snapshot)),
+            "allowed_buy_usd": float(allowed_core_buy_usd(product_id, snapshot) or 0.0),
+        }
+    )
+    return payload
+
+
+def _satellite_buy_context(product_id, signal_type, snapshot):
+    payload = _common_buy_context(product_id, signal_type, snapshot)
+    summary = portfolio_summary(snapshot)
+    regime = str(summary.get("market_regime", payload.get("regime", "neutral")) or "neutral").lower()
+    total_value = float(snapshot.get("total_value_usd", 0.0) or 0.0)
+    current_satellite_value = float(snapshot.get("satellite_value_usd", 0.0) or 0.0)
+    current_asset_value = float(get_asset_value(snapshot, product_id) or 0.0)
+    regime_caps = snapshot.get("config", {}).get("regime_satellite_caps", {}) or {}
+    satellite_total_max = float(regime_caps.get(regime, snapshot.get("config", {}).get("satellite_total_max", 0.50)) or 0.50)
+    satellite_budget_usd = float(get_satellite_allocation_budget_usd(snapshot) or 0.0)
+    allowed_total_satellite_value = total_value * satellite_total_max
+    satellite_headroom_usd = max(0.0, allowed_total_satellite_value - current_satellite_value)
+    per_asset_max_value = total_value * float(get_satellite_max_weight(product_id, snapshot) or 0.0)
+    asset_headroom_usd = max(0.0, per_asset_max_value - current_asset_value)
+    raw_allowed_usd = max(0.0, min(satellite_budget_usd, satellite_headroom_usd, asset_headroom_usd))
+    vol_info = get_satellite_volatility_info(product_id, snapshot) or {}
+    adjusted_allowed_usd = max(0.0, raw_allowed_usd * float(vol_info.get("volatility_multiplier", 1.0) or 1.0))
+    sniper_cfg = snapshot.get("config", {}).get("sniper_mode", {}) or {}
+    if str(signal_type or "").upper().strip() == "SNIPER_BUY" and is_satellite_buy_eligible(product_id, snapshot):
+        adjusted_allowed_usd *= float(sniper_cfg.get("buy_scale", 0.35) or 0.35)
+
+    payload.update(
+        {
+            "asset_class": "satellite",
+            "eligible": bool(is_satellite_buy_eligible(product_id, snapshot)),
+            "market_regime": regime,
+            "drawdown": float(snapshot.get("portfolio_drawdown", 0.0) or 0.0),
+            "freeze_level": float(snapshot.get("config", {}).get("drawdown_controls", {}).get("freeze_level", 1.0) or 1.0),
+            "current_satellite_value_usd": current_satellite_value,
+            "current_asset_value_usd": current_asset_value,
+            "satellite_total_max": satellite_total_max,
+            "allowed_total_satellite_value_usd": allowed_total_satellite_value,
+            "satellite_headroom_usd": satellite_headroom_usd,
+            "per_asset_max_value_usd": per_asset_max_value,
+            "asset_headroom_usd": asset_headroom_usd,
+            "volatility_bucket": str(vol_info.get("bucket", "") or ""),
+            "volatility_multiplier": float(vol_info.get("volatility_multiplier", 1.0) or 1.0),
+            "raw_allowed_usd": raw_allowed_usd,
+            "adjusted_allowed_usd": adjusted_allowed_usd,
+            "allowed_buy_usd": float(allowed_satellite_buy_usd(product_id, snapshot, signal_type=signal_type) or 0.0),
+        }
+    )
+    return payload
 
 
 def execute_satellite_signal(product_id, signal_type="SATELLITE_BUY"):
@@ -86,6 +183,16 @@ def execute_buy(product_id, buy_usd, signal_type="SATELLITE_BUY", external_order
 
     asset = snapshot.get("positions", {}).get(product_id, {})
     volatility_bucket = str(asset.get("volatility_bucket", "") or "")
+    _log_rebalancer_event(
+        "execution_attempt_started",
+        {
+            "product_id": product_id,
+            "side": "BUY",
+            "signal_type": signal_type,
+            "requested_buy_usd": buy_usd,
+            "volatility_bucket": volatility_bucket,
+        },
+    )
 
     result = place_limit_quote_with_retries(
         product_id=product_id,
@@ -101,6 +208,21 @@ def execute_buy(product_id, buy_usd, signal_type="SATELLITE_BUY", external_order
 
     final_result = _extract_final_result(result)
     filled_base, avg_fill_price = _extract_fill(result)
+    _log_rebalancer_event(
+        "execution_result_returned",
+        {
+            "product_id": product_id,
+            "side": "BUY",
+            "signal_type": signal_type,
+            "requested_buy_usd": buy_usd,
+            "wrapper_ok": bool((result or {}).get("ok")),
+            "filled": bool((result or {}).get("filled")),
+            "filled_base": filled_base,
+            "avg_fill_price": avg_fill_price,
+            "status": str(final_result.get("status", "") or ""),
+            "error": str(final_result.get("error", "") or ""),
+        },
+    )
 
     if filled_base > 0 and avg_fill_price > 0:
         record_buy_fill(
@@ -113,11 +235,14 @@ def execute_buy(product_id, buy_usd, signal_type="SATELLITE_BUY", external_order
         )
 
     return {
-        "ok": True,
+        "ok": bool((result or {}).get("ok", False)),
         "product_id": product_id,
         "side": "BUY",
         "signal_type": signal_type,
         "requested_buy_usd": buy_usd,
+        "filled": bool((result or {}).get("filled")),
+        "status": str(final_result.get("status", "") or ""),
+        "error": str(final_result.get("error", "") or ""),
         "result": result,
     }
 
@@ -411,8 +536,9 @@ def dispatch_signal_action(
         }
 
         if signal_type in core_buy_signals:
+            decision_context = _core_buy_context(product_id, signal_type, snapshot)
             buy_usd = min(
-                allowed_core_buy_usd(product_id, snapshot),
+                float(decision_context.get("allowed_buy_usd", 0.0) or 0.0),
                 get_max_quote_size(snapshot),
             )
             asset_class = "core"
@@ -424,13 +550,22 @@ def dispatch_signal_action(
                 except Exception:
                     requested_quote_usd = 0.0
 
+                decision_context = _common_buy_context(product_id, signal_type, snapshot)
+                decision_context.update(
+                    {
+                        "asset_class": "satellite",
+                        "requested_quote_usd": requested_quote_usd,
+                        "allowed_buy_usd": requested_quote_usd,
+                    }
+                )
                 buy_usd = min(
                     requested_quote_usd,
                     get_max_quote_size(snapshot),
                 )
             else:
+                decision_context = _satellite_buy_context(product_id, signal_type, snapshot)
                 buy_usd = min(
-                    allowed_satellite_buy_usd(product_id, snapshot),
+                    float(decision_context.get("allowed_buy_usd", 0.0) or 0.0),
                     get_max_quote_size(snapshot),
                 )
 
@@ -445,7 +580,17 @@ def dispatch_signal_action(
                 "signal_type": signal_type,
             }
 
+        decision_context["requested_buy_usd"] = buy_usd
+        _log_rebalancer_event("buy_decision", decision_context)
+
         if buy_usd <= 0:
+            _log_rebalancer_event(
+                "buy_blocked",
+                {
+                    **decision_context,
+                    "reason": "buy_not_allowed",
+                },
+            )
             return {
                 "ok": False,
                 "reason": "buy_not_allowed",
@@ -455,6 +600,13 @@ def dispatch_signal_action(
                 "asset_class": asset_class,
             }
 
+        _log_rebalancer_event(
+            "buy_allowed",
+            {
+                **decision_context,
+                "asset_class": asset_class,
+            },
+        )
         return execute_buy(
             product_id=product_id,
             buy_usd=buy_usd,

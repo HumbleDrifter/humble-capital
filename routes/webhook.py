@@ -1,3 +1,4 @@
+import json
 import os
 import time
 import threading
@@ -23,6 +24,44 @@ ORDER_CACHE_SECONDS = 600
 
 def _norm(x):
     return str(x or "").strip()
+
+
+def _log_webhook_event(event, payload=None):
+    envelope = {
+        "ts": int(time.time()),
+        "component": "webhook",
+        "event": str(event or "").strip() or "unknown",
+        "payload": payload if isinstance(payload, dict) else {},
+    }
+    print(json.dumps(envelope, sort_keys=True, ensure_ascii=False))
+
+
+def _normalize_webhook_product_id(*values):
+    for value in values:
+        raw = _norm(value).upper()
+        if not raw:
+            continue
+
+        candidate = raw.split(":")[-1].strip()
+        candidate = candidate.replace("/", "-").replace("_", "-")
+
+        if product_id_exists(candidate):
+            return candidate
+
+        if candidate.endswith("USD") and "-" not in candidate and len(candidate) > 3:
+            dashed = f"{candidate[:-3]}-USD"
+            if product_id_exists(dashed):
+                return dashed
+            candidate = dashed
+
+        if "-" not in candidate:
+            usd_candidate = f"{candidate}-USD"
+            if product_id_exists(usd_candidate):
+                return usd_candidate
+
+        return candidate
+
+    return ""
 
 
 def _get_env_int(name, default):
@@ -272,6 +311,15 @@ def webhook():
     load_dotenv("/root/tradingbot/.env", override=True)
 
     data = request.get_json(silent=True) or {}
+    _log_webhook_event(
+        "received",
+        {
+            "remote_addr": request.headers.get("CF-Connecting-IP") or request.remote_addr,
+            "product_id_raw": _norm(data.get("product_id") or data.get("symbol") or data.get("ticker")),
+            "action_raw": _norm(data.get("action") or data.get("side")),
+            "signal_type_raw": _norm(data.get("signal_type") or data.get("signal")),
+        },
+    )
 
     secret = _norm(data.get("secret")).strip('"').strip("'")
     webhook_secrets = get_webhook_secrets()
@@ -287,10 +335,15 @@ def webhook():
         if age_sec is not None:
             payload["age_sec"] = age_sec
         return jsonify(payload), 400
+    _log_webhook_event("authenticated", {"age_sec": age_sec})
 
-    product_id = _norm(data.get("product_id")).upper()
-    action = _norm(data.get("action")).upper()
-    signal_type = _norm(data.get("signal_type")).upper()
+    product_id = _normalize_webhook_product_id(
+        data.get("product_id"),
+        data.get("symbol"),
+        data.get("ticker"),
+    )
+    action = _norm(data.get("action") or data.get("side")).upper()
+    signal_type = _norm(data.get("signal_type") or data.get("signal")).upper()
     timeframe = _norm(data.get("timeframe"))
     strategy = _norm(data.get("strategy"))
     price = data.get("price")
@@ -300,6 +353,18 @@ def webhook():
         trim_pct = float(data.get("trim_pct", 0.50) or 0.50)
     except Exception:
         trim_pct = 0.50
+
+    _log_webhook_event(
+        "parsed",
+        {
+            "product_id": product_id,
+            "action": action,
+            "signal_type": signal_type,
+            "timeframe": timeframe,
+            "strategy": strategy,
+            "order_id": order_id,
+        },
+    )
 
     if not product_id:
         return jsonify({"ok": False, "reason": "missing_product_id"}), 400
@@ -327,8 +392,13 @@ def webhook():
         return jsonify({"ok": False, "reason": "duplicate_order_id"}), 200
 
     exists = product_id_exists(product_id)
-    if not exists:
-        print(f"[webhook] product validation skipped runtime miss: {product_id}")
+    _log_webhook_event(
+        "product_validation",
+        {
+            "product_id": product_id,
+            "exists": bool(exists),
+        },
+    )
 
     if _is_duplicate(product_id, action, signal_type, timeframe):
         return jsonify({"ok": False, "reason": "duplicate_alert_window"}), 200
@@ -346,6 +416,16 @@ def webhook():
             reason=tradability_reason,
             detail=tradability_detail,
         )
+        _log_webhook_event(
+            "routing_blocked",
+            {
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+                "tradability_reason": tradability_reason,
+                "detail": tradability_detail,
+            },
+        )
         return jsonify(
             {
                 "ok": False,
@@ -359,7 +439,26 @@ def webhook():
             }
         ), 200
 
+    _log_webhook_event(
+        "routing_allowed",
+        {
+            "product_id": product_id,
+            "action": action,
+            "signal_type": signal_type,
+            "tradability_reason": tradability_reason,
+        },
+    )
+
     try:
+        _log_webhook_event(
+            "dispatch_start",
+            {
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+                "timeframe": timeframe,
+            },
+        )
         result = dispatch_signal_action(
             product_id=product_id,
             action=action,
@@ -373,6 +472,19 @@ def webhook():
         )
 
         result_wrapper = result.get("result") if isinstance(result, dict) else None
+        _log_webhook_event(
+            "dispatch_result",
+            {
+                "product_id": product_id,
+                "action": action,
+                "signal_type": signal_type,
+                "ok": bool((result or {}).get("ok")),
+                "reason": str((result or {}).get("reason") or "").strip(),
+                "requested_buy_usd": (result or {}).get("requested_buy_usd"),
+                "filled": bool((result_wrapper or {}).get("filled")),
+                "wrapper_ok": (result_wrapper or {}).get("ok") if isinstance(result_wrapper, dict) else None,
+            },
+        )
 
         if _result_has_successful_fill(result_wrapper):
             if action == "BUY":

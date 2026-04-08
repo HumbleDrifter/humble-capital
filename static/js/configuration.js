@@ -1326,19 +1326,19 @@ function getAssetMode(productId) {
     return { key: "core", badge: '<span class="badge accent2">core</span>' };
   }
   if (rowState === "disable") {
-    return { key: "disable", badge: '<span class="badge bad">disable</span>' };
+    return { key: "disable", badge: '<span class="badge bad">off</span>' };
   }
   if (rowState === "enable") {
-    return { key: "enable", badge: '<span class="badge good">enable</span>' };
+    return { key: "enable", badge: '<span class="badge good">on</span>' };
   }
   if (CORE_ASSETS.includes(productId)) {
     return { key: "core", badge: '<span class="badge accent2">core</span>' };
   }
   if (BLOCKED_SATELLITES.includes(productId)) {
-    return { key: "disable", badge: '<span class="badge bad">disable</span>' };
+    return { key: "disable", badge: '<span class="badge bad">off</span>' };
   }
   if (ALLOWED_SATELLITES.includes(productId)) {
-    return { key: "enable", badge: '<span class="badge good">enable</span>' };
+    return { key: "enable", badge: '<span class="badge good">on</span>' };
   }
   return { key: "auto", badge: '<span class="badge accent">auto</span>' };
 }
@@ -1376,7 +1376,7 @@ function buildActionButtons(row, modeKey) {
   const canAssignCore = Boolean(row.can_assign_core);
   const canEnable = Boolean(row.can_enable);
   const invalidReason = String(row.invalid_reason || "").trim();
-  const invalidMessage = invalidReason ? `<div class="tiny muted">Unavailable: ${escapeHtml(invalidReason)}</div>` : "";
+  const invalidMessage = invalidReason ? `<div class="tiny muted">Unavailable for Core/On: ${escapeHtml(invalidReason)}</div>` : "";
 
   if (modeKey === "core" && !canAssignCore) {
     return `<div class="muted">Managed as core</div>${invalidMessage}`;
@@ -1387,9 +1387,9 @@ function buildActionButtons(row, modeKey) {
   return `
     <div class="asset-mode-actions">
       <button class="btn ${modeKey === "core" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','core')" ${canAssignCore ? "" : "disabled"}>Core</button>
-      <button class="btn ${modeKey === "enable" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','enable')" ${canEnable ? "" : "disabled"}>Enable</button>
+      <button class="btn ${modeKey === "enable" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','enable')" ${canEnable ? "" : "disabled"}>On</button>
       <button class="btn ${modeKey === "auto" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','auto')">Auto</button>
-      <button class="btn ${modeKey === "disable" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','disable')">Disable</button>
+      <button class="btn ${modeKey === "disable" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','disable')">Off</button>
     </div>
     ${modeKey === "core" ? buildCoreControls(row) : ""}
     ${modeKey !== "core" ? invalidMessage : ""}
@@ -1653,9 +1653,9 @@ async function setAssetMode(productId, mode) {
       mode === "core"
         ? "promoted to core"
         : mode === "enable"
-          ? "enabled"
+          ? "turned on"
           : mode === "disable"
-            ? "disabled"
+            ? "turned off"
             : "returned to auto";
     setStatus(`${productId} ${stateLabel}`);
     if (result?.item?.product_id) {

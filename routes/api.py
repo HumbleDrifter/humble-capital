@@ -827,6 +827,37 @@ def _build_meme_rotation():
                 handle.write(json.dumps(log_payload, ensure_ascii=False) + "\n")
             _LAST_SHADOW_ROTATION_LOG_KEY = log_key
 
+    def _display_score(row):
+        for key in ("net_score", "gross_score", "score"):
+            value = row.get(key)
+            if value is None:
+                continue
+            try:
+                return float(value)
+            except Exception:
+                continue
+        return 0.0
+
+    def _display_status(row):
+        if row.get("blocked") or row.get("enabled") is False:
+            return "Paused"
+        if row.get("core"):
+            return "Core (Portfolio)"
+        if row.get("held"):
+            return "Live"
+        if row.get("allowed"):
+            return "Allowed"
+        if row.get("active_buy_universe"):
+            return "Ready"
+        return "Watching"
+
+    def _display_group(row):
+        if row.get("blocked") or row.get("enabled") is False:
+            return "paused"
+        if row.get("held") or row.get("allowed") or row.get("active_buy_universe") or row.get("core"):
+            return "active"
+        return "watching"
+
     for item in rotation.get("candidates", []):
         product_id = _normalize_product_id(item.get("product_id"))
         if not product_id:
@@ -988,6 +1019,26 @@ def _build_meme_rotation():
     except Exception as exc:
         _log_api(f"satellite decision engine enrichment skipped: {exc}")
 
+    canonical_ranked = sorted(
+        candidates,
+        key=lambda x: (
+            _display_score(x),
+            float(x.get("gross_score", 0.0) or 0.0),
+            float(x.get("score", 0.0) or 0.0),
+        ),
+        reverse=True,
+    )
+    rank_lookup = {
+        str(row.get("product_id") or "").strip(): index + 1
+        for index, row in enumerate(canonical_ranked)
+        if str(row.get("product_id") or "").strip()
+    }
+    for candidate in candidates:
+        candidate["display_score"] = round(_display_score(candidate), 2)
+        candidate["display_status"] = _display_status(candidate)
+        candidate["display_group"] = _display_group(candidate)
+        candidate["display_rank"] = rank_lookup.get(str(candidate.get("product_id") or "").strip())
+
     _append_shadow_rotation_log({
         "logged_at": int(_now()),
         "rotation_generated_at": _safe_int(rotation.get("generated_at")),
@@ -1039,6 +1090,8 @@ def _build_meme_rotation():
         "current_system_selections": current_system_selections,
         "satellite_decision_summary": satellite_decision_summary,
         "candidates": candidates,
+        "last_updated_ts": _safe_int(rotation.get("updated_at")) or _safe_int(rotation.get("generated_at")) or _safe_int(snapshot.get("timestamp")),
+        "ranking_source": "meme_rotation_shadow_v1",
         "freshness": _freshness_from_payload(snapshot),
     }
 

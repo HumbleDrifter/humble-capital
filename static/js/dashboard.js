@@ -1057,11 +1057,39 @@ function opportunityPreviewTone(score) {
   return "early";
 }
 
+function opportunityPreviewScore(row) {
+  const candidates = [
+    row?.display_score,
+    row?.net_score,
+    row?.gross_score,
+    row?.score
+  ];
+
+  for (const value of candidates) {
+    const numeric = numericOrNull(value);
+    if (numeric != null) return numeric;
+  }
+
+  return 0;
+}
+
 function opportunityPreviewStatus(row) {
+  const canonical = String(row?.display_status || "").trim();
+  if (canonical) return canonical;
   if (row.blocked || row.enabled === false) return "Paused";
-  if (row.held || row.core) return "Live";
-  if (row.allowed || row.active_buy_universe) return "Ready";
+  if (row.core) return "Core (Portfolio)";
+  if (row.held) return "Live";
+  if (row.allowed) return "Allowed";
+  if (row.active_buy_universe) return "Ready";
   return "Watching";
+}
+
+function opportunityPreviewGroup(row) {
+  const canonical = String(row?.display_group || "").trim().toLowerCase();
+  if (canonical) return canonical;
+  if (row.blocked || row.enabled === false) return "paused";
+  if (row.held || row.allowed || row.active_buy_universe || row.core) return "active";
+  return "watching";
 }
 
 function renderOpportunitiesPreview(opportunityData, systemData) {
@@ -1070,11 +1098,15 @@ function renderOpportunitiesPreview(opportunityData, systemData) {
   if (!host) return;
 
   const candidates = Array.isArray(opportunityData?.candidates) ? opportunityData.candidates.slice() : [];
-  const activeCount = candidates.filter((row) => row.held || row.allowed || row.active_buy_universe || row.core).length;
-  const watchingCount = candidates.filter((row) => !(row.blocked || row.enabled === false) && !(row.held || row.allowed || row.active_buy_universe || row.core)).length;
+  const activeRows = candidates.filter((row) => opportunityPreviewGroup(row) === "active");
+  const watchingCount = candidates.filter((row) => opportunityPreviewGroup(row) === "watching").length;
   const previewRows = candidates
-    .filter((row) => !(row.blocked || row.enabled === false))
-    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
+    .filter((row) => opportunityPreviewGroup(row) === "active")
+    .sort((a, b) => (
+      opportunityPreviewScore(b) - opportunityPreviewScore(a)
+      || Number(b.gross_score || 0) - Number(a.gross_score || 0)
+      || Number(b.score || 0) - Number(a.score || 0)
+    ))
     .slice(0, 6);
 
   const scannerKnown = typeof systemData?.admin_state?.meme_rotation_enabled === "boolean";
@@ -1083,14 +1115,16 @@ function renderOpportunitiesPreview(opportunityData, systemData) {
     : systemData.admin_state.meme_rotation_enabled
       ? "scanner live"
       : "scanner paused";
+  const updatedLabel = opportunityData?.last_updated_ts ? formatUnixTime(opportunityData.last_updated_ts) : "update pending";
+  const sourceLabel = String(opportunityData?.ranking_source || "canonical feed").trim();
 
   if (meta) {
-    meta.textContent = `${activeCount} active • ${watchingCount} watching • ${scannerText}`;
+    meta.textContent = `${activeRows.length} active • ${watchingCount} watching • ${scannerText} • ${sourceLabel} • updated ${updatedLabel}`;
   }
 
   host.innerHTML = previewRows.length
     ? previewRows.map((row) => `
-      <article class="dashboard-opportunity-card ${opportunityPreviewTone(row.score)}">
+      <article class="dashboard-opportunity-card ${opportunityPreviewTone(opportunityPreviewScore(row))}">
         <div class="dashboard-opportunity-card-head">
           <div>
             <div class="dashboard-opportunity-symbol">${escapeHtml(row.product_id || row.symbol || "—")}</div>
@@ -1099,7 +1133,7 @@ function renderOpportunitiesPreview(opportunityData, systemData) {
               <span class="tiny">${escapeHtml(row.source || row.strategy || "Scanner")}</span>
             </div>
           </div>
-          <div class="dashboard-opportunity-score">${Number(row.score || 0).toFixed(1)}</div>
+          <div class="dashboard-opportunity-score">${opportunityPreviewScore(row).toFixed(1)}</div>
         </div>
         <div class="dashboard-opportunity-metrics">
           <div class="dashboard-opportunity-metric">

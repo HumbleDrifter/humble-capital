@@ -135,6 +135,8 @@ function resolveUniverseCount(data) {
 }
 
 function resolveOpportunityScore(row) {
+  const canonical = numericOrNull(row?.display_score);
+  if (canonical != null) return canonical;
   const candidates = [
     row?.net_score,
     row?.gross_score,
@@ -406,6 +408,8 @@ function signalLabel(row) {
 }
 
 function statusText(row) {
+  const canonical = String(row?.display_status || "").trim();
+  if (canonical) return canonical;
   if (row.blocked || row.enabled === false) return "Paused";
   if (row.core) return "Core (Portfolio)";
   if (row.held) return "Live";
@@ -429,6 +433,8 @@ function normalizeStateBadges(row) {
 }
 
 function groupForCandidate(row) {
+  const canonical = String(row?.display_group || "").trim().toLowerCase();
+  if (canonical) return canonical;
   if (row.blocked || row.enabled === false) return "paused";
   if (row.held || row.allowed || row.active_buy_universe || row.core) return "active";
   return "watching";

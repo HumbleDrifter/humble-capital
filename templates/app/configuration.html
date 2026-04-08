@@ -168,6 +168,33 @@
         <input id="trade_min_value_usd" type="number" step="0.01" min="0">
         <div class="field-help">Ignore proposed trades below this size.</div>
       </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="max_quote_per_trade_usd">
+        <div class="configuration-card-kicker">Trade Sizing</div>
+        <label for="max_quote_per_trade_usd">Max Buy Per Trade (USD)</label>
+        <input id="max_quote_per_trade_usd" type="number" step="0.01" min="0" max="1000000">
+        <div class="field-help">Caps the quote size for a single order attempt.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="core_buy_fraction_of_shortfall">
+        <div class="configuration-card-kicker">Core Rebalance Pace</div>
+        <label for="core_buy_fraction_of_shortfall">Core Buy Fraction of Shortfall</label>
+        <div class="input-unit-wrap">
+          <input id="core_buy_fraction_of_shortfall" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
+        <div class="field-help">Controls how much of a core shortfall the bot closes on each buy cycle.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="sniper_buy_scale">
+        <div class="configuration-card-kicker">Sniper Allocation</div>
+        <label for="sniper_buy_scale">Sniper Buy Scale</label>
+        <div class="input-unit-wrap">
+          <input id="sniper_buy_scale" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
+        <div class="field-help">Scales allowed quote size for SNIPER_BUY entries.</div>
+      </div>
     </div>
 
     <div class="divider"></div>
@@ -531,6 +558,102 @@
 
         <div class="configuration-action-row">
           <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Advanced Controls</button>
+        </div>
+      </details>
+
+      <details class="advanced-config-group" id="config-section-risk-controls" data-config-section="risk-controls">
+        <summary>
+          <div>
+            <strong>Risk and Threshold Controls</strong>
+            <span>Drawdown posture, harvest thresholds, sniper scoring, and rotation screening.</span>
+          </div>
+        </summary>
+
+        <div class="risk-form-grid configuration-advanced-grid">
+          <div class="form-card" data-focus-target="drawdown_warn_level">
+            <label for="drawdown_warn_level">Drawdown Warn Level</label>
+            <div class="input-unit-wrap">
+              <input id="drawdown_warn_level" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+              <span class="input-unit-suffix" aria-hidden="true">%</span>
+            </div>
+          </div>
+
+          <div class="form-card" data-focus-target="drawdown_reduce_level">
+            <label for="drawdown_reduce_level">Drawdown Reduce Level</label>
+            <div class="input-unit-wrap">
+              <input id="drawdown_reduce_level" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+              <span class="input-unit-suffix" aria-hidden="true">%</span>
+            </div>
+          </div>
+
+          <div class="form-card" data-focus-target="drawdown_freeze_level">
+            <label for="drawdown_freeze_level">Drawdown Freeze Level</label>
+            <div class="input-unit-wrap">
+              <input id="drawdown_freeze_level" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+              <span class="input-unit-suffix" aria-hidden="true">%</span>
+            </div>
+          </div>
+
+          <div class="form-card" data-focus-target="min_harvest_usd">
+            <label for="min_harvest_usd">Profit Harvest Minimum (USD)</label>
+            <input id="min_harvest_usd" type="number" step="0.01" min="0" max="1000000">
+          </div>
+
+          <div class="form-card" data-focus-target="sniper_min_score">
+            <label for="sniper_min_score">Sniper Minimum Score</label>
+            <input id="sniper_min_score" type="number" step="0.1" min="0" max="100">
+          </div>
+
+          <div class="form-card">
+            <label for="sniper_block_pump_protected">Pump Protection</label>
+            <select id="sniper_block_pump_protected">
+              <option value="true">Block pump-protected buys</option>
+              <option value="false">Allow despite pump protection</option>
+            </select>
+          </div>
+
+          <div class="form-card" data-focus-target="min_meme_score">
+            <label for="min_meme_score">Rotation Minimum Score</label>
+            <input id="min_meme_score" type="number" step="0.1" min="0" max="100">
+          </div>
+
+          <div class="form-card" data-focus-target="rotation_cooldown_minutes">
+            <label for="rotation_cooldown_minutes">Rotation Cooldown (Minutes)</label>
+            <input id="rotation_cooldown_minutes" type="number" step="1" min="0" max="10080">
+          </div>
+        </div>
+
+        <div class="configuration-action-row">
+          <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Risk Thresholds</button>
+        </div>
+      </details>
+
+      <details class="advanced-config-group" id="config-section-runtime-controls" data-config-section="runtime-controls">
+        <summary>
+          <div>
+            <strong>Runtime-Only Visibility</strong>
+            <span>Current env-backed duplicate and alert-age settings are shown here for operator visibility.</span>
+          </div>
+        </summary>
+
+        <div class="risk-form-grid configuration-advanced-grid">
+          <div class="form-card">
+            <label for="duplicate_window_sec">Duplicate Window (sec)</label>
+            <input id="duplicate_window_sec" type="number" step="1" disabled>
+            <div class="field-help">Env-backed runtime value. Update deploy config if this needs to change.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="max_alert_age_sec">Max Alert Age (sec)</label>
+            <input id="max_alert_age_sec" type="number" step="1" disabled>
+            <div class="field-help">Env-backed runtime value. Update deploy config if this needs to change.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="profit_harvest_cooldown_hours">Harvest Cooldown (hours)</label>
+            <input id="profit_harvest_cooldown_hours" type="number" step="1" disabled>
+            <div class="field-help">Shown for visibility. Profit harvest minimum remains editable above.</div>
+          </div>
         </div>
       </details>
 

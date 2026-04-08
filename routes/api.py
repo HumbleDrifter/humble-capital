@@ -582,9 +582,53 @@ def _build_heatmap():
 
 def _build_config():
     cfg = load_asset_config() or {}
+    drawdown = cfg.get("drawdown_controls") or {}
+    sniper = cfg.get("sniper_mode") or {}
+    harvest = cfg.get("profit_harvest") or {}
+    rotation = cfg.get("meme_rotation") or {}
+    cfg = dict(cfg)
+    cfg["drawdown_warn_level"] = drawdown.get("warn_level")
+    cfg["drawdown_reduce_level"] = drawdown.get("reduce_level")
+    cfg["drawdown_freeze_level"] = drawdown.get("freeze_level")
+    cfg["sniper_buy_scale"] = sniper.get("buy_scale")
+    cfg["sniper_min_score"] = sniper.get("min_score")
+    cfg["sniper_block_pump_protected"] = bool(sniper.get("block_pump_protected", True))
+    cfg["min_harvest_usd"] = harvest.get("min_harvest_usd")
+    cfg["max_active_satellites"] = rotation.get("max_active", cfg.get("max_active_satellites"))
+    cfg["min_meme_score"] = rotation.get("min_score", cfg.get("min_meme_score"))
     return {
         "ok": True,
         "config": cfg,
+        "runtime_settings": {
+            "duplicate_window_sec": _safe_int(os.getenv("DUPLICATE_WINDOW_SEC", 60), 60),
+            "max_alert_age_sec": _safe_int(os.getenv("MAX_ALERT_AGE_SEC", 120), 120),
+            "profit_harvest_cooldown_hours": _safe_int((harvest or {}).get("cooldown_hours", 24), 24),
+        },
+        "meta": {
+            "immediately_active_fields": [
+                "max_quote_per_trade_usd",
+                "trade_min_value_usd",
+                "min_cash_reserve",
+                "core_buy_fraction_of_shortfall",
+                "satellite_total_max",
+                "satellite_total_target",
+                "drawdown_warn_level",
+                "drawdown_reduce_level",
+                "drawdown_freeze_level",
+                "min_harvest_usd",
+                "sniper_buy_scale",
+                "sniper_min_score",
+                "sniper_block_pump_protected",
+                "max_active_satellites",
+                "min_meme_score",
+                "max_new_satellites_per_cycle",
+            ],
+            "runtime_only_fields": [
+                "duplicate_window_sec",
+                "max_alert_age_sec",
+                "profit_harvest_cooldown_hours",
+            ],
+        },
     }
 
 
@@ -2500,29 +2544,148 @@ def api_admin_asset():
             changed = True
 
         elif action == "set_risk":
+            errors = []
+
+            def _optional_float(name, low=None, high=None):
+                raw = payload.get(name)
+                if raw in (None, ""):
+                    return None
+                try:
+                    value = float(raw)
+                except Exception:
+                    errors.append(f"{name} must be numeric")
+                    return None
+                if low is not None and value < low:
+                    errors.append(f"{name} must be >= {low}")
+                if high is not None and value > high:
+                    errors.append(f"{name} must be <= {high}")
+                return value
+
+            def _optional_int(name, low=None, high=None):
+                raw = payload.get(name)
+                if raw in (None, ""):
+                    return None
+                try:
+                    value = int(float(raw))
+                except Exception:
+                    errors.append(f"{name} must be an integer")
+                    return None
+                if low is not None and value < low:
+                    errors.append(f"{name} must be >= {low}")
+                if high is not None and value > high:
+                    errors.append(f"{name} must be <= {high}")
+                return value
+
+            def _optional_bool(name):
+                raw = payload.get(name)
+                if raw in (None, ""):
+                    return None
+                if isinstance(raw, bool):
+                    return raw
+                normalized = str(raw).strip().lower()
+                if normalized in {"1", "true", "yes", "on"}:
+                    return True
+                if normalized in {"0", "false", "no", "off"}:
+                    return False
+                errors.append(f"{name} must be true/false")
+                return None
+
+            satellite_total_max = _optional_float("satellite_total_max", 0.0, 1.0)
+            satellite_total_target = _optional_float("satellite_total_target", 0.0, 1.0)
+            min_cash_reserve = _optional_float("min_cash_reserve", 0.0, 1.0)
+            max_quote_per_trade_usd = _optional_float("max_quote_per_trade_usd", 0.0, 1000000.0)
+            trade_min_value_usd = _optional_float("trade_min_value_usd", 0.0, 1000000.0)
+            core_buy_fraction_of_shortfall = _optional_float("core_buy_fraction_of_shortfall", 0.0, 1.0)
+            max_active_satellites = _optional_int("max_active_satellites", 0, 100)
+            max_new_satellites_per_cycle = _optional_int("max_new_satellites_per_cycle", 0, 100)
+            rotation_cooldown_minutes = _optional_int("rotation_cooldown_minutes", 0, 10080)
+            min_meme_score = _optional_float("min_meme_score", 0.0, 100.0)
+            drawdown_warn_level = _optional_float("drawdown_warn_level", 0.0, 1.0)
+            drawdown_reduce_level = _optional_float("drawdown_reduce_level", 0.0, 1.0)
+            drawdown_freeze_level = _optional_float("drawdown_freeze_level", 0.0, 1.0)
+            min_harvest_usd = _optional_float("min_harvest_usd", 0.0, 1000000.0)
+            sniper_buy_scale = _optional_float("sniper_buy_scale", 0.0, 1.0)
+            sniper_min_score = _optional_float("sniper_min_score", 0.0, 100.0)
+            sniper_block_pump_protected = _optional_bool("sniper_block_pump_protected")
+
+            next_drawdown = dict(config.get("drawdown_controls") or {})
+            if drawdown_warn_level is not None:
+                next_drawdown["warn_level"] = drawdown_warn_level
+            if drawdown_reduce_level is not None:
+                next_drawdown["reduce_level"] = drawdown_reduce_level
+            if drawdown_freeze_level is not None:
+                next_drawdown["freeze_level"] = drawdown_freeze_level
+            warn_level = _safe_float(next_drawdown.get("warn_level"), 0.10)
+            reduce_level = _safe_float(next_drawdown.get("reduce_level"), 0.15)
+            freeze_level = _safe_float(next_drawdown.get("freeze_level"), 0.20)
+            if not (warn_level < reduce_level < freeze_level):
+                errors.append("drawdown levels must satisfy warn < reduce < freeze")
+            effective_satellite_total_max = satellite_total_max if satellite_total_max is not None else _safe_float(config.get("satellite_total_max"), 0.50)
+            effective_satellite_total_target = satellite_total_target if satellite_total_target is not None else _safe_float(config.get("satellite_total_target"), 0.50)
+            if effective_satellite_total_target > effective_satellite_total_max:
+                errors.append("satellite_total_target must be <= satellite_total_max")
+
+            if errors:
+                return jsonify({"ok": False, "error": "validation_failed", "errors": errors}), 400
+
             if payload.get("satellite_total_max") not in (None, ""):
-                config["satellite_total_max"] = float(payload.get("satellite_total_max"))
+                config["satellite_total_max"] = satellite_total_max
 
             if payload.get("satellite_total_target") not in (None, ""):
-                config["satellite_total_target"] = float(payload.get("satellite_total_target"))
+                config["satellite_total_target"] = satellite_total_target
 
             if payload.get("min_cash_reserve") not in (None, ""):
-                config["min_cash_reserve"] = float(payload.get("min_cash_reserve"))
+                config["min_cash_reserve"] = min_cash_reserve
 
             if payload.get("trade_min_value_usd") not in (None, ""):
-                config["trade_min_value_usd"] = float(payload.get("trade_min_value_usd"))
+                config["trade_min_value_usd"] = trade_min_value_usd
 
             if payload.get("max_quote_per_trade_usd") not in (None, ""):
-                config["max_quote_per_trade_usd"] = float(payload.get("max_quote_per_trade_usd"))
+                config["max_quote_per_trade_usd"] = max_quote_per_trade_usd
+
+            if payload.get("core_buy_fraction_of_shortfall") not in (None, ""):
+                config["core_buy_fraction_of_shortfall"] = core_buy_fraction_of_shortfall
 
             if payload.get("max_active_satellites") not in (None, ""):
-                config["max_active_satellites"] = int(float(payload.get("max_active_satellites")))
+                config["max_active_satellites"] = max_active_satellites
+                config.setdefault("meme_rotation", {})
+                config["meme_rotation"]["max_active"] = max_active_satellites
+
+            if payload.get("max_new_satellites_per_cycle") not in (None, ""):
+                config["max_new_satellites_per_cycle"] = max_new_satellites_per_cycle
 
             if payload.get("rotation_cooldown_minutes") not in (None, ""):
-                config["rotation_cooldown_minutes"] = int(float(payload.get("rotation_cooldown_minutes")))
+                config["rotation_cooldown_minutes"] = rotation_cooldown_minutes
 
             if payload.get("min_meme_score") not in (None, ""):
-                config["min_meme_score"] = float(payload.get("min_meme_score"))
+                config["min_meme_score"] = min_meme_score
+                config.setdefault("meme_rotation", {})
+                config["meme_rotation"]["min_score"] = min_meme_score
+
+            if any(value is not None for value in [drawdown_warn_level, drawdown_reduce_level, drawdown_freeze_level]):
+                config.setdefault("drawdown_controls", {})
+                if drawdown_warn_level is not None:
+                    config["drawdown_controls"]["warn_level"] = drawdown_warn_level
+                if drawdown_reduce_level is not None:
+                    config["drawdown_controls"]["reduce_level"] = drawdown_reduce_level
+                if drawdown_freeze_level is not None:
+                    config["drawdown_controls"]["freeze_level"] = drawdown_freeze_level
+
+            if payload.get("min_harvest_usd") not in (None, ""):
+                config.setdefault("profit_harvest", {})
+                config["profit_harvest"]["min_harvest_usd"] = min_harvest_usd
+
+            if payload.get("sniper_buy_scale") not in (None, ""):
+                config.setdefault("sniper_mode", {})
+                config["sniper_mode"]["buy_scale"] = sniper_buy_scale
+
+            if payload.get("sniper_min_score") not in (None, ""):
+                config.setdefault("sniper_mode", {})
+                config["sniper_mode"]["min_score"] = sniper_min_score
+
+            if payload.get("sniper_block_pump_protected") not in (None, ""):
+                config.setdefault("sniper_mode", {})
+                config["sniper_mode"]["block_pump_protected"] = bool(sniper_block_pump_protected)
 
             generation_mode = _normalized_choice(
                 payload.get("config_proposal_generation_mode"),

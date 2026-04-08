@@ -186,9 +186,20 @@ function snapshotCurrentConfigForm() {
     satellite_total_target: normalizePercentInput("satellite_total_target"),
     satellite_total_max: normalizePercentInput("satellite_total_max"),
     min_cash_reserve: normalizePercentInput("min_cash_reserve"),
+    max_quote_per_trade_usd: document.getElementById("max_quote_per_trade_usd")?.value || "",
     trade_min_value_usd: document.getElementById("trade_min_value_usd")?.value || "",
+    core_buy_fraction_of_shortfall: normalizePercentInput("core_buy_fraction_of_shortfall"),
+    drawdown_warn_level: normalizePercentInput("drawdown_warn_level"),
+    drawdown_reduce_level: normalizePercentInput("drawdown_reduce_level"),
+    drawdown_freeze_level: normalizePercentInput("drawdown_freeze_level"),
+    min_harvest_usd: document.getElementById("min_harvest_usd")?.value || "",
+    sniper_buy_scale: normalizePercentInput("sniper_buy_scale"),
+    sniper_min_score: document.getElementById("sniper_min_score")?.value || "",
+    sniper_block_pump_protected: document.getElementById("sniper_block_pump_protected")?.value || "",
     max_active_satellites: document.getElementById("max_active_satellites")?.value || "",
     max_new_satellites_per_cycle: document.getElementById("max_new_satellites_per_cycle")?.value || "",
+    rotation_cooldown_minutes: document.getElementById("rotation_cooldown_minutes")?.value || "",
+    min_meme_score: document.getElementById("min_meme_score")?.value || "",
     config_proposal_generation_mode: generationMode,
     config_proposal_apply_mode: applyMode,
     config_proposal_min_confidence: minConfidence
@@ -217,9 +228,19 @@ function summarizeConfigChanges(previousConfig, nextConfig) {
     ["satellite_total_target", "Satellite target", "percent"],
     ["satellite_total_max", "Satellite max", "percent"],
     ["min_cash_reserve", "Reserve", "percent"],
+    ["max_quote_per_trade_usd", "Max quote per trade", "usd"],
     ["trade_min_value_usd", "Trade floor", "usd"],
+    ["core_buy_fraction_of_shortfall", "Core buy fraction", "percent"],
+    ["drawdown_warn_level", "Drawdown warn", "percent"],
+    ["drawdown_reduce_level", "Drawdown reduce", "percent"],
+    ["drawdown_freeze_level", "Drawdown freeze", "percent"],
+    ["min_harvest_usd", "Harvest minimum", "usd"],
+    ["sniper_buy_scale", "Sniper buy scale", "percent"],
+    ["sniper_min_score", "Sniper minimum score", "number"],
     ["max_active_satellites", "Active satellites", "integer"],
     ["max_new_satellites_per_cycle", "New satellites per cycle", "integer"],
+    ["rotation_cooldown_minutes", "Rotation cooldown", "integer"],
+    ["min_meme_score", "Rotation minimum score", "number"],
     ["config_proposal_generation_mode", "Recommendation drafting", "mode"],
     ["config_proposal_apply_mode", "After approval", "mode"],
     ["config_proposal_min_confidence", "Minimum confidence", "mode"]
@@ -1144,7 +1165,25 @@ function renderRiskConfig(cfg) {
   setInputValue("satellite_total_max", cfg.satellite_total_max, true);
   setInputValue("satellite_total_target", cfg.satellite_total_target, true);
   setInputValue("min_cash_reserve", cfg.min_cash_reserve, true);
+  setInputValue("max_quote_per_trade_usd", cfg.max_quote_per_trade_usd, false);
   setInputValue("trade_min_value_usd", cfg.trade_min_value_usd, false);
+  setInputValue("core_buy_fraction_of_shortfall", cfg.core_buy_fraction_of_shortfall, true);
+  setInputValue("drawdown_warn_level", cfg.drawdown_warn_level, true);
+  setInputValue("drawdown_reduce_level", cfg.drawdown_reduce_level, true);
+  setInputValue("drawdown_freeze_level", cfg.drawdown_freeze_level, true);
+  setInputValue("min_harvest_usd", cfg.min_harvest_usd, false);
+  setInputValue("sniper_buy_scale", cfg.sniper_buy_scale, true);
+  setInputValue("sniper_min_score", cfg.sniper_min_score, false);
+  setInputValue("rotation_cooldown_minutes", cfg.rotation_cooldown_minutes, false);
+  setInputValue("min_meme_score", cfg.min_meme_score, false);
+  const sniperPumpProtection = document.getElementById("sniper_block_pump_protected");
+  if (sniperPumpProtection) sniperPumpProtection.value = String(Boolean(cfg.sniper_block_pump_protected));
+  const duplicateWindowEl = document.getElementById("duplicate_window_sec");
+  if (duplicateWindowEl) duplicateWindowEl.value = cfg.runtime_settings?.duplicate_window_sec ?? "";
+  const maxAlertAgeEl = document.getElementById("max_alert_age_sec");
+  if (maxAlertAgeEl) maxAlertAgeEl.value = cfg.runtime_settings?.max_alert_age_sec ?? "";
+  const harvestCooldownEl = document.getElementById("profit_harvest_cooldown_hours");
+  if (harvestCooldownEl) harvestCooldownEl.value = cfg.runtime_settings?.profit_harvest_cooldown_hours ?? "";
   setInputValue("max_active_satellites", cfg.max_active_satellites, false);
   setInputValue("max_new_satellites_per_cycle", cfg.max_new_satellites_per_cycle, false);
   setPresetActiveState("");
@@ -1216,6 +1255,7 @@ function renderAutomationOverview() {
     hasNumericValue(target) ? `Satellite Target ${formatPct(target)}` : "",
     hasNumericValue(max) ? `Satellite Max ${formatPct(max)}` : "",
     hasNumericValue(reserve) ? `Cash Reserve ${formatPct(reserve)}` : "",
+    hasNumericValue(cfg?.max_quote_per_trade_usd) ? `Max Buy ${formatUsd(cfg.max_quote_per_trade_usd)}` : "",
     hasNumericValue(tradeFloor) ? `Minimum Trade ${formatUsd(tradeFloor)}` : ""
   ].filter(Boolean).join(" • ") || "Reviewing current operating limits";
 
@@ -1516,7 +1556,11 @@ async function loadOptionsHealth() {
 
 async function loadConfigState() {
   const cfgData = await fetchJson("/api/config", {}, 20000);
-  const cfg = cfgData.config || {};
+  const cfg = {
+    ...(cfgData.config || {}),
+    runtime_settings: cfgData.runtime_settings || {},
+    config_meta: cfgData.meta || {}
+  };
   CURRENT_CONFIG = cfg;
   ALLOWED_SATELLITES = Array.isArray(cfg.satellite_allowed) ? cfg.satellite_allowed.slice() : [];
   BLOCKED_SATELLITES = Array.isArray(cfg.satellite_blocked) ? cfg.satellite_blocked.slice() : [];
@@ -1685,9 +1729,20 @@ async function saveRiskControls() {
         satellite_total_max: nextConfig.satellite_total_max,
         satellite_total_target: nextConfig.satellite_total_target,
         min_cash_reserve: nextConfig.min_cash_reserve,
+        max_quote_per_trade_usd: nextConfig.max_quote_per_trade_usd,
         trade_min_value_usd: nextConfig.trade_min_value_usd,
+        core_buy_fraction_of_shortfall: nextConfig.core_buy_fraction_of_shortfall,
+        drawdown_warn_level: nextConfig.drawdown_warn_level,
+        drawdown_reduce_level: nextConfig.drawdown_reduce_level,
+        drawdown_freeze_level: nextConfig.drawdown_freeze_level,
+        min_harvest_usd: nextConfig.min_harvest_usd,
+        sniper_buy_scale: nextConfig.sniper_buy_scale,
+        sniper_min_score: nextConfig.sniper_min_score,
+        sniper_block_pump_protected: nextConfig.sniper_block_pump_protected,
         max_active_satellites: nextConfig.max_active_satellites,
         max_new_satellites_per_cycle: nextConfig.max_new_satellites_per_cycle,
+        rotation_cooldown_minutes: nextConfig.rotation_cooldown_minutes,
+        min_meme_score: nextConfig.min_meme_score,
         config_proposal_generation_mode: nextConfig.config_proposal_generation_mode,
         config_proposal_apply_mode: nextConfig.config_proposal_apply_mode,
         config_proposal_min_confidence: nextConfig.config_proposal_min_confidence,

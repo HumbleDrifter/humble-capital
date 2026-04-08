@@ -95,12 +95,13 @@ def _default_asset_config():
                 {"gain_pct": 0.25, "trim_pct": 0.15},
             ],
         },
-	 "sniper_mode": {
+        "sniper_mode": {
             "enabled": True,
             "min_score": 85,
             "buy_scale": 0.35,
             "allow_in_regimes": ["bull", "neutral"],
             "require_sniper_eligible": True,
+            "relax_require_sniper_eligible": False,
             "block_pump_protected": True,
         },
         "meme_rotation": {
@@ -434,40 +435,88 @@ def get_rotation_candidate_map():
 
 
 def is_sniper_buy_eligible(product_id, snapshot):
-    config = snapshot["config"]
-    sniper_cfg = config.get("sniper_mode", {})
-    if not sniper_cfg.get("enabled", False):
-        return False
+    return bool(get_sniper_buy_eligibility_detail(product_id, snapshot).get("ok"))
 
-    product_id = str(product_id or "").upper().strip()
-    if not product_id:
-        return False
 
-    if not is_satellite_buy_eligible(product_id, snapshot):
-        return False
+def get_sniper_buy_eligibility_detail(product_id, snapshot=None):
+    try:
+        if snapshot is None:
+            return {
+                "ok": True,
+                "reason": "sniper_eligible",
+                "score": None,
+                "min_score": None,
+                "pump_protected": False,
+                "regime": None,
+            }
 
-    regime = str(get_market_regime().get("regime", "")).lower()
-    allowed_regimes = {
-        str(x).lower() for x in sniper_cfg.get("allow_in_regimes", ["bull", "neutral"])
-    }
-    if regime not in allowed_regimes:
-        return False
+        config = snapshot["config"]
+        sniper_cfg = config.get("sniper_mode", {})
+        product_id = str(product_id or "").upper().strip()
+        regime = str(get_market_regime().get("regime", "")).lower()
+        allowed_regimes = {
+            str(x).lower() for x in sniper_cfg.get("allow_in_regimes", ["bull", "neutral"])
+        }
+        candidate = get_rotation_candidate_map().get(product_id, {})
+        score = safe_float(candidate.get("score", 0))
+        min_score = float(sniper_cfg.get("min_score", 85))
+        require_sniper_eligible = bool(sniper_cfg.get("require_sniper_eligible", True))
+        relax_require_sniper_eligible = bool(sniper_cfg.get("relax_require_sniper_eligible", False))
+        block_pump_protected = bool(sniper_cfg.get("block_pump_protected", True))
+        sniper_candidate_flag = bool(candidate.get("sniper_eligible", False))
+        pump_protected = bool(candidate.get("pump_protected", False))
 
-    candidate = get_rotation_candidate_map().get(product_id, {})
-    if not candidate:
-        return False
+        detail = {
+            "ok": False,
+            "product_id": product_id,
+            "reason": "unknown",
+            "regime": regime,
+            "allowed_regimes": sorted(allowed_regimes),
+            "candidate_present": bool(candidate),
+            "score": score,
+            "min_score": min_score,
+            "require_sniper_eligible": require_sniper_eligible,
+            "relax_require_sniper_eligible": relax_require_sniper_eligible,
+            "sniper_candidate_flag": sniper_candidate_flag,
+            "block_pump_protected": block_pump_protected,
+            "pump_protected": pump_protected,
+        }
 
-    score = safe_float(candidate.get("score", 0))
-    if score < float(sniper_cfg.get("min_score", 85)):
-        return False
+        if not sniper_cfg.get("enabled", False):
+            detail["reason"] = "sniper_disabled"
+            return detail
+        if not product_id:
+            detail["reason"] = "missing_product_id"
+            return detail
 
-    if bool(sniper_cfg.get("require_sniper_eligible", True)) and not bool(candidate.get("sniper_eligible", False)):
-        return False
+        if not is_satellite_buy_eligible(product_id, snapshot):
+            detail["reason"] = "not_satellite_eligible"
+            return detail
+        if regime not in allowed_regimes:
+            detail["reason"] = "regime_not_allowed"
+            return detail
 
-    if bool(sniper_cfg.get("block_pump_protected", True)) and bool(candidate.get("pump_protected", False)):
-        return False
+        if not candidate:
+            detail["reason"] = "rotation_candidate_missing"
+            return detail
 
-    return True
+        if score < min_score:
+            detail["reason"] = "score_below_min"
+            return detail
+
+        if require_sniper_eligible and not relax_require_sniper_eligible and not sniper_candidate_flag:
+            detail["reason"] = "candidate_not_flagged_sniper_eligible"
+            return detail
+
+        if block_pump_protected and pump_protected:
+            detail["reason"] = "pump_protected"
+            return detail
+
+        detail["ok"] = True
+        detail["reason"] = "sniper_eligible"
+        return detail
+    except Exception:
+        return {"ok": False, "reason": "error"}
 
 def get_daily_closes(product_id, days=25):
     client = get_client()

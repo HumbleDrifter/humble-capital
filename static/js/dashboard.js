@@ -85,6 +85,36 @@ async function fetchJsonSafe(path, options = {}, timeoutMs = 15000) {
   }
 }
 
+function reportDashboardRenderError(sectionName, err) {
+  console.warn(`Dashboard render failed for ${sectionName}:`, err);
+}
+
+function renderDashboardFallback(hostId, message, metaId = "") {
+  const host = document.getElementById(hostId);
+  if (host) {
+    host.innerHTML = `<div class="muted">${escapeHtml(message)}</div>`;
+  }
+  if (metaId) {
+    const meta = document.getElementById(metaId);
+    if (meta) meta.textContent = message;
+  }
+}
+
+function runDashboardRender(sectionName, fn, onError = null) {
+  try {
+    fn();
+  } catch (err) {
+    reportDashboardRenderError(sectionName, err);
+    if (typeof onError === "function") {
+      try {
+        onError(err);
+      } catch (fallbackErr) {
+        reportDashboardRenderError(`${sectionName} fallback`, fallbackErr);
+      }
+    }
+  }
+}
+
 function fmtUsd(v) {
   return Number(v || 0).toLocaleString(undefined, {
     style: "currency",
@@ -869,7 +899,7 @@ function renderAccountValueHistory(data) {
   const meta = document.getElementById("accountValueMeta");
   if (!host) return;
 
-  const points = Array.isArray(data?.points) ? data.points : [];
+  const points = (Array.isArray(data?.points) ? data.points : []).filter((point) => point && typeof point === "object");
   const analytics = data?.analytics || {};
   const rangeText = rangeLabel(data?.range || selectedHistoryRange);
   const seriesType = data?.series_type === "realized_pnl" ? "realized_pnl" : data?.series_type === "portfolio_value" ? "portfolio_value" : "empty";
@@ -1097,7 +1127,8 @@ function renderOpportunitiesPreview(opportunityData, systemData) {
   const meta = document.getElementById("dashboardOpportunitiesMeta");
   if (!host) return;
 
-  const candidates = Array.isArray(opportunityData?.candidates) ? opportunityData.candidates.slice() : [];
+  const candidates = (Array.isArray(opportunityData?.candidates) ? opportunityData.candidates.slice() : [])
+    .filter((row) => row && typeof row === "object");
   const activeRows = candidates.filter((row) => opportunityPreviewGroup(row) === "active");
   const watchingCount = candidates.filter((row) => opportunityPreviewGroup(row) === "watching").length;
   const previewRows = candidates
@@ -1316,31 +1347,60 @@ async function refreshAll(showBadgeMessage = false) {
   const historyAllData = historyAllRes.data || {};
 
   if (portfolioRes.ok) {
-    renderPortfolio(portfolioData);
+    runDashboardRender("portfolio", () => renderPortfolio(portfolioData));
   }
 
-  renderSummaryStrip(portfolioData, historyData, history30Data, historyAllData, rebalanceData, systemData);
+  runDashboardRender("summary_strip", () => {
+    renderSummaryStrip(portfolioData, historyData, history30Data, historyAllData, rebalanceData, systemData);
+  });
 
-  renderOpportunitiesPreview(opportunitiesData, systemData);
+  runDashboardRender(
+    "active_opportunities",
+    () => renderOpportunitiesPreview(opportunitiesData, systemData),
+    () => renderDashboardFallback("dashboardOpportunitiesPreview", "Active opportunities are temporarily unavailable.", "dashboardOpportunitiesMeta")
+  );
 
   if (rebalanceRes.ok) {
-    renderRebalance(rebalanceData);
+    runDashboardRender("rebalance", () => renderRebalance(rebalanceData));
   }
 
   if (historyRes.ok) {
-    renderAccountValueHistory(historyData);
+    runDashboardRender(
+      "account_value_history",
+      () => renderAccountValueHistory(historyData),
+      () => renderDashboardFallback("accountValueChartHost", "Account value history is temporarily unavailable.", "accountValueMeta")
+    );
   } else {
-    renderAccountValueHistory({ points: [], series_type: "empty" });
+    runDashboardRender(
+      "account_value_history_empty",
+      () => renderAccountValueHistory({ points: [], series_type: "empty" }),
+      () => renderDashboardFallback("accountValueChartHost", "Account value history is temporarily unavailable.", "accountValueMeta")
+    );
   }
 
   if (portfolioRes.ok || historyRes.ok || rebalanceRes.ok || systemRes.ok) {
-    renderPerformanceSummary(portfolioData, historyData, history7Data, history30Data, rebalanceData, systemData);
+    runDashboardRender("command_brief", () => {
+      renderPerformanceSummary(portfolioData, historyData, history7Data, history30Data, rebalanceData, systemData);
+    }, () => {
+      const titleEl = document.getElementById("dashboardGuidanceTitle");
+      const summaryEl = document.getElementById("dashboardGuidanceSummary");
+      const confidenceEl = document.getElementById("dashboardGuidanceConfidence");
+      const presetEl = document.getElementById("dashboardCurrentPreset");
+      const riskScoreEl = document.getElementById("performanceRiskScore");
+      const riskBandEl = document.getElementById("performanceRiskBand");
+      if (titleEl) titleEl.textContent = "Command brief temporarily unavailable";
+      if (summaryEl) summaryEl.textContent = "The dashboard hit a rendering issue in the advisory panel. Reload to retry.";
+      if (confidenceEl) confidenceEl.textContent = "render warning";
+      if (presetEl) presetEl.textContent = "Reviewing";
+      if (riskScoreEl) riskScoreEl.textContent = "--";
+      if (riskBandEl) riskBandEl.textContent = "Rendering issue";
+    });
   }
 
   if (systemRes.ok) {
-    renderExecutionActivity(systemData);
+    runDashboardRender("execution_activity", () => renderExecutionActivity(systemData));
   } else {
-    renderExecutionActivity({});
+    runDashboardRender("execution_activity_empty", () => renderExecutionActivity({}));
   }
 
   if (!systemRes.ok && !portfolioRes.ok && !rebalanceRes.ok && !historyRes.ok) return;

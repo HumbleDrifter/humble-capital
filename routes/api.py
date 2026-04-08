@@ -1823,6 +1823,10 @@ def _build_asset_config_rows():
             or 0.0
         )
         mode = _asset_mode_from_config(product_id, config)
+        is_valid_product = product_id in valid_product_ids
+        invalid_reason = "" if is_valid_product else "not_valid_tradable_usd_product"
+        can_assign_core = bool(is_valid_product)
+        can_enable = bool(is_valid_product)
         items.append(
             {
                 "product_id": product_id,
@@ -1834,6 +1838,11 @@ def _build_asset_config_rows():
                 "is_enabled": mode == "enable",
                 "is_disabled": mode == "disable",
                 "is_auto": mode == "auto",
+                "is_valid_product": is_valid_product,
+                "editable": bool(is_valid_product or mode in {"auto", "disable"}),
+                "can_assign_core": can_assign_core,
+                "can_enable": can_enable,
+                "invalid_reason": invalid_reason,
                 "held_value_usd": held_value_usd,
                 "active_buy_universe": product_id in active_buy_universe,
                 "system_selected": product_id in system_selected,
@@ -2571,28 +2580,67 @@ def api_assets_config_update():
 
         product_id = _normalize_product_id(payload.get("product_id"))
         state = str(payload.get("state") or "").strip().lower()
+        target_weight_raw = payload.get("target_weight")
+        rebalance_band_raw = payload.get("rebalance_band")
         if not product_id:
             return jsonify({"ok": False, "error": "missing_product_id"}), 400
-        if state not in {"enable", "auto", "disable"}:
+        if state not in {"core", "enable", "auto", "disable"}:
             return jsonify({"ok": False, "error": "invalid_state"}), 400
 
         config = load_asset_config() or {}
+        valid_products = {
+            _normalize_product_id(x)
+            for x in (get_valid_product_ids(quote_currency="USD", tradable_only=True) or [])
+            if _normalize_product_id(x)
+        }
         known_products = {
             _normalize_product_id(x)
             for x in list((config.get("core_assets") or {}).keys())
             + list(config.get("satellite_allowed") or [])
             + list(config.get("satellite_blocked") or [])
-            + list(get_valid_product_ids(quote_currency="USD", tradable_only=True) or [])
+            + list(valid_products)
             if _normalize_product_id(x)
         }
         if product_id not in known_products:
             return jsonify({"ok": False, "error": "invalid_product_id"}), 400
-        if product_id in (config.get("core_assets") or {}):
-            return jsonify({"ok": False, "error": "core_assets_managed_separately"}), 400
+        if state in {"core", "enable"} and product_id not in valid_products:
+            return jsonify({"ok": False, "error": "invalid_nontradable_product_for_state"}), 400
+
+        target_weight = None
+        rebalance_band = None
+        if target_weight_raw not in (None, ""):
+            try:
+                target_weight = float(target_weight_raw)
+            except Exception:
+                return jsonify({"ok": False, "error": "invalid_target_weight"}), 400
+            if target_weight <= 0 or target_weight > 1:
+                return jsonify({"ok": False, "error": "target_weight_out_of_range"}), 400
+        if rebalance_band_raw not in (None, ""):
+            try:
+                rebalance_band = float(rebalance_band_raw)
+            except Exception:
+                return jsonify({"ok": False, "error": "invalid_rebalance_band"}), 400
+            if rebalance_band <= 0 or rebalance_band > 1:
+                return jsonify({"ok": False, "error": "rebalance_band_out_of_range"}), 400
 
         old_state = _asset_mode_from_config(product_id, config)
         allowed = config.setdefault("satellite_allowed", [])
         blocked = config.setdefault("satellite_blocked", [])
+        core_assets = config.setdefault("core_assets", {})
+
+        if state == "core":
+            if product_id in allowed:
+                allowed.remove(product_id)
+            if product_id in blocked:
+                blocked.remove(product_id)
+            current_core = core_assets.get(product_id) or {}
+            core_assets[product_id] = {
+                "target_weight": target_weight if target_weight is not None else float(current_core.get("target_weight", 0.05) or 0.05),
+                "rebalance_band": rebalance_band if rebalance_band is not None else float(current_core.get("rebalance_band", 0.02) or 0.02),
+            }
+        else:
+            if product_id in core_assets:
+                del core_assets[product_id]
 
         if state == "enable":
             if product_id not in allowed:
@@ -2619,6 +2667,8 @@ def api_assets_config_update():
                 "product_id": product_id,
                 "old_state": old_state,
                 "new_state": state,
+                "target_weight": target_weight,
+                "rebalance_band": rebalance_band,
                 "storage": "asset_config.json",
             },
         }, sort_keys=True, ensure_ascii=False))

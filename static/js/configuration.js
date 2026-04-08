@@ -1343,19 +1343,56 @@ function getAssetMode(productId) {
   return { key: "auto", badge: '<span class="badge accent">auto</span>' };
 }
 
-function buildActionButtons(productId, modeKey) {
-  if (modeKey === "core") {
-    return `<span class="muted">Managed as core</span>`;
+function assetControlId(productId, suffix) {
+  const safe = String(productId || "").toUpperCase().replace(/[^A-Z0-9]+/g, "-");
+  return `asset-${safe}-${suffix}`;
+}
+
+function readCoreField(productId, suffix, fallbackValue) {
+  const el = document.getElementById(assetControlId(productId, suffix));
+  const raw = String(el?.value ?? "").trim();
+  if (!raw) return fallbackValue;
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : fallbackValue;
+}
+
+function buildCoreControls(row) {
+  const productId = row.product_id;
+  const targetWeight = Number(row.target_weight || 0.05);
+  const rebalanceBand = Number(row.rebalance_band || 0.02);
+  return `
+    <div class="asset-core-controls">
+      <label class="tiny" for="${assetControlId(productId, "target-weight")}">Target</label>
+      <input id="${assetControlId(productId, "target-weight")}" class="config-input asset-core-input" type="number" min="0.01" max="1" step="0.01" value="${targetWeight.toFixed(2)}">
+      <label class="tiny" for="${assetControlId(productId, "rebalance-band")}">Band</label>
+      <input id="${assetControlId(productId, "rebalance-band")}" class="config-input asset-core-input" type="number" min="0.01" max="1" step="0.01" value="${rebalanceBand.toFixed(2)}">
+      <button class="btn btn-secondary asset-mode-btn" onclick="saveCoreSettings('${escapeHtml(productId)}')">Save Core</button>
+    </div>
+  `;
+}
+
+function buildActionButtons(row, modeKey) {
+  const productId = row.product_id;
+  const canAssignCore = Boolean(row.can_assign_core);
+  const canEnable = Boolean(row.can_enable);
+  const invalidReason = String(row.invalid_reason || "").trim();
+  const invalidMessage = invalidReason ? `<div class="tiny muted">Unavailable: ${escapeHtml(invalidReason)}</div>` : "";
+
+  if (modeKey === "core" && !canAssignCore) {
+    return `<div class="muted">Managed as core</div>${invalidMessage}`;
   }
 
   const safe = escapeHtml(productId);
 
   return `
     <div class="asset-mode-actions">
-      <button class="btn ${modeKey === "enable" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','enable')">Enable</button>
+      <button class="btn ${modeKey === "core" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','core')" ${canAssignCore ? "" : "disabled"}>Core</button>
+      <button class="btn ${modeKey === "enable" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','enable')" ${canEnable ? "" : "disabled"}>Enable</button>
       <button class="btn ${modeKey === "auto" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','auto')">Auto</button>
       <button class="btn ${modeKey === "disable" ? "btn-primary" : "btn-secondary"} asset-mode-btn" onclick="setAssetMode('${safe}','disable')">Disable</button>
     </div>
+    ${modeKey === "core" ? buildCoreControls(row) : ""}
+    ${modeKey !== "core" ? invalidMessage : ""}
   `;
 }
 
@@ -1383,14 +1420,15 @@ function drawAssetRows() {
     const mode = getAssetMode(productId);
     const heldValue = Number(HOLDINGS_BY_PRODUCT[productId] || 0);
     const weight = TOTAL_ASSET_VALUE_USD > 0 ? heldValue / TOTAL_ASSET_VALUE_USD : 0;
+    const invalidMeta = !row.is_valid_product ? `<div class="tiny muted">Invalid for manual enable/core</div>` : "";
 
     return `
       <tr>
-        <td><strong>${escapeHtml(productId)}</strong></td>
+        <td><strong>${escapeHtml(productId)}</strong>${invalidMeta}</td>
         <td>${mode.badge}</td>
         <td class="right">${formatUsd(heldValue)}</td>
         <td class="right">${formatPct(weight)}</td>
-        <td>${buildActionButtons(productId, mode.key)}</td>
+        <td>${buildActionButtons(row, mode.key)}</td>
       </tr>
     `;
   }).join("");
@@ -1596,12 +1634,29 @@ async function postAdminAssetAction(payload, successMessage) {
 
 async function setAssetMode(productId, mode) {
   try {
+    const currentRow = ASSET_STATE_BY_PRODUCT[String(productId || "").toUpperCase()] || {};
+    const payload = {
+      product_id: productId,
+      state: mode,
+      ...(API_SECRET ? { secret: API_SECRET } : {})
+    };
+    if (mode === "core") {
+      payload.target_weight = readCoreField(productId, "target-weight", Number(currentRow.target_weight || 0.05));
+      payload.rebalance_band = readCoreField(productId, "rebalance-band", Number(currentRow.rebalance_band || 0.02));
+    }
     const result = await fetchJson("/api/assets/config/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ product_id: productId, state: mode, ...(API_SECRET ? { secret: API_SECRET } : {}) })
+      body: JSON.stringify(payload)
     }, 20000);
-    const stateLabel = mode === "enable" ? "enabled" : mode === "disable" ? "disabled" : "returned to auto";
+    const stateLabel =
+      mode === "core"
+        ? "promoted to core"
+        : mode === "enable"
+          ? "enabled"
+          : mode === "disable"
+            ? "disabled"
+            : "returned to auto";
     setStatus(`${productId} ${stateLabel}`);
     if (result?.item?.product_id) {
       ASSET_STATE_BY_PRODUCT[String(result.item.product_id || "").toUpperCase()] = result.item;
@@ -1611,6 +1666,10 @@ async function setAssetMode(productId, mode) {
     console.error(err);
     setStatus(`Set ${mode} failed for ${productId}: ${err.message}`, true);
   }
+}
+
+async function saveCoreSettings(productId) {
+  return setAssetMode(productId, "core");
 }
 
 async function saveRiskControls() {
@@ -2075,6 +2134,7 @@ window.loadConfiguration = loadConfiguration;
 window.refreshAssets = loadConfiguration;
 window.renderAssetRows = applyAssetFilter;
 window.setAssetMode = setAssetMode;
+window.saveCoreSettings = saveCoreSettings;
 window.saveRiskControls = saveRiskControls;
 window.applyConfigPreset = applyConfigPreset;
 window.evaluateAutoDraftNow = evaluateAutoDraftNow;

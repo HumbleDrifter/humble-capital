@@ -272,9 +272,13 @@ function snapshotCurrentConfigForm() {
     drawdown_reduce_level: normalizePercentInput("drawdown_reduce_level"),
     drawdown_freeze_level: normalizePercentInput("drawdown_freeze_level"),
     min_harvest_usd: document.getElementById("min_harvest_usd")?.value || "",
+    sniper_enabled: document.getElementById("sniper_enabled")?.value || "",
     sniper_buy_scale: normalizePercentInput("sniper_buy_scale"),
     sniper_min_score: document.getElementById("sniper_min_score")?.value || "",
     sniper_block_pump_protected: document.getElementById("sniper_block_pump_protected")?.value || "",
+    sniper_require_sniper_eligible: document.getElementById("sniper_require_sniper_eligible")?.value || "",
+    sniper_relax_require_sniper_eligible: document.getElementById("sniper_relax_require_sniper_eligible")?.value || "",
+    sniper_allowed_regimes: Array.from(document.querySelectorAll('input[name="sniper_allowed_regimes"]:checked')).map((input) => input.value),
     max_active_satellites: document.getElementById("max_active_satellites")?.value || "",
     max_new_satellites_per_cycle: document.getElementById("max_new_satellites_per_cycle")?.value || "",
     rotation_cooldown_minutes: document.getElementById("rotation_cooldown_minutes")?.value || "",
@@ -314,8 +318,12 @@ function summarizeConfigChanges(previousConfig, nextConfig) {
     ["drawdown_reduce_level", "Drawdown reduce", "percent"],
     ["drawdown_freeze_level", "Drawdown freeze", "percent"],
     ["min_harvest_usd", "Harvest minimum", "usd"],
+    ["sniper_enabled", "Sniper enabled", "mode"],
     ["sniper_buy_scale", "Sniper buy scale", "percent"],
     ["sniper_min_score", "Sniper minimum score", "number"],
+    ["sniper_require_sniper_eligible", "Require sniper eligible", "mode"],
+    ["sniper_relax_require_sniper_eligible", "Relax sniper eligible", "mode"],
+    ["sniper_allowed_regimes", "Allowed regimes", "mode"],
     ["max_active_satellites", "Active satellites", "integer"],
     ["max_new_satellites_per_cycle", "New satellites per cycle", "integer"],
     ["rotation_cooldown_minutes", "Rotation cooldown", "integer"],
@@ -1302,12 +1310,22 @@ function renderRiskConfig(cfg) {
   setInputValue("drawdown_reduce_level", cfg.drawdown_reduce_level, true);
   setInputValue("drawdown_freeze_level", cfg.drawdown_freeze_level, true);
   setInputValue("min_harvest_usd", cfg.min_harvest_usd, false);
+  const sniperEnabledEl = document.getElementById("sniper_enabled");
+  if (sniperEnabledEl) sniperEnabledEl.value = String(Boolean(cfg.sniper_enabled));
   setInputValue("sniper_buy_scale", cfg.sniper_buy_scale, true);
   setInputValue("sniper_min_score", cfg.sniper_min_score, false);
+  const sniperRequireEl = document.getElementById("sniper_require_sniper_eligible");
+  if (sniperRequireEl) sniperRequireEl.value = String(Boolean(cfg.sniper_require_sniper_eligible));
+  const sniperRelaxEl = document.getElementById("sniper_relax_require_sniper_eligible");
+  if (sniperRelaxEl) sniperRelaxEl.value = String(Boolean(cfg.sniper_relax_require_sniper_eligible));
   setInputValue("rotation_cooldown_minutes", cfg.rotation_cooldown_minutes, false);
   setInputValue("min_meme_score", cfg.min_meme_score, false);
   const sniperPumpProtection = document.getElementById("sniper_block_pump_protected");
   if (sniperPumpProtection) sniperPumpProtection.value = String(Boolean(cfg.sniper_block_pump_protected));
+  const allowedRegimes = new Set(Array.isArray(cfg.sniper_allowed_regimes) ? cfg.sniper_allowed_regimes.map((value) => String(value || "").trim().toLowerCase()) : []);
+  document.querySelectorAll('input[name="sniper_allowed_regimes"]').forEach((input) => {
+    input.checked = allowedRegimes.has(String(input.value || "").trim().toLowerCase());
+  });
   const duplicateWindowEl = document.getElementById("duplicate_window_sec");
   if (duplicateWindowEl) duplicateWindowEl.value = cfg.runtime_settings?.duplicate_window_sec ?? "";
   const maxAlertAgeEl = document.getElementById("max_alert_age_sec");
@@ -1937,10 +1955,14 @@ async function saveRiskControls() {
         drawdown_reduce_level: nextConfig.drawdown_reduce_level,
         drawdown_freeze_level: nextConfig.drawdown_freeze_level,
         min_harvest_usd: nextConfig.min_harvest_usd,
-        sniper_buy_scale: nextConfig.sniper_buy_scale,
-        sniper_min_score: nextConfig.sniper_min_score,
-        sniper_block_pump_protected: nextConfig.sniper_block_pump_protected,
-        max_active_satellites: nextConfig.max_active_satellites,
+      sniper_buy_scale: nextConfig.sniper_buy_scale,
+      sniper_min_score: nextConfig.sniper_min_score,
+      sniper_enabled: nextConfig.sniper_enabled,
+      sniper_block_pump_protected: nextConfig.sniper_block_pump_protected,
+      sniper_require_sniper_eligible: nextConfig.sniper_require_sniper_eligible,
+      sniper_relax_require_sniper_eligible: nextConfig.sniper_relax_require_sniper_eligible,
+      sniper_allowed_regimes: nextConfig.sniper_allowed_regimes,
+      max_active_satellites: nextConfig.max_active_satellites,
         max_new_satellites_per_cycle: nextConfig.max_new_satellites_per_cycle,
         rotation_cooldown_minutes: nextConfig.rotation_cooldown_minutes,
         min_meme_score: nextConfig.min_meme_score,

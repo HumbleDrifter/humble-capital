@@ -666,6 +666,16 @@
           <div class="form-card" data-focus-target="sniper_min_score">
             <label for="sniper_min_score">Sniper Minimum Score</label>
             <input id="sniper_min_score" type="number" step="0.1" min="0" max="100">
+            <div class="field-help">Minimum score required before a sniper candidate can open a new buy.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="sniper_enabled">Sniper Enabled</label>
+            <select id="sniper_enabled">
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </select>
+            <div class="field-help">Turns the opportunistic sniper-buy lane on or off.</div>
           </div>
 
           <div class="form-card">
@@ -674,6 +684,45 @@
               <option value="true">Block pump-protected buys</option>
               <option value="false">Allow despite pump protection</option>
             </select>
+            <div class="field-help">Keeps the sniper lane from opening buys on assets marked pump-protected.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="sniper_require_sniper_eligible">Require Sniper Eligible</label>
+            <select id="sniper_require_sniper_eligible">
+              <option value="true">Required</option>
+              <option value="false">Not Required</option>
+            </select>
+            <div class="field-help">Only allows sniper buys for assets explicitly marked sniper-eligible by the rotation/scoring system.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="sniper_relax_require_sniper_eligible">Relax Require Sniper Eligible</label>
+            <select id="sniper_relax_require_sniper_eligible">
+              <option value="false">Off</option>
+              <option value="true">On</option>
+            </select>
+            <div class="field-help">Lets high-scoring assets pass even if they are not explicitly flagged sniper-eligible.</div>
+          </div>
+
+          <div class="form-card" style="grid-column: 1 / -1;">
+            <label>Allowed Regimes</label>
+            <div class="configuration-inline-actions" style="gap:16px; flex-wrap:wrap; align-items:flex-start;">
+              <label class="tiny" style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="sniper_allowed_regimes" value="bull">
+                <span>Bull</span>
+              </label>
+              <label class="tiny" style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="sniper_allowed_regimes" value="neutral">
+                <span>Neutral</span>
+              </label>
+              <label class="tiny" style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="sniper_allowed_regimes" value="risk_off">
+                <span>Risk Off</span>
+              </label>
+            </div>
+            <div class="field-help">Controls which market regimes are allowed to open new sniper buys.</div>
+            <div class="field-help">Allowing sniper buys during risk-off can increase participation, but also increases downside exposure.</div>
           </div>
 
           <div class="form-card" data-focus-target="min_meme_score">

@@ -591,9 +591,13 @@ def _build_config():
     cfg["drawdown_warn_level"] = drawdown.get("warn_level")
     cfg["drawdown_reduce_level"] = drawdown.get("reduce_level")
     cfg["drawdown_freeze_level"] = drawdown.get("freeze_level")
+    cfg["sniper_enabled"] = bool(sniper.get("enabled", True))
     cfg["sniper_buy_scale"] = sniper.get("buy_scale")
     cfg["sniper_min_score"] = sniper.get("min_score")
     cfg["sniper_block_pump_protected"] = bool(sniper.get("block_pump_protected", True))
+    cfg["sniper_require_sniper_eligible"] = bool(sniper.get("require_sniper_eligible", True))
+    cfg["sniper_relax_require_sniper_eligible"] = bool(sniper.get("relax_require_sniper_eligible", False))
+    cfg["sniper_allowed_regimes"] = list(sniper.get("allow_in_regimes", ["bull", "neutral"]) or ["bull", "neutral"])
     cfg["min_harvest_usd"] = harvest.get("min_harvest_usd")
     cfg["max_active_satellites"] = rotation.get("max_active", cfg.get("max_active_satellites"))
     cfg["min_meme_score"] = rotation.get("min_score", cfg.get("min_meme_score"))
@@ -617,9 +621,13 @@ def _build_config():
                 "drawdown_reduce_level",
                 "drawdown_freeze_level",
                 "min_harvest_usd",
+                "sniper_enabled",
                 "sniper_buy_scale",
                 "sniper_min_score",
                 "sniper_block_pump_protected",
+                "sniper_require_sniper_eligible",
+                "sniper_relax_require_sniper_eligible",
+                "sniper_allowed_regimes",
                 "max_active_satellites",
                 "min_meme_score",
                 "max_new_satellites_per_cycle",
@@ -2563,6 +2571,7 @@ def api_admin_asset():
 
         elif action == "set_risk":
             errors = []
+            allowed_sniper_regimes = {"bull", "neutral", "risk_off"}
 
             def _optional_float(name, low=None, high=None):
                 raw = payload.get(name)
@@ -2608,6 +2617,28 @@ def api_admin_asset():
                 errors.append(f"{name} must be true/false")
                 return None
 
+            def _optional_regime_list(name):
+                raw = payload.get(name)
+                if raw in (None, ""):
+                    return None
+                if isinstance(raw, list):
+                    values = raw
+                else:
+                    values = str(raw).split(",")
+                normalized = []
+                for value in values:
+                    item = str(value or "").strip().lower()
+                    if not item:
+                        continue
+                    if item not in allowed_sniper_regimes:
+                        errors.append(f"{name} contains invalid value: {item}")
+                        continue
+                    if item not in normalized:
+                        normalized.append(item)
+                if not normalized and raw not in (None, ""):
+                    errors.append(f"{name} must include at least one valid regime")
+                return normalized
+
             satellite_total_max = _optional_float("satellite_total_max", 0.0, 1.0)
             satellite_total_target = _optional_float("satellite_total_target", 0.0, 1.0)
             min_cash_reserve = _optional_float("min_cash_reserve", 0.0, 1.0)
@@ -2622,9 +2653,13 @@ def api_admin_asset():
             drawdown_reduce_level = _optional_float("drawdown_reduce_level", 0.0, 1.0)
             drawdown_freeze_level = _optional_float("drawdown_freeze_level", 0.0, 1.0)
             min_harvest_usd = _optional_float("min_harvest_usd", 0.0, 1000000.0)
+            sniper_enabled = _optional_bool("sniper_enabled")
             sniper_buy_scale = _optional_float("sniper_buy_scale", 0.0, 1.0)
             sniper_min_score = _optional_float("sniper_min_score", 0.0, 100.0)
             sniper_block_pump_protected = _optional_bool("sniper_block_pump_protected")
+            sniper_require_sniper_eligible = _optional_bool("sniper_require_sniper_eligible")
+            sniper_relax_require_sniper_eligible = _optional_bool("sniper_relax_require_sniper_eligible")
+            sniper_allowed_regimes = _optional_regime_list("sniper_allowed_regimes")
 
             next_drawdown = dict(config.get("drawdown_controls") or {})
             if drawdown_warn_level is not None:
@@ -2701,9 +2736,25 @@ def api_admin_asset():
                 config.setdefault("sniper_mode", {})
                 config["sniper_mode"]["min_score"] = sniper_min_score
 
+            if payload.get("sniper_enabled") not in (None, ""):
+                config.setdefault("sniper_mode", {})
+                config["sniper_mode"]["enabled"] = bool(sniper_enabled)
+
             if payload.get("sniper_block_pump_protected") not in (None, ""):
                 config.setdefault("sniper_mode", {})
                 config["sniper_mode"]["block_pump_protected"] = bool(sniper_block_pump_protected)
+
+            if payload.get("sniper_require_sniper_eligible") not in (None, ""):
+                config.setdefault("sniper_mode", {})
+                config["sniper_mode"]["require_sniper_eligible"] = bool(sniper_require_sniper_eligible)
+
+            if payload.get("sniper_relax_require_sniper_eligible") not in (None, ""):
+                config.setdefault("sniper_mode", {})
+                config["sniper_mode"]["relax_require_sniper_eligible"] = bool(sniper_relax_require_sniper_eligible)
+
+            if payload.get("sniper_allowed_regimes") not in (None, ""):
+                config.setdefault("sniper_mode", {})
+                config["sniper_mode"]["allow_in_regimes"] = list(sniper_allowed_regimes or [])
 
             generation_mode = _normalized_choice(
                 payload.get("config_proposal_generation_mode"),

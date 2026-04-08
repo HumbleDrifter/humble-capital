@@ -35,8 +35,11 @@ def _page_context(page_title):
     provided_secret = (request.args.get("secret") or "").strip()
     session_user = bool(session.get("user_id"))
 
-    # only pass secret to frontend if page was opened via secret access
-    if (not session_user) and API_SECRET and provided_secret == API_SECRET:
+    # Pass the API secret to authenticated dashboard sessions so secret-
+    # protected API endpoints can be loaded through the existing authUrl helper.
+    if session_user and API_SECRET:
+        frontend_api_secret = API_SECRET
+    elif (not session_user) and API_SECRET and provided_secret == API_SECRET:
         frontend_api_secret = provided_secret
     else:
         frontend_api_secret = ""

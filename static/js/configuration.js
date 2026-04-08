@@ -24,38 +24,111 @@ const PROPOSAL_GENERATION_MODES = ["manual", "auto"];
 const PROPOSAL_APPLY_MODES = ["manual", "after_approval"];
 const PROPOSAL_MIN_CONFIDENCE_VALUES = ["medium", "high"];
 
+const CONFIG_PRESET_ALIASES = {
+  balanced: "neutral",
+  safe: "safe_mode",
+  safe_mode_all_cash: "safe_mode"
+};
+
+const PRESET_MATCH_FIELDS = [
+  "satellite_total_target",
+  "satellite_total_max",
+  "min_cash_reserve",
+  "max_quote_per_trade_usd",
+  "trade_min_value_usd",
+  "core_buy_fraction_of_shortfall",
+  "drawdown_warn_level",
+  "drawdown_reduce_level",
+  "drawdown_freeze_level",
+  "sniper_buy_scale",
+  "sniper_min_score",
+  "max_active_satellites",
+  "min_meme_score"
+];
+
 const CONFIG_PRESETS = {
-  conservative: {
-    label: "Conservative",
-    values: {
-      satellite_total_target: 0.20,
-      satellite_total_max: 0.30,
-      min_cash_reserve: 0.20,
-      trade_min_value_usd: 50,
-      max_active_satellites: 4,
-      max_new_satellites_per_cycle: 1
-    }
-  },
-  balanced: {
-    label: "Balanced",
-    values: {
-      satellite_total_target: 0.35,
-      satellite_total_max: 0.45,
-      min_cash_reserve: 0.10,
-      trade_min_value_usd: 25,
-      max_active_satellites: 6,
-      max_new_satellites_per_cycle: 2
-    }
-  },
   aggressive: {
     label: "Aggressive",
+    bestFor: "Best for users seeking more participation and higher volatility tolerance.",
+    summary: "Deploys capital faster, widens opportunity capture, and accepts a rougher ride.",
     values: {
       satellite_total_target: 0.50,
       satellite_total_max: 0.60,
       min_cash_reserve: 0.05,
+      max_quote_per_trade_usd: 60,
       trade_min_value_usd: 15,
+      core_buy_fraction_of_shortfall: 0.50,
+      drawdown_warn_level: 0.12,
+      drawdown_reduce_level: 0.18,
+      drawdown_freeze_level: 0.24,
+      sniper_buy_scale: 0.50,
+      sniper_min_score: 72,
       max_active_satellites: 10,
-      max_new_satellites_per_cycle: 4
+      max_new_satellites_per_cycle: 4,
+      min_meme_score: 50
+    }
+  },
+  neutral: {
+    label: "Neutral",
+    bestFor: "Best for most operators who want a balanced default with room to participate.",
+    summary: "Balances deployment, cash protection, and screening without leaning too far risk-on or risk-off.",
+    values: {
+      satellite_total_target: 0.35,
+      satellite_total_max: 0.45,
+      min_cash_reserve: 0.10,
+      max_quote_per_trade_usd: 35,
+      trade_min_value_usd: 25,
+      core_buy_fraction_of_shortfall: 0.30,
+      drawdown_warn_level: 0.10,
+      drawdown_reduce_level: 0.15,
+      drawdown_freeze_level: 0.20,
+      sniper_buy_scale: 0.35,
+      sniper_min_score: 82,
+      max_active_satellites: 6,
+      max_new_satellites_per_cycle: 2,
+      min_meme_score: 60
+    }
+  },
+  conservative: {
+    label: "Conservative",
+    bestFor: "Best for users who want slower deployment, tighter quality filters, and more cash protection.",
+    summary: "Keeps more capital in reserve and tightens the filters that allow new risk-on entries.",
+    values: {
+      satellite_total_target: 0.20,
+      satellite_total_max: 0.30,
+      min_cash_reserve: 0.20,
+      max_quote_per_trade_usd: 20,
+      trade_min_value_usd: 35,
+      core_buy_fraction_of_shortfall: 0.15,
+      drawdown_warn_level: 0.08,
+      drawdown_reduce_level: 0.12,
+      drawdown_freeze_level: 0.16,
+      sniper_buy_scale: 0.20,
+      sniper_min_score: 90,
+      max_active_satellites: 4,
+      max_new_satellites_per_cycle: 1,
+      min_meme_score: 70
+    }
+  },
+  safe_mode: {
+    label: "Safe Mode / All Cash",
+    bestFor: "Best for defensive posture when preserving cash matters more than pursuing new upside.",
+    summary: "Stages a no-new-risk posture by driving buy sizing and satellite participation toward zero. It does not auto-liquidate existing holdings.",
+    values: {
+      satellite_total_target: 0.00,
+      satellite_total_max: 0.05,
+      min_cash_reserve: 0.40,
+      max_quote_per_trade_usd: 0,
+      trade_min_value_usd: 1000,
+      core_buy_fraction_of_shortfall: 0.00,
+      drawdown_warn_level: 0.05,
+      drawdown_reduce_level: 0.08,
+      drawdown_freeze_level: 0.10,
+      sniper_buy_scale: 0.00,
+      sniper_min_score: 95,
+      max_active_satellites: 0,
+      max_new_satellites_per_cycle: 0,
+      min_meme_score: 85
     }
   }
 };
@@ -146,6 +219,11 @@ function setPresetStatus(message) {
   const el = document.getElementById("presetStatus");
   if (!el) return;
   el.textContent = message;
+}
+
+function resolveConfigPreset(name) {
+  const normalized = String(name || "").trim().toLowerCase();
+  return CONFIG_PRESET_ALIASES[normalized] || normalized;
 }
 
 function isPercentFieldId(id) {
@@ -1153,12 +1231,63 @@ function setInputValue(id, value, percent = false) {
 }
 
 function setPresetActiveState(name) {
-  ACTIVE_PRESET = String(name || "");
+  ACTIVE_PRESET = resolveConfigPreset(name);
   document.querySelectorAll(".config-preset-btn").forEach((button) => {
     const isActive = button.dataset.preset === ACTIVE_PRESET;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-pressed", isActive ? "true" : "false");
   });
+  const selectEl = document.getElementById("investmentStyleSelect");
+  if (selectEl) {
+    selectEl.value = ACTIVE_PRESET || "";
+  }
+}
+
+function valuesRoughlyMatch(left, right) {
+  if (left === "" || left === null || left === undefined || right === "" || right === null || right === undefined) {
+    return false;
+  }
+  const leftNum = Number(left);
+  const rightNum = Number(right);
+  if (Number.isFinite(leftNum) && Number.isFinite(rightNum)) {
+    return Math.abs(leftNum - rightNum) < 0.0001;
+  }
+  return String(left).trim().toLowerCase() === String(right).trim().toLowerCase();
+}
+
+function inferPresetFromConfig(cfg) {
+  for (const [presetName, preset] of Object.entries(CONFIG_PRESETS)) {
+    const matches = PRESET_MATCH_FIELDS.every((field) => valuesRoughlyMatch(cfg?.[field], preset.values?.[field]));
+    if (matches) return presetName;
+  }
+  return "";
+}
+
+function renderPresetPanelState(name, options = {}) {
+  const presetName = resolveConfigPreset(name);
+  const preset = CONFIG_PRESETS[presetName] || null;
+  const titleEl = document.getElementById("investmentStyleCurrent");
+  const summaryEl = document.getElementById("investmentStyleSummary");
+  const bestForEl = document.getElementById("investmentStyleBestFor");
+
+  if (!preset) {
+    if (titleEl) titleEl.textContent = "Custom";
+    if (summaryEl) summaryEl.textContent = "Your current settings do not exactly match a bundled investment style. Manual edits remain available.";
+    if (bestForEl) bestForEl.textContent = "Use a preset to stage a complete posture bundle, then fine-tune any individual field before saving.";
+    setPresetActiveState("");
+    return;
+  }
+
+  setPresetActiveState(presetName);
+  if (titleEl) titleEl.textContent = preset.label;
+  if (summaryEl) summaryEl.textContent = String(options.summary || preset.summary || "").trim();
+  if (bestForEl) bestForEl.textContent = String(options.bestFor || preset.bestFor || "").trim();
+}
+
+function stageSelectedInvestmentStyle() {
+  const selectEl = document.getElementById("investmentStyleSelect");
+  if (!selectEl) return;
+  applyConfigPreset(selectEl.value);
 }
 
 function renderRiskConfig(cfg) {
@@ -1186,8 +1315,13 @@ function renderRiskConfig(cfg) {
   if (harvestCooldownEl) harvestCooldownEl.value = cfg.runtime_settings?.profit_harvest_cooldown_hours ?? "";
   setInputValue("max_active_satellites", cfg.max_active_satellites, false);
   setInputValue("max_new_satellites_per_cycle", cfg.max_new_satellites_per_cycle, false);
-  setPresetActiveState("");
-  setPresetStatus("No preset staged. Manual edits remain available.");
+  const matchedPreset = inferPresetFromConfig(cfg);
+  renderPresetPanelState(matchedPreset);
+  if (matchedPreset) {
+    setPresetStatus(`${CONFIG_PRESETS[matchedPreset].label} currently matches the saved configuration.`);
+  } else {
+    setPresetStatus("Custom configuration loaded. You can stage an investment style or tune fields manually.");
+  }
 }
 
 function renderProposalAutomationSettings(cfg) {
@@ -1618,32 +1752,41 @@ function normalizePercentInput(id) {
 }
 
 function applyConfigPreset(name, options = {}) {
-  const preset = CONFIG_PRESETS[String(name || "").toLowerCase()];
+  const presetName = resolveConfigPreset(name);
+  const preset = CONFIG_PRESETS[presetName];
   if (!preset) return;
 
   const values = preset.values || {};
   setInputValue("satellite_total_target", values.satellite_total_target, true);
   setInputValue("satellite_total_max", values.satellite_total_max, true);
   setInputValue("min_cash_reserve", values.min_cash_reserve, true);
+  setInputValue("max_quote_per_trade_usd", values.max_quote_per_trade_usd, false);
   setInputValue("trade_min_value_usd", values.trade_min_value_usd, false);
+  setInputValue("core_buy_fraction_of_shortfall", values.core_buy_fraction_of_shortfall, true);
+  setInputValue("drawdown_warn_level", values.drawdown_warn_level, true);
+  setInputValue("drawdown_reduce_level", values.drawdown_reduce_level, true);
+  setInputValue("drawdown_freeze_level", values.drawdown_freeze_level, true);
+  setInputValue("sniper_buy_scale", values.sniper_buy_scale, true);
+  setInputValue("sniper_min_score", values.sniper_min_score, false);
   setInputValue("max_active_satellites", values.max_active_satellites, false);
   setInputValue("max_new_satellites_per_cycle", values.max_new_satellites_per_cycle, false);
+  setInputValue("min_meme_score", values.min_meme_score, false);
 
-  setPresetActiveState(name);
+  renderPresetPanelState(presetName);
   const sourceLabel = String(options.sourceLabel || "").trim();
-  if (sourceLabel === "Safe Mode") {
-    setPresetStatus("Safe Mode reduces exposure and raises protective limits in the form. Save Configuration to make it live.");
+  if (presetName === "safe_mode") {
+    setPresetStatus("Safe Mode / All Cash staged a defensive no-new-risk posture in the form. Review carefully and save to make it live.");
   } else if (sourceLabel) {
-    setPresetStatus(`${sourceLabel} recommended the ${preset.label} preset. It has been staged in the form but not saved.`);
+    setPresetStatus(`${sourceLabel} recommended the ${preset.label} investment style. It has been staged in the form but not saved.`);
   } else {
-    setPresetStatus(`${preset.label} preset staged. Changes are not saved until you click Save Configuration.`);
+    setPresetStatus(`${preset.label} investment style staged. Changes are not saved until you click Save Configuration.`);
   }
   if (!options.silentStatus) {
-    const statusLead = sourceLabel === "Safe Mode"
-      ? "Safe Mode loaded lower-risk values into the current fields."
+    const statusLead = presetName === "safe_mode"
+      ? "Safe Mode / All Cash loaded defensive values into the current fields."
       : sourceLabel
-        ? `${sourceLabel} staged the ${preset.label} preset.`
-        : `${preset.label} preset applied to current fields.`;
+        ? `${sourceLabel} staged the ${preset.label} investment style.`
+        : `${preset.label} investment style applied to current fields.`;
     setStatus(`${statusLead} Review and save when ready.`);
   }
 }
@@ -1651,7 +1794,7 @@ function applyConfigPreset(name, options = {}) {
 function applyPresetFromUrlIfPresent() {
   if (URL_PRESET_APPLIED) return;
 
-  const preset = String(URL_PARAMS.get("preset") || "").trim().toLowerCase();
+  const preset = resolveConfigPreset(URL_PARAMS.get("preset"));
   if (!preset || !CONFIG_PRESETS[preset]) return;
 
   URL_PRESET_APPLIED = true;
@@ -2191,6 +2334,7 @@ window.renderAssetRows = applyAssetFilter;
 window.setAssetMode = setAssetMode;
 window.saveCoreSettings = saveCoreSettings;
 window.saveRiskControls = saveRiskControls;
+window.stageSelectedInvestmentStyle = stageSelectedInvestmentStyle;
 window.applyConfigPreset = applyConfigPreset;
 window.evaluateAutoDraftNow = evaluateAutoDraftNow;
 window.generateProposalNow = generateProposalNow;

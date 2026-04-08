@@ -101,26 +101,75 @@
 
     <div class="configuration-preset-panel">
       <div class="configuration-preset-copy">
-        <div class="configuration-card-kicker">Config Presets</div>
-        <h3>Start from a broad risk profile.</h3>
-        <p class="section-subtitle">Presets stage values into the current fields only. Review and click Save Configuration to persist them.</p>
+        <div class="configuration-card-kicker">Investment Style</div>
+        <h3>Choose the overall posture first.</h3>
+        <p class="section-subtitle">Investment styles stage a bundle of the everyday risk and sizing controls. Nothing goes live until you save the configuration.</p>
       </div>
-      <div class="configuration-preset-actions" role="tablist" aria-label="Configuration presets">
-        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="conservative" onclick="applyConfigPreset('conservative')">Conservative</button>
-        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="balanced" onclick="applyConfigPreset('balanced')">Balanced</button>
+      <div class="configuration-preset-actions" role="tablist" aria-label="Investment styles">
         <button class="btn btn-secondary config-preset-btn" type="button" data-preset="aggressive" onclick="applyConfigPreset('aggressive')">Aggressive</button>
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="neutral" onclick="applyConfigPreset('neutral')">Neutral</button>
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="conservative" onclick="applyConfigPreset('conservative')">Conservative</button>
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="safe_mode" onclick="applyConfigPreset('safe_mode')">Safe Mode / All Cash</button>
       </div>
       <div class="configuration-preset-utility">
-        <button class="btn btn-secondary" type="button" onclick="applyConfigPreset('conservative', { sourceLabel: 'Safe Mode' })">Activate Safe Mode</button>
-        <div class="configuration-help">
-          <button class="configuration-help-button" type="button" aria-label="Safe mode help">i</button>
-          <div class="configuration-help-tooltip" role="tooltip">
-            Safe Mode stages lower-exposure settings in the form. Nothing goes live until you save the configuration.
-          </div>
+        <div class="configuration-search-field">
+          <label for="investmentStyleSelect" class="tiny">Staged investment style</label>
+          <select id="investmentStyleSelect">
+            <option value="">Custom / Manual</option>
+            <option value="aggressive">Aggressive</option>
+            <option value="neutral">Neutral</option>
+            <option value="conservative">Conservative</option>
+            <option value="safe_mode">Safe Mode / All Cash</option>
+          </select>
         </div>
+        <button class="btn btn-secondary" type="button" onclick="stageSelectedInvestmentStyle()">Stage Selected Style</button>
+      </div>
+      <div class="configuration-primary-note">
+        <div class="configuration-primary-note-title" id="investmentStyleCurrent">Custom</div>
+        <div class="configuration-primary-note-copy" id="investmentStyleSummary">Your current settings do not exactly match a bundled investment style. Manual edits remain available.</div>
+        <div class="field-help" id="investmentStyleBestFor">Use a preset to stage a complete posture bundle, then fine-tune any individual field before saving.</div>
       </div>
       <div class="configuration-preset-status" id="presetStatus">No preset staged. Manual edits remain available.</div>
     </div>
+
+    <div class="divider"></div>
+
+    <details class="configuration-advanced-toggle" id="config-section-how-it-works" data-config-section="how-it-works" open>
+      <summary>
+        <div>
+          <strong>How This Works</strong>
+          <span>Plain-English guidance for the settings most operators use when shaping the bot’s behavior.</span>
+        </div>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="risk-form-grid configuration-advanced-grid">
+          <div class="form-card">
+            <div class="configuration-card-kicker">Investment Style</div>
+            <div class="field-help">Aggressive seeks more participation and accepts higher volatility. Neutral is the balanced default. Conservative deploys more slowly and keeps more cash protection. Safe Mode / All Cash stages a defensive no-new-risk posture, but it does not automatically liquidate current holdings.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Max Buy Per Trade</div>
+            <div class="field-help">Caps how much quote currency the bot can commit in a single order attempt. Higher values let the bot move faster, while lower values slow position building and reduce per-trade exposure.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Minimum Cash Reserve</div>
+            <div class="field-help">Keeps a portion of the portfolio in cash after trades. Raising it makes the bot more defensive; lowering it allows more capital to deploy into ideas.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Core / On / Auto / Off</div>
+            <div class="field-help">Core assets are strategic holdings with target weights and rebalance bands. On manually allows a non-core asset. Auto lets the system decide. Off blocks an asset from manual participation while keeping it visible.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Sniper Score and Buy Scale</div>
+            <div class="field-help">Sniper minimum score controls how selective the opportunistic entry engine is. Sniper buy scale controls how much capital a qualifying sniper entry may use relative to normal sizing.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Drawdown Levels</div>
+            <div class="field-help">Warn, Reduce, and Freeze tell the bot how defensive to become as the portfolio drawdown deepens. Lower thresholds react earlier; higher thresholds tolerate more drawdown before tightening behavior.</div>
+          </div>
+        </div>
+      </div>
+    </details>
 
     <div class="divider"></div>
 
@@ -528,8 +577,8 @@
     <details class="configuration-advanced-toggle" id="config-section-advanced-controls" data-config-section="advanced-controls">
       <summary>
         <div>
-          <strong>Technical and Internal Controls</strong>
-          <span>Capacity limits, opportunity-universe management, and the more technical controls operators use less often.</span>
+          <strong>Advanced Controls</strong>
+          <span>Open these sections when you want deeper tuning for capacity, risk thresholds, asset controls, and runtime visibility.</span>
         </div>
       </summary>
       <div class="configuration-advanced-body">

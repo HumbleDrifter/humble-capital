@@ -254,6 +254,21 @@
     </div>
   </section>
 
+  <section class="panel span-12">
+    <div class="section-header">
+      <div>
+        <h2>Recent Buy Decisions</h2>
+        <p class="section-subtitle">This feed explains the most recent buy decisions so you can see whether the bot bought, blocked, ignored, or failed an opportunity.</p>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" type="button" onclick="loadDecisionTrace()">Refresh Decisions</button>
+      </div>
+    </div>
+    <div class="config-proposal-history" id="decisionTraceHistory">
+      <div class="config-proposal-history-empty">No recent buy decisions yet.</div>
+    </div>
+  </section>
+
   <section class="panel span-12 config-proposal-panel">
     <div class="section-header">
       <div>

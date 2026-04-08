@@ -15,6 +15,7 @@ let RECENT_PROPOSALS = [];
 let LAST_CONFIGURATION_REFRESH_AT = 0;
 let LATEST_OPTIONS_HEALTH = null;
 let OPTIONS_TELEMETRY_WARNING_SHOWN = false;
+let RECENT_DECISION_TRACE = [];
 const PERCENT_FIELD_IDS = [
   "satellite_total_target",
   "satellite_total_max",
@@ -1517,6 +1518,63 @@ function getAssetMode(productId) {
   return { key: "auto", badge: '<span class="badge accent">auto</span>' };
 }
 
+function decisionTraceTone(item) {
+  const category = String(item?.result_category || "").trim().toLowerCase();
+  if (category === "bought") return "positive";
+  if (category === "execution_failed" || category === "invalid") return "negative";
+  if (category === "blocked" || category === "ignored") return "warn";
+  return "";
+}
+
+function renderDecisionTrace(items) {
+  const host = document.getElementById("decisionTraceHistory");
+  if (!host) return;
+  const rows = Array.isArray(items) ? items.slice(0, 12) : [];
+  RECENT_DECISION_TRACE = rows;
+  if (!rows.length) {
+    host.innerHTML = `<div class="config-proposal-history-empty">No recent buy decisions yet.</div>`;
+    return;
+  }
+
+  host.innerHTML = rows.map((item) => {
+    const tone = decisionTraceTone(item);
+    const details = [
+      item.asset_state ? `State ${item.asset_state}` : "",
+      hasNumericValue(item.requested_buy_usd) ? `Requested ${formatUsd(item.requested_buy_usd)}` : "",
+      hasNumericValue(item.allowed_buy_usd) ? `Allowed ${formatUsd(item.allowed_buy_usd)}` : "",
+      hasNumericValue(item.free_cash_after_reserve_usd) ? `Free Cash ${formatUsd(item.free_cash_after_reserve_usd)}` : "",
+      item.market_regime ? `Regime ${item.market_regime}` : "",
+      item.reason_code ? `Code ${item.reason_code}` : ""
+    ].filter(Boolean).join(" • ");
+    return `
+      <div class="config-proposal-history-row">
+        <div class="config-proposal-history-main">
+          <div class="config-proposal-history-top">
+            <span class="config-proposal-id">${escapeHtml(item.product_id || "—")}</span>
+            <span class="config-proposal-status ${tone}">${escapeHtml(item.result_category || "decision")}</span>
+          </div>
+          <div class="config-proposal-history-summary">${escapeHtml(item.summary || "Decision recorded")}</div>
+          ${details ? `<div class="config-proposal-history-summary">${escapeHtml(details)}</div>` : ""}
+        </div>
+        <div class="config-proposal-history-meta">
+          <div><span class="config-proposal-label">Signal</span><span class="config-proposal-value">${escapeHtml(item.normalized_signal_type || item.signal_type || "—")}</span></div>
+          <div><span class="config-proposal-label">Time</span><span class="config-proposal-value">${escapeHtml(formatProposalDate(item.timestamp || item.ts))}</span></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadDecisionTrace() {
+  try {
+    const data = await fetchJson("/api/decision_trace?limit=12", {}, 20000);
+    renderDecisionTrace(data.items || []);
+  } catch (err) {
+    console.warn("Decision trace load failed:", err.message);
+    renderDecisionTrace([]);
+  }
+}
+
 function assetControlId(productId, suffix) {
   const safe = String(productId || "").toUpperCase().replace(/[^A-Z0-9]+/g, "-");
   return `asset-${safe}-${suffix}`;
@@ -1730,7 +1788,7 @@ async function loadConfiguration() {
 
   try {
     await Promise.all([loadTradableAssets(), loadConfigState(), loadPortfolioSnapshot()]);
-    await Promise.all([loadAdvisoryState(), loadProposalState(), loadOptionsHealth(), loadOptionsTelemetry()]);
+    await Promise.all([loadAdvisoryState(), loadProposalState(), loadOptionsHealth(), loadOptionsTelemetry(), loadDecisionTrace()]);
     drawAssetRows();
     applyPresetFromUrlIfPresent();
     setStatus(`Loaded ${ASSETS.length} tradable USD assets. Portfolio guardrails and advanced sections are ready.`);
@@ -2334,6 +2392,7 @@ window.renderAssetRows = applyAssetFilter;
 window.setAssetMode = setAssetMode;
 window.saveCoreSettings = saveCoreSettings;
 window.saveRiskControls = saveRiskControls;
+window.loadDecisionTrace = loadDecisionTrace;
 window.stageSelectedInvestmentStyle = stageSelectedInvestmentStyle;
 window.applyConfigPreset = applyConfigPreset;
 window.evaluateAutoDraftNow = evaluateAutoDraftNow;

@@ -1752,6 +1752,118 @@ def _build_tradable_universe():
     }
 
 
+def _asset_mode_from_config(product_id, config):
+    product_id = _normalize_product_id(product_id)
+    config = config if isinstance(config, dict) else {}
+    core_assets = config.get("core_assets") or {}
+    satellite_allowed = set(_normalize_product_id(x) for x in (config.get("satellite_allowed") or []))
+    satellite_blocked = set(_normalize_product_id(x) for x in (config.get("satellite_blocked") or []))
+
+    if product_id in core_assets:
+        return "core"
+    if product_id in satellite_blocked:
+        return "disable"
+    if product_id in satellite_allowed:
+        return "enable"
+    return "auto"
+
+
+def _build_asset_config_rows():
+    snapshot = get_portfolio_snapshot()
+    if not isinstance(snapshot, dict):
+        raise RuntimeError("portfolio snapshot unavailable")
+
+    config = load_asset_config() or {}
+    universe = _build_tradable_universe()
+    summary = portfolio_summary(snapshot)
+    valid_product_ids = {
+        _normalize_product_id(product_id)
+        for product_id in (get_valid_product_ids(quote_currency="USD", tradable_only=True) or [])
+        if _normalize_product_id(product_id)
+    }
+    configured_product_ids = {
+        _normalize_product_id(product_id)
+        for product_id in list((config.get("core_assets") or {}).keys())
+        + list(config.get("satellite_allowed") or [])
+        + list(config.get("satellite_blocked") or [])
+        if _normalize_product_id(product_id)
+    }
+    position_product_ids = {
+        _normalize_product_id(product_id)
+        for product_id in (snapshot.get("positions") or {}).keys()
+        if _normalize_product_id(product_id).endswith("-USD")
+    }
+    active_buy_universe = {
+        _normalize_product_id(product_id)
+        for product_id in (universe.get("active_satellite_buy_universe") or [])
+        if _normalize_product_id(product_id)
+    }
+    system_selected = {
+        _normalize_product_id(product_id)
+        for product_id in (universe.get("current_system_selections") or [])
+        if _normalize_product_id(product_id)
+    }
+
+    product_ids = sorted(
+        valid_product_ids
+        | configured_product_ids
+        | position_product_ids
+        | active_buy_universe
+        | system_selected
+    )
+    positions = snapshot.get("positions") or {}
+    items = []
+
+    for product_id in product_ids:
+        position = positions.get(product_id) or {}
+        held_value_usd = float(
+            position.get("value_total_usd")
+            or position.get("value_usd")
+            or position.get("usd_value")
+            or 0.0
+        )
+        mode = _asset_mode_from_config(product_id, config)
+        items.append(
+            {
+                "product_id": product_id,
+                "quote_currency_id": "USD",
+                "state": mode,
+                "manual_state": mode,
+                "effective_state": mode,
+                "is_core": product_id in (config.get("core_assets") or {}),
+                "is_enabled": mode == "enable",
+                "is_disabled": mode == "disable",
+                "is_auto": mode == "auto",
+                "held_value_usd": held_value_usd,
+                "active_buy_universe": product_id in active_buy_universe,
+                "system_selected": product_id in system_selected,
+                "target_weight": float(((config.get("core_assets") or {}).get(product_id) or {}).get("target_weight", 0.0) or 0.0),
+                "rebalance_band": float(((config.get("core_assets") or {}).get(product_id) or {}).get("rebalance_band", 0.0) or 0.0),
+            }
+        )
+
+    return {
+        "ok": True,
+        "generated_at": int(_now()),
+        "snapshot_timestamp": _safe_int(snapshot.get("timestamp")),
+        "items": items,
+        "summary": {
+            "total_count": len(items),
+            "core_count": len([item for item in items if item.get("state") == "core"]),
+            "enabled_count": len([item for item in items if item.get("state") == "enable"]),
+            "auto_count": len([item for item in items if item.get("state") == "auto"]),
+            "disabled_count": len([item for item in items if item.get("state") == "disable"]),
+            "active_buy_universe_count": len(active_buy_universe),
+            "system_selected_count": len(system_selected),
+        },
+        "meta": {
+            "source": "asset_config_rows_v1",
+            "satellite_mode": str(config.get("satellite_mode", "rotation") or "rotation"),
+            "market_regime": str(summary.get("market_regime", "") or ""),
+        },
+    }
+
+
 def _build_tradingview_manifest():
     universe = _build_tradable_universe()
 
@@ -1976,6 +2088,15 @@ def api_config():
         return jsonify(_with_cache("config", _build_config, ttl_sec=10, stale_sec=120))
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/assets/config", methods=["GET"])
+@require_secret
+def api_assets_config():
+    try:
+        return jsonify(_with_cache("assets_config", _build_asset_config_rows, ttl_sec=10, stale_sec=120))
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "items": []}), 500
 
 
 @api_bp.route("/api/meme_rotation", methods=["GET"])
@@ -2435,6 +2556,81 @@ def api_admin_asset():
         return jsonify({
             "ok": True,
             "config": config,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/assets/config/update", methods=["POST"])
+@require_admin_auth
+def api_assets_config_update():
+    try:
+        payload = request.get_json(silent=True) or {}
+        if not payload:
+            payload = request.form.to_dict()
+
+        product_id = _normalize_product_id(payload.get("product_id"))
+        state = str(payload.get("state") or "").strip().lower()
+        if not product_id:
+            return jsonify({"ok": False, "error": "missing_product_id"}), 400
+        if state not in {"enable", "auto", "disable"}:
+            return jsonify({"ok": False, "error": "invalid_state"}), 400
+
+        config = load_asset_config() or {}
+        known_products = {
+            _normalize_product_id(x)
+            for x in list((config.get("core_assets") or {}).keys())
+            + list(config.get("satellite_allowed") or [])
+            + list(config.get("satellite_blocked") or [])
+            + list(get_valid_product_ids(quote_currency="USD", tradable_only=True) or [])
+            if _normalize_product_id(x)
+        }
+        if product_id not in known_products:
+            return jsonify({"ok": False, "error": "invalid_product_id"}), 400
+        if product_id in (config.get("core_assets") or {}):
+            return jsonify({"ok": False, "error": "core_assets_managed_separately"}), 400
+
+        old_state = _asset_mode_from_config(product_id, config)
+        allowed = config.setdefault("satellite_allowed", [])
+        blocked = config.setdefault("satellite_blocked", [])
+
+        if state == "enable":
+            if product_id not in allowed:
+                allowed.append(product_id)
+            if product_id in blocked:
+                blocked.remove(product_id)
+        elif state == "disable":
+            if product_id not in blocked:
+                blocked.append(product_id)
+            if product_id in allowed:
+                allowed.remove(product_id)
+        else:
+            if product_id in allowed:
+                allowed.remove(product_id)
+            if product_id in blocked:
+                blocked.remove(product_id)
+
+        save_asset_config(config)
+        _API_CACHE.clear()
+        print(json.dumps({
+            "component": "api",
+            "event": "asset_state_updated",
+            "payload": {
+                "product_id": product_id,
+                "old_state": old_state,
+                "new_state": state,
+                "storage": "asset_config.json",
+            },
+        }, sort_keys=True, ensure_ascii=False))
+
+        rows = _build_asset_config_rows()
+        item = next((row for row in (rows.get("items") or []) if row.get("product_id") == product_id), None)
+        return jsonify({
+            "ok": True,
+            "product_id": product_id,
+            "old_state": old_state,
+            "state": state,
+            "item": item,
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

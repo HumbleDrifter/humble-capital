@@ -3,6 +3,7 @@ let FILTERED_ASSETS = [];
 let ALLOWED_SATELLITES = [];
 let BLOCKED_SATELLITES = [];
 let CORE_ASSETS = [];
+let ASSET_STATE_BY_PRODUCT = {};
 let HOLDINGS_BY_PRODUCT = {};
 let TOTAL_ASSET_VALUE_USD = 0;
 let ACTIVE_PRESET = "";
@@ -1320,6 +1321,16 @@ function renderAutomationOverview() {
 }
 
 function getAssetMode(productId) {
+  const rowState = String(ASSET_STATE_BY_PRODUCT[String(productId || "").toUpperCase()]?.effective_state || "").trim().toLowerCase();
+  if (rowState === "core") {
+    return { key: "core", badge: '<span class="badge accent2">core</span>' };
+  }
+  if (rowState === "disable") {
+    return { key: "disable", badge: '<span class="badge bad">disable</span>' };
+  }
+  if (rowState === "enable") {
+    return { key: "enable", badge: '<span class="badge good">enable</span>' };
+  }
   if (CORE_ASSETS.includes(productId)) {
     return { key: "core", badge: '<span class="badge accent2">core</span>' };
   }
@@ -1479,9 +1490,19 @@ async function loadConfigState() {
 }
 
 async function loadTradableAssets() {
-  const data = await fetchJson("/api/valid_product_ids?quote=USD&tradable_only=true", {}, 45000);
-  ASSETS = (data.products || []).map((p) => ({ product_id: p, quote_currency_id: "USD" }));
+  const data = await fetchJson("/api/assets/config", {}, 45000);
+  ASSETS = (data.items || []).map((item) => ({
+    ...item,
+    product_id: String(item.product_id || "").toUpperCase(),
+    quote_currency_id: "USD"
+  }));
   FILTERED_ASSETS = ASSETS.slice();
+  ASSET_STATE_BY_PRODUCT = Object.fromEntries(
+    ASSETS.map((item) => [String(item.product_id || "").toUpperCase(), item])
+  );
+  CORE_ASSETS = ASSETS.filter((item) => item.state === "core").map((item) => item.product_id);
+  ALLOWED_SATELLITES = ASSETS.filter((item) => item.state === "enable").map((item) => item.product_id);
+  BLOCKED_SATELLITES = ASSETS.filter((item) => item.state === "disable").map((item) => item.product_id);
 }
 
 async function loadConfiguration() {
@@ -1574,26 +1595,21 @@ async function postAdminAssetAction(payload, successMessage) {
 }
 
 async function setAssetMode(productId, mode) {
-  if (mode === "enable") return postAdminAssetAction({ action: "enable_satellite", product_id: productId }, `${productId} enabled as satellite`);
-  if (mode === "disable") return postAdminAssetAction({ action: "block", product_id: productId }, `${productId} disabled from trading`);
-  if (mode === "auto") {
-    try {
-      await fetchJson("/api/admin/asset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "disable_satellite", product_id: productId, ...(API_SECRET ? { secret: API_SECRET } : {}) })
-      }, 20000);
-      await fetchJson("/api/admin/asset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "unblock", product_id: productId, ...(API_SECRET ? { secret: API_SECRET } : {}) })
-      }, 20000);
-      setStatus(`${productId} returned to auto mode`);
-      await loadConfiguration();
-    } catch (err) {
-      console.error(err);
-      setStatus(`Set auto failed for ${productId}: ${err.message}`, true);
+  try {
+    const result = await fetchJson("/api/assets/config/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ product_id: productId, state: mode, ...(API_SECRET ? { secret: API_SECRET } : {}) })
+    }, 20000);
+    const stateLabel = mode === "enable" ? "enabled" : mode === "disable" ? "disabled" : "returned to auto";
+    setStatus(`${productId} ${stateLabel}`);
+    if (result?.item?.product_id) {
+      ASSET_STATE_BY_PRODUCT[String(result.item.product_id || "").toUpperCase()] = result.item;
     }
+    await loadConfiguration();
+  } catch (err) {
+    console.error(err);
+    setStatus(`Set ${mode} failed for ${productId}: ${err.message}`, true);
   }
 }
 

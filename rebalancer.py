@@ -12,6 +12,7 @@ from execution import (
 )
 from decision_trace import infer_asset_state, record_decision_trace
 from position_sizing import compute_risk_adjusted_size
+from trailing_exit import evaluate_all_exits, clear_tracking
 
 from positions import compute_sell_base, compute_full_liquid_base
 
@@ -887,3 +888,50 @@ def dispatch_signal_action(
         "action": action,
         "signal_type": signal_type,
     }
+
+
+def run_trailing_exit_sweep():
+    """Called periodically to check for trailing stop and stale position exits."""
+    try:
+        snapshot = get_portfolio_snapshot()
+        exits = evaluate_all_exits(snapshot)
+
+        results = []
+        for exit_signal in exits:
+            product_id = exit_signal["product_id"]
+            reason = exit_signal["reason"]
+
+            _log_rebalancer_event("trailing_exit_triggered", {
+                "product_id": product_id,
+                "reason": reason,
+                "details": exit_signal.get("details", {}),
+            })
+
+            position_value = float(
+                snapshot.get("positions", {}).get(product_id, {}).get("value_total_usd", 0.0) or 0.0
+            )
+
+            if position_value <= 0:
+                continue
+
+            result = execute_trim(
+                product_id=product_id,
+                trim_usd=position_value,
+                snapshot=snapshot,
+                signal_type=f"AUTO_{reason.upper()}",
+                external_order_id=None,
+            )
+
+            if result.get("ok"):
+                clear_tracking(product_id)
+
+            results.append({
+                "product_id": product_id,
+                "reason": reason,
+                "result": result,
+            })
+
+        return {"ok": True, "exits": results}
+    except Exception as exc:
+        _log_rebalancer_event("trailing_exit_sweep_failed", {"error": str(exc)})
+        return {"ok": False, "error": str(exc), "exits": []}

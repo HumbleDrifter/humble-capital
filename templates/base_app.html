@@ -13,6 +13,7 @@
   {% set secret_value = secret if secret is defined and secret else request.args.get('secret', '') %}
   {% set dashboard_url = '/dashboard?secret=' ~ (secret_value|urlencode) if secret_value else '/dashboard' %}
   {% set portfolio_url = '/analytics?secret=' ~ (secret_value|urlencode) if secret_value else '/analytics' %}
+  {% set performance_url = '/performance?secret=' ~ (secret_value|urlencode) if secret_value else '/performance' %}
   {% set opportunities_url = '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' %}
   {% set activity_url = '/trade-history?secret=' ~ (secret_value|urlencode) if secret_value else '/trade-history' %}
   {% set automation_url = '/configuration?secret=' ~ (secret_value|urlencode) if secret_value else '/configuration' %}
@@ -20,8 +21,9 @@
   {% set settings_url = '/settings?secret=' ~ (secret_value|urlencode) if secret_value else '/settings' %}
   {% set accounts_active = current_path == '/accounts' %}
   {% set automation_active = current_path == '/configuration' %}
+  {% set performance_active = current_path == '/performance' %}
   {% set settings_active = current_path in ['/settings', '/system-status'] %}
-  {% set more_active = accounts_active or automation_active or settings_active %}
+  {% set more_active = accounts_active or automation_active or settings_active or performance_active %}
 
   <div class="app-shell">
     <aside class="sidebar">
@@ -39,6 +41,9 @@
         </a>
         <a class="nav-link {% if current_path == '/analytics' %}active{% endif %}" href="{{ portfolio_url }}">
           <span class="nav-link-label">Portfolio</span>
+        </a>
+        <a class="nav-link {% if current_path == '/performance' %}active{% endif %}" href="{{ performance_url }}">
+          <span class="nav-link-label">Performance</span>
         </a>
         <a class="nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ opportunities_url }}">
           <span class="nav-link-label">Opportunities</span>
@@ -136,6 +141,7 @@
         <span class="mobile-nav-label">More</span>
       </summary>
       <div class="mobile-more-sheet">
+        <a class="mobile-more-link {% if performance_active %}active{% endif %}" href="{{ performance_url }}">Performance</a>
         <a class="mobile-more-link {% if accounts_active %}active{% endif %}" href="{{ accounts_url }}">Accounts</a>
         <a class="mobile-more-link {% if automation_active %}active{% endif %}" href="{{ automation_url }}">Automation</a>
         <a class="mobile-more-link {% if settings_active %}active{% endif %}" href="{{ settings_url }}">Settings</a>

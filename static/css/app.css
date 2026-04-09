@@ -7758,3 +7758,444 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   OPPORTUNITIES — HUMBLE CAPITAL (opp-*)
+========================================================= */
+
+.opp-shell {
+  display: grid;
+  gap: 24px;
+  color: var(--hc-text);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+}
+
+.opp-panel,
+.opp-hero,
+.opp-summary-panel,
+.opp-shadow-panel,
+.opp-review-grid,
+.opp-board-panel,
+.opp-advanced-panel,
+.opp-score-panel {
+  animation: hcFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.opp-summary-panel {
+  animation-delay: 0.08s;
+}
+
+.opp-shadow-panel,
+.opp-review-grid {
+  animation-delay: 0.16s;
+}
+
+.opp-score-panel,
+.opp-board-panel {
+  animation-delay: 0.24s;
+}
+
+.opp-advanced-panel {
+  animation-delay: 0.32s;
+}
+
+.opp-hero {
+  display: grid;
+  gap: 16px;
+  padding: 26px 0 4px;
+}
+
+.opp-hero-copy {
+  display: grid;
+  gap: 10px;
+  max-width: 820px;
+}
+
+.opp-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hc-teal);
+}
+
+.opp-title {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--hc-text);
+}
+
+.opp-subtitle,
+.opp-section-subtitle {
+  margin: 0;
+  color: var(--hc-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.opp-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.opp-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.opp-summary-card {
+  min-height: 132px;
+}
+
+.opp-regime-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.opp-regime-pill.good {
+  color: var(--hc-teal);
+  background: rgba(45, 212, 191, 0.12);
+  border-color: rgba(45, 212, 191, 0.22);
+}
+
+.opp-regime-pill.warn {
+  color: var(--hc-amber);
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.22);
+}
+
+.opp-regime-pill.bad {
+  color: var(--hc-red);
+  background: rgba(251, 113, 133, 0.12);
+  border-color: rgba(251, 113, 133, 0.22);
+}
+
+.opp-panel-head {
+  margin-bottom: 14px;
+}
+
+.opp-panel-head.section-header,
+.opp-panel-head.compact-header {
+  margin-bottom: 14px;
+}
+
+.opp-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--hc-text);
+}
+
+.opp-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.opp-review-panel,
+.opp-board-panel,
+.opp-advanced-panel {
+  min-width: 0;
+}
+
+.opp-score-legend {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at top left, rgba(45, 212, 191, 0.06), transparent 35%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.opp-score-legend-head {
+  padding: 18px 18px 8px;
+}
+
+.opp-score-legend-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.opp-score-legend-note {
+  margin: 0;
+  padding: 0 18px 18px;
+  color: var(--hc-text-secondary);
+}
+
+.opp-shadow-monitor,
+.opp-shell .dashboard-shadow-monitor {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at top left, rgba(96, 165, 250, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.018));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 28px rgba(0, 0, 0, 0.14);
+}
+
+.opp-shadow-head {
+  align-items: flex-start;
+}
+
+.opp-shadow-title {
+  color: var(--hc-text);
+}
+
+.opp-shadow-subtitle,
+.opp-shadow-updated {
+  color: var(--hc-text-secondary);
+}
+
+.opp-shadow-summary-grid {
+  gap: 10px;
+}
+
+.opp-shadow-stat {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.opp-eligible-list {
+  display: grid;
+  gap: 10px;
+}
+
+.opp-eligible-card,
+.opp-shell .shadow-eligible-row {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.018));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.opp-eligible-symbol {
+  color: var(--hc-text);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.opp-inline-result {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.opp-columns-shell {
+  width: 100%;
+}
+
+.opp-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.opp-column {
+  min-width: 0;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 10px 22px rgba(0, 0, 0, 0.12);
+  padding: 14px;
+}
+
+.opp-column.active {
+  border-color: rgba(45, 212, 191, 0.16);
+}
+
+.opp-column-head {
+  align-items: flex-start;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.opp-column-cards {
+  display: grid;
+  gap: 12px;
+}
+
+.opp-card,
+.opp-shell .opportunity-card {
+  min-height: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.opp-card:hover,
+.opp-shell .opportunity-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 16px 30px rgba(0, 0, 0, 0.18);
+}
+
+.opp-card-head {
+  gap: 14px;
+}
+
+.opp-symbol {
+  color: var(--hc-text);
+  font-size: 20px;
+  font-weight: 780;
+  letter-spacing: -0.03em;
+}
+
+.opp-subline {
+  color: var(--hc-text-secondary);
+}
+
+.opp-score-wrap {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.opp-score-kicker {
+  color: var(--hc-text-tertiary);
+}
+
+.opp-score {
+  color: var(--hc-text);
+}
+
+.opp-pill-row {
+  gap: 8px;
+}
+
+.opp-metrics {
+  gap: 10px;
+}
+
+.opp-metric {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.opp-metric-label {
+  color: var(--hc-text-secondary);
+}
+
+.opp-actions {
+  gap: 8px;
+}
+
+.opp-action-btn {
+  min-height: 40px;
+  border-radius: 999px;
+}
+
+.opp-empty {
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.opp-advanced-toggle summary,
+.opp-advanced-toggle .configuration-advanced-body {
+  border-radius: 18px;
+}
+
+.opp-advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.opp-shell .btn-primary,
+.opp-shell .btn-secondary {
+  min-height: 42px;
+  border-radius: 999px;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.opp-shell .btn-primary {
+  background: linear-gradient(135deg, #2dd4bf 0%, #60a5fa 100%);
+  color: #061018;
+  border-color: transparent;
+  box-shadow: 0 12px 24px rgba(45, 212, 191, 0.18);
+}
+
+.opp-shell .btn-secondary {
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--hc-text);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.opp-shell .btn-primary:hover,
+.opp-shell .btn-secondary:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1100px) {
+  .opp-review-grid,
+  .opp-board,
+  .opp-advanced-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .opp-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .opp-shell {
+    gap: 20px;
+  }
+
+  .opp-summary-grid,
+  .opp-advanced-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .opp-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .opp-score-wrap {
+    text-align: left;
+  }
+
+  .opp-actions {
+    flex-direction: column;
+  }
+}

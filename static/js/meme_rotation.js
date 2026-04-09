@@ -458,19 +458,19 @@ function emptyStateText(groupKey) {
   return "No candidates are being monitored right now.";
 }
 
-function actionButtons(row) {
-  const productId = String(row.product_id || "");
-  const safeId = escapeHtml(productId);
-  const mode = row.blocked ? "disable" : row.allowed ? "enable" : "auto";
+  function actionButtons(row) {
+    const productId = String(row.product_id || "");
+    const safeId = escapeHtml(productId);
+    const mode = row.blocked ? "disable" : row.allowed ? "enable" : "auto";
 
-  return `
-    <div class="opportunity-actions">
-      <button class="btn ${mode === "enable" ? "btn-primary" : "btn-secondary"} opportunity-action-btn" type="button" onclick="setOpportunityMode('${safeId}','enable')">Enable</button>
-      <button class="btn ${mode === "auto" ? "btn-primary" : "btn-secondary"} opportunity-action-btn" type="button" onclick="setOpportunityMode('${safeId}','auto')">Auto</button>
-      <button class="btn ${mode === "disable" ? "btn-primary" : "btn-secondary"} opportunity-action-btn" type="button" onclick="setOpportunityMode('${safeId}','disable')">Disable</button>
-    </div>
-  `;
-}
+    return `
+      <div class="opportunity-actions opp-actions">
+        <button class="btn ${mode === "enable" ? "btn-primary" : "btn-secondary"} opportunity-action-btn opp-action-btn" type="button" onclick="setOpportunityMode('${safeId}','enable')">Enable</button>
+        <button class="btn ${mode === "auto" ? "btn-primary" : "btn-secondary"} opportunity-action-btn opp-action-btn" type="button" onclick="setOpportunityMode('${safeId}','auto')">Auto</button>
+        <button class="btn ${mode === "disable" ? "btn-primary" : "btn-secondary"} opportunity-action-btn opp-action-btn" type="button" onclick="setOpportunityMode('${safeId}','disable')">Disable</button>
+      </div>
+    `;
+  }
 
 function flagPills(row) {
   return normalizeStateBadges(row)
@@ -482,45 +482,45 @@ function renderSummary(data, groups) {
   const host = document.getElementById("opportunitySummary");
   if (!host) return;
   const regimeText = normalizeRegime(data.market_regime || "unknown");
-  const regimeClass = regimeTone(data.market_regime || "unknown");
+    const regimeClass = regimeTone(data.market_regime || "unknown");
 
-  host.innerHTML = `
-    <div class="opportunity-summary-card">
-      <div class="opportunity-summary-label">Active</div>
-      <div class="opportunity-summary-value">${groups.active.length}</div>
-    </div>
-    <div class="opportunity-summary-card">
-      <div class="opportunity-summary-label">Watching</div>
-      <div class="opportunity-summary-value">${groups.watching.length}</div>
-    </div>
-    <div class="opportunity-summary-card">
-      <div class="opportunity-summary-label">Paused</div>
-      <div class="opportunity-summary-value">${groups.paused.length}</div>
-    </div>
-    <div class="opportunity-summary-card">
-      <div class="opportunity-summary-label">Regime</div>
-      <div class="opportunity-summary-value">
-        <span class="opportunity-summary-regime ${escapeHtml(regimeClass)}">${escapeHtml(regimeText)}</span>
+    host.innerHTML = `
+      <div class="hc-context-card opp-summary-card opportunity-summary-card">
+        <div class="hc-context-label opportunity-summary-label">Active</div>
+        <div class="hc-context-value opportunity-summary-value">${groups.active.length}</div>
       </div>
-    </div>
-  `;
-}
+      <div class="hc-context-card opp-summary-card opportunity-summary-card">
+        <div class="hc-context-label opportunity-summary-label">Watching</div>
+        <div class="hc-context-value opportunity-summary-value">${groups.watching.length}</div>
+      </div>
+      <div class="hc-context-card opp-summary-card opportunity-summary-card">
+        <div class="hc-context-label opportunity-summary-label">Paused</div>
+        <div class="hc-context-value opportunity-summary-value">${groups.paused.length}</div>
+      </div>
+      <div class="hc-context-card opp-summary-card opportunity-summary-card">
+        <div class="hc-context-label opportunity-summary-label">Regime</div>
+        <div class="hc-context-value opportunity-summary-value">
+          <span class="opportunity-summary-regime opp-regime-pill ${escapeHtml(regimeClass)}">${escapeHtml(regimeText)}</span>
+        </div>
+      </div>
+    `;
+  }
 
 function renderScoreLegend(data) {
   const host = document.getElementById("opportunityScoreLegend");
   if (!host) return;
 
   const rows = Array.isArray(data.candidates) ? data.candidates : [];
-  const topScore = rows.reduce((best, row) => Math.max(best, resolveOpportunityScore(row)), 0);
+    const topScore = rows.reduce((best, row) => Math.max(best, resolveOpportunityScore(row)), 0);
 
-  host.innerHTML = `
-    <div class="opportunity-score-legend-head">
-      <div>
-        <div class="opportunity-score-legend-title-row">
-          <div class="opportunity-summary-label">Top Intelligence Score</div>
-          <div class="opportunity-control-help">
-            <button
-              class="opportunity-control-help-button"
+    host.innerHTML = `
+      <div class="opportunity-score-legend-head opp-score-legend-head">
+        <div>
+          <div class="opportunity-score-legend-title-row opp-score-legend-title-row">
+            <div class="opportunity-summary-label hc-context-label">Top Intelligence Score</div>
+            <div class="opportunity-control-help">
+              <button
+                class="opportunity-control-help-button"
               type="button"
               aria-label="Score range information"
             >i</button>
@@ -528,15 +528,15 @@ function renderScoreLegend(data) {
               85+ = High conviction<br>
               65-84 = Building setup<br>
               Below 65 = Early / lower confidence
+              </div>
             </div>
           </div>
+          <div class="opportunity-summary-value hc-context-value">${fmtNumber(topScore)}</div>
         </div>
-        <div class="opportunity-summary-value">${fmtNumber(topScore)}</div>
       </div>
-    </div>
-    <p class="opportunity-score-legend-note">Higher intelligence scores indicate stronger opportunity quality based on the current shadow ranking inputs.</p>
-  `;
-}
+      <p class="opportunity-score-legend-note opp-score-legend-note">Higher intelligence scores indicate stronger opportunity quality based on the current shadow ranking inputs.</p>
+    `;
+  }
 
 function renderScannerStatus(systemData) {
   const summaryEl = document.getElementById("scannerStatusSummary");
@@ -590,36 +590,36 @@ function renderShadowRotationReport(data, opportunityData = {}) {
     : [];
   const blockedReasons = Array.isArray(data?.blocked_reason_breakdown) ? data.blocked_reason_breakdown : [];
   const takeaways = Array.isArray(data?.quick_takeaways) ? data.quick_takeaways : [];
-  const decisionSummary = decisionSummaryText(opportunityData?.satellite_decision_summary);
-  const topBlocker = blockedReasons.length ? blockedReasons[0].reason : "none";
-  const lastUpdatedTs = Number(data?.last_updated_ts || data?.generated_at || 0);
+    const decisionSummary = decisionSummaryText(opportunityData?.satellite_decision_summary);
+    const topBlocker = blockedReasons.length ? blockedReasons[0].reason : "none";
+    const lastUpdatedTs = Number(data?.last_updated_ts || data?.generated_at || 0);
 
-  host.innerHTML = `
-    <div class="dashboard-shadow-head">
-      <div>
-        <div class="dashboard-shadow-title">Satellite Intelligence Monitor</div>
-        <div class="dashboard-shadow-subtitle">24h intelligence view of satellite selection, constraints, and missed opportunities.</div>
+    host.innerHTML = `
+      <div class="dashboard-shadow-head opp-shadow-head">
+        <div>
+          <div class="dashboard-shadow-title opp-shadow-title">Satellite Intelligence Monitor</div>
+          <div class="dashboard-shadow-subtitle opp-shadow-subtitle">24h intelligence view of satellite selection, constraints, and missed opportunities.</div>
+        </div>
+        <div class="dashboard-shadow-updated opp-shadow-updated">Updated ${escapeHtml(formatUnixTime(lastUpdatedTs))}</div>
       </div>
-      <div class="dashboard-shadow-updated">Updated ${escapeHtml(formatUnixTime(lastUpdatedTs))}</div>
-    </div>
 
-    <div class="dashboard-shadow-summary-grid">
-      <div class="dashboard-shadow-stat">
-        <div class="dashboard-shadow-stat-label">Cycles</div>
-        <div class="dashboard-shadow-stat-value">${cycles}</div>
-      </div>
-      <div class="dashboard-shadow-stat">
-        <div class="dashboard-shadow-stat-label">Live Empty</div>
-        <div class="dashboard-shadow-stat-value">${fmtPctValue(data?.empty_live_selection_rate_pct)}</div>
-      </div>
-      <div class="dashboard-shadow-stat">
-        <div class="dashboard-shadow-stat-label">Disagreement</div>
-        <div class="dashboard-shadow-stat-value">${fmtPctValue(data?.shadow_live_disagreement_rate_pct)}</div>
-      </div>
-      <div class="dashboard-shadow-stat">
-        <div class="dashboard-shadow-stat-label">Avg Overlap</div>
-        <div class="dashboard-shadow-stat-value">${Number(data?.average_overlap_count || 0).toFixed(2)}</div>
-      </div>
+      <div class="dashboard-shadow-summary-grid opp-shadow-summary-grid">
+        <div class="dashboard-shadow-stat opp-shadow-stat">
+          <div class="dashboard-shadow-stat-label">Cycles</div>
+          <div class="dashboard-shadow-stat-value">${cycles}</div>
+        </div>
+        <div class="dashboard-shadow-stat opp-shadow-stat">
+          <div class="dashboard-shadow-stat-label">Live Empty</div>
+          <div class="dashboard-shadow-stat-value">${fmtPctValue(data?.empty_live_selection_rate_pct)}</div>
+        </div>
+        <div class="dashboard-shadow-stat opp-shadow-stat">
+          <div class="dashboard-shadow-stat-label">Disagreement</div>
+          <div class="dashboard-shadow-stat-value">${fmtPctValue(data?.shadow_live_disagreement_rate_pct)}</div>
+        </div>
+        <div class="dashboard-shadow-stat opp-shadow-stat">
+          <div class="dashboard-shadow-stat-label">Avg Overlap</div>
+          <div class="dashboard-shadow-stat-value">${Number(data?.average_overlap_count || 0).toFixed(2)}</div>
+        </div>
     </div>
 
     <div class="dashboard-shadow-chip-row">
@@ -658,30 +658,30 @@ function renderShadowEligibleCandidates(data) {
     return;
   }
 
-  host.innerHTML = rows.map((row) => `
-    <div class="shadow-eligible-row">
-      <div class="shadow-eligible-main">
-        <div class="shadow-eligible-head">
-          <div class="shadow-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
-          <span class="badge ${row.shadow_eligible && row.active_buy_universe === false ? "warn" : "good"}">
-            ${escapeHtml(row.shadow_eligible && row.active_buy_universe === false ? "Not Live Yet" : "Review Ready")}
-          </span>
-          ${row.decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(row.decision))}">${escapeHtml(decisionLabel(row.decision) || titleCase(row.decision))}</span>` : ""}
-        </div>
-        <div class="shadow-eligible-meta">
-          <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
-          <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>
-          <span class="pill">${escapeHtml(titleCase(row.liquidity_bucket || "unknown"))} liquidity</span>
+    host.innerHTML = rows.map((row) => `
+      <div class="shadow-eligible-row opp-eligible-card">
+        <div class="shadow-eligible-main opp-eligible-main">
+          <div class="shadow-eligible-head opp-eligible-head">
+            <div class="shadow-eligible-symbol opp-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
+            <span class="badge ${row.shadow_eligible && row.active_buy_universe === false ? "warn" : "good"}">
+              ${escapeHtml(row.shadow_eligible && row.active_buy_universe === false ? "Not Live Yet" : "Review Ready")}
+            </span>
+            ${row.decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(row.decision))}">${escapeHtml(decisionLabel(row.decision) || titleCase(row.decision))}</span>` : ""}
+          </div>
+          <div class="shadow-eligible-meta opp-eligible-meta">
+            <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
+            <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>
+            <span class="pill">${escapeHtml(titleCase(row.liquidity_bucket || "unknown"))} liquidity</span>
           <span class="pill">${escapeHtml(titleCase(row.volatility_bucket || "unknown"))} volatility</span>
           <span class="pill">${escapeHtml(row.heldContext || "New candidate")}</span>
           <span class="pill">${escapeHtml(row.slotPressure || "Room available")}</span>
           <span class="pill">${escapeHtml(`Portfolio pressure: ${String(row.portfolioPressure || "Normal").toLowerCase()}`)}</span>
         </div>
+        </div>
+        <div class="shadow-eligible-reasons opp-eligible-reasons">
+          ${renderDecisionLines(row, { showQualifies: true, showPortfolio: true })}
+        </div>
       </div>
-      <div class="shadow-eligible-reasons">
-        ${renderDecisionLines(row, { showQualifies: true, showPortfolio: true })}
-      </div>
-    </div>
   `).join("");
 }
 
@@ -710,28 +710,28 @@ function renderShadowNearMissCandidates(data) {
     return;
   }
 
-  host.innerHTML = rows.map((row) => `
-    <div class="shadow-eligible-row">
-      <div class="shadow-eligible-main">
-        <div class="shadow-eligible-head">
-          <div class="shadow-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
-          <span class="badge warn">Almost Ready</span>
-          ${row.decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(row.decision))}">${escapeHtml(decisionLabel(row.decision) || titleCase(row.decision))}</span>` : ""}
-        </div>
-        <div class="shadow-eligible-meta">
-          <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
-          <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>
-          <span class="pill">${escapeHtml(titleCase(row.liquidity_bucket || "unknown"))} liquidity</span>
+    host.innerHTML = rows.map((row) => `
+      <div class="shadow-eligible-row opp-eligible-card">
+        <div class="shadow-eligible-main opp-eligible-main">
+          <div class="shadow-eligible-head opp-eligible-head">
+            <div class="shadow-eligible-symbol opp-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
+            <span class="badge warn">Almost Ready</span>
+            ${row.decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(row.decision))}">${escapeHtml(decisionLabel(row.decision) || titleCase(row.decision))}</span>` : ""}
+          </div>
+          <div class="shadow-eligible-meta opp-eligible-meta">
+            <span class="badge accent">score ${Number(row.net_score || 0).toFixed(1)}</span>
+            <span class="pill">${escapeHtml(titleCase(row.confidence_band || "unknown"))}</span>
+            <span class="pill">${escapeHtml(titleCase(row.liquidity_bucket || "unknown"))} liquidity</span>
           <span class="pill">${escapeHtml(titleCase(row.volatility_bucket || "unknown"))} volatility</span>
           <span class="pill">${escapeHtml(row.heldContext || "New candidate")}</span>
           <span class="pill">${escapeHtml(row.slotPressure || "Room available")}</span>
           <span class="pill">${escapeHtml(`Portfolio pressure: ${String(row.portfolioPressure || "Normal").toLowerCase()}`)}</span>
         </div>
+        </div>
+        <div class="shadow-eligible-reasons opp-eligible-reasons">
+          ${renderDecisionLines(row, { showPrimaryMiss: true, showPortfolio: true })}
+        </div>
       </div>
-      <div class="shadow-eligible-reasons">
-        ${renderDecisionLines(row, { showPrimaryMiss: true, showPortfolio: true })}
-      </div>
-    </div>
   `).join("");
 }
 
@@ -764,58 +764,58 @@ function renderShadowProposalActionState(shadowData, recentProposalItems) {
   }
 }
 
-function opportunityCard(row) {
+  function opportunityCard(row) {
   const productId = row.product_id || row.symbol || "—";
   const score = resolveOpportunityScore(row);
   const tone = opportunityTone(score);
-  const move24h = resolve24hMove(row);
-  const decision = String(row?.decision || "").trim();
-  const decisionConfidence = String(row?.decision_confidence || "").trim();
-  return `
-    <article class="opportunity-card ${tone}">
-      <div class="opportunity-card-head">
-        <div>
-          <div class="opportunity-symbol">${escapeHtml(productId)}</div>
-          <div class="opportunity-subline">
-            <span class="badge">${escapeHtml(assetTypeForCandidate(row))}</span>
-            <span class="tiny">${escapeHtml(signalLabel(row))}</span>
+    const move24h = resolve24hMove(row);
+    const decision = String(row?.decision || "").trim();
+    const decisionConfidence = String(row?.decision_confidence || "").trim();
+    return `
+      <article class="opportunity-card opp-card hc-pos-card ${tone}">
+        <div class="opportunity-card-head opp-card-head">
+          <div>
+            <div class="opportunity-symbol opp-symbol">${escapeHtml(productId)}</div>
+            <div class="opportunity-subline opp-subline">
+              <span class="badge">${escapeHtml(assetTypeForCandidate(row))}</span>
+              <span class="tiny">${escapeHtml(signalLabel(row))}</span>
+            </div>
+          </div>
+          <div class="opportunity-score-wrap opp-score-wrap">
+            <div class="opportunity-score-kicker opp-score-kicker">Intelligence Score</div>
+            <div class="opportunity-score opp-score">${fmtNumber(score)}</div>
+            <div class="tiny">${escapeHtml(scoreLabel(score))} confidence</div>
           </div>
         </div>
-        <div class="opportunity-score-wrap">
-          <div class="opportunity-score-kicker">Intelligence Score</div>
-          <div class="opportunity-score">${fmtNumber(score)}</div>
-          <div class="tiny">${escapeHtml(scoreLabel(score))} confidence</div>
-        </div>
-      </div>
 
-      <div class="opportunity-pill-row">
-        ${flagPills(row)}
-        ${decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(decision))}">${escapeHtml(decisionLabel(decision) || titleCase(decision))}</span>` : ""}
-        ${decisionConfidence ? `<span class="pill">${escapeHtml(titleCase(decisionConfidence))} decision confidence</span>` : ""}
-      </div>
+        <div class="opportunity-pill-row opp-pill-row">
+          ${flagPills(row)}
+          ${decision ? `<span class="badge ${escapeHtml(decisionBadgeTone(decision))}">${escapeHtml(decisionLabel(decision) || titleCase(decision))}</span>` : ""}
+          ${decisionConfidence ? `<span class="pill">${escapeHtml(titleCase(decisionConfidence))} decision confidence</span>` : ""}
+        </div>
 
-      ${decision || row?.decision_reason || row?.replacement_target || (Array.isArray(row?.decision_blockers) && row.decision_blockers.length)
-        ? `<div class="opportunity-subline">${renderDecisionLines(row, { showPortfolio: false })}</div>`
-        : ""}
+        ${decision || row?.decision_reason || row?.replacement_target || (Array.isArray(row?.decision_blockers) && row.decision_blockers.length)
+          ? `<div class="opportunity-subline opp-subline">${renderDecisionLines(row, { showPortfolio: false })}</div>`
+          : ""}
 
-        <div class="opportunity-metrics">
-        <div class="opportunity-metric">
-          <span class="opportunity-metric-label">Target Allocation</span>
-          <strong>${fmtPct(row.portfolio_weight || 0, false)}</strong>
+          <div class="opportunity-metrics opp-metrics">
+          <div class="opportunity-metric opp-metric">
+            <span class="opportunity-metric-label opp-metric-label">Target Allocation</span>
+            <strong>${fmtPct(row.portfolio_weight || 0, false)}</strong>
+          </div>
+          <div class="opportunity-metric opp-metric">
+            <span class="opportunity-metric-label opp-metric-label">Held Value</span>
+            <strong>${fmtUsd(row.held_value_usd || 0)}</strong>
+          </div>
+          <div class="opportunity-metric opp-metric">
+            <span class="opportunity-metric-label opp-metric-label">24H Move</span>
+            <strong>${formatPercentOrNA(move24h)}</strong>
+          </div>
+          <div class="opportunity-metric opp-metric">
+            <span class="opportunity-metric-label opp-metric-label">Unrealized</span>
+            <strong>${fmtPct(row.unrealized_pnl_pct || 0)}</strong>
+          </div>
         </div>
-        <div class="opportunity-metric">
-          <span class="opportunity-metric-label">Held Value</span>
-          <strong>${fmtUsd(row.held_value_usd || 0)}</strong>
-        </div>
-        <div class="opportunity-metric">
-          <span class="opportunity-metric-label">24H Move</span>
-          <strong>${formatPercentOrNA(move24h)}</strong>
-        </div>
-        <div class="opportunity-metric">
-          <span class="opportunity-metric-label">Unrealized</span>
-          <strong>${fmtPct(row.unrealized_pnl_pct || 0)}</strong>
-        </div>
-      </div>
 
       <div class="divider"></div>
 
@@ -845,27 +845,27 @@ function renderGroups(data) {
 
   renderSummary(data, groups);
 
-  grid.className = "";
-  grid.innerHTML = `
-    <div class="opps-board">
-      ${["active", "watching", "paused"].map((groupKey) => {
-        const items = groups[groupKey];
-        return `
-          <section class="opps-section opps-section-${groupKey}">
-            <div class="section-header compact-header">
-              <div>
-                <h3>${groupTitle(groupKey)}</h3>
-                <p class="section-subtitle">${groupDescription(groupKey)}</p>
+    grid.className = "";
+    grid.innerHTML = `
+      <div class="opps-board opp-board">
+        ${["active", "watching", "paused"].map((groupKey) => {
+          const items = groups[groupKey];
+          return `
+            <section class="opps-section opp-column opps-section-${groupKey}">
+              <div class="section-header compact-header opp-column-head">
+                <div>
+                  <h3>${groupTitle(groupKey)}</h3>
+                  <p class="section-subtitle">${groupDescription(groupKey)}</p>
+                </div>
+                <span class="badge">${items.length}</span>
               </div>
-              <span class="badge">${items.length}</span>
-            </div>
-            <div class="opps-cards">
-              ${items.length
-                ? items.map((row) => opportunityCard(row)).join("")
-                : `<div class="opportunity-empty muted">${escapeHtml(emptyStateText(groupKey))}</div>`
-              }
-            </div>
-          </section>
+              <div class="opps-cards opp-column-cards">
+                ${items.length
+                  ? items.map((row) => opportunityCard(row)).join("")
+                  : `<div class="opportunity-empty opp-empty muted">${escapeHtml(emptyStateText(groupKey))}</div>`
+                }
+              </div>
+            </section>
         `;
       }).join("")}
     </div>

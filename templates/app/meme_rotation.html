@@ -1,84 +1,93 @@
 {% extends "base_app.html" %}
 
 {% block content %}
-<div class="opportunities-layout meme-rotation-page">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 
-  <section class="panel opportunities-header-panel">
-    <div class="section-header">
+<div class="opp-shell">
+  <section class="opp-hero opp-panel">
+    <div class="opp-hero-copy">
+      <div class="opp-kicker">Opportunities Scanner</div>
+      <h2 class="opp-title">A cleaner operating surface for shadow rotation, live candidates, and scanner controls.</h2>
+      <p class="opp-subtitle" id="heatmapMeta">Loading opportunity scanner...</p>
+    </div>
+    <div class="opp-status-bar opportunities-status-block" id="heatmapStatus"></div>
+  </section>
+
+  <section class="opp-summary-panel opp-panel">
+    <div id="opportunitySummary" class="opp-summary-grid opportunity-summary-grid">
+      <div class="hc-context-card opp-summary-card opportunity-summary-card">
+        <div class="hc-context-label opportunity-summary-label">Active</div>
+        <div class="hc-context-value opportunity-summary-value">—</div>
+      </div>
+      <div class="hc-context-card opp-summary-card opportunity-summary-card">
+        <div class="hc-context-label opportunity-summary-label">Watching</div>
+        <div class="hc-context-value opportunity-summary-value">—</div>
+      </div>
+      <div class="hc-context-card opp-summary-card opportunity-summary-card">
+        <div class="hc-context-label opportunity-summary-label">Paused</div>
+        <div class="hc-context-value opportunity-summary-value">—</div>
+      </div>
+      <div class="hc-context-card opp-summary-card opportunity-summary-card">
+        <div class="hc-context-label opportunity-summary-label">Regime</div>
+        <div class="hc-context-value opportunity-summary-value">—</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="opp-shadow-panel opp-panel">
+    <div class="opp-panel-head">
       <div>
-        <h2>Active Opportunities</h2>
-        <p class="section-subtitle" id="heatmapMeta">
-          Loading opportunity scanner...
-        </p>
+        <h3 class="opp-section-title">Shadow Rotation Monitor</h3>
+        <p class="opp-section-subtitle">Recent scanner behavior, blocker patterns, and shadow-selection drift in one place.</p>
       </div>
     </div>
-
-    <div class="opportunities-status-block" id="heatmapStatus"></div>
-  </section>
-
-  <section class="panel opportunities-summary-panel">
-    <div id="opportunitySummary" class="opportunity-summary-grid">
-      <div class="opportunity-summary-card">
-        <div class="opportunity-summary-label">Active</div>
-        <div class="opportunity-summary-value">—</div>
-      </div>
-      <div class="opportunity-summary-card">
-        <div class="opportunity-summary-label">Watching</div>
-        <div class="opportunity-summary-value">—</div>
-      </div>
-      <div class="opportunity-summary-card">
-        <div class="opportunity-summary-label">Paused</div>
-        <div class="opportunity-summary-value">—</div>
-      </div>
-      <div class="opportunity-summary-card">
-        <div class="opportunity-summary-label">Regime</div>
-        <div class="opportunity-summary-value">—</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel opportunities-shadow-panel">
-    <div class="dashboard-shadow-monitor" id="dashboardShadowRotation">
+    <div class="dashboard-shadow-monitor opp-shadow-monitor" id="dashboardShadowRotation">
       <div class="dashboard-shadow-fallback">Loading 24h shadow rotation monitor...</div>
     </div>
   </section>
 
-  <section class="panel opportunities-shadow-eligible-panel">
-    <div class="section-header compact-header">
-      <div>
-        <h3>Recommended for Enable</h3>
-        <p class="section-subtitle">High-quality shadow candidates that meet review thresholds but are not yet live in the allowlist.</p>
+  <section class="opp-review-grid">
+    <section class="opp-panel opp-review-panel">
+      <div class="section-header compact-header opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Recommended for Enable</h3>
+          <p class="opp-section-subtitle">High-quality shadow candidates that meet review thresholds but are not yet live in the allowlist.</p>
+        </div>
+        <div class="shadow-eligible-header-actions opp-panel-actions">
+          <button class="btn btn-primary" type="button" id="shadowEligibleProposalBtn" onclick="handleReviewProposalAction()">Generate Review Proposal</button>
+          <a class="btn btn-secondary" id="shadowEligibleAutomationLink" href="/configuration?section=proposal-status">Review in Automation</a>
+        </div>
       </div>
-      <div class="shadow-eligible-header-actions">
-        <button class="btn btn-primary" type="button" id="shadowEligibleProposalBtn" onclick="handleReviewProposalAction()">Generate Review Proposal</button>
-        <a class="btn btn-secondary" id="shadowEligibleAutomationLink" href="/configuration?section=proposal-status">Review in Automation</a>
+      <div id="shadowEligibleProposalResult" class="shadow-eligible-result opp-inline-result">Review-ready candidates can be bundled into an approval proposal.</div>
+      <div id="shadowEligibleCandidates" class="shadow-eligible-list opp-eligible-list">
+        <div class="dashboard-shadow-fallback">Loading review candidates...</div>
       </div>
-    </div>
-    <div id="shadowEligibleProposalResult" class="shadow-eligible-result">Review-ready candidates can be bundled into an approval proposal.</div>
-    <div id="shadowEligibleCandidates" class="shadow-eligible-list">
-      <div class="dashboard-shadow-fallback">Loading review candidates...</div>
-    </div>
+    </section>
+
+    <section class="opp-panel opp-review-panel">
+      <div class="section-header compact-header opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Almost Ready</h3>
+          <p class="opp-section-subtitle">Strong shadow candidates that narrowly missed review thresholds.</p>
+        </div>
+      </div>
+      <div id="shadowNearMissCandidates" class="shadow-eligible-list opp-eligible-list">
+        <div class="dashboard-shadow-fallback">Loading near-miss candidates...</div>
+      </div>
+    </section>
   </section>
 
-  <section class="panel opportunities-shadow-near-miss-panel">
-    <div class="section-header compact-header">
-      <div>
-        <h3>Almost Ready</h3>
-        <p class="section-subtitle">Strong shadow candidates that narrowly missed review thresholds.</p>
-      </div>
-    </div>
-    <div id="shadowNearMissCandidates" class="shadow-eligible-list">
-      <div class="dashboard-shadow-fallback">Loading near-miss candidates...</div>
-    </div>
+  <section class="opp-score-panel">
+    <div id="opportunityScoreLegend" class="opportunity-score-legend opp-score-legend"></div>
   </section>
 
-  <div id="opportunityScoreLegend" class="opportunity-score-legend"></div>
-
-  <section class="panel opportunities-board-panel">
-    <div class="section-header compact-header">
+  <section class="opp-board-panel opp-panel">
+    <div class="section-header compact-header opp-panel-head">
       <div>
-        <div class="opportunity-board-title-row">
-          <h3>Opportunities Board</h3>
+        <div class="opportunity-board-title-row opp-board-title-row">
+          <h3 class="opp-section-title">Opportunities Board</h3>
           <div class="opportunity-control-help">
             <button
               class="opportunity-control-help-button"
@@ -92,23 +101,23 @@
             </div>
           </div>
         </div>
-        <p class="section-subtitle">Active, watching, and paused opportunities stay organized into clear columns while controls remain available on every card.</p>
+        <p class="opp-section-subtitle">Active, watching, and paused opportunities stay organized into clear columns while controls remain available on every card.</p>
       </div>
     </div>
-    <div class="opportunities-columns-shell">
-      <div id="heatmapGrid" class="opportunity-groups"></div>
+    <div class="opportunities-columns-shell opp-columns-shell">
+      <div id="heatmapGrid" class="opportunity-groups opp-board-host"></div>
     </div>
   </section>
 
-  <section class="panel opportunities-advanced-panel">
-    <div class="section-header">
+  <section class="opp-panel opp-advanced-panel">
+    <div class="opp-panel-head">
       <div>
-        <h2>Advanced Controls</h2>
-        <p class="section-subtitle">Use these deeper controls when you want to tune sorting, scanner status, or opportunity-management behavior.</p>
+        <h2 class="opp-section-title">Advanced Controls</h2>
+        <p class="opp-section-subtitle">Use these deeper controls when you want to tune sorting, scanner status, or opportunity-management behavior.</p>
       </div>
     </div>
 
-    <details class="configuration-advanced-toggle opportunity-advanced-toggle">
+    <details class="configuration-advanced-toggle opportunity-advanced-toggle opp-advanced-toggle">
       <summary>
         <div>
           <strong>Scanner and Universe Controls</strong>
@@ -116,7 +125,7 @@
         </div>
       </summary>
       <div class="configuration-advanced-body">
-        <div class="opportunity-advanced-grid">
+        <div class="opportunity-advanced-grid opp-advanced-grid">
           <div class="form-card">
             <label for="heatmapSort">Sort Opportunities By</label>
             <select id="heatmapSort" class="select" onchange="refreshMemeRotation()">
@@ -140,7 +149,6 @@
       </div>
     </details>
   </section>
-
 </div>
 
 <script>
@@ -150,5 +158,4 @@ window.MEME_ROTATION_CONFIG = {
 </script>
 
 <script src="{{ url_for('static', filename='js/meme_rotation.js') }}"></script>
-
 {% endblock %}

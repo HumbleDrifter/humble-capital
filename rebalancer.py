@@ -751,6 +751,29 @@ def dispatch_signal_action(
         decision_context["requested_buy_usd"] = buy_usd
         _log_rebalancer_event("buy_decision", decision_context)
 
+        if signal_type == "CORE_BUY_WINDOW":
+            drawdown = float(snapshot.get("portfolio_drawdown", 0.0) or 0.0)
+            dd_controls = snapshot.get("config", {}).get("drawdown_controls", {}) or {}
+            warn_level = float(dd_controls.get("warn_level", 0.08) or 0.08)
+            reduce_level = float(dd_controls.get("reduce_level", 0.12) or 0.12)
+            freeze_level = float(dd_controls.get("freeze_level", 0.18) or 0.18)
+
+            if drawdown >= warn_level and drawdown < freeze_level:
+                dd_range = max(0.01, freeze_level - warn_level)
+                dd_progress = min(1.0, (drawdown - warn_level) / dd_range)
+                dca_multiplier = 1.3 + (dd_progress * 0.5)
+
+                original_buy = buy_usd
+                buy_usd = buy_usd * dca_multiplier
+
+                _log_rebalancer_event("dca_drawdown_boost", {
+                    "product_id": product_id,
+                    "drawdown": drawdown,
+                    "dca_multiplier": round(dca_multiplier, 3),
+                    "original_buy_usd": round(original_buy, 2),
+                    "boosted_buy_usd": round(buy_usd, 2),
+                })
+
         try:
             regime = str(
                 decision_context.get("market_regime")

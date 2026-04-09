@@ -8739,3 +8739,126 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 }
+
+/* MOBILE NATIVE POLISH */
+
+@media (max-width: 900px) {
+  button,
+  .btn,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  a.btn {
+    min-height: 48px;
+  }
+
+  .nav-link,
+  .mobile-nav-link,
+  .mobile-more-link {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .mobile-app-header {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: linear-gradient(180deg, rgba(8, 13, 20, 0.92), rgba(8, 13, 20, 0.78));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .mobile-brand-mark {
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+    border-radius: 12px;
+  }
+
+  .mobile-page-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .mobile-bottom-nav {
+    min-height: 76px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .mobile-nav-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .mobile-nav-link.active,
+  .mobile-more-trigger.active {
+    color: var(--hc-teal, #2dd4bf);
+    background: rgba(45, 212, 191, 0.10);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      0 0 0 1px rgba(45, 212, 191, 0.10);
+  }
+
+  .panel,
+  .hc-context-card,
+  .hc-pos-card,
+  .hc-chart-section,
+  .opp-column,
+  .opp-card,
+  .act-trade-card,
+  .set-card,
+  .set-panel,
+  .pa-chart-stat,
+  .pa-stat-tile,
+  .shadow-eligible-row,
+  .dashboard-shadow-monitor,
+  .opportunity-score-legend {
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .opportunities-columns-shell,
+  .opp-columns-shell,
+  .pa-pos-grid,
+  .act-feed {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  input,
+  select,
+  textarea,
+  .select,
+  .form-input {
+    min-height: 48px;
+    font-size: 16px;
+    border-radius: 12px;
+  }
+}
+
+@media (hover: hover) {
+  .hc-pos-card:hover,
+  .opp-card:hover,
+  .set-link-card:hover,
+  .set-action-tile:hover,
+  .act-trade-card:hover,
+  .btn:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 900px) and (hover: none) {
+  .hc-pos-card:hover,
+  .opp-card:hover,
+  .set-link-card:hover,
+  .set-action-tile:hover,
+  .act-trade-card:hover,
+  .btn:hover {
+    transform: none;
+    box-shadow: inherit;
+  }
+}

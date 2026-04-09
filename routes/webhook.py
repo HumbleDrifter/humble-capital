@@ -428,6 +428,10 @@ def webhook():
         trim_pct = float(data.get("trim_pct", 0.50) or 0.50)
     except Exception:
         trim_pct = 0.50
+    try:
+        conviction_score = float(data.get("conviction_score", 1.0) or 1.0)
+    except Exception:
+        conviction_score = 1.0
 
     _log_webhook_event(
         "parsed",
@@ -620,6 +624,7 @@ def webhook():
             order_id=order_id,
             trim_pct=trim_pct,
             quote_size=data.get("quote_size"),
+            conviction_score=conviction_score,
         )
 
         result_wrapper = result.get("result") if isinstance(result, dict) else None

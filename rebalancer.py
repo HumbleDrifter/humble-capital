@@ -10,6 +10,7 @@ from execution import (
     get_base_attempts,
 )
 from decision_trace import infer_asset_state, record_decision_trace
+from position_sizing import compute_risk_adjusted_size
 
 from positions import compute_sell_base, compute_full_liquid_base
 
@@ -572,6 +573,7 @@ def dispatch_signal_action(
     order_id=None,
     trim_pct=None,
     quote_size=None,
+    conviction_score=None,
 ):
     try:
         snapshot = get_portfolio_snapshot()
@@ -707,6 +709,33 @@ def dispatch_signal_action(
 
         decision_context["requested_buy_usd"] = buy_usd
         _log_rebalancer_event("buy_decision", decision_context)
+
+        try:
+            regime = str(
+                decision_context.get("market_regime")
+                or decision_context.get("regime")
+                or "neutral"
+            )
+            sizing_result = compute_risk_adjusted_size(
+                product_id=product_id,
+                base_size_usd=buy_usd,
+                signal_type=signal_type,
+                regime=regime,
+                conviction_score=1.0 if conviction_score is None else conviction_score,
+            )
+            buy_usd = float(sizing_result.get("adjusted_size_usd", buy_usd) or buy_usd)
+            decision_context["risk_adjusted_size"] = sizing_result
+            decision_context["requested_buy_usd"] = buy_usd
+        except Exception as exc:
+            _log_rebalancer_event(
+                "risk_adjusted_sizing_failed",
+                {
+                    "product_id": product_id,
+                    "signal_type": signal_type,
+                    "error": str(exc),
+                    "base_size_usd": buy_usd,
+                },
+            )
 
         if str(signal_type or "").upper().strip() == "SNIPER_BUY" and str(decision_context.get("sniper_eligibility_reason") or "").strip() not in {"", "sniper_eligible"}:
             _log_rebalancer_event(

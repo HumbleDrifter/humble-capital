@@ -1,0 +1,124 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="perf-shell">
+  <section class="perf-header perf-observe">
+    <div class="perf-header-copy perf-reveal">
+      <div class="perf-kicker">Performance Analytics</div>
+      <h2 class="perf-title">Trading performance, drawdown behavior, and product-level outcomes in one operator view.</h2>
+      <p class="perf-subtitle" id="perfMeta">Loading performance analytics...</p>
+    </div>
+    <div class="hc-chart-range-group perf-range-group perf-reveal">
+      <button class="hc-range-btn" data-range="7d" type="button">7D</button>
+      <button class="hc-range-btn active" data-range="30d" type="button">30D</button>
+      <button class="hc-range-btn" data-range="90d" type="button">90D</button>
+      <button class="hc-range-btn" data-range="all" type="button">All</button>
+    </div>
+  </section>
+
+  <section class="perf-kpi-grid perf-observe">
+    <div class="hc-context-card perf-reveal">
+      <div class="hc-context-label">Win Rate</div>
+      <div class="hc-context-value" id="perfWinRate">0%</div>
+      <div class="hc-context-detail" id="perfWinRateDetail">0 winners / 0 trades</div>
+    </div>
+    <div class="hc-context-card perf-reveal">
+      <div class="hc-context-label">Total P&amp;L</div>
+      <div class="hc-context-value" id="perfTotalPnl">$0.00</div>
+      <div class="hc-context-detail" id="perfTotalPnlDetail">Net realized performance</div>
+    </div>
+    <div class="hc-context-card perf-reveal">
+      <div class="hc-context-label">Profit Factor</div>
+      <div class="hc-context-value" id="perfProfitFactor">0.00</div>
+      <div class="hc-context-detail" id="perfProfitFactorDetail">Gross wins / gross losses</div>
+    </div>
+    <div class="hc-context-card perf-reveal">
+      <div class="hc-context-label">Avg Hold Duration</div>
+      <div class="hc-context-value" id="perfHoldDuration">0m</div>
+      <div class="hc-context-detail" id="perfHoldDurationDetail">Average time in trade</div>
+    </div>
+  </section>
+
+  <section class="perf-equity-grid perf-observe">
+    <div class="hc-chart-section perf-reveal">
+      <div class="hc-chart-header">
+        <div>
+          <span class="hc-chart-title">Equity &amp; Drawdown</span>
+          <div class="perf-chart-meta" id="perfEquityMeta">Loading equity curve...</div>
+        </div>
+      </div>
+      <div id="perfEquityChartHost" class="hc-chart-host"></div>
+    </div>
+
+    <div class="perf-side-stack">
+      <div class="hc-context-card perf-reveal">
+        <div class="hc-context-label">Current Drawdown</div>
+        <div class="hc-context-value" id="perfCurrentDrawdown">0.00%</div>
+        <div class="hc-context-detail" id="perfCurrentDrawdownDetail">$0.00 below HWM</div>
+      </div>
+      <div class="hc-context-card perf-reveal">
+        <div class="hc-context-label">Max Drawdown</div>
+        <div class="hc-context-value" id="perfMaxDrawdown">0.00%</div>
+        <div class="hc-context-detail" id="perfMaxDrawdownDetail">Worst peak-to-trough decline</div>
+      </div>
+      <div class="hc-context-card perf-reveal">
+        <div class="hc-context-label">Days Since HWM</div>
+        <div class="hc-context-value" id="perfDaysSinceHwm">0</div>
+        <div class="hc-context-detail" id="perfDaysSinceHwmDetail">Time since best equity print</div>
+      </div>
+      <div class="hc-context-card perf-reveal">
+        <div class="hc-context-label">Current vs HWM</div>
+        <div class="hc-context-value" id="perfCurrentVsHwm">$0.00</div>
+        <div class="hc-context-detail" id="perfCurrentVsHwmDetail">Current value / high-water mark</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="perf-section perf-observe">
+    <div class="perf-section-head perf-reveal">
+      <div>
+        <h2 class="perf-section-title">Daily P&amp;L</h2>
+        <p class="perf-section-subtitle" id="perfDailyMeta">Daily closed-trade distribution</p>
+      </div>
+    </div>
+    <div class="hc-chart-section perf-reveal">
+      <div id="perfDailyChartHost" class="hc-chart-host"></div>
+    </div>
+  </section>
+
+  <section class="perf-section perf-observe">
+    <div class="perf-section-head perf-reveal">
+      <div>
+        <h2 class="perf-section-title">Product Breakdown</h2>
+        <p class="perf-section-subtitle" id="perfProductMeta">Performance by traded product</p>
+      </div>
+    </div>
+    <div class="perf-product-grid" id="perfProductGrid">
+      <div class="hc-empty-card">Loading product performance...</div>
+    </div>
+  </section>
+
+  <section class="perf-section perf-observe">
+    <div class="perf-section-head perf-reveal">
+      <div>
+        <h2 class="perf-section-title">Recent Round Trips</h2>
+        <p class="perf-section-subtitle" id="perfTripsMeta">Most recent closed trades</p>
+      </div>
+    </div>
+    <div class="perf-trip-feed" id="perfTripFeed">
+      <div class="hc-empty-card">Loading recent round trips...</div>
+    </div>
+  </section>
+</div>
+
+<script>
+  window.PERFORMANCE_CONFIG = {
+    apiSecret: {{ api_secret|tojson }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/performance.js') }}"></script>
+{% endblock %}

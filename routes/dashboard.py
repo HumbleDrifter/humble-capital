@@ -65,6 +65,12 @@ def analytics():
     return render_template("app/analytics.html", **_page_context("Portfolio"))
 
 
+@dashboard_bp.route("/performance", methods=["GET"])
+@require_dashboard_auth
+def performance_page():
+    return render_template("app/performance.html", **_page_context("Performance"))
+
+
 @dashboard_bp.route("/meme-rotation", methods=["GET"])
 @require_dashboard_auth
 def meme_rotation():

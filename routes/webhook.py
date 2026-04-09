@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from execution import product_id_exists
 from correlation import should_block_correlated_buy
 from decision_trace import infer_asset_state, record_decision_trace
+from exit_velocity import record_price_tick, check_velocity_exit
 from portfolio import (
     get_active_satellite_buy_universe,
     get_portfolio_snapshot,
@@ -17,6 +18,7 @@ from portfolio import (
 )
 from rebalancer import dispatch_signal_action
 from notify import notify_execution_result
+from trailing_exit import update_position_tracking
 
 load_dotenv("/root/tradingbot/.env", override=True)
 
@@ -678,6 +680,41 @@ def webhook():
             quote_size=data.get("quote_size"),
             conviction_score=conviction_score,
         )
+
+        try:
+            tick_price = float(data.get("price") or 0.0)
+            if tick_price > 0 and product_id:
+                record_price_tick(product_id, tick_price)
+        except Exception:
+            pass
+
+        if action == "BUY" and bool((result or {}).get("ok")):
+            try:
+                sweep_snapshot = get_portfolio_snapshot()
+                core_skip = {"BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"}
+                for pos_product_id, pos_data in (sweep_snapshot.get("positions") or {}).items():
+                    if pos_product_id in core_skip:
+                        continue
+                    pos_price = float(pos_data.get("current_price") or pos_data.get("price_usd") or 0.0)
+                    entry_price = float(pos_data.get("avg_entry_price") or 0.0)
+                    if pos_price > 0:
+                        record_price_tick(pos_product_id, pos_price)
+                        velocity_result = check_velocity_exit(pos_product_id, pos_price, entry_price)
+                        if velocity_result.get("should_exit"):
+                            _log_webhook_event("velocity_exit_triggered", {
+                                "product_id": pos_product_id,
+                                "reason": velocity_result.get("reason"),
+                                "drop_pct": velocity_result.get("drop_pct"),
+                            })
+                            dispatch_signal_action(
+                                product_id=pos_product_id,
+                                action="EXIT",
+                                signal_type="VELOCITY_EXIT",
+                                timeframe="realtime",
+                                strategy="exit_velocity_detector",
+                            )
+            except Exception as exc:
+                _log_webhook_event("velocity_sweep_failed", {"error": str(exc)})
 
         result_wrapper = result.get("result") if isinstance(result, dict) else None
         _log_webhook_event(

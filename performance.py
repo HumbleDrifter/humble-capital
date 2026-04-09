@@ -344,6 +344,7 @@ def _load_portfolio_history_rows():
 
 def get_equity_analytics(days: int = 30) -> dict:
     try:
+        _log(f"portfolio_history time_col={_portfolio_history_time_column()} rows={len(_load_portfolio_history_rows())}")
         all_points = _load_portfolio_history_rows()
         if not all_points:
             return {

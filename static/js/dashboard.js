@@ -130,7 +130,7 @@
 
   function buildEquityChart(container, dataPoints, range) {
     if (!container) return;
-    const points = Array.isArray(dataPoints) ? dataPoints.filter((row) => row && Number.isFinite(Number(row.equity_usd))) : [];
+    const points = Array.isArray(dataPoints) ? dataPoints.filter((row) => row && Number.isFinite(Number(row.equity_usd ?? row.total_value_usd))) : [];
     if (!points.length) {
       container.innerHTML = `<div class="hc-chart-empty">No portfolio history available for this range.</div>`;
       return;
@@ -142,7 +142,7 @@
     const rightPad = 22;
     const topPad = 18;
     const bottomPad = 36;
-    const values = points.map((row) => Number(row.equity_usd || 0));
+    const values = points.map((row) => Number(row.equity_usd ?? row.total_value_usd ?? 0));
     const min = Math.min(...values);
     const max = Math.max(...values);
     const spread = Math.max(1, max - min);
@@ -151,7 +151,7 @@
 
     const coords = points.map((row, index) => {
       const x = leftPad + ((chartWidth * index) / Math.max(points.length - 1, 1));
-      const y = topPad + ((max - Number(row.equity_usd || 0)) / spread) * chartHeight;
+      const y = topPad + ((max - Number(row.equity_usd ?? row.total_value_usd ?? 0)) / spread) * chartHeight;
       return { x, y };
     });
 
@@ -281,7 +281,7 @@
         productId,
         row: row || {}
       }))
-      .filter(({ row }) => Number(row.value_total_usd || 0) > 0)
+      .filter(({ row }) => Number(row.value_total_usd || 0) > 1.0)
       .sort((a, b) => Number(b.row.value_total_usd || 0) - Number(a.row.value_total_usd || 0));
 
     if (!rows.length) {
@@ -418,9 +418,9 @@
       buildEquityChart(document.getElementById("hcChartHost"), points, range);
 
       if (points.length >= 2) {
-        const first = Number(points[0].equity_usd || 0);
-        const last = Number(points[points.length - 1].equity_usd || 0);
-        const prev = Number(points[Math.max(0, points.length - 2)].equity_usd || first);
+        const first = Number(points[0].equity_usd ?? points[0].total_value_usd ?? 0);
+        const last = Number(points[points.length - 1].equity_usd ?? points[points.length - 1].total_value_usd ?? 0);
+        const prev = Number(points[Math.max(0, points.length - 2)].equity_usd ?? points[Math.max(0, points.length - 2)].total_value_usd ?? first);
         const dailyPnl = last - prev;
         const dailyPct = prev > 0 ? dailyPnl / prev : 0;
         setHeroPnl(dailyPnl, dailyPct);

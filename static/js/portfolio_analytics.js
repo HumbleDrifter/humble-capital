@@ -358,7 +358,7 @@ function renderHoldings(snapshot, summary, allocationsPayload) {
         allocation.value_total_usd ??
         0
       );
-      if (value <= 0) return null;
+      if (value <= 1.0) return null;
 
       const symbol = String(productId || "").split("-")[0];
       const isCore = coreAssets.has(String(productId || "").toUpperCase()) || allocation.class === "core" || asset.class === "core";

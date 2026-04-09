@@ -3,109 +3,105 @@
 {% block topbar_actions %}{% endblock %}
 
 {% block content %}
-<div class="grid cols-12">
-  <section class="panel span-12">
-    <div class="section-header">
-      <div>
-        <h2>Trade History</h2>
-        <p class="section-subtitle" id="tradeHistoryMeta">Loading trades...</p>
-      </div>
-    </div>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 
-    <div class="config-field-grid">
-      <div class="config-field">
-        <label for="tradeProductId">Symbol</label>
-        <input id="tradeProductId" type="text" placeholder="DOGE-USD">
-      </div>
-
-      <div class="config-field">
-        <label for="tradeSide">Side</label>
-        <select id="tradeSide">
-          <option value="">All Sides</option>
-          <option value="BUY">BUY</option>
-          <option value="SELL">SELL</option>
-        </select>
-      </div>
-
-      <div class="config-field">
-        <label for="tradeStatus">Status</label>
-        <select id="tradeStatus">
-          <option value="">All Statuses</option>
-          <option value="FILLED">FILLED</option>
-          <option value="OPEN">OPEN</option>
-          <option value="PENDING">PENDING</option>
-          <option value="CANCELLED">CANCELLED</option>
-          <option value="REJECTED">REJECTED</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="topbar-actions" style="margin-top:14px;">
-      <select id="tradePageSize" style="max-width:160px;">
-        <option value="25">25 Rows</option>
-        <option value="50" selected>50 Rows</option>
-        <option value="100">100 Rows</option>
-        <option value="250">250 Rows</option>
-      </select>
-      <button class="btn btn-primary" onclick="applyTradeFilters()">Apply Filters</button>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-label">Trades</div>
-        <div class="kpi-value" id="thTradeCount">0</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Buy Notional</div>
-        <div class="kpi-value" id="thBuyNotional">$0.00</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Sell Notional</div>
-        <div class="kpi-value" id="thSellNotional">$0.00</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Gross Notional</div>
-        <div class="kpi-value" id="thGrossNotional">$0.00</div>
-      </div>
+<div class="act-shell">
+  <section class="act-hero act-observe">
+    <div class="act-hero-copy act-reveal">
+      <div class="act-kicker">Trade Activity</div>
+      <h2 class="act-title">A cleaner feed of executions, fills, and portfolio activity.</h2>
+      <p class="act-subtitle" id="tradeHistoryMeta">Loading trades...</p>
     </div>
   </section>
 
-  <section class="panel span-12">
-    <div class="section-header">
+  <section class="act-summary-strip act-observe">
+    <div class="hc-context-card act-reveal">
+      <div class="hc-context-label">Total Trades</div>
+      <div class="hc-context-value" id="actTotalTrades">0</div>
+      <div class="hc-context-detail" id="actTotalTradesDetail">Across current filter</div>
+    </div>
+    <div class="hc-context-card act-reveal">
+      <div class="hc-context-label">Buy Count</div>
+      <div class="hc-context-value" id="actBuyCount">0</div>
+      <div class="hc-context-detail" id="actBuyDetail">Visible buy fills</div>
+    </div>
+    <div class="hc-context-card act-reveal">
+      <div class="hc-context-label">Sell Count</div>
+      <div class="hc-context-value" id="actSellCount">0</div>
+      <div class="hc-context-detail" id="actSellDetail">Visible sells, trims, exits</div>
+    </div>
+    <div class="hc-context-card act-reveal">
+      <div class="hc-context-label">Date Range</div>
+      <div class="hc-context-value act-range-value" id="actDateRange">—</div>
+      <div class="hc-context-detail" id="actDateRangeDetail">Current page window</div>
+    </div>
+  </section>
+
+  <section class="act-panel act-observe">
+    <div class="act-panel-head act-reveal">
       <div>
-        <h2>Order Ledger</h2>
-        <p class="section-subtitle" id="tradeTableMeta">Most recent orders</p>
-      </div>
-      <div class="statusline">
-        <div>Page: <span class="mono" id="tradePageCurrent">1</span></div>
-        <div>Total Rows: <span class="mono" id="tradeTotalRows">0</span></div>
-        <div>Last Trade: <span class="mono" id="tradeLastTs">—</span></div>
+        <h3 class="act-section-title">Filters</h3>
+        <p class="act-section-subtitle">Narrow the activity feed by side, product, and page size.</p>
       </div>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Product</th>
-            <th>Side</th>
-            <th class="right">Base Size</th>
-            <th class="right">Price</th>
-            <th class="right">Notional</th>
-            <th>Status</th>
-            <th>Order ID</th>
-          </tr>
-        </thead>
-        <tbody id="tradeHistoryTable"></tbody>
-      </table>
+    <div class="act-filter-grid act-reveal">
+      <div class="form-card">
+        <label for="tradeSide">Side</label>
+        <select id="tradeSide" class="select">
+          <option value="">All Sides</option>
+          <option value="BUY">Buy</option>
+          <option value="SELL">Sell</option>
+        </select>
+      </div>
+
+      <div class="form-card">
+        <label for="tradeProductId">Product</label>
+        <select id="tradeProductId" class="select">
+          <option value="">All Products</option>
+        </select>
+      </div>
+
+      <div class="form-card">
+        <label for="tradePageSize">Page Size</label>
+        <select id="tradePageSize" class="select">
+          <option value="25">25 Trades</option>
+          <option value="50" selected>50 Trades</option>
+          <option value="100">100 Trades</option>
+          <option value="250">250 Trades</option>
+        </select>
+      </div>
     </div>
 
-    <div class="topbar-actions" style="margin-top:14px;">
-      <button class="btn btn-secondary" onclick="prevTradePage()">Previous</button>
-      <button class="btn btn-secondary" onclick="nextTradePage()">Next</button>
+    <div class="act-filter-actions act-reveal">
+      <button class="btn btn-primary" type="button" onclick="applyTradeFilters()">Apply Filters</button>
+      <button class="btn btn-secondary" type="button" onclick="refreshTrades()">Refresh Feed</button>
+    </div>
+  </section>
+
+  <section class="act-panel act-observe">
+    <div class="act-panel-head act-reveal">
+      <div>
+        <h3 class="act-section-title">Execution Feed</h3>
+        <p class="act-section-subtitle" id="tradeTableMeta">Most recent orders</p>
+      </div>
+      <div class="act-meta-row">
+        <span class="badge accent">page <span id="tradePageCurrent">1</span></span>
+        <span class="badge">total <span id="tradeTotalRows">0</span></span>
+        <span class="badge">latest <span id="tradeLastTs">—</span></span>
+      </div>
+    </div>
+
+    <div class="act-feed" id="tradeFeed">
+      <div class="hc-empty-card">Loading activity feed...</div>
+    </div>
+
+    <div class="act-pagination act-reveal">
+      <button class="btn btn-secondary" id="tradePrevBtn" type="button" onclick="prevTradePage()">Previous</button>
+      <div class="act-page-pill">Page <span id="tradePageIndicator">1</span></div>
+      <button class="btn btn-secondary" id="tradeNextBtn" type="button" onclick="nextTradePage()">Next</button>
     </div>
   </section>
 </div>

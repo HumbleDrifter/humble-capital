@@ -292,7 +292,12 @@
     host.innerHTML = rows.map(({ productId, row }) => {
       const symbol = String(productId || "").split("-")[0];
       const isCore = coreAssets.has(productId);
-      const changePct = Number(row.unrealized_pnl_pct || row.change_24h || 0);
+      const entryPrice = Number(row.avg_entry_price || row.cost_basis || 0);
+      const currentPrice = Number(row.price_usd || row.current_price || 0);
+      let changePct = Number(row.unrealized_pnl_pct || row.change_24h || 0);
+      if (changePct === 0 && entryPrice > 0 && currentPrice > 0) {
+        changePct = ((currentPrice - entryPrice) / entryPrice) * 100;
+      }
       const positive = changePct >= 0;
       return `
         <div class="hc-pos-card">

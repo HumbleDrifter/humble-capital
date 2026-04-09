@@ -362,13 +362,18 @@ function renderHoldings(snapshot, summary, allocationsPayload) {
 
       const symbol = String(productId || "").split("-")[0];
       const isCore = coreAssets.has(String(productId || "").toUpperCase()) || allocation.class === "core" || asset.class === "core";
-      const changePct = Number(
+      const entryPrice = Number(pos.avg_entry_price ?? pos.cost_basis ?? 0);
+      const currentPrice = Number(asset.price_usd ?? allocation.price_usd ?? pos.price_usd ?? 0);
+      let changePct = Number(
         asset.unrealized_pnl_pct ??
         pos.unrealized_pnl_pct ??
         allocation.unrealized_pnl_pct ??
         asset.change_24h ??
         0
       );
+      if (changePct === 0 && entryPrice > 0 && currentPrice > 0) {
+        changePct = ((currentPrice - entryPrice) / entryPrice) * 100;
+      }
       const qty = Number(
         pos.base_balance ??
         pos.base_qty_total ??

@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify
 from dotenv import load_dotenv
 
 from execution import product_id_exists
+from correlation import should_block_correlated_buy
 from decision_trace import infer_asset_state, record_decision_trace
 from portfolio import (
     get_active_satellite_buy_universe,
@@ -603,6 +604,57 @@ def webhook():
             "tradability_reason": tradability_reason,
         },
     )
+
+    if action == "BUY" and signal_type not in {"CORE_BUY_WINDOW", "APPROVED_REBALANCE_BUY"}:
+        try:
+            snapshot, _ = _safe_snapshot()
+            if snapshot:
+                corr_result = should_block_correlated_buy(product_id, snapshot)
+                if corr_result.get("blocked"):
+                    _log_webhook_event("correlation_blocked", {
+                        "product_id": product_id,
+                        "signal_type": signal_type,
+                        "total_correlated_usd": corr_result.get("total_correlated_usd"),
+                        "correlated_positions": corr_result.get("correlated_positions", []),
+                    })
+                    _trace_buy_decision(
+                        "blocked", "correlated_exposure",
+                        f"{product_id} — Blocked — Correlated exposure limit reached",
+                        product_id=product_id, action=action,
+                        signal_type=original_signal_type,
+                        normalized_signal_type=signal_type,
+                        strategy=strategy, timeframe=timeframe,
+                    )
+                    return jsonify({
+                        "ok": False, "ignored": True,
+                        "reason": "correlated_exposure",
+                        "product_id": product_id,
+                        "total_correlated_usd": corr_result.get("total_correlated_usd"),
+                    }), 200
+        except Exception as exc:
+            _log_webhook_event("correlation_check_failed", {
+                "product_id": product_id, "error": str(exc),
+            })
+
+        if conviction_score < 0.4:
+            _log_webhook_event("low_conviction_blocked", {
+                "product_id": product_id,
+                "signal_type": signal_type,
+                "conviction_score": conviction_score,
+            })
+            _trace_buy_decision(
+                "blocked", "low_conviction",
+                f"{product_id} — Blocked — Conviction score {conviction_score:.2f} below minimum 0.4",
+                product_id=product_id, action=action,
+                signal_type=original_signal_type,
+                normalized_signal_type=signal_type,
+                strategy=strategy, timeframe=timeframe,
+            )
+            return jsonify({
+                "ok": False, "ignored": True,
+                "reason": "low_conviction",
+                "conviction_score": conviction_score,
+            }), 200
 
     try:
         _log_webhook_event(

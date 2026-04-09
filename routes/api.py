@@ -31,6 +31,13 @@ from portfolio import (
     persist_current_portfolio_snapshot,
     portfolio_summary,
 )
+from performance import (
+    get_daily_pnl,
+    get_equity_analytics,
+    get_performance_summary,
+    get_product_breakdown,
+    get_round_trips,
+)
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
 from services.config_proposal_service import (
     apply_config_proposal,
@@ -2442,6 +2449,31 @@ def api_trades():
 def api_trades_stats():
     try:
         return jsonify(_build_trade_stats())
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/performance", methods=["GET"])
+@require_api_auth
+def api_performance():
+    try:
+        days = request.args.get("days")
+        days = int(days) if days else None
+
+        summary = get_performance_summary(days=days)
+        equity = get_equity_analytics(days=days or 30)
+        daily = get_daily_pnl(days=days or 30)
+        products = get_product_breakdown()
+        recent = get_round_trips(limit=20)
+
+        return jsonify({
+            "ok": True,
+            "summary": summary,
+            "equity": equity,
+            "daily_pnl": daily,
+            "product_breakdown": products,
+            "recent_round_trips": recent,
+        })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

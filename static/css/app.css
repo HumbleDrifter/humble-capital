@@ -7536,3 +7536,225 @@ tbody tr:last-child td {
     gap: 6px;
   }
 }
+
+/* =========================================================
+   PORTFOLIO ANALYTICS — HUMBLE CAPITAL (pa-*)
+========================================================= */
+
+.pa-shell {
+  display: grid;
+  gap: 24px;
+  color: var(--hc-text);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+}
+
+.pa-header,
+.pa-kpi-grid,
+.pa-history-grid,
+.pa-holdings-section {
+  animation: hcFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.pa-kpi-grid {
+  animation-delay: 0.1s;
+}
+
+.pa-history-grid {
+  animation-delay: 0.2s;
+}
+
+.pa-holdings-section {
+  animation-delay: 0.3s;
+}
+
+.pa-header-copy {
+  display: grid;
+  gap: 10px;
+  max-width: 760px;
+}
+
+.pa-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hc-teal);
+}
+
+.pa-title {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--hc-text);
+}
+
+.pa-subtitle {
+  margin: 0;
+  color: var(--hc-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.pa-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.pa-history-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.85fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.pa-side-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.pa-chart-meta {
+  margin-top: 4px;
+  color: var(--hc-text-secondary);
+  font-size: 13px;
+}
+
+.pa-chart-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.pa-chart-stat {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pa-chart-stat-label {
+  font-size: 12px;
+  color: var(--hc-text-secondary);
+}
+
+.pa-chart-stat-value {
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--hc-text);
+}
+
+.pa-chart-stat.positive .pa-chart-stat-value {
+  color: var(--hc-teal);
+}
+
+.pa-chart-stat.negative .pa-chart-stat-value {
+  color: var(--hc-red);
+}
+
+.pa-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pa-stat-tile {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pa-stat-tile-wide {
+  grid-column: 1 / -1;
+}
+
+.pa-stat-label {
+  font-size: 12px;
+  color: var(--hc-text-secondary);
+}
+
+.pa-stat-value {
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--hc-text);
+}
+
+.pa-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pa-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--hc-text);
+}
+
+.pa-section-subtitle {
+  margin: 6px 0 0;
+  color: var(--hc-text-secondary);
+  font-size: 14px;
+}
+
+.pa-pos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.pa-pos-card {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+.pa-visible.pa-pos-card,
+.pa-visible .pa-reveal {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pa-pos-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--hc-text-tertiary);
+}
+
+.pa-positive {
+  color: var(--hc-teal) !important;
+}
+
+.pa-negative {
+  color: var(--hc-red) !important;
+}
+
+@media (max-width: 980px) {
+  .pa-history-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .pa-shell {
+    gap: 20px;
+  }
+
+  .pa-kpi-grid,
+  .pa-chart-stats,
+  .pa-stat-grid,
+  .pa-pos-grid {
+    grid-template-columns: 1fr;
+  }
+}

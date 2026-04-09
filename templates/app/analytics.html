@@ -1,133 +1,121 @@
 {% extends "base_app.html" %}
 
+{% block topbar_actions %}
+  <div class="hc-regime-badge" id="paRegimeBadge">
+    <span class="hc-regime-dot"></span>
+    <span id="paRegimeLabel">Loading...</span>
+  </div>
+{% endblock %}
+
 {% block content %}
-<div class="grid cols-12 analytics-layout">
-  <section class="panel span-12 analytics-summary-panel">
-    <div class="section-header">
-      <div>
-        <h2>Portfolio Analytics</h2>
-        <p class="section-subtitle" id="analyticsMeta">Loading portfolio analytics...</p>
-      </div>
-      <div class="topbar-actions">
-        <select id="historyRange" class="select" onchange="refreshAnalytics()">
-          <option value="7d">7D</option>
-          <option value="30d" selected>30D</option>
-          <option value="90d">90D</option>
-          <option value="180d">180D</option>
-          <option value="1y">1Y</option>
-          <option value="all">All</option>
-        </select>
-      </div>
-    </div>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-label">Total Portfolio</div>
-        <div class="kpi-value" id="paTotal">$0.00</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Cash</div>
-        <div class="kpi-value" id="paCash">$0.00</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Invested</div>
-        <div class="kpi-value" id="paInvested">$0.00</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Realized PnL</div>
-        <div class="kpi-value" id="paRealized">$0.00</div>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="tiny">Allocation Mix</div>
-    <div id="paAllocationText" class="tiny"></div>
-    <div class="allocation-legend" aria-label="Allocation legend">
-      <span class="allocation-legend-item">
-        <span class="allocation-legend-swatch core" aria-hidden="true"></span>
-        <span class="allocation-legend-label">Core</span>
-      </span>
-      <span class="allocation-legend-item">
-        <span class="allocation-legend-swatch opportunities" aria-hidden="true"></span>
-        <span class="allocation-legend-label">Satellite Assets</span>
-      </span>
-      <span class="allocation-legend-item">
-        <span class="allocation-legend-swatch cash" aria-hidden="true"></span>
-        <span class="allocation-legend-label">Cash</span>
-      </span>
-    </div>
-    <div class="allocation-wrap">
-      <div id="paSegCash" class="allocation-seg seg-cash" style="width:0%"></div>
-      <div id="paSegCore" class="allocation-seg seg-core" style="width:0%"></div>
-      <div id="paSegSat" class="allocation-seg seg-sat" style="width:0%"></div>
+<div class="pa-shell">
+  <section class="pa-header pa-observe">
+    <div class="pa-header-copy pa-reveal">
+      <div class="pa-kicker">Portfolio Analytics</div>
+      <h2 class="pa-title">A cleaner view into portfolio structure, trend, and live exposure.</h2>
+      <p class="pa-subtitle" id="analyticsMeta">Loading portfolio analytics...</p>
     </div>
   </section>
 
-  <section class="panel span-8 analytics-history-panel">
-    <div class="section-header">
-      <div>
-        <h2 id="historyChartTitle">Realized PnL History</h2>
-        <p class="section-subtitle" id="historyChartMeta">Loading history...</p>
-      </div>
+  <section class="pa-kpi-grid pa-observe">
+    <div class="hc-context-card pa-reveal">
+      <div class="hc-context-label">Total Portfolio</div>
+      <div class="hc-context-value" id="paTotal">$0.00</div>
+      <div class="hc-context-detail" id="paTotalDetail">Live portfolio value</div>
     </div>
-    <div id="historyChartHost"></div>
+    <div class="hc-context-card pa-reveal">
+      <div class="hc-context-label">Cash</div>
+      <div class="hc-context-value" id="paCash">$0.00</div>
+      <div class="hc-context-detail" id="paCashDetail">0% of portfolio</div>
+    </div>
+    <div class="hc-context-card pa-reveal">
+      <div class="hc-context-label">Invested</div>
+      <div class="hc-context-value" id="paInvested">$0.00</div>
+      <div class="hc-context-detail" id="paInvestedDetail">Deployed capital</div>
+    </div>
+    <div class="hc-context-card pa-reveal">
+      <div class="hc-context-label">Realized PnL</div>
+      <div class="hc-context-value" id="paRealized">$0.00</div>
+      <div class="hc-context-detail" id="paRealizedDetail">Closed-trade performance</div>
+    </div>
   </section>
 
-  <section class="panel span-4 analytics-stats-panel">
-    <div class="section-header">
-      <div>
-        <h2>Portfolio Stats</h2>
-        <p class="section-subtitle">Live portfolio state</p>
+  <section class="pa-history-grid pa-observe">
+    <div class="hc-chart-section pa-reveal">
+      <div class="hc-chart-header">
+        <div>
+          <span class="hc-chart-title" id="historyChartTitle">Portfolio History</span>
+          <div class="pa-chart-meta" id="historyChartMeta">Loading history...</div>
+        </div>
+        <div class="hc-chart-range-group">
+          <button class="hc-range-btn" data-range="7d" type="button">7D</button>
+          <button class="hc-range-btn active" data-range="30d" type="button">30D</button>
+          <button class="hc-range-btn" data-range="90d" type="button">90D</button>
+          <button class="hc-range-btn" data-range="1y" type="button">1Y</button>
+          <button class="hc-range-btn" data-range="all" type="button">All</button>
+        </div>
       </div>
+      <div id="historyChartHost" class="hc-chart-host"></div>
+      <div class="pa-chart-stats" id="paChartStats"></div>
     </div>
 
-    <div class="analytics-stats-grid">
-      <div class="analytics-stat-card">
-        <div class="analytics-stat-label">Assets</div>
-        <div class="analytics-stat-value mono" id="paAssetCount">0</div>
+    <div class="pa-side-stack">
+      <div class="hc-context-card pa-reveal">
+        <div class="hc-context-label">Allocation</div>
+        <div class="hc-alloc-bar">
+          <div class="hc-alloc-seg hc-alloc-core" id="paAllocCore" style="width:0%"></div>
+          <div class="hc-alloc-seg hc-alloc-sat" id="paAllocSat" style="width:0%"></div>
+          <div class="hc-alloc-seg hc-alloc-cash" id="paAllocCash" style="width:0%"></div>
+        </div>
+        <div class="hc-alloc-legend">
+          <span><span class="hc-alloc-dot" style="background:#2dd4bf"></span>Core <span id="paAllocCorePct">0</span>%</span>
+          <span><span class="hc-alloc-dot" style="background:#60a5fa"></span>Satellite <span id="paAllocSatPct">0</span>%</span>
+          <span><span class="hc-alloc-dot" style="background:rgba(255,255,255,0.3)"></span>Cash <span id="paAllocCashPct">0</span>%</span>
+        </div>
+        <div class="hc-context-detail" id="paAllocationText">Allocation mix loading...</div>
       </div>
-      <div class="analytics-stat-card">
-        <div class="analytics-stat-label">Trades Logged</div>
-        <div class="analytics-stat-value mono" id="paTradeCount">0</div>
-      </div>
-      <div class="analytics-stat-card">
-        <div class="analytics-stat-label">PnL Points</div>
-        <div class="analytics-stat-value mono" id="paPnlPoints">0</div>
-      </div>
-      <div class="analytics-stat-card analytics-stat-card-regime">
-        <div class="analytics-stat-label">Regime</div>
-        <div class="analytics-stat-value" id="paRegime">—</div>
-      </div>
-      <div class="analytics-stat-card analytics-stat-card-wide">
-        <div class="analytics-stat-label">Top Asset</div>
-        <div class="analytics-stat-value mono" id="paTopAsset">—</div>
+
+      <div class="hc-context-card pa-reveal">
+        <div class="hc-context-label">Portfolio Stats</div>
+        <div class="pa-stat-grid">
+          <div class="pa-stat-tile">
+            <div class="pa-stat-label">Assets</div>
+            <div class="pa-stat-value" id="paAssetCount">0</div>
+          </div>
+          <div class="pa-stat-tile">
+            <div class="pa-stat-label">Trades</div>
+            <div class="pa-stat-value" id="paTradeCount">0</div>
+          </div>
+          <div class="pa-stat-tile">
+            <div class="pa-stat-label">PnL Points</div>
+            <div class="pa-stat-value" id="paPnlPoints">0</div>
+          </div>
+          <div class="pa-stat-tile">
+            <div class="pa-stat-label">Regime</div>
+            <div class="pa-stat-value" id="paRegime">—</div>
+          </div>
+          <div class="pa-stat-tile pa-stat-tile-wide">
+            <div class="pa-stat-label">Top Asset</div>
+            <div class="pa-stat-value" id="paTopAsset">—</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="panel span-12">
-    <div class="section-header">
+  <section class="pa-holdings-section pa-observe">
+    <div class="pa-section-head pa-reveal">
       <div>
-        <h2>Current Holdings</h2>
-        <p class="section-subtitle" id="allocationsMeta">Live allocation breakdown</p>
+        <h2 class="pa-section-title">Current Holdings</h2>
+        <p class="pa-section-subtitle" id="allocationsMeta">Live allocation breakdown</p>
       </div>
     </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Asset</th>
-            <th>Class</th>
-            <th class="right">Units</th>
-            <th class="right">Price</th>
-            <th class="right">Value USD</th>
-            <th class="right">Weight</th>
-          </tr>
-        </thead>
-        <tbody id="allocationsTable"></tbody>
-      </table>
+    <div class="pa-pos-grid" id="paHoldingsGrid">
+      <div class="hc-empty-card">Loading holdings...</div>
     </div>
   </section>
 </div>

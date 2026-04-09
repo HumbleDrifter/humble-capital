@@ -1,4 +1,5 @@
 const API_SECRET = (window.PORTFOLIO_ANALYTICS_CONFIG && window.PORTFOLIO_ANALYTICS_CONFIG.apiSecret) || "";
+let currentRange = "30d";
 let lastAnalyticsRefreshAt = 0;
 
 function authUrl(path) {
@@ -8,31 +9,46 @@ function authUrl(path) {
 }
 
 async function fetchJson(path) {
-  const res = await fetch(authUrl(path));
-  const data = await res.json();
-
+  const res = await fetch(authUrl(path), { credentials: "same-origin" });
+  const data = await res.json().catch(() => ({}));
   if (!res.ok || data.ok === false) {
     throw new Error(data.error || `HTTP ${res.status}`);
   }
-
   return data;
 }
 
-function fmtUsd(v) {
-  return Number(v || 0).toLocaleString(undefined, {
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function fmtUsd(value) {
+  return Number(value || 0).toLocaleString(undefined, {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2
   });
 }
 
-function fmtPct(v) {
-  return `${(Number(v || 0) * 100).toFixed(2)}%`;
+function fmtPct(value, alreadyPercent = false) {
+  const numeric = Number(value || 0);
+  const pct = alreadyPercent ? numeric : numeric * 100;
+  return `${pct.toFixed(2)}%`;
 }
 
-function fmtQty(v) {
-  return Number(v || 0).toLocaleString(undefined, {
-    maximumFractionDigits: 8
+function fmtSignedPct(value, alreadyPercent = false) {
+  const numeric = Number(value || 0);
+  const pct = alreadyPercent ? numeric : numeric * 100;
+  return `${pct >= 0 ? "+" : "-"}${Math.abs(pct).toFixed(2)}%`;
+}
+
+function fmtQty(value) {
+  return Number(value || 0).toLocaleString(undefined, {
+    maximumFractionDigits: 6
   });
 }
 
@@ -43,15 +59,15 @@ function formatUnixTime(ts) {
 }
 
 function normalizeRegimeLabel(value) {
-  const normalized = String(value || "unknown")
+  const normalized = String(value || "")
     .replaceAll("_", " ")
     .trim()
     .toLowerCase();
 
-  if (!normalized || normalized === "unknown") return "Unknown";
-  if (normalized === "bull") return "Bullish";
-  if (normalized === "bear") return "Bearish";
+  if (!normalized) return "Unknown";
+  if (normalized === "bull") return "Risk On";
   if (normalized === "neutral") return "Neutral";
+  if (normalized === "caution") return "Caution";
   if (normalized === "risk off") return "Risk Off";
 
   return normalized
@@ -61,275 +77,429 @@ function normalizeRegimeLabel(value) {
     .join(" ");
 }
 
-function cacheBadge(cache) {
-  if (!cache) return '<span class="badge">no-cache-meta</span>';
-  const src = cache.source || "unknown";
-  if (src === "live") return '<span class="badge good">live</span>';
-  if (src === "fresh-cache") return '<span class="badge accent">fresh-cache</span>';
-  if (src === "stale-cache") return '<span class="badge warn">stale-cache</span>';
-  return `<span class="badge">${src}</span>`;
+function updateRegimeBadge(regime) {
+  const badge = document.getElementById("paRegimeBadge");
+  const label = document.getElementById("paRegimeLabel");
+  if (!badge || !label) return;
+
+  const normalized = String(regime || "neutral").toLowerCase();
+  badge.classList.remove("is-bull", "is-neutral", "is-caution", "is-risk_off");
+  badge.classList.add(`is-${normalized}`);
+  label.textContent = normalizeRegimeLabel(normalized);
 }
 
-function setConsole(message, isError = false) {
-  const el = document.getElementById("analyticsConsole");
-  if (!el) return;
-  el.innerHTML = isError ? `<span class="bad">${message}</span>` : message.replace(/\n/g, "<br>");
-}
-
-function renderSummary(data) {
-  const s = data.summary || {};
-  const realizedPnl = Number(s.realized_pnl_total || 0);
-  const realizedEl = document.getElementById("paRealized");
-
-  document.getElementById("paTotal").textContent = fmtUsd(s.total_value_usd);
-  document.getElementById("paCash").textContent = fmtUsd(s.usd_cash);
-  document.getElementById("paInvested").textContent = fmtUsd(s.invested_usd);
-  if (realizedEl) {
-    realizedEl.textContent = fmtUsd(realizedPnl);
-    realizedEl.className = `kpi-value${realizedPnl > 0 ? " positive" : realizedPnl < 0 ? " negative" : ""}`;
-  }
-
-  document.getElementById("paAssetCount").textContent = String(s.asset_count || 0);
-  document.getElementById("paTradeCount").textContent = String(s.trade_count || 0);
-  document.getElementById("paPnlPoints").textContent = String(s.realized_pnl_points || 0);
-  document.getElementById("paRegime").textContent = normalizeRegimeLabel(s.market_regime || "unknown");
-  document.getElementById("paTopAsset").textContent = s.top_asset || "—";
-
-  const cashW = Number(s.cash_weight || 0);
-  const coreW = Number(s.core_weight || 0);
-  const satW = Number(s.satellite_weight || 0);
-
-  document.getElementById("paAllocationText").textContent =
-    `Cash ${fmtPct(cashW)} | Core ${fmtPct(coreW)} | Satellite Assets ${fmtPct(satW)}`;
-
-  const segCash = document.getElementById("paSegCash");
-  const segCore = document.getElementById("paSegCore");
-  const segSat = document.getElementById("paSegSat");
-
-  segCash.style.width = `${cashW * 100}%`;
-  segCore.style.width = `${coreW * 100}%`;
-  segSat.style.width = `${satW * 100}%`;
-
-  segCash.textContent = cashW > 0.08 ? "Cash" : "";
-  segCore.textContent = coreW > 0.08 ? "Core" : "";
-  segSat.textContent = satW > 0.12 ? "Satellite Assets" : "";
-
-  const meta = document.getElementById("analyticsMeta");
-  if (meta) {
-    meta.innerHTML = `${cacheBadge(data._cache)} <span class="tiny">Updated: ${formatUnixTime(s.timestamp)}</span>`;
-  }
-
-  const mode = s.data_mode || "live";
-  const warning = s.warning || data.warning || "";
-
-  const consoleLines = [
-    `Portfolio total: ${fmtUsd(s.total_value_usd)}`,
-    `Cash: ${fmtUsd(s.usd_cash)}`,
-    `Invested: ${fmtUsd(s.invested_usd)}`,
-    `Realized PnL: ${fmtUsd(s.realized_pnl_total)}`,
-    `Asset count: ${s.asset_count || 0}`,
-    `Trades logged: ${s.trade_count || 0}`,
-    `PnL points: ${s.realized_pnl_points || 0}`,
-    `Top asset: ${s.top_asset || "—"}`,
-    `Mode: ${mode}`
-  ];
-
-  if (warning) {
-    consoleLines.push(`Warning: ${warning}`);
-  }
-
-  setConsole(consoleLines.join("\n"), mode === "degraded");
-}
-
-function renderAllocations(data) {
-  const rows = data.allocations || [];
-  const tbody = document.getElementById("allocationsTable");
-  const meta = document.getElementById("allocationsMeta");
-
-  if (meta) {
-    meta.textContent = rows.length
-      ? `${rows.length} live holdings`
-      : "No live holdings available";
-  }
-
-  if (!tbody) return;
-
-  function displayClass(cls) {
-    if (cls === "core") return "core";
-    if (cls === "satellite_active") return "satellite assets";
-    if (cls === "dust") return "remainder";
-    return cls || "—";
-  }
-
-  tbody.innerHTML = rows.length
-    ? rows.map((r) => `
-      <tr>
-        <td>${r.product_id}</td>
-        <td>${displayClass(r.class)}</td>
-        <td class="right">${fmtQty(r.base_qty_total)}</td>
-        <td class="right">${fmtUsd(r.price_usd)}</td>
-        <td class="right">${fmtUsd(r.value_total_usd)}</td>
-        <td class="right">${fmtPct(r.weight_total)}</td>
-      </tr>
-    `).join("")
-    : `<tr><td colspan="6" class="muted">No holdings found.</td></tr>`;
-}
-
-function buildTrendStat(label, value, tone = "") {
-  return `
-    <div class="trend-stat">
-      <div class="trend-stat-label">${label}</div>
-      <div class="trend-stat-value${tone ? ` ${tone}` : ""}">${value}</div>
-    </div>
-  `;
-}
-
-function buildTrendSvg(points, key, labelFormatter = fmtUsd) {
-  const width = 960;
-  const height = 280;
-  const padLeft = 18;
-  const padRight = 18;
-  const padTop = 26;
-  const padBottom = 28;
-  const innerWidth = width - padLeft - padRight;
-  const innerHeight = height - padTop - padBottom;
-
-  const values = points.map((p) => Number(p[key] || 0));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const spread = Math.max(1e-9, max - min);
-  const areaBaseY = padTop + innerHeight;
-  const lastValue = values[values.length - 1] || 0;
-  const startValue = values[0] || 0;
-  const trendPositive = lastValue - startValue >= 0;
-  const stroke = trendPositive ? "#34d399" : "#fb7185";
-  const areaAccent = trendPositive ? "52, 211, 153" : "251, 113, 133";
-
-  const coords = points.map((p, i) => {
-    const x = padLeft + (i * innerWidth) / Math.max(1, points.length - 1);
-    const y = areaBaseY - ((Number(p[key] || 0) - min) / spread) * innerHeight;
-    return [x, y];
+function setRangeButtons(activeRange) {
+  document.querySelectorAll(".hc-range-btn").forEach((button) => {
+    const isActive = button.dataset.range === activeRange;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
   });
+}
 
-  const linePath = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c[0]} ${c[1]}`).join(" ");
-  const areaPath = `${linePath} L ${coords[coords.length - 1][0]} ${areaBaseY} L ${coords[0][0]} ${areaBaseY} Z`;
-  const yMarkers = [
-    { label: `Max ${labelFormatter(max)}`, y: padTop + 10 },
-    { label: `Min ${labelFormatter(min)}`, y: areaBaseY - 6 }
-  ];
+function seededNoise(seed) {
+  let x = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    x = (x * 31 + seed.charCodeAt(i)) % 2147483647;
+  }
+  return function next() {
+    x = (x * 48271) % 2147483647;
+    return x / 2147483647;
+  };
+}
 
+function buildSparkline(seed, positive) {
+  const rand = seededNoise(seed);
+  const width = 64;
+  const height = 28;
+  const points = [];
+  let value = positive ? 16 : 12;
+
+  for (let i = 0; i < 20; i += 1) {
+    const drift = positive ? 0.45 : -0.45;
+    value += drift + ((rand() - 0.5) * 3.2);
+    value = Math.max(3, Math.min(25, value));
+    const x = (i / 19) * width;
+    const y = height - value;
+    points.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+  }
+
+  const stroke = positive ? "#2dd4bf" : "#fb7185";
   return `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Realized PnL history chart">
-      <defs>
-        <linearGradient id="analyticsTrendArea" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgba(${areaAccent}, 0.34)" />
-          <stop offset="100%" stop-color="rgba(${areaAccent}, 0.02)" />
-        </linearGradient>
-      </defs>
-      <rect x="0" y="0" width="${width}" height="${height}" rx="22" ry="22" fill="rgba(255,255,255,0.02)"></rect>
-      ${yMarkers.map((marker) => `
-        <line
-          x1="${padLeft}"
-          y1="${marker.y}"
-          x2="${width - padRight}"
-          y2="${marker.y}"
-          stroke="rgba(154, 169, 192, 0.12)"
-          stroke-dasharray="4 6"
-        ></line>
-      `).join("")}
-      <path d="${areaPath}" fill="url(#analyticsTrendArea)"></path>
-      <path
-        d="${linePath}"
-        fill="none"
-        stroke="${stroke}"
-        stroke-width="3.25"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      ></path>
-      ${coords.length ? `
-        <circle
-          cx="${coords[coords.length - 1][0]}"
-          cy="${coords[coords.length - 1][1]}"
-          r="4.5"
-          fill="${stroke}"
-          stroke="rgba(236, 243, 255, 0.92)"
-          stroke-width="2"
-        ></circle>
-      ` : ""}
-      <text x="${padLeft}" y="${padTop - 8}" fill="rgba(154, 169, 192, 0.92)" font-size="12">Max ${labelFormatter(max)}</text>
-      <text x="${padLeft}" y="${areaBaseY + 18}" fill="rgba(154, 169, 192, 0.92)" font-size="12">Min ${labelFormatter(min)}</text>
+    <svg viewBox="0 0 64 28" class="hc-pos-spark" aria-hidden="true">
+      <polyline points="${points.join(" ")}" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
     </svg>
   `;
 }
 
-function renderHistory(data) {
-  const host = document.getElementById("historyChartHost");
-  const meta = document.getElementById("historyChartMeta");
-  const title = document.getElementById("historyChartTitle");
+function rangeLabel(range) {
+  if (range === "7d") return "7 days ago";
+  if (range === "30d") return "30 days ago";
+  if (range === "90d") return "90 days ago";
+  if (range === "1y") return "1 year ago";
+  return "Start";
+}
 
-  if (!host) return;
+function resolveHistorySeries(history) {
+  const points = Array.isArray(history?.points) ? history.points.filter((row) => row && typeof row === "object") : [];
+  const seriesType = String(history?.series_type || "portfolio_value");
+  const valueKey = seriesType === "realized_pnl" ? "realized_pnl" : "equity_usd";
+  const filteredPoints = points.filter((row) => Number.isFinite(Number(row?.[valueKey])));
+  return { points: filteredPoints, seriesType, valueKey };
+}
 
-  const points = Array.isArray(data.points) ? data.points : [];
-  const realizedPoints = points.filter((point) => Number.isFinite(Number(point?.realized_pnl)));
-
-  if ((data.series_type || "realized_pnl") === "empty") {
-    title.textContent = "History Unavailable";
-    if (meta) meta.textContent = "No portfolio history series is available yet.";
-    host.innerHTML = `<div class="trend-chart-empty">No history data found for the selected range.</div>`;
+function buildHistoryChart(container, points, valueKey, range) {
+  if (!container) return;
+  if (!points.length) {
+    container.innerHTML = `<div class="hc-chart-empty">No history data available for this range.</div>`;
     return;
   }
 
-  if (!realizedPoints.length) {
-    title.textContent = "Realized PnL History";
-    if (meta) meta.textContent = "No realized PnL history found.";
-    host.innerHTML = `<div class="trend-chart-empty">No history data found for the selected range.</div>`;
-    return;
+  const width = 800;
+  const height = 280;
+  const leftPad = 78;
+  const rightPad = 22;
+  const topPad = 18;
+  const bottomPad = 36;
+  const values = points.map((row) => Number(row[valueKey] || 0));
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const spread = Math.max(1, max - min);
+  const chartHeight = height - topPad - bottomPad;
+  const chartWidth = width - leftPad - rightPad;
+
+  const coords = points.map((row, index) => {
+    const x = leftPad + ((chartWidth * index) / Math.max(points.length - 1, 1));
+    const y = topPad + ((max - Number(row[valueKey] || 0)) / spread) * chartHeight;
+    return { x, y };
+  });
+
+  const linePath = coords.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
+  const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(2)} ${height - bottomPad} L ${coords[0].x.toFixed(2)} ${height - bottomPad} Z`;
+  const last = coords[coords.length - 1];
+
+  const gridLines = [];
+  for (let i = 0; i < 5; i += 1) {
+    const ratio = i / 4;
+    const value = max - (spread * ratio);
+    const y = topPad + (chartHeight * ratio);
+    gridLines.push(`
+      <line x1="${leftPad}" y1="${y.toFixed(2)}" x2="${width - rightPad}" y2="${y.toFixed(2)}" stroke="rgba(255,255,255,0.06)" stroke-width="1"></line>
+      <text x="10" y="${(y + 4).toFixed(2)}" fill="rgba(255,255,255,0.4)" font-size="12" font-family="DM Sans, system-ui, sans-serif">${escapeHtml(fmtUsd(value))}</text>
+    `);
   }
 
-  const values = realizedPoints.map((point) => Number(point.realized_pnl || 0));
-  const startValue = values[0] || 0;
-  const currentValue = values[values.length - 1] || 0;
-  const rangeDelta = currentValue - startValue;
-  const lowValue = Math.min(...values);
-  const tone = rangeDelta >= 0 ? "positive" : "negative";
+  container.innerHTML = `
+    <svg viewBox="0 0 800 280" width="100%" role="img" aria-label="Portfolio analytics history chart">
+      <defs>
+        <linearGradient id="paChartStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#2dd4bf"></stop>
+          <stop offset="100%" stop-color="#60a5fa"></stop>
+        </linearGradient>
+        <linearGradient id="paChartArea" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="rgba(45,212,191,0.25)"></stop>
+          <stop offset="100%" stop-color="rgba(45,212,191,0)"></stop>
+        </linearGradient>
+        <filter id="paGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur"></feGaussianBlur>
+          <feMerge>
+            <feMergeNode in="blur"></feMergeNode>
+            <feMergeNode in="SourceGraphic"></feMergeNode>
+          </feMerge>
+        </filter>
+      </defs>
+      ${gridLines.join("")}
+      <path d="${areaPath}" fill="url(#paChartArea)"></path>
+      <path d="${linePath}" fill="none" stroke="url(#paChartStroke)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      <circle cx="${last.x.toFixed(2)}" cy="${last.y.toFixed(2)}" r="8" fill="rgba(45,212,191,0.25)" filter="url(#paGlow)"></circle>
+      <circle cx="${last.x.toFixed(2)}" cy="${last.y.toFixed(2)}" r="4" fill="#2dd4bf"></circle>
+      <text x="${leftPad}" y="${height - 12}" fill="rgba(255,255,255,0.4)" font-size="12" font-family="DM Sans, system-ui, sans-serif">${escapeHtml(rangeLabel(range))}</text>
+      <text x="${width - 54}" y="${height - 12}" fill="rgba(255,255,255,0.4)" font-size="12" font-family="DM Sans, system-ui, sans-serif">Now</text>
+    </svg>
+  `;
+}
 
-  title.textContent = "Realized PnL History";
-  if (meta) meta.textContent = `${realizedPoints.length} realized PnL point(s) in selected range`;
-
-  host.innerHTML = `
-    <div class="trend-chart-shell">
-      <div class="trend-chart-summary">
-        ${buildTrendStat("Current PnL", fmtUsd(currentValue), tone)}
-        ${buildTrendStat("Range Change", `${rangeDelta >= 0 ? "+" : "-"}${fmtUsd(Math.abs(rangeDelta))}`, tone)}
-        ${buildTrendStat("Low Watermark", fmtUsd(lowValue))}
-      </div>
-      ${buildTrendSvg(realizedPoints, "realized_pnl", fmtUsd)}
-      <div class="trend-chart-note">Persisted realized PnL entries are plotted across the selected range.</div>
+function buildChartStat(label, value, tone = "") {
+  return `
+    <div class="pa-chart-stat ${tone}">
+      <div class="pa-chart-stat-label">${escapeHtml(label)}</div>
+      <div class="pa-chart-stat-value">${escapeHtml(value)}</div>
     </div>
   `;
+}
+
+function renderOverview(snapshot, summary) {
+  const totalValue = Number(snapshot?.total_value_usd || summary?.total_value_usd || 0);
+  const cash = Number(snapshot?.usd_cash || summary?.usd_cash || 0);
+  const invested = Number(summary?.invested_usd || Math.max(0, totalValue - cash));
+  const realized = Number(summary?.realized_pnl_total || 0);
+  const cashWeight = Number(summary?.cash_weight || (totalValue > 0 ? cash / totalValue : 0));
+  const coreWeight = Number(summary?.core_weight || 0);
+  const satelliteWeight = Number(summary?.satellite_weight || 0);
+  const regime = String(summary?.market_regime || snapshot?.market_regime || "neutral");
+  const timestamp = summary?.timestamp || snapshot?.timestamp;
+
+  document.getElementById("paTotal").textContent = fmtUsd(totalValue);
+  document.getElementById("paCash").textContent = fmtUsd(cash);
+  document.getElementById("paInvested").textContent = fmtUsd(invested);
+
+  const realizedEl = document.getElementById("paRealized");
+  realizedEl.textContent = fmtUsd(realized);
+  realizedEl.classList.remove("pa-positive", "pa-negative");
+  if (realized > 0) realizedEl.classList.add("pa-positive");
+  if (realized < 0) realizedEl.classList.add("pa-negative");
+
+  document.getElementById("paTotalDetail").textContent = timestamp ? `Updated ${formatUnixTime(timestamp)}` : "Live portfolio value";
+  document.getElementById("paCashDetail").textContent = `${fmtPct(cashWeight)} of portfolio`;
+  document.getElementById("paInvestedDetail").textContent = `${fmtPct(coreWeight + satelliteWeight)} deployed`;
+  document.getElementById("paRealizedDetail").textContent = `${Number(summary?.trade_count || 0)} logged trade(s)`;
+
+  document.getElementById("paAllocCore").style.width = `${Math.max(0, coreWeight * 100)}%`;
+  document.getElementById("paAllocSat").style.width = `${Math.max(0, satelliteWeight * 100)}%`;
+  document.getElementById("paAllocCash").style.width = `${Math.max(0, cashWeight * 100)}%`;
+  document.getElementById("paAllocCorePct").textContent = Math.round(coreWeight * 100);
+  document.getElementById("paAllocSatPct").textContent = Math.round(satelliteWeight * 100);
+  document.getElementById("paAllocCashPct").textContent = Math.round(cashWeight * 100);
+  document.getElementById("paAllocationText").textContent = `Core ${fmtPct(coreWeight)} · Satellite ${fmtPct(satelliteWeight)} · Cash ${fmtPct(cashWeight)}`;
+
+  document.getElementById("paAssetCount").textContent = String(summary?.asset_count || 0);
+  document.getElementById("paTradeCount").textContent = String(summary?.trade_count || 0);
+  document.getElementById("paPnlPoints").textContent = String(summary?.realized_pnl_points || 0);
+  document.getElementById("paRegime").textContent = normalizeRegimeLabel(regime);
+  document.getElementById("paTopAsset").textContent = summary?.top_asset || "—";
+
+  const meta = document.getElementById("analyticsMeta");
+  if (meta) {
+    meta.textContent = `${summary?.asset_count || 0} assets tracked • ${summary?.trade_count || 0} trades logged • ${timestamp ? `updated ${formatUnixTime(timestamp)}` : "live snapshot"}`;
+  }
+
+  updateRegimeBadge(regime);
+}
+
+function renderHistory(history) {
+  const { points, seriesType, valueKey } = resolveHistorySeries(history);
+  const host = document.getElementById("historyChartHost");
+  const title = document.getElementById("historyChartTitle");
+  const meta = document.getElementById("historyChartMeta");
+  const stats = document.getElementById("paChartStats");
+
+  if (!host || !title || !meta || !stats) return;
+
+  if (!points.length) {
+    title.textContent = "Portfolio History";
+    meta.textContent = "No history data available for the selected range.";
+    host.innerHTML = `<div class="hc-chart-empty">No history data available for this range.</div>`;
+    stats.innerHTML = "";
+    return;
+  }
+
+  const values = points.map((row) => Number(row[valueKey] || 0));
+  const first = values[0] || 0;
+  const last = values[values.length - 1] || 0;
+  const low = Math.min(...values);
+  const delta = last - first;
+  const pct = first !== 0 ? delta / Math.abs(first) : 0;
+  const tone = delta >= 0 ? "positive" : "negative";
+
+  title.textContent = seriesType === "realized_pnl" ? "Realized PnL History" : "Equity Curve";
+  meta.textContent = `${points.length} point(s) • ${seriesType === "realized_pnl" ? "closed-trade series" : "portfolio value series"}`;
+  buildHistoryChart(host, points, valueKey, currentRange);
+  stats.innerHTML = [
+    buildChartStat("Current", fmtUsd(last), tone),
+    buildChartStat("Range Change", delta >= 0 ? `+${fmtUsd(delta)}` : `-${fmtUsd(Math.abs(delta))}`, tone),
+    buildChartStat("Range %", fmtSignedPct(pct), tone),
+    buildChartStat("Low", fmtUsd(low))
+  ].join("");
+}
+
+function symbolName(productId) {
+  const symbol = String(productId || "").split("-")[0];
+  const known = {
+    BTC: "Bitcoin",
+    ETH: "Ethereum",
+    SOL: "Solana",
+    XRP: "XRP",
+    DOGE: "Dogecoin",
+    SHIB: "Shiba Inu",
+    BONK: "Bonk",
+    PEPE: "Pepe"
+  };
+  return known[symbol] || symbol;
+}
+
+function renderHoldings(snapshot, summary, allocationsPayload) {
+  const host = document.getElementById("paHoldingsGrid");
+  const meta = document.getElementById("allocationsMeta");
+  if (!host) return;
+
+  const positions = snapshot?.positions && typeof snapshot.positions === "object" ? snapshot.positions : {};
+  const summaryAssets = summary?.assets && typeof summary.assets === "object" ? summary.assets : {};
+  const allocations = Array.isArray(allocationsPayload?.allocations) ? allocationsPayload.allocations : [];
+  const allocationMap = Object.fromEntries(
+    allocations.map((row) => [String(row.product_id || "").toUpperCase(), row || {}])
+  );
+  const coreAssets = new Set(Object.keys(snapshot?.config?.core_assets || {}).map((key) => String(key || "").toUpperCase()));
+
+  const productIds = Array.from(
+    new Set([
+      ...Object.keys(positions || {}),
+      ...Object.keys(summaryAssets || {}),
+      ...Object.keys(allocationMap || {})
+    ])
+  );
+
+  const rows = productIds
+    .map((productId) => {
+      const pos = positions[productId] || {};
+      const asset = summaryAssets[productId] || {};
+      const allocation = allocationMap[productId] || {};
+      const value = Number(
+        pos.value_total_usd ??
+        asset.value_total_usd ??
+        allocation.value_total_usd ??
+        0
+      );
+      if (value <= 0) return null;
+
+      const symbol = String(productId || "").split("-")[0];
+      const isCore = coreAssets.has(String(productId || "").toUpperCase()) || allocation.class === "core" || asset.class === "core";
+      const changePct = Number(
+        asset.unrealized_pnl_pct ??
+        pos.unrealized_pnl_pct ??
+        allocation.unrealized_pnl_pct ??
+        asset.change_24h ??
+        0
+      );
+      const qty = Number(
+        pos.base_balance ??
+        pos.base_qty_total ??
+        asset.base_qty_total ??
+        allocation.base_qty_total ??
+        0
+      );
+      const price = Number(
+        asset.price_usd ??
+        allocation.price_usd ??
+        pos.price_usd ??
+        0
+      );
+
+      return {
+        productId,
+        symbol,
+        isCore,
+        value,
+        changePct,
+        qty,
+        price
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.value - a.value);
+
+  if (meta) {
+    meta.textContent = rows.length ? `${rows.length} live holding(s)` : "No live holdings available";
+  }
+
+  if (!rows.length) {
+    host.innerHTML = `<div class="hc-empty-card">No live holdings available.</div>`;
+    return;
+  }
+
+  host.innerHTML = rows.map((row) => {
+    const positive = row.changePct >= 0;
+    return `
+      <article class="hc-pos-card pa-pos-card pa-reveal">
+        <div class="hc-pos-icon ${row.isCore ? "core" : "satellite"}">${escapeHtml(row.symbol.slice(0, 2))}</div>
+        <div class="hc-pos-info">
+          <div class="hc-pos-symbol">${escapeHtml(row.symbol)}</div>
+          <div class="hc-pos-name">${escapeHtml(symbolName(row.productId))} · ${row.isCore ? "Core" : "Satellite"}</div>
+          <div class="pa-pos-meta">${escapeHtml(fmtQty(row.qty))} units · ${escapeHtml(fmtUsd(row.price))}</div>
+        </div>
+        ${buildSparkline(row.productId, positive)}
+        <div class="hc-pos-right">
+          <div class="hc-pos-value">${escapeHtml(fmtUsd(row.value))}</div>
+          <div class="hc-pos-change ${positive ? "positive" : "negative"}">${escapeHtml(fmtSignedPct(row.changePct, true))}</div>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  observeRevealTargets();
+}
+
+let revealObserver = null;
+
+function observeRevealTargets() {
+  if (!revealObserver) {
+    revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("pa-visible");
+      });
+    }, {
+      threshold: 0.12,
+      rootMargin: "0px 0px -8% 0px"
+    });
+  }
+
+  document.querySelectorAll(".pa-observe, .pa-pos-card").forEach((node) => {
+    if (node.dataset.paObserved === "true") return;
+    node.dataset.paObserved = "true";
+    revealObserver.observe(node);
+  });
 }
 
 async function refreshAnalytics() {
   try {
     lastAnalyticsRefreshAt = Date.now();
-    const range = document.getElementById("historyRange")?.value || "30d";
 
-    const [summary, allocations, history] = await Promise.all([
+    const [portfolioResp, summaryResp, allocationsResp, historyResp] = await Promise.all([
+      fetchJson("/api/portfolio"),
       fetchJson("/api/portfolio/summary"),
       fetchJson("/api/portfolio/allocations"),
-      fetchJson(`/api/portfolio/history?range=${encodeURIComponent(range)}`)
+      fetchJson(`/api/portfolio/history?range=${encodeURIComponent(currentRange)}`)
     ]);
 
-    renderSummary(summary);
-    renderAllocations(allocations);
-    renderHistory(history);
+    const snapshot = portfolioResp.snapshot || {};
+    const portfolioSummary = portfolioResp.summary || {};
+    const statsSummary = summaryResp.summary || {};
+    const mergedSummary = {
+      ...portfolioSummary,
+      ...statsSummary,
+      assets: portfolioSummary.assets || statsSummary.assets || {}
+    };
+
+    renderOverview(snapshot, mergedSummary);
+    renderHistory(historyResp);
+    renderHoldings(snapshot, mergedSummary, allocationsResp);
+    observeRevealTargets();
   } catch (err) {
     console.error(err);
-    setConsole(`Portfolio analytics load failed: ${err.message}`, true);
+    const meta = document.getElementById("analyticsMeta");
+    const chartMeta = document.getElementById("historyChartMeta");
+    const holdings = document.getElementById("paHoldingsGrid");
+    if (meta) meta.textContent = `Portfolio analytics load failed: ${err.message}`;
+    if (chartMeta) chartMeta.textContent = "History unavailable.";
+    if (holdings) holdings.innerHTML = `<div class="hc-empty-card">Portfolio analytics load failed.</div>`;
   }
 }
 
+function bindRangeButtons() {
+  document.querySelectorAll(".hc-range-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextRange = button.dataset.range || "30d";
+      if (nextRange === currentRange) return;
+      currentRange = nextRange;
+      setRangeButtons(currentRange);
+      refreshAnalytics();
+    });
+  });
+}
+
 window.refreshAnalytics = refreshAnalytics;
+bindRangeButtons();
+setRangeButtons(currentRange);
+observeRevealTargets();
 refreshAnalytics();
 
 document.addEventListener("visibilitychange", () => {

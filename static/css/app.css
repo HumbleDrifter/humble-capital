@@ -8862,3 +8862,240 @@ tbody tr:last-child td {
     box-shadow: inherit;
   }
 }
+
+/* =========================================================
+   CONFIGURATION — HUMBLE CAPITAL (cfg-*)
+========================================================= */
+
+.cfg-shell {
+  display: grid;
+  gap: 24px;
+  color: var(--hc-text);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+}
+
+.cfg-shell .configuration-grid {
+  gap: 16px;
+}
+
+.cfg-shell .configuration-grid > .panel {
+  animation: hcFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.cfg-shell .configuration-grid > .panel:nth-child(1) {
+  animation-delay: 0.04s;
+}
+
+.cfg-shell .configuration-grid > .panel:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.cfg-shell .configuration-grid > .panel:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.cfg-shell .configuration-grid > .panel:nth-child(4) {
+  animation-delay: 0.28s;
+}
+
+.cfg-shell .panel {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.cfg-shell .section-header {
+  margin-bottom: 14px;
+}
+
+.cfg-shell .section-header h2,
+.cfg-shell .section-header h3,
+.cfg-shell .configuration-section-title,
+.cfg-shell .configuration-asset-title,
+.cfg-shell .configuration-group-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--hc-text);
+}
+
+.cfg-shell .section-subtitle,
+.cfg-shell .configuration-shell-note,
+.cfg-shell .configuration-card-support,
+.cfg-shell .configuration-group-support,
+.cfg-shell .configuration-primary-note,
+.cfg-shell .configuration-advisory-note,
+.cfg-shell .configuration-card-caption,
+.cfg-shell .configuration-card-note,
+.cfg-shell .field-help {
+  color: var(--hc-text-secondary);
+}
+
+.cfg-shell .divider {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.cfg-shell .btn,
+.cfg-shell button.btn,
+.cfg-shell .configuration-inline-actions .btn {
+  min-height: 44px;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.cfg-shell .btn:hover,
+.cfg-shell button.btn:hover,
+.cfg-shell .configuration-inline-actions .btn:hover {
+  transform: translateY(-1px);
+}
+
+.cfg-shell .btn-primary,
+.cfg-shell button.btn-primary {
+  color: #061018;
+  border-color: transparent;
+  background: linear-gradient(135deg, #2dd4bf 0%, #60a5fa 100%);
+  box-shadow: 0 14px 34px rgba(45, 212, 191, 0.16);
+}
+
+.cfg-shell .btn-secondary,
+.cfg-shell button.btn-secondary {
+  color: var(--hc-text);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.cfg-shell .form-card,
+.cfg-shell .configuration-shell-card,
+.cfg-shell .configuration-focus-card,
+.cfg-shell .config-proposal-automation-card,
+.cfg-shell .adaptive-suggestions-card,
+.cfg-shell .auto-adaptive-card,
+.cfg-shell .configuration-primary-note,
+.cfg-shell .configuration-advisory-note,
+.cfg-shell .configuration-table-card,
+.cfg-shell .configuration-review-card,
+.cfg-shell .configuration-kpi-card {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.cfg-shell .form-card label,
+.cfg-shell .configuration-overview-grid label,
+.cfg-shell .configuration-grid label {
+  color: var(--hc-text);
+  font-weight: 600;
+}
+
+.cfg-shell input,
+.cfg-shell select,
+.cfg-shell textarea {
+  border-radius: 12px;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(8, 13, 20, 0.72);
+  color: var(--hc-text);
+}
+
+.cfg-shell input::placeholder,
+.cfg-shell textarea::placeholder {
+  color: var(--hc-text-tertiary);
+}
+
+.cfg-shell .configuration-advanced-toggle,
+.cfg-shell .advanced-config-group {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02));
+  overflow: hidden;
+}
+
+.cfg-shell .configuration-advanced-toggle > summary,
+.cfg-shell .advanced-config-group > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--hc-text);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cfg-shell .configuration-advanced-toggle > summary::-webkit-details-marker,
+.cfg-shell .advanced-config-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.cfg-shell .configuration-advanced-toggle[open] > summary,
+.cfg-shell .advanced-config-group[open] > summary {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cfg-shell .configuration-advanced-toggle > *:not(summary),
+.cfg-shell .advanced-config-group > *:not(summary) {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+.cfg-shell .configuration-table,
+.cfg-shell .table-wrap table {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.cfg-shell .configuration-table th,
+.cfg-shell .configuration-table td,
+.cfg-shell .table-wrap th,
+.cfg-shell .table-wrap td {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.cfg-shell .configuration-table thead,
+.cfg-shell .table-wrap thead {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.cfg-shell .configuration-status-pill,
+.cfg-shell .configuration-shell-badge,
+.cfg-shell .configuration-overview-badge,
+.cfg-shell .configuration-chip,
+.cfg-shell .configuration-tag {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cfg-shell .configuration-help-button {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--hc-text);
+}
+
+.cfg-shell .configuration-help-tooltip {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 13, 20, 0.96);
+  color: var(--hc-text);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+}
+
+@media (max-width: 900px) {
+  .cfg-shell {
+    gap: 18px;
+  }
+
+  .cfg-shell .panel,
+  .cfg-shell .form-card,
+  .cfg-shell .configuration-shell-card,
+  .cfg-shell .configuration-focus-card,
+  .cfg-shell .config-proposal-automation-card,
+  .cfg-shell .adaptive-suggestions-card,
+  .cfg-shell .auto-adaptive-card {
+    border-radius: 14px;
+  }
+}

@@ -1,279 +1,97 @@
 {% extends "base_app.html" %}
 
+{% block topbar_actions %}
+  <div class="hc-regime-badge" id="regimeBadge">
+    <span class="hc-regime-dot"></span>
+    <span id="regimeLabel">Loading...</span>
+  </div>
+{% endblock %}
+
 {% block content %}
-<div class="grid cols-12 dashboard-grid dashboard-terminal-grid">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 
-  <section class="panel span-12 dashboard-command-strip-panel">
-    <div class="section-header dashboard-command-strip-header">
-      <div>
-        <h2>Trading Command Center</h2>
-        <p class="section-subtitle">Portfolio visibility, active opportunities, and live system context in one terminal view.</p>
+<div class="hc-dashboard-shell">
+  <div class="hc-hero">
+    <div class="hc-hero-label">Total Portfolio Value</div>
+    <h1 class="hc-hero-value" id="heroPortfolioValue">$0.00</h1>
+    <div class="hc-hero-pnl" id="heroDailyPnl">
+      <span class="hc-hero-pnl-value">+$0.00</span>
+      <span class="hc-hero-pnl-pct">(+0.00%)</span>
+      <span class="hc-hero-pnl-period">today</span>
+    </div>
+    <div class="hc-hero-meta" id="heroMeta">
+      All-time: <span id="heroTotalPnl">$0.00</span>
+    </div>
+  </div>
+
+  <div class="hc-chart-section">
+    <div class="hc-chart-header">
+      <span class="hc-chart-title">Equity Curve</span>
+      <div class="hc-chart-range-group">
+        <button class="hc-range-btn" data-range="7d" type="button">7D</button>
+        <button class="hc-range-btn active" data-range="30d" type="button">30D</button>
+        <button class="hc-range-btn" data-range="all" type="button">ALL</button>
       </div>
     </div>
+    <div id="hcChartHost" class="hc-chart-host"></div>
+  </div>
 
-    <div class="dashboard-command-strip" id="dashboardSummaryStrip">
-      <div class="dashboard-command-card">
-        <div class="dashboard-command-label">Total Portfolio Value</div>
-        <div class="dashboard-command-value" id="summaryPortfolioValue">$0.00</div>
+  <div class="hc-context-grid">
+    <div class="hc-context-card">
+      <div class="hc-context-label">Cash Available</div>
+      <div class="hc-context-value" id="ctxCash">$0.00</div>
+      <div class="hc-context-detail" id="ctxCashPct">0% of portfolio</div>
+    </div>
+    <div class="hc-context-card">
+      <div class="hc-context-label">Risk Score</div>
+      <div class="hc-context-value" id="ctxRiskScore">--<span class="hc-context-unit">/100</span></div>
+      <div class="hc-context-detail" id="ctxRiskLabel">Evaluating...</div>
+    </div>
+    <div class="hc-context-card">
+      <div class="hc-context-label">Allocation</div>
+      <div class="hc-alloc-bar">
+        <div class="hc-alloc-seg hc-alloc-core" id="allocCore" style="width:0%"></div>
+        <div class="hc-alloc-seg hc-alloc-sat" id="allocSat" style="width:0%"></div>
+        <div class="hc-alloc-seg hc-alloc-cash" id="allocCash" style="width:0%"></div>
       </div>
-      <div class="dashboard-command-card">
-        <div class="dashboard-command-label">Daily PnL</div>
-        <div class="dashboard-command-value" id="summaryDailyPnl">Limited</div>
+      <div class="hc-alloc-legend">
+        <span><span class="hc-alloc-dot" style="background:#2dd4bf"></span>Core <span id="allocCorePct">0</span>%</span>
+        <span><span class="hc-alloc-dot" style="background:#60a5fa"></span>Sat <span id="allocSatPct">0</span>%</span>
+        <span><span class="hc-alloc-dot" style="background:rgba(255,255,255,0.3)"></span>Cash <span id="allocCashPct">0</span>%</span>
       </div>
-      <div class="dashboard-command-card">
-        <div class="dashboard-command-label">Total PnL</div>
-        <div class="dashboard-command-value" id="summaryTotalPnl">Limited</div>
+    </div>
+    <div class="hc-context-card">
+      <div class="hc-context-label">Active Positions</div>
+      <div class="hc-context-value" id="ctxPositionCount">0</div>
+      <div class="hc-context-detail" id="ctxPositionBreakdown">0 core · 0 satellite</div>
+    </div>
+  </div>
+
+  <section class="hc-section">
+    <div class="hc-section-head">
+      <div>
+        <h2 class="hc-section-title">Holdings</h2>
+        <p class="hc-section-subtitle">Live portfolio positions across core and satellite exposure.</p>
       </div>
-      <div class="dashboard-command-card">
-        <div class="dashboard-command-label">Cash Available</div>
-        <div class="dashboard-command-value" id="summaryCashAvailable">$0.00</div>
-      </div>
-      <div class="dashboard-command-card">
-        <div class="dashboard-command-label">Market Regime</div>
-        <div class="dashboard-command-value" id="summaryMarketRegime">Unknown</div>
-      </div>
+    </div>
+    <div class="hc-pos-grid" id="hcHoldingsGrid">
+      <div class="hc-empty-card">Loading holdings...</div>
     </div>
   </section>
 
-  <section class="panel span-8 dashboard-overview-panel dashboard-trend-panel">
-    <div class="section-header">
+  <section class="hc-section">
+    <div class="hc-section-head">
       <div>
-        <h2>Account Value Trend</h2>
-        <p class="section-subtitle" id="accountValueMeta">Loading persisted portfolio history and performance context...</p>
-      </div>
-      <div class="trend-range-row" role="tablist" aria-label="Portfolio value range">
-        <button class="btn btn-secondary trend-range-btn" type="button" data-range="7d" aria-pressed="false">7D</button>
-        <button class="btn btn-secondary trend-range-btn active" type="button" data-range="30d" aria-pressed="true">30D</button>
-        <button class="btn btn-secondary trend-range-btn" type="button" data-range="all" aria-pressed="false">All</button>
+        <h2 class="hc-section-title">Recent Activity</h2>
+        <p class="hc-section-subtitle">Latest execution flow, fills, and live trade context.</p>
       </div>
     </div>
-
-    <div id="accountValueChartHost" class="trend-panel-stage"></div>
-  </section>
-
-  <section class="panel span-4 dashboard-briefing-panel">
-    <div class="section-header">
-      <div>
-        <h2>Command Brief</h2>
-        <p class="section-subtitle">Risk posture, adaptive guidance, and what needs attention right now.</p>
-      </div>
-    </div>
-
-    <div class="panel-body">
-      <div class="performance-summary-card" id="performanceSummaryCard">
-        <div class="dashboard-briefing-content">
-          <div class="dashboard-briefing-primary">
-            <div class="performance-summary-head">
-              <div>
-                <div class="performance-summary-eyebrow">Performance Summary</div>
-              </div>
-            </div>
-            <div class="performance-risk-strip" id="performanceRiskStrip">
-              <div class="performance-risk-score-wrap">
-                <div class="performance-risk-score-label-row">
-                  <div class="performance-risk-score-label">Risk Score</div>
-                  <div class="performance-risk-info">
-                    <button
-                      class="performance-risk-info-button"
-                      type="button"
-                      aria-label="Risk score scale information"
-                    >i</button>
-                    <div class="performance-risk-tooltip" role="tooltip">
-                      Risk score uses a 0–100 scale. Higher scores indicate higher portfolio risk.
-                    </div>
-                  </div>
-                </div>
-                <div class="performance-risk-score" id="performanceRiskScore">--</div>
-              </div>
-              <div class="performance-risk-copy">
-                <div class="performance-risk-band" id="performanceRiskBand">Evaluating risk posture...</div>
-              </div>
-            </div>
-            <div class="dashboard-current-preset">
-              <div class="dashboard-current-preset-label">Current Preset</div>
-              <div class="dashboard-current-preset-value" id="dashboardCurrentPreset">Reviewing</div>
-            </div>
-          </div>
-          <div class="dashboard-briefing-secondary">
-            <div class="dashboard-guidance-card" id="dashboardGuidanceCard">
-              <div class="dashboard-guidance-head">
-                <div>
-                  <div class="dashboard-guidance-eyebrow">Configuration Guidance</div>
-                  <div class="dashboard-guidance-title" id="dashboardGuidanceTitle">Reviewing the current guardrail posture...</div>
-                </div>
-                <div class="dashboard-guidance-badge" id="dashboardGuidanceConfidence">low confidence</div>
-              </div>
-              <div class="dashboard-guidance-summary" id="dashboardGuidanceSummary">
-                The dashboard keeps the live risk snapshot here and sends detailed recommendations to Configuration.
-              </div>
-              <div class="dashboard-guidance-actions" id="dashboardGuidanceActions"></div>
-            </div>
-            <div class="needs-attention-panel" id="needsAttentionPanel" hidden>
-              <div class="needs-attention-title">Needs Attention</div>
-              <div class="needs-attention-strip" id="needsAttentionStrip"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="hc-trade-grid" id="hcRecentActivity">
+      <div class="hc-empty-card">Loading recent activity...</div>
     </div>
   </section>
-
-  <section class="panel span-5 dashboard-allocation-panel">
-    <div class="section-header">
-      <div>
-        <h2>Portfolio Allocation</h2>
-        <p class="section-subtitle">Core versus satellite asset exposure, cash runway, and top weights.</p>
-      </div>
-    </div>
-
-    <div class="dashboard-allocation-header">
-      <div id="allocationText" class="tiny"></div>
-      <div class="allocation-legend" aria-label="Allocation legend">
-        <span class="allocation-legend-item">
-          <span class="allocation-legend-swatch core" aria-hidden="true"></span>
-          <span class="allocation-legend-label">Core</span>
-        </span>
-        <span class="allocation-legend-item">
-          <span class="allocation-legend-swatch opportunities" aria-hidden="true"></span>
-          <span class="allocation-legend-label">Satellite Assets</span>
-        </span>
-        <span class="allocation-legend-item">
-          <span class="allocation-legend-swatch cash" aria-hidden="true"></span>
-          <span class="allocation-legend-label">Cash</span>
-        </span>
-      </div>
-      <div class="dashboard-allocation-split">
-        <div class="dashboard-allocation-split-item">
-          <span class="dashboard-allocation-split-label">Core</span>
-          <strong class="dashboard-allocation-split-value" id="allocationCoreValue">0.00%</strong>
-        </div>
-        <div class="dashboard-allocation-split-item">
-          <span class="dashboard-allocation-split-label">Satellite Assets</span>
-          <strong class="dashboard-allocation-split-value" id="allocationSatValue">0.00%</strong>
-        </div>
-        <div class="dashboard-allocation-split-item">
-          <span class="dashboard-allocation-split-label">Cash</span>
-          <strong class="dashboard-allocation-split-value" id="allocationCashValue">0.00%</strong>
-        </div>
-      </div>
-    </div>
-
-    <div class="allocation-wrap">
-      <div id="segCash" class="allocation-seg seg-cash" style="width:0%"></div>
-      <div id="segCore" class="allocation-seg seg-core" style="width:0%"></div>
-      <div id="segSat" class="allocation-seg seg-sat" style="width:0%"></div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="section-header compact-header">
-      <div>
-        <h3 style="margin:0;">Major Allocations</h3>
-        <p class="section-subtitle" style="margin:4px 0 0 0;">Largest holdings by current portfolio weight.</p>
-      </div>
-    </div>
-
-    <div id="allocationBreakdown" class="dashboard-allocation-breakdown">
-      <div class="muted">Waiting for holdings data.</div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="section-header compact-header">
-      <div>
-        <h3 style="margin:0;">Cash Breakdown</h3>
-        <p class="section-subtitle" style="margin:4px 0 0 0;">Stable balances available for deployment.</p>
-      </div>
-    </div>
-
-    <div class="mini-stat-grid">
-      <div class="mini-stat-card">
-        <div class="mini-stat-label">USD</div>
-        <div class="mini-stat-value" id="cashUsd">$0.00</div>
-      </div>
-
-      <div class="mini-stat-card">
-        <div class="mini-stat-label">USDC</div>
-        <div class="mini-stat-value" id="cashUsdc">$0.00</div>
-      </div>
-
-      <div class="mini-stat-card">
-        <div class="mini-stat-label">USDT</div>
-        <div class="mini-stat-value" id="cashUsdt">$0.00</div>
-      </div>
-
-      <div class="mini-stat-card">
-        <div class="mini-stat-label">Total Cash</div>
-        <div class="mini-stat-value" id="cashTotal">$0.00</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel span-7 dashboard-opportunities-panel">
-    <div class="section-header">
-      <div>
-        <h2>Active Opportunities</h2>
-        <p class="section-subtitle" id="dashboardOpportunitiesMeta">Loading the canonical active opportunity feed...</p>
-      </div>
-      <div class="configuration-inline-actions">
-        <a class="btn btn-secondary" href="{{ opportunities_url }}">Open Opportunities</a>
-      </div>
-    </div>
-
-    <div id="dashboardOpportunitiesPreview" class="dashboard-opportunities-preview">
-      <div class="muted">Waiting for opportunity candidates.</div>
-    </div>
-  </section>
-
-  <section class="panel span-8 dashboard-portfolio-panel">
-    <div class="section-header">
-      <div>
-        <h2>Portfolio Visibility</h2>
-        <p class="section-subtitle" id="portfolioMeta"></p>
-      </div>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Asset</th>
-            <th class="right">Units</th>
-            <th class="right">Price</th>
-            <th class="right">Value USD</th>
-            <th class="right">Weight</th>
-            <th>Class</th>
-          </tr>
-        </thead>
-        <tbody id="portfolioTable"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="panel span-4 dashboard-activity-panel">
-    <div class="section-header">
-      <div>
-        <h2>Recent Activity</h2>
-        <p class="section-subtitle">Latest execution context and next rebalance queue.</p>
-      </div>
-    </div>
-
-    <div class="execution-activity-shell" id="executionActivity">
-      <div class="execution-activity-fallback">No recent execution activity available.</div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="section-header compact-header">
-      <div>
-        <h3 style="margin:0;">Rebalance Preview</h3>
-        <p class="section-subtitle" id="rebalanceMeta" style="margin:4px 0 0 0;">Previewing next actions</p>
-      </div>
-    </div>
-
-    <div id="rebalanceSummary" class="rebalance-shell"></div>
-  </section>
-
 </div>
 
 <script>

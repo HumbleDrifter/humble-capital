@@ -130,7 +130,7 @@
 
   function buildEquityChart(container, dataPoints, range) {
     if (!container) return;
-    const points = Array.isArray(dataPoints) ? dataPoints.filter((row) => row && Number.isFinite(Number(row.total_value_usd))) : [];
+    const points = Array.isArray(dataPoints) ? dataPoints.filter((row) => row && Number.isFinite(Number(row.equity_usd))) : [];
     if (!points.length) {
       container.innerHTML = `<div class="hc-chart-empty">No portfolio history available for this range.</div>`;
       return;
@@ -142,7 +142,7 @@
     const rightPad = 22;
     const topPad = 18;
     const bottomPad = 36;
-    const values = points.map((row) => Number(row.total_value_usd || 0));
+    const values = points.map((row) => Number(row.equity_usd || 0));
     const min = Math.min(...values);
     const max = Math.max(...values);
     const spread = Math.max(1, max - min);
@@ -151,7 +151,7 @@
 
     const coords = points.map((row, index) => {
       const x = leftPad + ((chartWidth * index) / Math.max(points.length - 1, 1));
-      const y = topPad + ((max - Number(row.total_value_usd || 0)) / spread) * chartHeight;
+      const y = topPad + ((max - Number(row.equity_usd || 0)) / spread) * chartHeight;
       return { x, y };
     });
 
@@ -324,8 +324,8 @@
     host.innerHTML = rows.slice(0, 8).map((trade) => {
       const side = String(trade.side || "BUY").toUpperCase();
       const badgeClass = side === "BUY" ? "buy" : side === "EXIT" ? "exit" : "trim";
-      const signal = String(trade.signal_type || "").toLowerCase().replaceAll("_", " ") || "execution";
-      const amount = Number(trade.avg_fill_price || 0) * Number(trade.filled_base || 0);
+      const signal = String(trade.signal_type || trade.side || "").toLowerCase().replaceAll("_", " ") || "execution";
+      const amount = Number(trade.price || 0) * Number(trade.base_size || 0);
       return `
         <div class="hc-trade-card">
           <div class="hc-trade-badge ${badgeClass}">${escapeHtml(side)}</div>
@@ -344,15 +344,17 @@
 
   async function loadDashboard() {
     try {
-      const data = await fetchJson("/api/snapshot");
-      const totalValue = Number(data.total_value_usd || 0);
-      const cash = Number(data.usd_cash || 0);
-      const coreValue = Number(data.core_value_usd || 0);
-      const satelliteValue = Number(data.satellite_value_usd || 0);
+      const resp = await fetchJson("/api/portfolio");
+      const snapshot = resp.snapshot || {};
+      const summary = resp.summary || {};
+      const totalValue = Number(snapshot.total_value_usd || 0);
+      const cash = Number(snapshot.usd_cash || 0);
+      const coreValue = Number(snapshot.core_value_usd || 0);
+      const satelliteValue = Number(snapshot.satellite_value_usd || 0);
+      const regime = String(summary.market_regime || "neutral");
       const totalPnl = Number(
-        data.total_pnl_usd ??
-        data.all_time_pnl_usd ??
-        data.pnl_usd ??
+        summary.total_pnl_usd ??
+        summary.realized_pnl_usd ??
         0
       );
 
@@ -374,7 +376,7 @@
       const corePct = totalValue > 0 ? coreValue / totalValue : 0;
       const satPct = totalValue > 0 ? satelliteValue / totalValue : 0;
 
-      const risk = inferRiskScore(data);
+      const risk = inferRiskScore(snapshot);
       const riskScoreEl = document.getElementById("ctxRiskScore");
       const riskLabelEl = document.getElementById("ctxRiskLabel");
       if (riskScoreEl) {
@@ -384,8 +386,8 @@
       }
       if (riskLabelEl) riskLabelEl.textContent = risk.label;
 
-      const positions = data.positions && typeof data.positions === "object" ? Object.entries(data.positions) : [];
-      const coreAssets = new Set(Object.keys(data.config?.core_assets || {}));
+      const positions = snapshot.positions && typeof snapshot.positions === "object" ? Object.entries(snapshot.positions) : [];
+      const coreAssets = new Set(Object.keys(snapshot.config?.core_assets || {}));
       const coreCount = positions.filter(([productId, row]) => coreAssets.has(productId) && Number(row?.value_total_usd || 0) > 0).length;
       const satelliteCount = positions.filter(([productId, row]) => !coreAssets.has(productId) && Number(row?.value_total_usd || 0) > 0).length;
 
@@ -400,8 +402,8 @@
       document.getElementById("ctxPositionCount").textContent = String(coreCount + satelliteCount);
       document.getElementById("ctxPositionBreakdown").textContent = `${coreCount} core · ${satelliteCount} satellite`;
 
-      updateRegimeBadge(data.market_regime || "neutral");
-      renderHoldings(data);
+      updateRegimeBadge(regime);
+      renderHoldings(snapshot);
     } catch (error) {
       console.warn("Dashboard snapshot load failed:", error);
       const host = document.getElementById("hcHoldingsGrid");
@@ -411,14 +413,14 @@
 
   async function loadChart(range) {
     try {
-      const data = await fetchJson(`/api/portfolio-history?range=${encodeURIComponent(range)}`);
-      const history = Array.isArray(data.history) ? data.history : [];
-      buildEquityChart(document.getElementById("hcChartHost"), history, range);
+      const resp = await fetchJson(`/api/portfolio/history?range=${encodeURIComponent(range)}`);
+      const points = Array.isArray(resp.points) ? resp.points : [];
+      buildEquityChart(document.getElementById("hcChartHost"), points, range);
 
-      if (history.length >= 2) {
-        const first = Number(history[0].total_value_usd || 0);
-        const last = Number(history[history.length - 1].total_value_usd || 0);
-        const prev = Number(history[Math.max(0, history.length - 2)].total_value_usd || first);
+      if (points.length >= 2) {
+        const first = Number(points[0].equity_usd || 0);
+        const last = Number(points[points.length - 1].equity_usd || 0);
+        const prev = Number(points[Math.max(0, points.length - 2)].equity_usd || first);
         const dailyPnl = last - prev;
         const dailyPct = prev > 0 ? dailyPnl / prev : 0;
         setHeroPnl(dailyPnl, dailyPct);
@@ -434,7 +436,7 @@
 
   async function loadActivity() {
     try {
-      const data = await fetchJson("/api/recent-trades");
+      const data = await fetchJson("/api/trades");
       renderActivity(data.trades || []);
     } catch (error) {
       console.warn("Dashboard activity load failed:", error);

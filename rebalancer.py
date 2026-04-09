@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 import time
 from dotenv import load_dotenv
 
@@ -39,6 +40,8 @@ from storage import record_buy_fill, record_sell_fill, mark_harvest
 load_dotenv("/root/tradingbot/.env", override=True)
 
 MAX_QUOTE_SIZE = float(os.getenv("MAX_QUOTE_PER_TRADE_USD", "25"))
+_SELL_LOCKS = {}
+_SELL_LOCKS_LOCK = threading.Lock()
 
 
 def _log_rebalancer_event(event, payload=None):
@@ -49,6 +52,13 @@ def _log_rebalancer_event(event, payload=None):
         "payload": payload if isinstance(payload, dict) else {},
     }
     print(json.dumps(envelope, sort_keys=True, ensure_ascii=False))
+
+
+def _get_sell_lock(product_id):
+    with _SELL_LOCKS_LOCK:
+        if product_id not in _SELL_LOCKS:
+            _SELL_LOCKS[product_id] = threading.Lock()
+        return _SELL_LOCKS[product_id]
 
 
 def _record_buy_trace(snapshot, result_category, reason_code, summary, **payload):
@@ -331,67 +341,97 @@ def execute_buy(product_id, buy_usd, signal_type="SATELLITE_BUY", external_order
 
 
 def execute_trim(product_id, trim_usd, snapshot, signal_type="SNIPER_EXIT", external_order_id=None):
-    current_value = float(
-        snapshot.get("positions", {}).get(product_id, {}).get("value_total_usd", 0.0) or 0.0
-    )
-
-    if current_value <= 0:
+    sell_lock = _get_sell_lock(product_id)
+    if not sell_lock.acquire(blocking=False):
+        _log_rebalancer_event(
+            "sell_conflict_skipped",
+            {
+                "product_id": product_id,
+                "signal_type": signal_type,
+                "reason": "sell_in_progress",
+                "conflicting_lock_holder": "existing_sell_lock",
+            },
+        )
         return {
             "ok": False,
             "product_id": product_id,
-            "reason": "no_position_value",
+            "reason": "sell_in_progress",
         }
 
-    requested_sell_pct = min(1.0, trim_usd / current_value)
-
-    base_size = (
-        compute_full_liquid_base(product_id)
-        if requested_sell_pct >= 1.0
-        else compute_sell_base(product_id, requested_sell_pct)
-    )
-
-    if base_size <= 0:
-        return {
-            "ok": False,
-            "product_id": product_id,
-            "reason": "no_liquid_balance",
-        }
-
-    asset = snapshot.get("positions", {}).get(product_id, {})
-    volatility_bucket = str(asset.get("volatility_bucket", "") or "")
-
-    result = place_limit_base_with_retries(
-        product_id=product_id,
-        side="SELL",
-        base_size=base_size,
-        attempts=get_base_attempts(
-            signal_type=signal_type,
-            volatility_bucket=volatility_bucket,
-        ),
-        signal_type=signal_type,
-        volatility_bucket=volatility_bucket,
-    )
-
-    final_result = _extract_final_result(result)
-    filled_base, avg_fill_price = _extract_fill(result)
-
-    if filled_base > 0:
-        record_sell_fill(
-            product_id=product_id,
-            filled_base=filled_base,
-            avg_fill_price=avg_fill_price,
-            order_id=final_result.get("coinbase_order_id") or external_order_id,
-            status=final_result.get("status", "FILLED"),
-            created_at=int(time.time()),
+    try:
+        current_snapshot = get_portfolio_snapshot()
+        current_value = float(
+            current_snapshot.get("positions", {}).get(product_id, {}).get("value_total_usd", 0.0) or 0.0
         )
 
-    return {
-        "ok": True,
-        "product_id": product_id,
-        "side": "SELL",
-        "requested_trim_usd": trim_usd,
-        "result": result,
-    }
+        if current_value <= 0:
+            _log_rebalancer_event(
+                "sell_conflict_skipped",
+                {
+                    "product_id": product_id,
+                    "signal_type": signal_type,
+                    "reason": "position_already_closed",
+                    "conflicting_lock_holder": "",
+                },
+            )
+            return {
+                "ok": False,
+                "product_id": product_id,
+                "reason": "position_already_closed",
+            }
+
+        requested_sell_pct = min(1.0, trim_usd / current_value)
+
+        base_size = (
+            compute_full_liquid_base(product_id)
+            if requested_sell_pct >= 1.0
+            else compute_sell_base(product_id, requested_sell_pct)
+        )
+
+        if base_size <= 0:
+            return {
+                "ok": False,
+                "product_id": product_id,
+                "reason": "no_liquid_balance",
+            }
+
+        asset = current_snapshot.get("positions", {}).get(product_id, {})
+        volatility_bucket = str(asset.get("volatility_bucket", "") or "")
+
+        result = place_limit_base_with_retries(
+            product_id=product_id,
+            side="SELL",
+            base_size=base_size,
+            attempts=get_base_attempts(
+                signal_type=signal_type,
+                volatility_bucket=volatility_bucket,
+            ),
+            signal_type=signal_type,
+            volatility_bucket=volatility_bucket,
+        )
+
+        final_result = _extract_final_result(result)
+        filled_base, avg_fill_price = _extract_fill(result)
+
+        if filled_base > 0:
+            record_sell_fill(
+                product_id=product_id,
+                filled_base=filled_base,
+                avg_fill_price=avg_fill_price,
+                order_id=final_result.get("coinbase_order_id") or external_order_id,
+                status=final_result.get("status", "FILLED"),
+                created_at=int(time.time()),
+            )
+
+        return {
+            "ok": True,
+            "product_id": product_id,
+            "side": "SELL",
+            "requested_trim_usd": trim_usd,
+            "result": result,
+        }
+    finally:
+        sell_lock.release()
 
 
 def get_profit_harvest_plan(snapshot=None):

@@ -170,7 +170,7 @@ canvas {
 .lp-visible .lp-reveal:nth-child(3) { transition-delay: 0.2s; }
 .lp-visible .lp-reveal:nth-child(4) { transition-delay: 0.3s; }
 
-.lp-teal { color: var(--hc-teal); }
+.lp-teal { color: #2dd4bf; }
 .lp-red { color: var(--hc-red); }
 
 .lp-badge,
@@ -197,7 +197,7 @@ canvas {
   letter-spacing: 0.08em;
 }
 
-.lp-kicker-teal { color: var(--hc-teal); }
+.lp-kicker-teal { color: #2dd4bf; }
 .lp-kicker-blue { color: var(--hc-blue); }
 .lp-kicker-purple { color: var(--lp-purple); }
 
@@ -389,7 +389,7 @@ canvas {
 
 .lp-mockup-range.active {
   background: rgba(45,212,191,0.14);
-  color: var(--hc-teal);
+  color: #2dd4bf;
 }
 
 .lp-mockup-svg {
@@ -538,7 +538,7 @@ canvas {
   height: 24px;
   border-radius: 999px;
   background: rgba(45,212,191,0.14);
-  color: var(--hc-teal);
+  color: #2dd4bf;
   font-size: 13px;
   font-weight: 800;
   flex: 0 0 auto;
@@ -923,12 +923,12 @@ canvas {
   --hc-text: #ecf3ff;
   --hc-text-secondary: rgba(255,255,255,0.4);
   --hc-text-tertiary: rgba(255,255,255,0.3);
-  --hc-teal: #2dd4bf;
+  --hc-teal: #38bdf8;
   --hc-blue: #60a5fa;
   --hc-red: #fb7185;
   --hc-amber: #fbbf24;
-  --hc-gradient: linear-gradient(135deg, #2dd4bf 0%, #60a5fa 100%);
-  --hc-gradient-area: linear-gradient(180deg, rgba(45,212,191,0.25) 0%, rgba(45,212,191,0) 100%);
+  --hc-gradient: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
+  --hc-gradient-area: linear-gradient(180deg, rgba(56,189,248,0.25) 0%, rgba(56,189,248,0) 100%);
 }
 
 .hc-dashboard-shell {
@@ -1093,7 +1093,7 @@ canvas {
 }
 
 .hc-range-btn.active {
-  background: rgba(45,212,191,0.15);
+  background: rgba(56,189,248,0.15);
   color: var(--hc-teal);
 }
 
@@ -1130,6 +1130,9 @@ canvas {
 .hc-context-card {
   border-radius: 16px;
   padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .hc-context-label {
@@ -1235,8 +1238,8 @@ canvas {
 
 .hc-regime-badge.is-bull {
   color: var(--hc-teal);
-  background: rgba(45,212,191,0.12);
-  border-color: rgba(45,212,191,0.25);
+  background: rgba(56,189,248,0.12);
+  border-color: rgba(56,189,248,0.25);
 }
 
 .hc-regime-badge.is-neutral {
@@ -1300,7 +1303,7 @@ canvas {
 }
 
 .hc-pos-icon.core {
-  background: linear-gradient(135deg, #2dd4bf 0%, #60a5fa 100%);
+  background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
 }
 
 .hc-pos-icon.satellite {
@@ -1381,7 +1384,7 @@ canvas {
 }
 
 .hc-trade-badge.buy {
-  background: rgba(45,212,191,0.14);
+  background: rgba(56,189,248,0.14);
   color: var(--hc-teal);
 }
 
@@ -4631,9 +4634,10 @@ tbody tr:last-child td {
 
 .configuration-focus-card {
   background:
-    radial-gradient(circle at top left, rgba(52, 211, 153, 0.1), transparent 42%),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.1), transparent 42%),
     linear-gradient(180deg, rgba(20, 29, 42, 0.98), rgba(12, 18, 27, 0.98));
-  border-color: rgba(52, 211, 153, 0.14);
+  border-color: rgba(56, 189, 248, 0.14);
+  margin-top: 4px;
 }
 
 .config-focus-active {
@@ -7868,8 +7872,8 @@ tbody tr:last-child td {
 
 .opp-regime-pill.good {
   color: var(--hc-teal);
-  background: rgba(45, 212, 191, 0.12);
-  border-color: rgba(45, 212, 191, 0.22);
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.22);
 }
 
 .opp-regime-pill.warn {
@@ -7917,7 +7921,7 @@ tbody tr:last-child td {
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
-    radial-gradient(circle at top left, rgba(45, 212, 191, 0.06), transparent 35%),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.06), transparent 35%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.02));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
@@ -8025,7 +8029,7 @@ tbody tr:last-child td {
 }
 
 .opp-column.active {
-  border-color: rgba(45, 212, 191, 0.16);
+  border-color: rgba(56, 189, 248, 0.16);
 }
 
 .opp-column-head {
@@ -8148,10 +8152,10 @@ tbody tr:last-child td {
 }
 
 .opp-shell .btn-primary {
-  background: linear-gradient(135deg, #2dd4bf 0%, #60a5fa 100%);
+  background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
   color: #061018;
   border-color: transparent;
-  box-shadow: 0 12px 24px rgba(45, 212, 191, 0.18);
+  box-shadow: 0 12px 24px rgba(56, 189, 248, 0.18);
 }
 
 .opp-shell .btn-secondary {
@@ -8322,10 +8326,10 @@ tbody tr:last-child td {
 }
 
 .act-shell .btn-primary {
-  background: linear-gradient(135deg, #2dd4bf 0%, #60a5fa 100%);
+  background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
   color: #061018;
   border-color: transparent;
-  box-shadow: 0 12px 24px rgba(45, 212, 191, 0.18);
+  box-shadow: 0 12px 24px rgba(56, 189, 248, 0.18);
 }
 
 .act-shell .btn-secondary {
@@ -8437,8 +8441,8 @@ tbody tr:last-child td {
 
 .hc-trade-badge.buy {
   color: var(--hc-teal);
-  background: rgba(45, 212, 191, 0.12);
-  border-color: rgba(45, 212, 191, 0.22);
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.22);
 }
 
 .hc-trade-badge.sell {
@@ -8593,9 +8597,9 @@ tbody tr:last-child td {
 
 .set-card-primary {
   background:
-    radial-gradient(circle at top left, rgba(45, 212, 191, 0.08), transparent 34%),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
-  border-color: rgba(45, 212, 191, 0.12);
+  border-color: rgba(56, 189, 248, 0.12);
 }
 
 .set-card-label {
@@ -8796,11 +8800,11 @@ tbody tr:last-child td {
 
   .mobile-nav-link.active,
   .mobile-more-trigger.active {
-    color: var(--hc-teal, #2dd4bf);
-    background: rgba(45, 212, 191, 0.10);
+    color: var(--hc-teal, #38bdf8);
+    background: rgba(56, 189, 248, 0.10);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.03),
-      0 0 0 1px rgba(45, 212, 191, 0.10);
+      0 0 0 1px rgba(56, 189, 248, 0.10);
   }
 
   .panel,
@@ -8957,8 +8961,8 @@ tbody tr:last-child td {
 .cfg-shell button.btn-primary {
   color: #061018;
   border-color: transparent;
-  background: linear-gradient(135deg, #2dd4bf 0%, #60a5fa 100%);
-  box-shadow: 0 14px 34px rgba(45, 212, 191, 0.16);
+  background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
+  box-shadow: 0 14px 34px rgba(56, 189, 248, 0.16);
 }
 
 .cfg-shell .btn-secondary,
@@ -9109,6 +9113,7 @@ tbody tr:last-child td {
   gap: 24px;
   color: var(--hc-text);
   font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  padding-top: 8px;
 }
 
 .perf-header,
@@ -9116,6 +9121,7 @@ tbody tr:last-child td {
 .perf-equity-grid,
 .perf-section {
   animation: hcFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  margin-top: 12px;
 }
 
 .perf-kpi-grid {
@@ -9139,6 +9145,15 @@ tbody tr:last-child td {
   justify-content: space-between;
   align-items: flex-end;
   gap: 16px;
+  margin-bottom: 8px;
+}
+
+.perf-shell .hc-context-value {
+  margin-top: 6px;
+}
+
+.perf-shell .hc-context-detail {
+  margin-top: 6px;
 }
 
 .perf-header-copy {

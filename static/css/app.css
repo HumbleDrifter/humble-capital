@@ -9095,7 +9095,204 @@ tbody tr:last-child td {
   .cfg-shell .configuration-focus-card,
   .cfg-shell .config-proposal-automation-card,
   .cfg-shell .adaptive-suggestions-card,
-  .cfg-shell .auto-adaptive-card {
+.cfg-shell .auto-adaptive-card {
     border-radius: 14px;
+  }
+}
+
+/* =========================================================
+   PERFORMANCE ANALYTICS — HUMBLE CAPITAL (perf-*)
+========================================================= */
+
+.perf-shell {
+  display: grid;
+  gap: 24px;
+  color: var(--hc-text);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+}
+
+.perf-header,
+.perf-kpi-grid,
+.perf-equity-grid,
+.perf-section {
+  animation: hcFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.perf-kpi-grid {
+  animation-delay: 0.08s;
+}
+
+.perf-equity-grid {
+  animation-delay: 0.16s;
+}
+
+.perf-section:nth-of-type(4) {
+  animation-delay: 0.24s;
+}
+
+.perf-section:nth-of-type(5) {
+  animation-delay: 0.32s;
+}
+
+.perf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.perf-header-copy {
+  display: grid;
+  gap: 10px;
+  max-width: 780px;
+}
+
+.perf-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hc-teal);
+}
+
+.perf-title {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--hc-text);
+}
+
+.perf-subtitle,
+.perf-chart-meta,
+.perf-section-subtitle,
+.perf-product-meta,
+.perf-product-sub {
+  color: var(--hc-text-secondary);
+}
+
+.perf-subtitle,
+.perf-section-subtitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.perf-range-group {
+  flex-wrap: wrap;
+}
+
+.perf-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.perf-equity-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.perf-side-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.perf-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.perf-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--hc-text);
+}
+
+.perf-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.perf-product-card,
+.perf-trip-card {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s ease, transform 0.55s ease, border-color 180ms ease, background 180ms ease;
+}
+
+.perf-visible.perf-card-reveal,
+.perf-visible .perf-reveal {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.perf-product-card {
+  align-items: center;
+}
+
+.perf-product-right {
+  min-width: 112px;
+  text-align: right;
+}
+
+.perf-product-meta,
+.perf-product-sub {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.perf-trip-feed {
+  display: grid;
+  gap: 12px;
+}
+
+.perf-trip-card {
+  border-radius: 14px;
+}
+
+.perf-positive {
+  color: var(--hc-teal) !important;
+}
+
+.perf-negative {
+  color: var(--hc-red) !important;
+}
+
+@media (hover: hover) {
+  .perf-product-card:hover,
+  .perf-trip-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+@media (max-width: 980px) {
+  .perf-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .perf-equity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .perf-shell {
+    gap: 20px;
+  }
+
+  .perf-kpi-grid,
+  .perf-product-grid {
+    grid-template-columns: 1fr;
   }
 }

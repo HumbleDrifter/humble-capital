@@ -1,113 +1,122 @@
 {% extends "base_app.html" %}
 
-{% block topbar_actions %}{% endblock %}
-
 {% block content %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 
-<div class="act-shell">
-  <section class="act-hero act-observe">
-    <div class="act-hero-copy act-reveal">
-      <div class="act-kicker">Trade Activity</div>
-      <h2 class="act-title">A cleaner feed of executions, fills, and portfolio activity.</h2>
-      <p class="act-subtitle" id="tradeHistoryMeta">Loading trades...</p>
+<div class="perf-shell">
+  <section class="perf-header perf-observe">
+    <div class="perf-header-copy perf-reveal">
+      <div class="perf-kicker">Performance Analytics</div>
+      <h2 class="perf-title">Trading performance, drawdown behavior, and product-level outcomes in one operator view.</h2>
+      <p class="perf-subtitle" id="perfMeta">Loading performance analytics...</p>
+    </div>
+    <div class="hc-chart-range-group perf-range-group perf-reveal">
+      <button class="hc-range-btn" data-range="7d" type="button">7D</button>
+      <button class="hc-range-btn active" data-range="30d" type="button">30D</button>
+      <button class="hc-range-btn" data-range="90d" type="button">90D</button>
+      <button class="hc-range-btn" data-range="all" type="button">All</button>
     </div>
   </section>
 
-  <section class="act-summary-strip act-observe">
-    <div class="hc-context-card act-reveal">
-      <div class="hc-context-label">Total Trades</div>
-      <div class="hc-context-value" id="actTotalTrades">0</div>
-      <div class="hc-context-detail" id="actTotalTradesDetail">Across current filter</div>
+  <section class="perf-kpi-grid perf-observe">
+    <div class="hc-context-card perf-reveal">
+      <div class="hc-context-label">Win Rate</div>
+      <div class="hc-context-value" id="perfWinRate">0%</div>
+      <div class="hc-context-detail" id="perfWinRateDetail">0 winners / 0 trades</div>
     </div>
-    <div class="hc-context-card act-reveal">
-      <div class="hc-context-label">Buy Count</div>
-      <div class="hc-context-value" id="actBuyCount">0</div>
-      <div class="hc-context-detail" id="actBuyDetail">Visible buy fills</div>
+    <div class="hc-context-card perf-reveal">
+      <div class="hc-context-label">Total P&amp;L</div>
+      <div class="hc-context-value" id="perfTotalPnl">$0.00</div>
+      <div class="hc-context-detail" id="perfTotalPnlDetail">Net realized performance</div>
     </div>
-    <div class="hc-context-card act-reveal">
-      <div class="hc-context-label">Sell Count</div>
-      <div class="hc-context-value" id="actSellCount">0</div>
-      <div class="hc-context-detail" id="actSellDetail">Visible sells, trims, exits</div>
+    <div class="hc-context-card perf-reveal">
+      <div class="hc-context-label">Profit Factor</div>
+      <div class="hc-context-value" id="perfProfitFactor">0.00</div>
+      <div class="hc-context-detail" id="perfProfitFactorDetail">Gross wins / gross losses</div>
     </div>
-    <div class="hc-context-card act-reveal">
-      <div class="hc-context-label">Date Range</div>
-      <div class="hc-context-value act-range-value" id="actDateRange">—</div>
-      <div class="hc-context-detail" id="actDateRangeDetail">Current page window</div>
+    <div class="hc-context-card perf-reveal">
+      <div class="hc-context-label">Avg Hold Duration</div>
+      <div class="hc-context-value" id="perfHoldDuration">0m</div>
+      <div class="hc-context-detail" id="perfHoldDurationDetail">Average time in trade</div>
     </div>
   </section>
 
-  <section class="act-panel act-observe">
-    <div class="act-panel-head act-reveal">
+  <section class="perf-equity-grid perf-observe">
+    <div class="hc-chart-section perf-reveal">
+      <div class="hc-chart-header">
+        <div>
+          <span class="hc-chart-title">Equity &amp; Drawdown</span>
+          <div class="perf-chart-meta" id="perfEquityMeta">Loading equity curve...</div>
+        </div>
+      </div>
+      <div id="perfEquityChartHost" class="hc-chart-host"></div>
+    </div>
+
+    <div class="perf-side-stack">
+      <div class="hc-context-card perf-reveal">
+        <div class="hc-context-label">Current Drawdown</div>
+        <div class="hc-context-value" id="perfCurrentDrawdown">0.00%</div>
+        <div class="hc-context-detail" id="perfCurrentDrawdownDetail">$0.00 below HWM</div>
+      </div>
+      <div class="hc-context-card perf-reveal">
+        <div class="hc-context-label">Max Drawdown</div>
+        <div class="hc-context-value" id="perfMaxDrawdown">0.00%</div>
+        <div class="hc-context-detail" id="perfMaxDrawdownDetail">Worst peak-to-trough decline</div>
+      </div>
+      <div class="hc-context-card perf-reveal">
+        <div class="hc-context-label">Days Since HWM</div>
+        <div class="hc-context-value" id="perfDaysSinceHwm">0</div>
+        <div class="hc-context-detail" id="perfDaysSinceHwmDetail">Time since best equity print</div>
+      </div>
+      <div class="hc-context-card perf-reveal">
+        <div class="hc-context-label">Current vs HWM</div>
+        <div class="hc-context-value" id="perfCurrentVsHwm">$0.00</div>
+        <div class="hc-context-detail" id="perfCurrentVsHwmDetail">Current value / high-water mark</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="perf-section perf-observe">
+    <div class="perf-section-head perf-reveal">
       <div>
-        <h3 class="act-section-title">Filters</h3>
-        <p class="act-section-subtitle">Narrow the activity feed by side, product, and page size.</p>
+        <h2 class="perf-section-title">Daily P&amp;L</h2>
+        <p class="perf-section-subtitle" id="perfDailyMeta">Daily closed-trade distribution</p>
       </div>
     </div>
-
-    <div class="act-filter-grid act-reveal">
-      <div class="form-card">
-        <label for="tradeSide">Side</label>
-        <select id="tradeSide" class="select">
-          <option value="">All Sides</option>
-          <option value="BUY">Buy</option>
-          <option value="SELL">Sell</option>
-        </select>
-      </div>
-
-      <div class="form-card">
-        <label for="tradeProductId">Product</label>
-        <select id="tradeProductId" class="select">
-          <option value="">All Products</option>
-        </select>
-      </div>
-
-      <div class="form-card">
-        <label for="tradePageSize">Page Size</label>
-        <select id="tradePageSize" class="select">
-          <option value="25">25 Trades</option>
-          <option value="50" selected>50 Trades</option>
-          <option value="100">100 Trades</option>
-          <option value="250">250 Trades</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="act-filter-actions act-reveal">
-      <button class="btn btn-primary" type="button" onclick="applyTradeFilters()">Apply Filters</button>
-      <button class="btn btn-secondary" type="button" onclick="refreshTrades()">Refresh Feed</button>
+    <div class="hc-chart-section perf-reveal">
+      <div id="perfDailyChartHost" class="hc-chart-host"></div>
     </div>
   </section>
 
-  <section class="act-panel act-observe">
-    <div class="act-panel-head act-reveal">
+  <section class="perf-section perf-observe">
+    <div class="perf-section-head perf-reveal">
       <div>
-        <h3 class="act-section-title">Execution Feed</h3>
-        <p class="act-section-subtitle" id="tradeTableMeta">Most recent orders</p>
-      </div>
-      <div class="act-meta-row">
-        <span class="badge accent">page <span id="tradePageCurrent">1</span></span>
-        <span class="badge">total <span id="tradeTotalRows">0</span></span>
-        <span class="badge">latest <span id="tradeLastTs">—</span></span>
+        <h2 class="perf-section-title">Product Breakdown</h2>
+        <p class="perf-section-subtitle" id="perfProductMeta">Performance by traded product</p>
       </div>
     </div>
-
-    <div class="act-feed" id="tradeFeed">
-      <div class="hc-empty-card">Loading activity feed...</div>
+    <div class="perf-product-grid" id="perfProductGrid">
+      <div class="hc-empty-card">Loading product performance...</div>
     </div>
+  </section>
 
-    <div class="act-pagination act-reveal">
-      <button class="btn btn-secondary" id="tradePrevBtn" type="button" onclick="prevTradePage()">Previous</button>
-      <div class="act-page-pill">Page <span id="tradePageIndicator">1</span></div>
-      <button class="btn btn-secondary" id="tradeNextBtn" type="button" onclick="nextTradePage()">Next</button>
+  <section class="perf-section perf-observe">
+    <div class="perf-section-head perf-reveal">
+      <div>
+        <h2 class="perf-section-title">Recent Round Trips</h2>
+        <p class="perf-section-subtitle" id="perfTripsMeta">Most recent closed trades</p>
+      </div>
+    </div>
+    <div class="perf-trip-feed" id="perfTripFeed">
+      <div class="hc-empty-card">Loading recent round trips...</div>
     </div>
   </section>
 </div>
 
 <script>
-  window.TRADE_HISTORY_CONFIG = {
+  window.PERFORMANCE_CONFIG = {
     apiSecret: {{ api_secret|tojson }}
   };
 </script>

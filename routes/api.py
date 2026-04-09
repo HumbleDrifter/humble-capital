@@ -1038,6 +1038,7 @@ def _build_meme_rotation():
         candidate["display_status"] = _display_status(candidate)
         candidate["display_group"] = _display_group(candidate)
         candidate["display_rank"] = rank_lookup.get(str(candidate.get("product_id") or "").strip())
+    candidates = canonical_ranked
 
     _append_shadow_rotation_log({
         "logged_at": int(_now()),

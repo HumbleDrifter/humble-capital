@@ -1,5 +1,12 @@
 const API_SECRET = (window.MEME_ROTATION_CONFIG && window.MEME_ROTATION_CONFIG.apiSecret) || "";
 let CURRENT_PENDING_SATELLITE_PROPOSAL = null;
+const HEATMAP_THEMES = {
+  ocean:   { high: "#60a5fa", mid: "#38bdf8", low: "#1e3a5f", text_high: "#60a5fa", text_mid: "#94a3b8", text_low: "#fb7185" },
+  thermal: { high: "#22c55e", mid: "#fbbf24", low: "#fb7185", text_high: "#22c55e", text_mid: "#fbbf24", text_low: "#fb7185" },
+  mono:    { high: "#e2e8f0", mid: "#94a3b8", low: "#475569", text_high: "#e2e8f0", text_mid: "#94a3b8", text_low: "#64748b" },
+  neon:    { high: "#c084fc", mid: "#f472b6", low: "#6b21a8", text_high: "#c084fc", text_mid: "#f472b6", text_low: "#fb7185" },
+  sunset:  { high: "#f59e0b", mid: "#f97316", low: "#dc2626", text_high: "#fbbf24", text_mid: "#f97316", text_low: "#fb7185" },
+};
 
 function authUrl(path) {
   if (!API_SECRET) return path;
@@ -99,6 +106,60 @@ function numericOrNull(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function getHeatmapTheme() {
+  return localStorage.getItem("hc_heatmap_theme") || "ocean";
+}
+
+function hexToRgb(hex) {
+  const normalized = String(hex || "").trim().replace("#", "");
+  if (normalized.length !== 6) return { r: 96, g: 165, b: 250 };
+  const int = Number.parseInt(normalized, 16);
+  if (!Number.isFinite(int)) return { r: 96, g: 165, b: 250 };
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255
+  };
+}
+
+function rgbaFromHex(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function scoreColor(score) {
+  const theme = HEATMAP_THEMES[getHeatmapTheme()] || HEATMAP_THEMES.ocean;
+  if (score >= 70) return theme.high;
+  if (score >= 40) return theme.mid;
+  return theme.low;
+}
+
+function scoreTextColor(score) {
+  const theme = HEATMAP_THEMES[getHeatmapTheme()] || HEATMAP_THEMES.ocean;
+  if (score >= 70) return theme.text_high;
+  if (score >= 40) return theme.text_mid;
+  return theme.text_low;
+}
+
+function opportunityCardThemeStyle(score) {
+  const border = scoreColor(score);
+  const rgb = hexToRgb(border);
+  const deepBg = score >= 70
+    ? "rgba(14, 29, 45, 0.99)"
+    : score >= 40
+      ? "rgba(18, 24, 34, 0.99)"
+      : "rgba(34, 18, 25, 0.99)";
+  const baseBg = score >= 70
+    ? "rgba(9, 17, 25, 0.99)"
+    : "rgba(10, 16, 25, 0.99)";
+  const shadow = score >= 70 ? rgbaFromHex(border, 0.16) : score >= 40 ? rgbaFromHex(border, 0.08) : rgbaFromHex(border, 0.12);
+  return [
+    `border-color:${border}`,
+    `background:radial-gradient(circle at top left, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${score >= 70 ? 0.30 : score >= 40 ? 0.12 : 0.12}), transparent 42%), linear-gradient(145deg, ${deepBg}, ${baseBg})`,
+    `box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 14px 30px ${shadow}, 0 0 0 1px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05)`
+  ].join("; ");
 }
 
 function resolve24hMove(row) {
@@ -350,17 +411,16 @@ function sortCandidates(rows, sortKey) {
 
 function opportunityTone(score) {
   const s = Number(score || 0);
-  if (s >= 90) return "high";
-  if (s >= 75) return "strong";
-  if (s >= 50) return "building";
+  if (s >= 70) return "high";
+  if (s >= 40) return "building";
   return "early";
 }
 
 function scoreLabel(score) {
   const s = Number(score || 0);
-  if (s >= 85) return "High";
-  if (s >= 65) return "Medium";
-  return "Developing";
+  if (s >= 70) return "High";
+  if (s >= 40) return "Medium";
+  return "Low";
 }
 
 function normalizeRegime(value) {
@@ -768,11 +828,13 @@ function renderShadowProposalActionState(shadowData, recentProposalItems) {
   const productId = row.product_id || row.symbol || "—";
   const score = resolveOpportunityScore(row);
   const tone = opportunityTone(score);
+    const cardStyle = opportunityCardThemeStyle(score);
+    const scoreStyle = `color:${scoreTextColor(score)}`;
     const move24h = resolve24hMove(row);
     const decision = String(row?.decision || "").trim();
     const decisionConfidence = String(row?.decision_confidence || "").trim();
     return `
-      <article class="opportunity-card opp-card hc-pos-card ${tone}">
+      <article class="opportunity-card opp-card hc-pos-card ${tone}" style="${cardStyle}">
         <div class="opportunity-card-head opp-card-head">
           <div>
             <div class="opportunity-symbol opp-symbol">${escapeHtml(productId)}</div>
@@ -783,7 +845,7 @@ function renderShadowProposalActionState(shadowData, recentProposalItems) {
           </div>
           <div class="opportunity-score-wrap opp-score-wrap">
             <div class="opportunity-score-kicker opp-score-kicker">Intelligence Score</div>
-            <div class="opportunity-score opp-score">${fmtNumber(score)}</div>
+            <div class="opportunity-score opp-score" style="${scoreStyle}">${fmtNumber(score)}</div>
             <div class="tiny">${escapeHtml(scoreLabel(score))} confidence</div>
           </div>
         </div>
@@ -1038,10 +1100,21 @@ async function refreshMemeRotation() {
   }
 }
 
+function applyHeatmapTheme() {
+  const select = document.getElementById("heatmapColorTheme");
+  const theme = select ? select.value : "ocean";
+  localStorage.setItem("hc_heatmap_theme", theme);
+  refreshMemeRotation();
+}
+
 window.handleReviewProposalAction = handleReviewProposalAction;
 window.generateReviewProposal = generateReviewProposal;
 window.refreshMemeRotation = refreshMemeRotation;
 window.setOpportunityMode = setOpportunityMode;
 window.toggleOpportunityScanner = toggleOpportunityScanner;
+window.applyHeatmapTheme = applyHeatmapTheme;
 
+const savedTheme = getHeatmapTheme();
+const themeSelect = document.getElementById("heatmapColorTheme");
+if (themeSelect) themeSelect.value = savedTheme;
 refreshMemeRotation();

@@ -145,6 +145,18 @@
             </div>
             <div class="field-help">This reuses the existing meme-rotation enable toggle and keeps the current scanner logic intact.</div>
           </div>
+
+          <div class="form-card">
+            <label for="heatmapColorTheme">Score Color Theme</label>
+            <select id="heatmapColorTheme" class="select" onchange="applyHeatmapTheme()">
+              <option value="ocean">Ocean (Blue → Cyan)</option>
+              <option value="thermal">Thermal (Red → Amber → Green)</option>
+              <option value="mono">Mono (Gray → White)</option>
+              <option value="neon">Neon (Purple → Pink)</option>
+              <option value="sunset">Sunset (Red → Orange → Gold)</option>
+            </select>
+            <div class="field-help">Change how opportunity scores are color-coded on cards.</div>
+          </div>
         </div>
       </div>
     </details>

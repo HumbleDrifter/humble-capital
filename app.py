@@ -14,6 +14,7 @@ from rebalancer import run_trailing_exit_sweep, run_defensive_regime_check
 from signal_scanner import run_scanner_sweep, run_dip_detector
 from futures.executor import run_futures_scan_and_execute, run_futures_position_monitor
 from options.executor import run_options_scan_and_execute, run_options_position_monitor
+from stocks.executor import run_stock_scan_and_execute, run_stock_position_monitor
 from workers.execution_queue import start_execution_worker
 from storage import init_db, init_user_table
 
@@ -81,6 +82,20 @@ def _trailing_exit_loop():
                         )
             except Exception as exc:
                 print(f"[options_monitor] error: {exc}", flush=True)
+
+            # Stock position monitor (stop loss / take profit)
+            try:
+                stock_monitor = run_stock_position_monitor()
+                stock_closes = stock_monitor.get("actions", [])
+                if stock_closes:
+                    for sc in stock_closes:
+                        print(
+                            f"[stock_monitor] CLOSE {sc['symbol']} "
+                            f"reason={sc['reason']} pnl={sc['pnl_pct']:.1f}%",
+                            flush=True,
+                        )
+            except Exception as exc:
+                print(f"[stock_monitor] error: {exc}", flush=True)
         except Exception as exc:
             print(f"[trailing_exit_loop] error: {exc}", flush=True)
         _time.sleep(300)  # 5 minutes
@@ -105,6 +120,42 @@ def _signal_scanner_loop():
                 _time.sleep(30)
         except Exception as exc:
             print(f"[signal_scanner_loop] error: {exc}", flush=True)
+            _time.sleep(60)
+
+
+def _stocks_execution_loop():
+    import time as _time
+    print("[stocks_execution_loop] thread started", flush=True)
+    _time.sleep(150)  # wait 2.5 min after startup
+    while True:
+        try:
+            now = _time.localtime()
+            # Run at :47 past each hour (offset: crypto :02, options :17, futures :32)
+            if now.tm_min == 47:
+                result = run_stock_scan_and_execute()
+                executed = result.get("executed", [])
+                skipped = result.get("skipped", False)
+                if skipped:
+                    print(f"[stocks_execution_loop] skipped reason={result.get('reason')}", flush=True)
+                elif executed:
+                    for trade in executed:
+                        print(
+                            f"[stocks_execution_loop] BUY {trade['symbol']} "
+                            f"score={trade['score']:.1f} qty={trade['qty']} "
+                            f"price=${trade['price']:.2f} order_id={trade['order_id']}",
+                            flush=True,
+                        )
+                else:
+                    print(
+                        f"[stocks_execution_loop] scan done executed=0 "
+                        f"scanned={result.get('opportunities_scanned',0)} regime={result.get('regime')}",
+                        flush=True,
+                    )
+                _time.sleep(120)  # avoid re-trigger at :47
+            else:
+                _time.sleep(30)
+        except Exception as exc:
+            print(f"[stocks_execution_loop] error: {exc}", flush=True)
             _time.sleep(60)
 
 
@@ -208,6 +259,8 @@ def create_app():
     _futures_thread.start()
     _options_thread = threading.Thread(target=_options_execution_loop, daemon=True, name="options_execution")
     _options_thread.start()
+    _stocks_thread = threading.Thread(target=_stocks_execution_loop, daemon=True, name="stocks_execution")
+    _stocks_thread.start()
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

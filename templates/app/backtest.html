@@ -1,0 +1,493 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="bt-shell">
+  <section class="bt-header bt-observe">
+    <div class="bt-header-copy bt-reveal">
+      <div class="bt-kicker">Strategy Replay</div>
+      <h2 class="bt-title">Backtest Coinbase price history through the bot’s trade logic before risking live capital.</h2>
+      <p class="bt-subtitle" id="btMeta">Configure a replay window, inspect trades, and compare equity behavior across assets and timeframes.</p>
+    </div>
+  </section>
+
+  <section class="bt-controls bt-observe">
+    <div class="hc-chart-section bt-reveal">
+      <div class="bt-controls-grid">
+        <div class="form-card bt-form-card">
+          <label for="btProductId">Product</label>
+          <select id="btProductId" class="select"></select>
+          <div class="field-help">Core and allowed satellite assets from the current config.</div>
+        </div>
+        <div class="form-card bt-form-card">
+          <label>Timeframe</label>
+          <div class="hc-chart-range-group bt-timeframe-toggle">
+            <button class="hc-range-btn active" data-timeframe="4h" type="button">4H</button>
+            <button class="hc-range-btn" data-timeframe="1h" type="button">1H</button>
+          </div>
+          <div class="field-help">Use 4H for core-style trend tests, 1H for faster satellite logic.</div>
+        </div>
+        <div class="form-card bt-form-card">
+          <label for="btLookback">Lookback</label>
+          <select id="btLookback" class="select">
+            <option value="30">30d</option>
+            <option value="60">60d</option>
+            <option value="90" selected>90d</option>
+            <option value="180">180d</option>
+            <option value="365">1y</option>
+          </select>
+          <div class="field-help">Controls the backtest window sent to the API.</div>
+        </div>
+        <div class="form-card bt-form-card bt-run-card">
+          <label>Run</label>
+          <button class="btn btn-primary bt-run-btn" id="btRunBtn" type="button">Run Backtest</button>
+          <div class="field-help" id="btStatus">Ready to run.</div>
+        </div>
+      </div>
+
+      <details class="configuration-advanced-toggle bt-advanced-toggle">
+        <summary>Parameter Overrides</summary>
+        <div class="bt-params-grid">
+          <div class="form-card bt-form-card">
+            <label for="btRsiBuyMin">RSI Buy Min</label>
+            <input id="btRsiBuyMin" class="form-input" type="number" step="0.1" placeholder="default">
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="btRsiBuyMax">RSI Buy Max</label>
+            <input id="btRsiBuyMax" class="form-input" type="number" step="0.1" placeholder="default">
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="btTrimThresh">RSI Trim Threshold</label>
+            <input id="btTrimThresh" class="form-input" type="number" step="0.1" placeholder="default">
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="btExitThresh">RSI Exit Threshold</label>
+            <input id="btExitThresh" class="form-input" type="number" step="0.1" placeholder="default">
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="btExtPct">Extension %</label>
+            <input id="btExtPct" class="form-input" type="number" step="0.1" placeholder="default">
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="btCooldownBars">Cooldown Bars</label>
+            <input id="btCooldownBars" class="form-input" type="number" step="1" placeholder="default">
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="btTrimCooldown">Trim Cooldown</label>
+            <input id="btTrimCooldown" class="form-input" type="number" step="1" placeholder="default">
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="bt-kpi-grid bt-observe">
+    <div class="hc-context-card bt-reveal">
+      <div class="hc-context-label">Total Return</div>
+      <div class="hc-context-value" id="btTotalReturn">0.00%</div>
+      <div class="hc-context-detail" id="btTotalReturnDetail">Ending equity vs starting capital</div>
+    </div>
+    <div class="hc-context-card bt-reveal">
+      <div class="hc-context-label">Win Rate</div>
+      <div class="hc-context-value" id="btWinRate">0.00%</div>
+      <div class="hc-context-detail" id="btWinRateDetail">0 winners / 0 trades</div>
+    </div>
+    <div class="hc-context-card bt-reveal">
+      <div class="hc-context-label">Profit Factor</div>
+      <div class="hc-context-value" id="btProfitFactor">0.00</div>
+      <div class="hc-context-detail" id="btProfitFactorDetail">Gross wins / gross losses</div>
+    </div>
+    <div class="hc-context-card bt-reveal">
+      <div class="hc-context-label">Max Drawdown</div>
+      <div class="hc-context-value" id="btMaxDrawdown">0.00%</div>
+      <div class="hc-context-detail" id="btMaxDrawdownDetail">Worst peak-to-trough decline</div>
+    </div>
+    <div class="hc-context-card bt-reveal">
+      <div class="hc-context-label">Total Trades</div>
+      <div class="hc-context-value" id="btTotalTrades">0</div>
+      <div class="hc-context-detail" id="btTotalTradesDetail">Executed BUY / TRIM / EXIT events</div>
+    </div>
+    <div class="hc-context-card bt-reveal">
+      <div class="hc-context-label">Avg Hold</div>
+      <div class="hc-context-value" id="btAvgHold">0 bars</div>
+      <div class="hc-context-detail" id="btAvgHoldDetail">Average hold duration</div>
+    </div>
+  </section>
+
+  <section class="bt-results-grid bt-observe">
+    <div class="hc-chart-section bt-reveal">
+      <div class="hc-chart-header">
+        <div>
+          <span class="hc-chart-title">Equity Curve</span>
+          <div class="bt-chart-meta" id="btChartMeta">Run a backtest to render equity.</div>
+        </div>
+      </div>
+      <div id="btEquityChartHost" class="hc-chart-host">
+        <div class="hc-chart-empty">Run a backtest to see the equity curve.</div>
+      </div>
+    </div>
+
+    <div class="hc-chart-section bt-reveal">
+      <div class="bt-section-head">
+        <div>
+          <h2 class="bt-section-title">Trade Feed</h2>
+          <p class="bt-section-subtitle" id="btTradeFeedMeta">Trade events will appear here after the run.</p>
+        </div>
+      </div>
+      <div class="bt-trade-feed" id="btTradeFeed">
+        <div class="hc-empty-card">No backtest results yet.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    const API_SECRET = {{ api_secret|tojson }};
+    const FALLBACK_PRODUCTS = [
+      "BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD",
+      "DOGE-USD", "SHIB-USD", "PEPE-USD", "BONK-USD",
+      "SUI-USD", "RENDER-USD", "JASMY-USD", "HYPE-USD",
+      "TAO-USD", "ICP-USD", "WIF-USD", "PENGU-USD"
+    ];
+    let currentTimeframe = "4h";
+    let revealObserver = null;
+
+    function authUrl(path) {
+      if (!API_SECRET) return path;
+      const sep = path.includes("?") ? "&" : "?";
+      return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
+    }
+
+    async function fetchJson(path, options) {
+      const response = await fetch(authUrl(path), Object.assign({ credentials: "same-origin" }, options || {}));
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+      return data;
+    }
+
+    function fmtUsd(value) {
+      return Number(value || 0).toLocaleString(undefined, {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2
+      });
+    }
+
+    function fmtPct(value) {
+      return `${Number(value || 0).toFixed(2)}%`;
+    }
+
+    function fmtSignedPct(value) {
+      const numeric = Number(value || 0);
+      return `${numeric >= 0 ? "+" : "-"}${Math.abs(numeric).toFixed(2)}%`;
+    }
+
+    function fmtDateTime(ts) {
+      const numeric = Number(ts || 0);
+      if (!numeric) return "—";
+      return new Date(numeric * 1000).toLocaleString();
+    }
+
+    function fmtHoldBars(value) {
+      const bars = Number(value || 0);
+      if (!bars) return "0 bars";
+      if (bars === 1) return "1 bar";
+      return `${bars.toFixed(0)} bars`;
+    }
+
+    function fmtDurationFromBars(bars) {
+      const totalHours = Number(bars || 0) * (currentTimeframe === "4h" ? 4 : 1);
+      if (!totalHours) return "0h";
+      if (totalHours >= 24) {
+        const days = Math.floor(totalHours / 24);
+        const hours = Math.round(totalHours % 24);
+        return `${days}d ${hours}h`;
+      }
+      return `${Math.round(totalHours)}h`;
+    }
+
+    function setLoading(isLoading) {
+      const button = document.getElementById("btRunBtn");
+      const status = document.getElementById("btStatus");
+      if (button) {
+        button.disabled = isLoading;
+        button.textContent = isLoading ? "Running..." : "Run Backtest";
+      }
+      if (status) {
+        status.textContent = isLoading ? "Replaying candles and generating trades..." : "Ready to run.";
+      }
+    }
+
+    function getOverrides() {
+      const fields = {
+        rsi_buy_min: document.getElementById("btRsiBuyMin"),
+        rsi_buy_max: document.getElementById("btRsiBuyMax"),
+        rsi_trim_thresh: document.getElementById("btTrimThresh"),
+        rsi_exit_thresh: document.getElementById("btExitThresh"),
+        ext_pct: document.getElementById("btExtPct"),
+        cooldown_bars: document.getElementById("btCooldownBars"),
+        trim_cooldown: document.getElementById("btTrimCooldown")
+      };
+      const out = {};
+      Object.entries(fields).forEach(([key, input]) => {
+        if (!input || input.value === "") return;
+        out[key] = Number(input.value);
+      });
+      return out;
+    }
+
+    function setProducts(products) {
+      const select = document.getElementById("btProductId");
+      if (!select) return;
+      const currentValue = select.value || "BTC-USD";
+      const unique = Array.from(new Set((products || []).filter(Boolean))).sort();
+      select.innerHTML = unique.map((productId) => `<option value="${productId}">${productId}</option>`).join("");
+      if (unique.includes(currentValue)) {
+        select.value = currentValue;
+      }
+    }
+
+    async function loadProductUniverse() {
+      try {
+        const data = await fetchJson("/api/portfolio");
+        const config = (data.snapshot || {}).config || {};
+        const products = [
+          ...Object.keys(config.core_assets || {}),
+          ...(config.satellite_allowed || [])
+        ];
+        setProducts(products.length ? products : FALLBACK_PRODUCTS);
+      } catch (error) {
+        setProducts(FALLBACK_PRODUCTS);
+      }
+    }
+
+    function renderKpis(summary, tradeCount) {
+      const totalReturn = Number(summary.total_pnl_pct || 0);
+      const winRatePct = Number(summary.win_rate || 0) * 100;
+      const profitFactor = Number(summary.profit_factor || 0);
+      const maxDrawdown = Number(summary.max_drawdown_pct || 0);
+
+      const totalReturnEl = document.getElementById("btTotalReturn");
+      const winRateEl = document.getElementById("btWinRate");
+      const profitFactorEl = document.getElementById("btProfitFactor");
+      const maxDrawdownEl = document.getElementById("btMaxDrawdown");
+
+      totalReturnEl.textContent = fmtSignedPct(totalReturn);
+      totalReturnEl.classList.toggle("perf-positive", totalReturn >= 0);
+      totalReturnEl.classList.toggle("perf-negative", totalReturn < 0);
+
+      winRateEl.textContent = fmtPct(winRatePct);
+      winRateEl.classList.toggle("perf-positive", winRatePct >= 50);
+      winRateEl.classList.toggle("perf-negative", winRatePct < 50);
+
+      profitFactorEl.textContent = profitFactor.toFixed(2);
+      maxDrawdownEl.textContent = fmtPct(maxDrawdown);
+
+      document.getElementById("btTotalReturnDetail").textContent = "Ending equity vs starting capital";
+      document.getElementById("btWinRateDetail").textContent = `${Math.round(winRatePct)}% realized win rate`;
+      document.getElementById("btProfitFactorDetail").textContent = "Gross wins / gross losses";
+      document.getElementById("btMaxDrawdownDetail").textContent = "Worst peak-to-trough decline";
+      document.getElementById("btTotalTrades").textContent = String(tradeCount || 0);
+      document.getElementById("btTotalTradesDetail").textContent = `${tradeCount || 0} logged trade actions`;
+      document.getElementById("btAvgHold").textContent = fmtHoldBars(summary.avg_hold_bars || 0);
+      document.getElementById("btAvgHoldDetail").textContent = fmtDurationFromBars(summary.avg_hold_bars || 0);
+    }
+
+    function buildEquityChart(points) {
+      const host = document.getElementById("btEquityChartHost");
+      const meta = document.getElementById("btChartMeta");
+      if (!host || !meta) return;
+
+      const rows = Array.isArray(points) ? points.filter((row) => row && Number.isFinite(Number(row.equity))) : [];
+      if (!rows.length) {
+        host.innerHTML = '<div class="hc-chart-empty">No equity curve available.</div>';
+        meta.textContent = "No chart data returned.";
+        return;
+      }
+
+      const width = 800;
+      const height = 280;
+      const leftPad = 72;
+      const rightPad = 22;
+      const topPad = 18;
+      const bottomPad = 36;
+      const values = rows.map((row) => Number(row.equity || 0));
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const spread = Math.max(1, max - min);
+      const chartWidth = width - leftPad - rightPad;
+      const chartHeight = height - topPad - bottomPad;
+
+      const coords = rows.map((row, index) => {
+        const x = leftPad + ((chartWidth * index) / Math.max(rows.length - 1, 1));
+        const y = topPad + ((max - Number(row.equity || 0)) / spread) * chartHeight;
+        return { x, y };
+      });
+
+      const linePath = coords.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
+      const areaPath = `${linePath} L ${coords[coords.length - 1].x.toFixed(2)} ${height - bottomPad} L ${coords[0].x.toFixed(2)} ${height - bottomPad} Z`;
+      const last = coords[coords.length - 1];
+
+      let peak = 0;
+      const gridLines = [];
+      for (let i = 0; i < 5; i += 1) {
+        const ratio = i / 4;
+        const value = max - (spread * ratio);
+        const y = topPad + (chartHeight * ratio);
+        gridLines.push(`
+          <line x1="${leftPad}" y1="${y.toFixed(2)}" x2="${width - rightPad}" y2="${y.toFixed(2)}" stroke="rgba(255,255,255,0.06)"></line>
+          <text x="8" y="${(y + 4).toFixed(2)}" fill="rgba(255,255,255,0.4)" font-size="12" font-family="DM Sans, system-ui, sans-serif">${fmtUsd(value)}</text>
+        `);
+      }
+
+      const peakLine = rows.map((row, index) => {
+        peak = Math.max(peak, Number(row.equity || 0));
+        const x = leftPad + ((chartWidth * index) / Math.max(rows.length - 1, 1));
+        const y = topPad + ((max - peak) / spread) * chartHeight;
+        return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+      }).join(" ");
+
+      host.innerHTML = `
+        <svg viewBox="0 0 800 280" width="100%" role="img" aria-label="Backtest equity curve">
+          <defs>
+            <linearGradient id="btLine" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#38bdf8"></stop>
+              <stop offset="100%" stop-color="#60a5fa"></stop>
+            </linearGradient>
+            <linearGradient id="btArea" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="rgba(56,189,248,0.22)"></stop>
+              <stop offset="100%" stop-color="rgba(56,189,248,0)"></stop>
+            </linearGradient>
+            <filter id="btGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="blur"></feGaussianBlur>
+              <feMerge>
+                <feMergeNode in="blur"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+              </feMerge>
+            </filter>
+          </defs>
+          ${gridLines.join("")}
+          <path d="${areaPath}" fill="url(#btArea)"></path>
+          <path d="${peakLine}" fill="none" stroke="rgba(255,255,255,0.28)" stroke-dasharray="6 6" stroke-width="1.5"></path>
+          <path d="${linePath}" fill="none" stroke="url(#btLine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          <circle cx="${last.x.toFixed(2)}" cy="${last.y.toFixed(2)}" r="8" fill="rgba(56,189,248,0.25)" filter="url(#btGlow)"></circle>
+          <circle cx="${last.x.toFixed(2)}" cy="${last.y.toFixed(2)}" r="4" fill="#38bdf8"></circle>
+        </svg>
+      `;
+      meta.textContent = `${rows.length} equity points • ${fmtUsd(values[0])} start • ${fmtUsd(values[values.length - 1])} finish`;
+    }
+
+    function renderTrades(trades) {
+      const host = document.getElementById("btTradeFeed");
+      const meta = document.getElementById("btTradeFeedMeta");
+      if (!host || !meta) return;
+
+      const rows = Array.isArray(trades) ? trades.slice().sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0)) : [];
+      meta.textContent = rows.length ? `${rows.length} events captured in the replay.` : "Trade events will appear here after the run.";
+
+      if (!rows.length) {
+        host.innerHTML = '<div class="hc-empty-card">No trades were generated for this backtest.</div>';
+        return;
+      }
+
+      host.innerHTML = rows.map((trade) => {
+        const action = String(trade.action || "").toUpperCase();
+        const badgeClass = action === "BUY" ? "buy" : (action === "EXIT" ? "exit" : "trim");
+        const pnl = Number(trade.pnl_usd || 0);
+        return `
+          <article class="hc-trade-card bt-trade-card">
+            <div class="hc-trade-main">
+              <span class="hc-trade-badge ${badgeClass}">${action}</span>
+              <div class="hc-trade-copy">
+                <div class="hc-trade-title">${action} at ${fmtUsd(trade.price || 0)}</div>
+                <div class="hc-trade-subtitle">${fmtDateTime(trade.ts)} · conviction ${(Number(trade.conviction_score || 0) * 100).toFixed(0)}%</div>
+              </div>
+            </div>
+            <div class="hc-trade-right">
+              <div class="hc-trade-value ${pnl >= 0 ? "positive" : "negative"}">${trade.pnl_usd == null ? "—" : fmtUsd(pnl)}</div>
+              <div class="hc-trade-meta">${fmtHoldBars(trade.hold_bars || 0)}</div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function observeSections() {
+      if (!revealObserver) {
+        revealObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("bt-visible");
+          });
+        }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+      }
+
+      document.querySelectorAll(".bt-observe, .bt-trade-card").forEach((node) => {
+        if (node.dataset.btObserved === "true") return;
+        node.dataset.btObserved = "true";
+        revealObserver.observe(node);
+      });
+    }
+
+    async function runBacktest() {
+      const productId = document.getElementById("btProductId").value || "BTC-USD";
+      const days = Number(document.getElementById("btLookback").value || 90);
+      const params = getOverrides();
+      const payload = {
+        product_id: productId,
+        timeframe: currentTimeframe,
+        start_date: new Date(Date.now() - (days * 86400 * 1000)).toISOString().slice(0, 10),
+        end_date: new Date().toISOString().slice(0, 10),
+        params: Object.keys(params).length ? params : null
+      };
+
+      setLoading(true);
+      try {
+        const result = await fetchJson("/api/backtest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        renderKpis(result.summary || {}, (result.trades || []).length);
+        buildEquityChart(result.equity_curve || []);
+        renderTrades(result.trades || []);
+        document.getElementById("btStatus").textContent = `Completed ${result.candle_count || 0} candles for ${result.product_id}.`;
+        document.getElementById("btMeta").textContent = `${result.product_id} · ${currentTimeframe.toUpperCase()} · ${days} day replay window`;
+        observeSections();
+      } catch (error) {
+        document.getElementById("btStatus").textContent = `Backtest failed: ${error.message}`;
+        document.getElementById("btTradeFeed").innerHTML = '<div class="hc-empty-card">Backtest failed. Check the API response and try again.</div>';
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function bindControls() {
+      document.querySelectorAll("[data-timeframe]").forEach((button) => {
+        button.addEventListener("click", () => {
+          currentTimeframe = button.dataset.timeframe || "4h";
+          document.querySelectorAll("[data-timeframe]").forEach((node) => {
+            node.classList.toggle("active", node === button);
+          });
+        });
+      });
+
+      const runBtn = document.getElementById("btRunBtn");
+      if (runBtn) {
+        runBtn.addEventListener("click", runBacktest);
+      }
+    }
+
+    loadProductUniverse();
+    bindControls();
+    observeSections();
+  })();
+</script>
+{% endblock %}

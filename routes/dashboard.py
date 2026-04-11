@@ -71,6 +71,12 @@ def performance_page():
     return render_template("app/performance.html", **_page_context("Performance"))
 
 
+@dashboard_bp.route("/backtest", methods=["GET"])
+@require_dashboard_auth
+def backtest_page():
+    return render_template("app/backtest.html", **_page_context("Backtesting"))
+
+
 @dashboard_bp.route("/meme-rotation", methods=["GET"])
 @require_dashboard_auth
 def meme_rotation():

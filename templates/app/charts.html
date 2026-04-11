@@ -53,6 +53,66 @@
         </div>
       </div>
 
+      <details class="hc-chart-section chart-panel chart-algo-panel" open>
+        <summary class="chart-algo-summary">
+          <div>
+            <h2 class="chart-section-title">Algorithm Preview</h2>
+            <p class="chart-section-subtitle">Client-side V6 replay on the loaded candles.</p>
+          </div>
+        </summary>
+        <div class="chart-algo-grid">
+          <label class="chart-algo-field">
+            <span>RSI Buy Min</span>
+            <input id="chartAlgoRsiBuyMin" class="chart-algo-range" type="range" min="30" max="60" step="1">
+            <strong id="chartAlgoRsiBuyMinValue">45</strong>
+          </label>
+          <label class="chart-algo-field">
+            <span>RSI Buy Max</span>
+            <input id="chartAlgoRsiBuyMax" class="chart-algo-range" type="range" min="55" max="85" step="1">
+            <strong id="chartAlgoRsiBuyMaxValue">75</strong>
+          </label>
+          <label class="chart-algo-field">
+            <span>RSI Exit Threshold</span>
+            <input id="chartAlgoRsiExitThresh" class="chart-algo-range" type="range" min="20" max="50" step="1">
+            <strong id="chartAlgoRsiExitThreshValue">38</strong>
+          </label>
+          <label class="chart-algo-field">
+            <span>RSI Trim Threshold</span>
+            <input id="chartAlgoRsiTrimThresh" class="chart-algo-range" type="range" min="65" max="92" step="1">
+            <strong id="chartAlgoRsiTrimThreshValue">82</strong>
+          </label>
+          <label class="chart-algo-field">
+            <span>Extension %</span>
+            <input id="chartAlgoExtPct" class="chart-algo-range" type="range" min="3" max="25" step="0.5">
+            <strong id="chartAlgoExtPctValue">10.0</strong>
+          </label>
+          <label class="chart-algo-field">
+            <span>EMA Trend Length</span>
+            <input id="chartAlgoEmaTrend" class="chart-algo-range" type="range" min="100" max="300" step="1">
+            <strong id="chartAlgoEmaTrendValue">200</strong>
+          </label>
+          <label class="chart-algo-field">
+            <span>Volume Multiplier</span>
+            <input id="chartAlgoVolMult" class="chart-algo-range" type="range" min="0.5" max="3.0" step="0.1">
+            <strong id="chartAlgoVolMultValue">1.0</strong>
+          </label>
+        </div>
+        <div class="chart-algo-kpis">
+          <div class="hc-context-card chart-algo-kpi">
+            <div class="hc-context-label">Sim Win Rate</div>
+            <div class="hc-context-value" id="chartAlgoWinRate">0%</div>
+          </div>
+          <div class="hc-context-card chart-algo-kpi">
+            <div class="hc-context-label">Sim Trade Count</div>
+            <div class="hc-context-value" id="chartAlgoTradeCount">0</div>
+          </div>
+          <div class="hc-context-card chart-algo-kpi">
+            <div class="hc-context-label">Sim Profit Factor</div>
+            <div class="hc-context-value" id="chartAlgoProfitFactor">0.00</div>
+          </div>
+        </div>
+      </details>
+
       <div class="hc-chart-section chart-panel">
         <div class="chart-section-head">
           <div>
@@ -130,6 +190,24 @@
     let emaTrendSeries = null;
     let rsiSeries = null;
     let macdSeries = null;
+    let currentCandles = [];
+    let currentParams = {};
+    let currentParamsTimeframe = "";
+    let previewDebounce = null;
+    const PARAM_DEFAULTS = {
+      "1h": {
+        rsi_buy_min: 45, rsi_buy_max: 75,
+        rsi_trim_thresh: 82, rsi_exit_thresh: 38,
+        ext_pct: 10.0, cooldown_bars: 3, trim_cooldown: 4,
+        vol_mult: 1.0, ema_trend: 200
+      },
+      "4h": {
+        rsi_buy_min: 35, rsi_buy_max: 70,
+        rsi_trim_thresh: 80, rsi_exit_thresh: 40,
+        ext_pct: 8.0, cooldown_bars: 4, trim_cooldown: 8,
+        vol_mult: 1.0, ema_trend: 200
+      }
+    };
 
     function authUrl(path) {
       if (!API_SECRET) return path;
@@ -243,6 +321,130 @@
         .map((row) => ({ time: Number(row.ts || 0), value: Number(row[key]) }));
     }
 
+    function ema(values, period) {
+      const p = Math.max(1, Number(period || 1));
+      const out = new Array(values.length).fill(null);
+      if (values.length < p) return out;
+      let sum = 0;
+      for (let i = 0; i < p; i += 1) sum += Number(values[i] || 0);
+      let running = sum / p;
+      out[p - 1] = running;
+      const multiplier = 2 / (p + 1);
+      for (let i = p; i < values.length; i += 1) {
+        const value = Number(values[i] || 0);
+        running = ((value - running) * multiplier) + running;
+        out[i] = running;
+      }
+      return out;
+    }
+
+    function simulateSignals(candles, params) {
+      const p = {
+        rsi_buy_min: 45, rsi_buy_max: 75,
+        rsi_trim_thresh: 82, rsi_exit_thresh: 38,
+        ext_pct: 10.0, cooldown_bars: 3, trim_cooldown: 4,
+        vol_mult: 1.0, ema_trend: 200,
+        ...(params || {})
+      };
+
+      const closes = candles.map((c) => Number(c.close || 0));
+      const trendSeries = ema(closes, Number(p.ema_trend || 200));
+      let state = 0;
+      let barsSinceExit = 999;
+      let barsSinceTrim = 999;
+      let entryPrice = null;
+      const trades = [];
+      const markers = [];
+
+      for (let i = 2; i < candles.length; i += 1) {
+        const bar = candles[i];
+        const prev = candles[i - 1];
+        barsSinceExit = Math.min(999, barsSinceExit + 1);
+        barsSinceTrim = Math.min(999, barsSinceTrim + 1);
+
+        const et = trendSeries[i];
+        if (
+          bar.ema_fast == null || bar.ema_mid == null || bar.ema_slow == null ||
+          et == null || bar.rsi == null || bar.macd_hist == null
+        ) {
+          continue;
+        }
+
+        const close = Number(bar.close || 0);
+        const ef = Number(bar.ema_fast || 0);
+        const em = Number(bar.ema_mid || 0);
+        const es = Number(bar.ema_slow || 0);
+        const r = Number(bar.rsi || 0);
+        const hist = Number(bar.macd_hist || 0);
+        const prevHist = Number(prev.macd_hist || 0);
+        const prevRsi = Number(prev.rsi || 50);
+        const vol = Number(bar.volume || 0);
+        const vs = Number(bar.vol_sma || 1);
+
+        const aboveTrend = close > et;
+        const emaAligned = ef > em && em > es;
+        const priceAbove = close > ef;
+        const macdPositive = hist > 0;
+        const macdRising = hist > prevHist;
+        const ext = em > 0 ? ((close - em) / em) * 100 : 0;
+        const notOverextended = ext >= 0 && ext < Number(p.ext_pct || 10);
+        const volumeOk = vol >= (vs * Number(p.vol_mult || 1));
+        const rsiOk = r >= Number(p.rsi_buy_min || 45) && r <= Number(p.rsi_buy_max || 75);
+        const momentumBroken = close < em && hist < 0 && r < Number(p.rsi_exit_thresh || 38);
+        const trendLost = close < et && close < es && r < 45;
+
+        const rsiWasHot = prevRsi > Number(p.rsi_trim_thresh || 82);
+        const rsiCooling = r < prevRsi;
+        const macdFading = hist < prevHist;
+        const trimCondition = priceAbove && rsiWasHot && (rsiCooling || macdFading);
+
+        if ((state === 1 || state === 2) && (momentumBroken || trendLost)) {
+          markers.push({ time: Number(bar.ts || 0), position: "aboveBar", color: "#ef4444", shape: "arrowDown", text: "EXIT" });
+          if (entryPrice != null) {
+            trades.push({ action: "EXIT", entry: entryPrice, exit: close, pnl_pct: ((close - entryPrice) / entryPrice) * 100, ts: Number(bar.ts || 0) });
+          }
+          state = 0;
+          barsSinceExit = 0;
+          entryPrice = null;
+        } else if (state === 1 && barsSinceTrim >= Number(p.trim_cooldown || 4) && trimCondition) {
+          markers.push({ time: Number(bar.ts || 0), position: "aboveBar", color: "#f59e0b", shape: "arrowDown", text: "TRIM" });
+          if (entryPrice != null) {
+            trades.push({ action: "TRIM", entry: entryPrice, exit: close, pnl_pct: ((close - entryPrice) / entryPrice) * 100, ts: Number(bar.ts || 0) });
+          }
+          state = 2;
+          barsSinceTrim = 0;
+        } else if (
+          state === 0 &&
+          barsSinceExit >= Number(p.cooldown_bars || 3) &&
+          emaAligned &&
+          priceAbove &&
+          macdPositive &&
+          macdRising &&
+          rsiOk &&
+          notOverextended &&
+          aboveTrend &&
+          volumeOk
+        ) {
+          markers.push({ time: Number(bar.ts || 0), position: "belowBar", color: "#22c55e", shape: "arrowUp", text: "BUY" });
+          state = 1;
+          entryPrice = close;
+        }
+      }
+
+      const realized = trades.filter((trade) => trade.action !== "BUY");
+      const wins = realized.filter((trade) => Number(trade.pnl_pct || 0) > 0);
+      const losses = realized.filter((trade) => Number(trade.pnl_pct || 0) < 0);
+      const grossWins = wins.reduce((sum, trade) => sum + Number(trade.pnl_pct || 0), 0);
+      const grossLosses = losses.reduce((sum, trade) => sum + Math.abs(Number(trade.pnl_pct || 0)), 0);
+      const summary = {
+        tradeCount: realized.length,
+        winRate: realized.length ? wins.length / realized.length : 0,
+        profitFactor: grossLosses > 0 ? grossWins / grossLosses : (grossWins > 0 ? grossWins : 0)
+      };
+
+      return { markers, summary };
+    }
+
     function renderIndicators(rows) {
       const last = rows.length ? rows[rows.length - 1] : null;
       const rsiValue = Number(last && last.rsi != null ? last.rsi : NaN);
@@ -327,6 +529,43 @@
       });
     }
 
+    function syncAlgoInputs() {
+      [
+        ["chartAlgoRsiBuyMin", "rsi_buy_min", 0],
+        ["chartAlgoRsiBuyMax", "rsi_buy_max", 0],
+        ["chartAlgoRsiExitThresh", "rsi_exit_thresh", 0],
+        ["chartAlgoRsiTrimThresh", "rsi_trim_thresh", 0],
+        ["chartAlgoExtPct", "ext_pct", 1],
+        ["chartAlgoEmaTrend", "ema_trend", 0],
+        ["chartAlgoVolMult", "vol_mult", 1]
+      ].forEach(([id, key, digits]) => {
+        const input = document.getElementById(id);
+        const valueNode = document.getElementById(`${id}Value`);
+        if (!input || !valueNode) return;
+        const value = Number(currentParams[key]);
+        input.value = value;
+        valueNode.textContent = digits ? value.toFixed(digits) : String(Math.round(value));
+      });
+    }
+
+    function renderSimulatedMetrics(summary) {
+      document.getElementById("chartAlgoWinRate").textContent = `${fmtNum(Number(summary.winRate || 0) * 100)}%`;
+      document.getElementById("chartAlgoTradeCount").textContent = String(Number(summary.tradeCount || 0));
+      document.getElementById("chartAlgoProfitFactor").textContent = fmtNum(summary.profitFactor);
+    }
+
+    function refreshSimulatedSignals() {
+      if (!candleSeries || !Array.isArray(currentCandles) || !currentCandles.length) return;
+      const simulation = simulateSignals(currentCandles, currentParams);
+      candleSeries.setMarkers(simulation.markers || []);
+      renderSimulatedMetrics(simulation.summary || {});
+    }
+
+    function queueSimulatedRefresh() {
+      clearTimeout(previewDebounce);
+      previewDebounce = setTimeout(refreshSimulatedSignals, 300);
+    }
+
     async function loadUniverse() {
       const select = document.getElementById("chartProduct");
       try {
@@ -349,13 +588,24 @@
       ensureCharts();
       setStatus("Loading candles...");
       try {
-        const [candleData, signalData, scannerState] = await Promise.all([
+        const [candleData, signalData, scannerState, scannerParams] = await Promise.all([
           fetchJson(`/api/candles?product_id=${encodeURIComponent(currentProduct)}&timeframe=${encodeURIComponent(currentTimeframe)}&limit=250`),
           fetchJson(`/api/signals/chart?product_id=${encodeURIComponent(currentProduct)}&timeframe=${encodeURIComponent(currentTimeframe)}`),
-          fetchJson("/api/signals/state")
+          fetchJson("/api/signals/state"),
+          fetchJson("/api/scanner/params")
         ]);
 
         const rows = Array.isArray(candleData.candles) ? candleData.candles : [];
+        currentCandles = rows.slice();
+        const presetKey = currentTimeframe === "4h" ? "core_4h" : "satellite_1h";
+        if (!Object.keys(currentParams).length || currentParamsTimeframe !== currentTimeframe) {
+          currentParams = {
+            ...(PARAM_DEFAULTS[currentTimeframe] || PARAM_DEFAULTS["1h"]),
+            ...(((scannerParams || {}).params || {})[presetKey] || {})
+          };
+          currentParamsTimeframe = currentTimeframe;
+        }
+        syncAlgoInputs();
         candleSeries.setData(rows.map(normalizeCandle));
         emaFastSeries.setData(linePoints(rows, "ema_fast"));
         emaMidSeries.setData(linePoints(rows, "ema_mid"));
@@ -371,7 +621,7 @@
               color: Number(row.macd_hist || 0) >= 0 ? "rgba(56,189,248,0.85)" : "rgba(251,113,133,0.85)"
             }))
         );
-        candleSeries.setMarkers(markersFromSignals(signalData.signals || []));
+        refreshSimulatedSignals();
 
         renderSignals(signalData.signals || []);
         renderScannerState(scannerState.states || {});
@@ -436,6 +686,26 @@
       });
 
       document.getElementById("chartScanBtn").addEventListener("click", runScannerNow);
+
+      [
+        ["chartAlgoRsiBuyMin", "rsi_buy_min"],
+        ["chartAlgoRsiBuyMax", "rsi_buy_max"],
+        ["chartAlgoRsiExitThresh", "rsi_exit_thresh"],
+        ["chartAlgoRsiTrimThresh", "rsi_trim_thresh"],
+        ["chartAlgoExtPct", "ext_pct"],
+        ["chartAlgoEmaTrend", "ema_trend"],
+        ["chartAlgoVolMult", "vol_mult"]
+      ].forEach(([id, key]) => {
+        const input = document.getElementById(id);
+        const valueNode = document.getElementById(`${id}Value`);
+        if (!input || !valueNode) return;
+        input.addEventListener("input", () => {
+          const value = Number(input.value);
+          currentParams[key] = value;
+          valueNode.textContent = input.step && String(input.step).includes(".") ? value.toFixed(String(input.step).split(".")[1].length) : String(Math.round(value));
+          queueSimulatedRefresh();
+        });
+      });
     }
 
     function startAutoRefresh() {

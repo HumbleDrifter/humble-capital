@@ -11,6 +11,7 @@ from routes.api_options import api_options_bp
 from routes.dashboard import dashboard_bp
 
 from rebalancer import run_trailing_exit_sweep
+from signal_scanner import run_scanner_sweep
 from workers.execution_queue import start_execution_worker
 from storage import init_db, init_user_table
 
@@ -31,6 +32,27 @@ def _trailing_exit_loop():
         _time.sleep(300)  # 5 minutes
 
 
+def _signal_scanner_loop():
+    import time as _time
+    _time.sleep(60)  # wait 1 min after startup
+    while True:
+        try:
+            now = _time.localtime()
+            # Run at :02 past each hour to let candles finalize
+            if now.tm_min == 2:
+                result = run_scanner_sweep()
+                core = len(result.get("core_signals", []))
+                sat = len(result.get("satellite_signals", []))
+                scanned = result.get("products_scanned", 0)
+                print(f"[signal_scanner_loop] sweep done scanned={scanned} core={core} satellite={sat}")
+                _time.sleep(120)  # avoid re-trigger at :02
+            else:
+                _time.sleep(30)
+        except Exception as exc:
+            print(f"[signal_scanner_loop] error: {exc}")
+            _time.sleep(60)
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -46,6 +68,8 @@ def create_app():
     start_execution_worker()
     _exit_thread = threading.Thread(target=_trailing_exit_loop, daemon=True, name="trailing_exit_sweep")
     _exit_thread.start()
+    _scanner_thread = threading.Thread(target=_signal_scanner_loop, daemon=True, name="signal_scanner")
+    _scanner_thread.start()
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

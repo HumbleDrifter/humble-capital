@@ -10,6 +10,7 @@ from portfolio import get_portfolio_snapshot
 _CORE_ASSETS = {"BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"}
 _SCANNER_STATE = {}
 _SIGNAL_LOG = []
+_DIP_COOLDOWNS = {}
 
 PARAMS_4H_SATELLITE = {
     "bb_period": 20,
@@ -649,6 +650,132 @@ def run_scanner_sweep():
     except Exception as exc:
         _log(f"scanner sweep failed: {exc}")
         return {"ok": False, "error": str(exc), "core_signals": [], "satellite_signals": []}
+
+
+def run_dip_detector():
+    """
+    Detect sharp drops in core assets and trigger aggressive buys.
+    Called every 5 minutes by the scheduler.
+
+    Logic:
+    - For each core asset, fetch the last 6 candles (4H each = 24h)
+    - If the asset dropped > 5% in the last 24h AND RSI < 35, it's a dip buy opportunity
+    - Buy 3x the normal DCA amount (aggressive accumulation at depressed prices)
+    - Only trigger in neutral or caution regime (not risk_off — that's capitulation)
+    - Cooldown: only one dip buy per asset per 24 hours
+    """
+    try:
+        from portfolio import get_portfolio_snapshot, load_asset_config
+        from rebalancer import dispatch_signal_action
+        import time
+
+        snapshot = get_portfolio_snapshot()
+        if not isinstance(snapshot, dict):
+            return {"ok": False, "error": "snapshot_unavailable"}
+
+        config = snapshot.get("config", {})
+        regime = str(snapshot.get("market_regime", "neutral")).lower()
+
+        if regime not in ["neutral", "caution", "bull"]:
+            return {"ok": True, "actions": [], "regime": regime, "reason": "regime_blocked"}
+
+        core_assets = config.get("core_assets", {})
+        total_value = float(snapshot.get("total_value_usd", 0) or 0)
+        cash = float(snapshot.get("usd_cash", 0) or 0)
+        reserve = total_value * float(config.get("min_cash_reserve", 0.08) or 0.08)
+        available = max(0, cash - reserve)
+
+        if available < 10:
+            return {"ok": True, "actions": [], "reason": "insufficient_cash"}
+
+        global _DIP_COOLDOWNS
+        now = int(time.time())
+        actions = []
+        client = get_client()
+
+        for product_id in core_assets:
+            last_dip = _DIP_COOLDOWNS.get(product_id, 0)
+            if (now - last_dip) < 86400:
+                continue
+
+            try:
+                end_ts = now
+                start_ts = end_ts - (6 * 14400)
+                response = client.get_candles(
+                    product_id=product_id,
+                    start=str(start_ts),
+                    end=str(end_ts),
+                    granularity="FOUR_HOUR",
+                )
+                data = response.to_dict() if hasattr(response, 'to_dict') else response
+                candles = sorted(data.get("candles", []), key=lambda c: int(c.get("start", 0)))
+
+                if len(candles) < 2:
+                    continue
+
+                first_close = float(candles[0]["close"])
+                last_close = float(candles[-1]["close"])
+                change_24h = ((last_close - first_close) / first_close) if first_close > 0 else 0
+
+                closes = [float(c["close"]) for c in candles]
+                gains = []
+                losses = []
+                for i in range(1, len(closes)):
+                    diff = closes[i] - closes[i - 1]
+                    if diff > 0:
+                        gains.append(diff)
+                        losses.append(0)
+                    else:
+                        gains.append(0)
+                        losses.append(abs(diff))
+
+                avg_gain = sum(gains) / len(gains) if gains else 0
+                avg_loss = sum(losses) / len(losses) if losses else 0.001
+                rs = avg_gain / avg_loss if avg_loss > 0 else 100
+                rsi_approx = 100 - (100 / (1 + rs))
+
+                _log(f"dip check {product_id}: 24h_change={change_24h*100:.1f}% rsi={rsi_approx:.0f}")
+
+                if change_24h < -0.05 and rsi_approx < 35:
+                    normal_dca = total_value * float(config.get("dca_amount_pct", 0.02) or 0.02)
+                    dip_buy_amount = min(normal_dca * 3, available * 0.25)
+
+                    if dip_buy_amount < 5:
+                        continue
+
+                    _log(
+                        f"DIP BUY triggered {product_id} drop={change_24h*100:.1f}% "
+                        f"rsi={rsi_approx:.0f} amount=${dip_buy_amount:.2f}"
+                    )
+
+                    result = dispatch_signal_action(
+                        product_id=product_id,
+                        action="BUY",
+                        signal_type="DIP_BUY",
+                        timeframe="4h",
+                        strategy="dip_detector",
+                        quote_size=dip_buy_amount,
+                        conviction_score=1.3,
+                    )
+
+                    if result.get("ok"):
+                        _DIP_COOLDOWNS[product_id] = now
+                        actions.append({
+                            "product_id": product_id,
+                            "amount": dip_buy_amount,
+                            "change_24h": round(change_24h * 100, 2),
+                            "rsi": round(rsi_approx, 1),
+                        })
+
+            except Exception as exc:
+                _log(f"dip check failed {product_id}: {exc}")
+                continue
+
+        return {"ok": True, "actions": actions, "regime": regime}
+
+    except Exception as exc:
+        _log(f"dip detector failed: {exc}")
+        return {"ok": False, "error": str(exc)}
 
 
 def get_signal_log(limit=100):

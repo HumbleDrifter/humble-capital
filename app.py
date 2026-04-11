@@ -20,29 +20,31 @@ load_dotenv("/root/tradingbot/.env", override=True)
 
 def _trailing_exit_loop():
     import time as _time
+    print("[trailing_exit_loop] thread started", flush=True)
     _time.sleep(30)  # wait 30s after startup before first sweep
     while True:
         try:
             result = run_trailing_exit_sweep()
             exits = result.get("exits", [])
             if exits:
-                print(f"[trailing_exit_loop] sweep completed exits={len(exits)}")
+                print(f"[trailing_exit_loop] sweep completed exits={len(exits)}", flush=True)
 
             # Defensive regime selling/rebuying
             try:
                 defensive_result = run_defensive_regime_check()
                 defensive_actions = defensive_result.get("actions", [])
                 if defensive_actions:
-                    print(f"[defensive_regime] {len(defensive_actions)} actions regime={defensive_result.get('regime')}")
+                    print(f"[defensive_regime] {len(defensive_actions)} actions regime={defensive_result.get('regime')}", flush=True)
             except Exception as exc:
-                print(f"[defensive_regime] error: {exc}")
+                print(f"[defensive_regime] error: {exc}", flush=True)
         except Exception as exc:
-            print(f"[trailing_exit_loop] error: {exc}")
+            print(f"[trailing_exit_loop] error: {exc}", flush=True)
         _time.sleep(300)  # 5 minutes
 
 
 def _signal_scanner_loop():
     import time as _time
+    print("[signal_scanner_loop] thread started", flush=True)
     _time.sleep(60)  # wait 1 min after startup
     while True:
         try:
@@ -53,12 +55,12 @@ def _signal_scanner_loop():
                 core = len(result.get("core_signals", []))
                 sat = len(result.get("satellite_signals", []))
                 scanned = result.get("products_scanned", 0)
-                print(f"[signal_scanner_loop] sweep done scanned={scanned} core={core} satellite={sat}")
+                print(f"[signal_scanner_loop] sweep done scanned={scanned} core={core} satellite={sat}", flush=True)
                 _time.sleep(120)  # avoid re-trigger at :02
             else:
                 _time.sleep(30)
         except Exception as exc:
-            print(f"[signal_scanner_loop] error: {exc}")
+            print(f"[signal_scanner_loop] error: {exc}", flush=True)
             _time.sleep(60)
 
 

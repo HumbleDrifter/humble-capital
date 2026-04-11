@@ -44,6 +44,8 @@ PORTFOLIO_HISTORY_MIN_INTERVAL_SEC = float(os.getenv("PORTFOLIO_HISTORY_MIN_INTE
 PORTFOLIO_HISTORY_MIN_CHANGE_USD = float(os.getenv("PORTFOLIO_HISTORY_MIN_CHANGE_USD", "1.0"))
 _ROTATED_WEIGHTS_CACHE = {"ts": 0, "value": {}}
 _ROTATED_WEIGHTS_TTL_SEC = 900  # 15 minutes
+_WEBULL_VALUE_CACHE = {"ts": 0.0, "value": 0.0, "connected": False, "error": None}
+_WEBULL_VALUE_TTL_SEC = 300
 
 _PORTFOLIO_CACHE_LOCK = threading.Lock()
 _PORTFOLIO_CACHE = {
@@ -312,6 +314,77 @@ def calculate_exposure(product_id, qty_total, qty_liquid, qty_locked):
     }
 
 
+def _webull_enabled():
+    return str(os.getenv("WEBULL_ENABLED", "") or "").strip().lower() in {"true", "1", "yes", "on"}
+
+
+def _get_webull_account_value():
+    if not _webull_enabled():
+        return {"value": 0.0, "connected": False}
+
+    now = time.time()
+    cached_at = float(_WEBULL_VALUE_CACHE.get("ts", 0.0) or 0.0)
+    if cached_at > 0 and (now - cached_at) < _WEBULL_VALUE_TTL_SEC:
+        return {
+            "value": safe_float(_WEBULL_VALUE_CACHE.get("value")),
+            "connected": bool(_WEBULL_VALUE_CACHE.get("connected", False)),
+        }
+
+    value = 0.0
+    connected = False
+    error = None
+    try:
+        from brokers.webull_adapter import WebullAdapter
+
+        wb = WebullAdapter()
+        wb_info = wb.get_account_info() if hasattr(wb, "get_account_info") else {}
+        if isinstance(wb_info, dict) and wb_info.get("ok"):
+            value = safe_float(wb_info.get("balance", 0.0))
+            connected = True
+        else:
+            error = (wb_info or {}).get("error") if isinstance(wb_info, dict) else "account_unavailable"
+    except Exception as exc:
+        error = str(exc)
+
+    _WEBULL_VALUE_CACHE.update({
+        "ts": now,
+        "value": value,
+        "connected": connected,
+        "error": error,
+    })
+    if error:
+        _log_portfolio(f"webull account value lookup unavailable: {error}")
+
+    return {"value": value, "connected": connected}
+
+
+def _estimate_avg_entry_price(product_id, position_row, current_price):
+    position_row = position_row if isinstance(position_row, dict) else {}
+    state = get_asset_state(product_id)
+    qty_total = safe_float(position_row.get("base_qty_total", 0.0))
+
+    entry = safe_float(state.get("avg_entry_price", 0.0))
+    if entry > 0:
+        return entry
+
+    candidates = [
+        safe_float(position_row.get("avg_entry_price", 0.0)),
+        safe_float(position_row.get("avg_fill_price", 0.0)),
+        safe_float(position_row.get("cost_basis_price", 0.0)),
+    ]
+    for candidate in candidates:
+        if candidate > 0:
+            return candidate
+
+    cost_basis = safe_float(position_row.get("cost_basis", 0.0))
+    if cost_basis > 0 and qty_total > 0:
+        inferred = cost_basis / qty_total
+        if inferred > 0 and (current_price <= 0 or inferred < current_price * 10):
+            return inferred
+
+    return 0.0
+
+
 def get_position_values():
     positions = get_all_positions()
     values = {}
@@ -324,7 +397,21 @@ def get_position_values():
         locked_qty = safe_float(pos.get("base_qty_locked", 0))
         if total_qty <= 0:
             continue
-        values[product_id] = calculate_exposure(product_id, total_qty, liquid_qty, locked_qty)
+        exposure = calculate_exposure(product_id, total_qty, liquid_qty, locked_qty)
+        exposure["cost_basis"] = safe_float(pos.get("cost_basis", 0.0))
+        avg_entry_price = _estimate_avg_entry_price(product_id, pos, exposure.get("price_usd", 0.0))
+        current_price = safe_float(exposure.get("price_usd", 0.0))
+        unrealized_pnl = 0.0
+        unrealized_pnl_pct = 0.0
+        if avg_entry_price > 0 and current_price > 0:
+            unrealized_pnl = (current_price - avg_entry_price) * total_qty
+            unrealized_pnl_pct = ((current_price - avg_entry_price) / avg_entry_price) * 100.0
+        exposure["avg_entry_price"] = avg_entry_price if avg_entry_price > 0 else 0.0
+        exposure["current_price"] = current_price
+        exposure["unrealized_pnl"] = unrealized_pnl
+        exposure["unrealized_profit_loss"] = unrealized_pnl
+        exposure["unrealized_pnl_pct"] = unrealized_pnl_pct
+        values[product_id] = exposure
     return values
 
 
@@ -783,13 +870,18 @@ def _build_portfolio_snapshot():
     cash_breakdown = get_cash_breakdown()
     usd_cash = float(cash_breakdown["TOTAL_CASH_EQUIV_USD"])
     asset_total = sum(v["value_total_usd"] for v in positions.values())
-    total_value = asset_total + usd_cash
+    coinbase_total = asset_total + usd_cash
+    webull_info = _get_webull_account_value()
+    webull_value = float(webull_info.get("value", 0.0) or 0.0)
+    total_value = coinbase_total + webull_value
     if total_value <= 0:
         total_value = 1e-9
 
     snapshot = {
         "timestamp": int(time.time()),
         "total_value_usd": total_value,
+        "coinbase_value_usd": coinbase_total,
+        "webull_value_usd": webull_value,
         "usd_cash": usd_cash,
         "cash_breakdown": cash_breakdown,
         "cash_weight": usd_cash / total_value,
@@ -798,6 +890,10 @@ def _build_portfolio_snapshot():
         "portfolio_peak": total_value,
         "portfolio_drawdown": 0.0,
         "active_satellite_buy_universe": [],
+        "brokers": {
+            "coinbase": {"value": coinbase_total, "connected": True},
+            "webull": {"value": webull_value, "connected": bool(webull_info.get("connected", False))},
+        },
     }
 
     core_value = 0.0
@@ -838,6 +934,8 @@ def _build_portfolio_snapshot():
     _log_portfolio(
         "built live snapshot "
         f"total={snapshot['total_value_usd']:.2f} "
+        f"coinbase={snapshot['coinbase_value_usd']:.2f} "
+        f"webull={snapshot['webull_value_usd']:.2f} "
         f"cash={snapshot['usd_cash']:.2f} "
         f"positions={len(positions)} "
         f"config_dir={_BASE_DIR}"
@@ -920,6 +1018,23 @@ def _snapshot_to_history_row(snapshot):
         "cash_value_usd": cash_value_usd,
         "positions_value_usd": positions_value_usd,
     }
+
+
+def record_equity_point(row, history_rows):
+    row = dict(row or {})
+    history_rows = history_rows if isinstance(history_rows, list) else []
+    if len(history_rows) >= 1:
+        prev = history_rows[-1] if isinstance(history_rows[-1], dict) else {}
+        prev_total = safe_float(prev.get("total_value_usd", 0.0))
+        curr_total = safe_float(row.get("total_value_usd", 0.0))
+        if prev_total > 0 and curr_total > 0:
+            drop_pct = (curr_total - prev_total) / prev_total
+            if drop_pct < -0.05:
+                row["total_value_usd"] = prev_total
+                row["cash_value_usd"] = safe_float(prev.get("cash_value_usd", row.get("cash_value_usd", 0.0)))
+                row["positions_value_usd"] = safe_float(prev.get("positions_value_usd", row.get("positions_value_usd", 0.0)))
+    history_rows.append(row)
+    return row
 
 
 def _snapshot_has_complete_history_inputs(snapshot):
@@ -1758,6 +1873,7 @@ def persist_current_portfolio_snapshot(snapshot=None):
 
         latest_rows = get_portfolio_history_since(limit=1)
         latest = latest_rows[-1] if latest_rows else None
+        row = record_equity_point(row, latest_rows or [])
 
         if latest:
             age_sec = max(0, int(row["ts"]) - int(latest.get("ts") or 0))
@@ -2043,6 +2159,8 @@ def portfolio_summary(snapshot=None):
     snapshot = snapshot or get_portfolio_snapshot()
 
     total_value_usd = float(snapshot.get("total_value_usd", 0.0) or 0.0)
+    coinbase_value_usd = float(snapshot.get("coinbase_value_usd", max(0.0, total_value_usd)) or 0.0)
+    webull_value_usd = float(snapshot.get("webull_value_usd", 0.0) or 0.0)
     usd_cash = float(snapshot.get("usd_cash", 0.0) or 0.0)
     core_value_usd = float(snapshot.get("core_value_usd", 0.0) or 0.0)
     satellite_value_usd = float(snapshot.get("satellite_value_usd", 0.0) or 0.0)
@@ -2078,12 +2196,17 @@ def portfolio_summary(snapshot=None):
             "base_qty_total": float(pos.get("base_qty_total", 0.0) or 0.0),
             "base_qty_liquid": float(pos.get("base_qty_liquid", 0.0) or 0.0),
             "price_usd": float(pos.get("price_usd", 0.0) or 0.0),
+            "avg_entry_price": float(pos.get("avg_entry_price", pos.get("price_usd", 0.0)) or 0.0),
+            "unrealized_pnl": float(pos.get("unrealized_pnl", 0.0) or 0.0),
+            "unrealized_pnl_pct": float(pos.get("unrealized_pnl_pct", 0.0) or 0.0),
         }
 
     return {
         "ok": True,
         "timestamp": snapshot.get("timestamp"),
         "total_value_usd": total_value_usd,
+        "coinbase_value_usd": coinbase_value_usd,
+        "webull_value_usd": webull_value_usd,
         "usd_cash": usd_cash,
         "cash_weight": float(snapshot.get("cash_weight", 0.0) or 0.0),
         "core_value_usd": core_value_usd,
@@ -2105,5 +2228,6 @@ def portfolio_summary(snapshot=None):
         "drawdown_warn_level": warn_level,
         "drawdown_reduce_level": reduce_level,
         "drawdown_freeze_level": freeze_level,
+        "brokers": dict(snapshot.get("brokers") or {}),
         "assets": assets,
     }

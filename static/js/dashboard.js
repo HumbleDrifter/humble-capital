@@ -276,12 +276,13 @@
 
     const positions = snapshot?.positions && typeof snapshot.positions === "object" ? snapshot.positions : {};
     const coreAssets = new Set(Object.keys(snapshot?.config?.core_assets || {}));
+    const dustMinValueUsd = Number(snapshot?.config?.dust_min_value_usd || 2.0);
     const rows = Object.entries(positions)
       .map(([productId, row]) => ({
         productId,
         row: row || {}
       }))
-      .filter(({ row }) => Number(row.value_total_usd || 0) > 1.0)
+      .filter(({ row }) => Number(row.value_total_usd || 0) >= dustMinValueUsd)
       .sort((a, b) => Number(b.row.value_total_usd || 0) - Number(a.row.value_total_usd || 0));
 
     if (!rows.length) {
@@ -292,13 +293,27 @@
     host.innerHTML = rows.map(({ productId, row }) => {
       const symbol = String(productId || "").split("-")[0];
       const isCore = coreAssets.has(productId);
+      const qty = Number(row.base_qty_total || 0);
       const entryPrice = Number(row.avg_entry_price || row.cost_basis || 0);
       const currentPrice = Number(row.price_usd || row.current_price || 0);
+      let unrealizedPnl = Number(row.unrealized_pnl ?? row.unrealized_profit_loss ?? 0);
       let changePct = Number(row.unrealized_pnl_pct || row.change_24h || 0);
-      if (changePct === 0 && entryPrice > 0 && currentPrice > 0) {
-        changePct = ((currentPrice - entryPrice) / entryPrice) * 100;
+      if (entryPrice <= 0) {
+        unrealizedPnl = null;
+        changePct = null;
+      } else {
+        if (unrealizedPnl === 0 && currentPrice > 0 && qty > 0) {
+          unrealizedPnl = (currentPrice - entryPrice) * qty;
+        }
+        if (changePct === 0 && currentPrice > 0) {
+          changePct = ((currentPrice - entryPrice) / entryPrice) * 100;
+        }
       }
-      const positive = changePct >= 0;
+      const positive = unrealizedPnl === null ? true : unrealizedPnl >= 0;
+      const pnlDisplay = unrealizedPnl !== null
+        ? `${fmtSignedUsd(unrealizedPnl)} (${fmtSignedPct(changePct, true)})`
+        : "P&L unavailable";
+      const pnlClass = unrealizedPnl === null ? "" : (positive ? "positive" : "negative");
       return `
         <div class="hc-pos-card">
           <div class="hc-pos-icon ${isCore ? "core" : "satellite"}">${escapeHtml(symbol.slice(0, 2))}</div>
@@ -309,7 +324,7 @@
           ${buildSparkline(productId, positive)}
           <div class="hc-pos-right">
             <div class="hc-pos-value">${escapeHtml(fmtUsd(row.value_total_usd || 0))}</div>
-            <div class="hc-pos-change ${positive ? "positive" : "negative"}">${escapeHtml(fmtSignedPct(changePct, true))}</div>
+            <div class="hc-pos-change ${pnlClass}">${escapeHtml(pnlDisplay)}</div>
           </div>
         </div>
       `;
@@ -374,7 +389,13 @@
 
       const meta = document.getElementById("heroMeta");
       if (meta) {
-        meta.innerHTML = `All-time: <span id="heroTotalPnl">${escapeHtml(fmtSignedUsd(totalPnl))}</span>`;
+        const coinbaseValue = Number(snapshot.coinbase_value_usd || Math.max(0, totalValue - Number(snapshot.webull_value_usd || 0)));
+        const webullValue = Number(snapshot.webull_value_usd || 0);
+        if (webullValue > 0) {
+          meta.innerHTML = `Portfolio: <span>${escapeHtml(fmtUsd(totalValue))}</span> (Coinbase ${escapeHtml(fmtUsd(coinbaseValue))} + Webull ${escapeHtml(fmtUsd(webullValue))}) · All-time: <span id="heroTotalPnl">${escapeHtml(fmtSignedUsd(totalPnl))}</span>`;
+        } else {
+          meta.innerHTML = `All-time: <span id="heroTotalPnl">${escapeHtml(fmtSignedUsd(totalPnl))}</span>`;
+        }
       }
 
       const cashPct = totalValue > 0 ? cash / totalValue : 0;
@@ -393,8 +414,10 @@
 
       const positions = snapshot.positions && typeof snapshot.positions === "object" ? Object.entries(snapshot.positions) : [];
       const coreAssets = new Set(Object.keys(snapshot.config?.core_assets || {}));
-      const coreCount = positions.filter(([productId, row]) => coreAssets.has(productId) && Number(row?.value_total_usd || 0) > 0).length;
-      const satelliteCount = positions.filter(([productId, row]) => !coreAssets.has(productId) && Number(row?.value_total_usd || 0) > 0).length;
+      const dustMin = Number(snapshot.config?.dust_min_value_usd || 2.0);
+      const meaningfulPositions = positions.filter(([, row]) => Number(row?.value_total_usd || 0) >= dustMin);
+      const coreCount = meaningfulPositions.filter(([productId]) => coreAssets.has(productId)).length;
+      const satelliteCount = meaningfulPositions.filter(([productId]) => !coreAssets.has(productId)).length;
 
       document.getElementById("ctxCash").textContent = fmtUsd(cash);
       document.getElementById("ctxCashPct").textContent = `${fmtPct(cashPct)} of portfolio`;

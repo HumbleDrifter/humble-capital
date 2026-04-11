@@ -1471,9 +1471,71 @@ def _build_portfolio_history():
 
         return filtered
 
+    def smooth_equity_spikes(points, max_drop_pct=0.05, window=5):
+        """Remove multi-point valleys caused by Coinbase order holds."""
+        if len(points or []) < 3:
+            return list(points or [])
+
+        def _val(p):
+            return _safe_float(p.get("total_value_usd", p.get("equity_usd", 0.0))) if isinstance(p, dict) else 0.0
+
+        smoothed = [dict(point or {}) for point in points]
+
+        # Pass 1: detect and fix single-point spikes.
+        for i in range(1, len(smoothed) - 1):
+            prev_val = _val(smoothed[i - 1])
+            curr_val = _val(smoothed[i])
+            next_val = _val(smoothed[i + 1])
+
+            if prev_val > 0 and curr_val > 0 and next_val > 0:
+                drop = (curr_val - prev_val) / prev_val
+                recovery = (next_val - curr_val) / curr_val
+                if drop < -max_drop_pct and recovery > 0.03:
+                    interp = (prev_val + next_val) / 2.0
+                    if "total_value_usd" in smoothed[i]:
+                        smoothed[i]["total_value_usd"] = interp
+                    if "equity_usd" in smoothed[i]:
+                        smoothed[i]["equity_usd"] = interp
+
+        # Pass 2: detect multi-point valleys (2-5 intervals).
+        i = 1
+        while i < len(smoothed) - 2:
+            prev_val = _val(smoothed[i - 1])
+            curr_val = _val(smoothed[i])
+
+            if prev_val > 0 and curr_val > 0:
+                drop = (curr_val - prev_val) / prev_val
+                if drop < -max_drop_pct:
+                    recovery_idx = None
+                    for j in range(i + 1, min(i + window + 1, len(smoothed))):
+                        future_val = _val(smoothed[j])
+                        if future_val > 0 and prev_val > 0:
+                            recovery = (future_val - prev_val) / prev_val
+                            if abs(recovery) < max_drop_pct:
+                                recovery_idx = j
+                                break
+
+                    if recovery_idx:
+                        start_val = prev_val
+                        end_val = _val(smoothed[recovery_idx])
+                        span = recovery_idx - (i - 1)
+                        for k in range(i, recovery_idx):
+                            frac = (k - (i - 1)) / span
+                            interp = start_val + (end_val - start_val) * frac
+                            if "total_value_usd" in smoothed[k]:
+                                smoothed[k]["total_value_usd"] = interp
+                            if "equity_usd" in smoothed[k]:
+                                smoothed[k]["equity_usd"] = interp
+                        i = recovery_idx + 1
+                        continue
+            i += 1
+
+        return smoothed
+
     try:
         history_rows = get_portfolio_history_since(start_ts=start_ts)
         history_rows = _filter_portfolio_history_rows(history_rows)
+        history_rows = smooth_equity_spikes(history_rows)
         analytics = build_portfolio_history_analytics(history_rows, source="portfolio_history")
         advisory_payload = _advisory_payload(analytics)
         risk_score = advisory_payload["risk_score"]
@@ -1483,10 +1545,12 @@ def _build_portfolio_history():
             {
                 "ts": _safe_int(row.get("ts")),
                 "equity_usd": _safe_float(row.get("total_value_usd")),
+                "total_value_usd": _safe_float(row.get("total_value_usd")),
             }
             for row in history_rows
         ]
         points = _filter_portfolio_value_points(points)
+        points = smooth_equity_spikes(points)
         if points:
             return {
                 "ok": True,
@@ -1565,10 +1629,12 @@ def _build_portfolio_history():
                     {
                         "ts": _safe_int(r["ts"]),
                         "equity_usd": _safe_float(r["equity_usd"]),
+                        "total_value_usd": _safe_float(r["equity_usd"]),
                     }
                     for r in rows
                 ]
                 points = _filter_portfolio_value_points(points)
+                points = smooth_equity_spikes(points)
                 if points:
                     series_type = "portfolio_value"
             elif "realized_pnl" in columns and ts_expr:

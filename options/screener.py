@@ -1,0 +1,441 @@
+import math
+import time
+
+from options.chain_fetcher import OptionChainFetcher
+
+_SCAN_CACHE = {}
+_SCAN_CACHE_TTL = 900
+
+DEFAULT_WATCHLIST = [
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD",
+    "SPY", "QQQ", "IWM", "NFLX", "DIS", "BA", "JPM", "GS", "BAC",
+    "XOM", "CVX", "PFE", "JNJ", "V", "MA", "COST", "WMT",
+    "HD", "LOW", "CRM", "ORCL", "ADBE", "INTC", "MU", "QCOM",
+    "COIN", "MARA", "RIOT", "SQ", "PYPL", "UBER", "ABNB",
+    "PLTR", "SOFI", "NIO", "RIVN", "F", "GM", "T", "VZ", "KO", "PEP",
+]
+
+
+def _log(message):
+    print(f"[options_screener] {message}")
+
+
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except Exception:
+        return float(default)
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(float(value))
+    except Exception:
+        return int(default)
+
+
+def _normalize_symbol(symbol):
+    return str(symbol or "").upper().strip()
+
+
+def _mid_price(contract):
+    contract = contract if isinstance(contract, dict) else {}
+    bid = _safe_float(contract.get("bid"), 0.0)
+    ask = _safe_float(contract.get("ask"), 0.0)
+    last = _safe_float(contract.get("last"), 0.0)
+    if bid > 0 and ask > 0:
+        return (bid + ask) / 2.0
+    return max(last, bid, ask, 0.0)
+
+
+def _dte(expiration):
+    try:
+        from datetime import datetime, timezone
+
+        exp = datetime.strptime(str(expiration or "").strip(), "%Y-%m-%d").date()
+        now = datetime.now(timezone.utc).date()
+        return max(0, (exp - now).days)
+    except Exception:
+        return 0
+
+
+def _annualized_yield(premium_received, capital_at_risk, dte):
+    premium_received = _safe_float(premium_received, 0.0)
+    capital_at_risk = _safe_float(capital_at_risk, 0.0)
+    dte = max(1, _safe_int(dte, 0))
+    if premium_received <= 0 or capital_at_risk <= 0:
+        return 0.0
+    return (premium_received / capital_at_risk) * (365.0 / dte) * 100.0
+
+
+def _prob_from_delta(delta):
+    delta = abs(_safe_float(delta, 0.0))
+    return max(0.0, min(0.99, 1.0 - delta))
+
+
+def _risk_reward_ratio(credit, width):
+    credit = _safe_float(credit, 0.0)
+    width = _safe_float(width, 0.0)
+    risk = max(0.01, width - credit)
+    return credit / risk
+
+
+class OptionsScreener:
+    def __init__(self, watchlist=None, broker="webull"):
+        self.watchlist = [_normalize_symbol(symbol) for symbol in (watchlist or DEFAULT_WATCHLIST) if _normalize_symbol(symbol)]
+        self.broker = str(broker or "webull").strip().lower()
+        self.chain_fetcher = OptionChainFetcher(broker=self.broker)
+
+    def _cache_key(self, strategies):
+        strategies = tuple(sorted(str(item).strip().lower() for item in (strategies or [])))
+        return (self.broker, tuple(self.watchlist), strategies)
+
+    def _cache_get(self, key):
+        row = _SCAN_CACHE.get(key)
+        if not isinstance(row, dict):
+            return None
+        if (time.time() - _safe_float(row.get("ts"), 0.0)) >= _SCAN_CACHE_TTL:
+            _SCAN_CACHE.pop(key, None)
+            return None
+        return row.get("data")
+
+    def _cache_set(self, key, data):
+        _SCAN_CACHE[key] = {"ts": time.time(), "data": data}
+
+    def _iter_tradeable_expirations(self, symbol):
+        expirations = self.chain_fetcher.get_expirations(symbol)
+        return [exp for exp in expirations if 14 <= _dte(exp) <= 45]
+
+    def scan_covered_calls(self, symbol, shares_held=100) -> list:
+        symbol = _normalize_symbol(symbol)
+        quote = self.chain_fetcher._get_quote(symbol)
+        current_price = _safe_float((quote or {}).get("price"), 0.0)
+        if current_price <= 0 or _safe_int(shares_held, 0) < 100:
+            return []
+
+        opportunities = []
+        for expiration in self._iter_tradeable_expirations(symbol):
+            chain = self.chain_fetcher.get_chain(symbol, expiration=expiration)
+            if not chain.get("ok"):
+                continue
+            calls = ((chain.get("chains") or {}).get(expiration) or {}).get("calls") or []
+            dte = _dte(expiration)
+            for call in calls:
+                delta = abs(_safe_float(call.get("delta"), 0.0))
+                oi = _safe_int(call.get("open_interest"), 0)
+                strike = _safe_float(call.get("strike"), 0.0)
+                premium = _mid_price(call)
+                if not (0.20 <= delta <= 0.35):
+                    continue
+                if oi <= 100 or premium <= 0 or strike <= current_price:
+                    continue
+                monthly_yield_pct = (premium / current_price) * (30.0 / max(1, dte)) * 100.0
+                if monthly_yield_pct <= 1.0:
+                    continue
+                annualized = _annualized_yield(premium * 100.0, current_price * 100.0, dte)
+                opportunities.append({
+                    "symbol": symbol,
+                    "strategy": "covered_call",
+                    "expiration": expiration,
+                    "details": {
+                        "strike": strike,
+                        "premium": round(premium, 2),
+                        "delta": round(delta, 3),
+                        "open_interest": oi,
+                        "shares_covered": _safe_int(shares_held, 100),
+                    },
+                    "annualized_yield": round(annualized, 2),
+                    "prob_profit": round(_prob_from_delta(delta), 3),
+                    "iv_rank": self.chain_fetcher.get_iv_rank(symbol),
+                    "risk_reward_ratio": 3.0,
+                    "liquidity_score": oi * max(1, _safe_int(call.get("volume"), 0)),
+                    "risk_reward": "covered",
+                })
+        return sorted(opportunities, key=lambda row: row.get("annualized_yield", 0.0), reverse=True)
+
+    def scan_cash_secured_puts(self, symbol, max_capital=None) -> list:
+        symbol = _normalize_symbol(symbol)
+        quote = self.chain_fetcher._get_quote(symbol)
+        current_price = _safe_float((quote or {}).get("price"), 0.0)
+        if current_price <= 0:
+            return []
+
+        max_capital = _safe_float(max_capital, 0.0)
+        opportunities = []
+        for expiration in self._iter_tradeable_expirations(symbol):
+            chain = self.chain_fetcher.get_chain(symbol, expiration=expiration)
+            if not chain.get("ok"):
+                continue
+            puts = ((chain.get("chains") or {}).get(expiration) or {}).get("puts") or []
+            dte = _dte(expiration)
+            for put in puts:
+                delta = _safe_float(put.get("delta"), 0.0)
+                abs_delta = abs(delta)
+                oi = _safe_int(put.get("open_interest"), 0)
+                strike = _safe_float(put.get("strike"), 0.0)
+                premium = _mid_price(put)
+                capital_at_risk = strike * 100.0
+                if not (0.20 <= abs_delta <= 0.35):
+                    continue
+                if oi <= 100 or premium <= 0 or strike >= current_price * 0.95:
+                    continue
+                if max_capital > 0 and capital_at_risk > max_capital:
+                    continue
+                monthly_yield_pct = (premium / strike) * (30.0 / max(1, dte)) * 100.0
+                if monthly_yield_pct <= 1.0:
+                    continue
+                annualized = _annualized_yield(premium * 100.0, capital_at_risk, dte)
+                opportunities.append({
+                    "symbol": symbol,
+                    "strategy": "cash_secured_put",
+                    "expiration": expiration,
+                    "details": {
+                        "strike": strike,
+                        "premium": round(premium, 2),
+                        "delta": round(delta, 3),
+                        "open_interest": oi,
+                        "secured_capital": round(capital_at_risk, 2),
+                    },
+                    "annualized_yield": round(annualized, 2),
+                    "prob_profit": round(_prob_from_delta(delta), 3),
+                    "iv_rank": self.chain_fetcher.get_iv_rank(symbol),
+                    "risk_reward_ratio": 2.5,
+                    "liquidity_score": oi * max(1, _safe_int(put.get("volume"), 0)),
+                    "risk_reward": "secured",
+                })
+        return sorted(opportunities, key=lambda row: row.get("annualized_yield", 0.0), reverse=True)
+
+    def scan_credit_spreads(self, symbol, spread_type="bull_put") -> list:
+        symbol = _normalize_symbol(symbol)
+        spread_type = str(spread_type or "bull_put").strip().lower()
+        quote = self.chain_fetcher._get_quote(symbol)
+        current_price = _safe_float((quote or {}).get("price"), 0.0)
+        if current_price <= 0:
+            return []
+
+        opportunities = []
+        for expiration in self._iter_tradeable_expirations(symbol):
+            chain = self.chain_fetcher.get_chain(symbol, expiration=expiration)
+            if not chain.get("ok"):
+                continue
+            side_key = "puts" if spread_type == "bull_put" else "calls"
+            contracts = ((chain.get("chains") or {}).get(expiration) or {}).get(side_key) or []
+            dte = _dte(expiration)
+            for short_leg in contracts:
+                short_delta = abs(_safe_float(short_leg.get("delta"), 0.0))
+                if not (0.20 <= short_delta <= 0.30):
+                    continue
+                for long_leg in contracts:
+                    short_strike = _safe_float(short_leg.get("strike"), 0.0)
+                    long_strike = _safe_float(long_leg.get("strike"), 0.0)
+                    width = abs(short_strike - long_strike)
+                    if width < 2 or width > 5:
+                        continue
+                    if spread_type == "bull_put" and not (long_strike < short_strike):
+                        continue
+                    if spread_type == "bear_call" and not (long_strike > short_strike):
+                        continue
+                    credit = _mid_price(short_leg) - _mid_price(long_leg)
+                    if credit <= 0 or credit < (width * 0.30):
+                        continue
+                    liquidity = min(_safe_int(short_leg.get("open_interest"), 0), _safe_int(long_leg.get("open_interest"), 0))
+                    if liquidity <= 100:
+                        continue
+                    rr = _risk_reward_ratio(credit, width)
+                    opportunities.append({
+                        "symbol": symbol,
+                        "strategy": spread_type,
+                        "expiration": expiration,
+                        "details": {
+                            "short_strike": short_strike,
+                            "long_strike": long_strike,
+                            "credit": round(credit, 2),
+                            "width": round(width, 2),
+                            "delta": round(short_delta, 3),
+                        },
+                        "annualized_yield": round(_annualized_yield(credit * 100.0, (width - credit) * 100.0, dte), 2),
+                        "prob_profit": round(_prob_from_delta(short_delta), 3),
+                        "iv_rank": self.chain_fetcher.get_iv_rank(symbol),
+                        "risk_reward_ratio": round(rr, 3),
+                        "liquidity_score": liquidity * max(1, _safe_int(short_leg.get("volume"), 0)),
+                        "risk_reward": f"{rr:.2f}:1",
+                    })
+        return sorted(opportunities, key=lambda row: row.get("risk_reward_ratio", 0.0), reverse=True)
+
+    def scan_iron_condors(self, symbol) -> list:
+        symbol = _normalize_symbol(symbol)
+        iv_rank = self.chain_fetcher.get_iv_rank(symbol)
+        if iv_rank <= 50:
+            return []
+
+        opportunities = []
+        for expiration in self._iter_tradeable_expirations(symbol):
+            dte = _dte(expiration)
+            if not (30 <= dte <= 45):
+                continue
+            chain = self.chain_fetcher.get_chain(symbol, expiration=expiration)
+            if not chain.get("ok"):
+                continue
+            expiry_chain = (chain.get("chains") or {}).get(expiration) or {}
+            calls = expiry_chain.get("calls") or []
+            puts = expiry_chain.get("puts") or []
+            short_calls = [row for row in calls if 0.15 <= abs(_safe_float(row.get("delta"), 0.0)) <= 0.20]
+            short_puts = [row for row in puts if 0.15 <= abs(_safe_float(row.get("delta"), 0.0)) <= 0.20]
+            for short_call in short_calls:
+                for short_put in short_puts:
+                    call_candidates = [row for row in calls if 2 <= (_safe_float(row.get("strike"), 0.0) - _safe_float(short_call.get("strike"), 0.0)) <= 3]
+                    put_candidates = [row for row in puts if 2 <= (_safe_float(short_put.get("strike"), 0.0) - _safe_float(row.get("strike"), 0.0)) <= 3]
+                    if not call_candidates or not put_candidates:
+                        continue
+                    long_call = call_candidates[0]
+                    long_put = put_candidates[-1]
+                    call_width = _safe_float(long_call.get("strike"), 0.0) - _safe_float(short_call.get("strike"), 0.0)
+                    put_width = _safe_float(short_put.get("strike"), 0.0) - _safe_float(long_put.get("strike"), 0.0)
+                    total_width = min(call_width, put_width)
+                    credit = (
+                        _mid_price(short_call) - _mid_price(long_call)
+                        + _mid_price(short_put) - _mid_price(long_put)
+                    )
+                    if total_width <= 0 or credit <= 0 or credit < (total_width * 0.33):
+                        continue
+                    pop = min(_prob_from_delta(_safe_float(short_call.get("delta"), 0.0)), _prob_from_delta(_safe_float(short_put.get("delta"), 0.0)))
+                    liquidity = min(
+                        _safe_int(short_call.get("open_interest"), 0),
+                        _safe_int(short_put.get("open_interest"), 0),
+                        _safe_int(long_call.get("open_interest"), 0),
+                        _safe_int(long_put.get("open_interest"), 0),
+                    )
+                    if liquidity <= 100:
+                        continue
+                    rr = _risk_reward_ratio(credit, total_width)
+                    opportunities.append({
+                        "symbol": symbol,
+                        "strategy": "iron_condor",
+                        "expiration": expiration,
+                        "details": {
+                            "short_call": _safe_float(short_call.get("strike"), 0.0),
+                            "long_call": _safe_float(long_call.get("strike"), 0.0),
+                            "short_put": _safe_float(short_put.get("strike"), 0.0),
+                            "long_put": _safe_float(long_put.get("strike"), 0.0),
+                            "credit": round(credit, 2),
+                            "width": round(total_width, 2),
+                        },
+                        "annualized_yield": round(_annualized_yield(credit * 100.0, (total_width - credit) * 100.0, dte), 2),
+                        "prob_profit": round(pop, 3),
+                        "iv_rank": round(iv_rank, 2),
+                        "risk_reward_ratio": round(rr, 3),
+                        "liquidity_score": liquidity,
+                        "risk_reward": f"{rr:.2f}:1",
+                    })
+        return sorted(opportunities, key=lambda row: (row.get("annualized_yield", 0.0), row.get("prob_profit", 0.0)), reverse=True)
+
+    def score_opportunity(self, opp) -> float:
+        opp = opp if isinstance(opp, dict) else {}
+        annualized = min(100.0, max(0.0, _safe_float(opp.get("annualized_yield"), 0.0)))
+        pop = min(1.0, max(0.0, _safe_float(opp.get("prob_profit"), 0.0))) * 100.0
+        iv_rank = min(100.0, max(0.0, _safe_float(opp.get("iv_rank"), 0.0)))
+        liquidity_raw = max(1.0, _safe_float(opp.get("liquidity_score"), 0.0))
+        liquidity = min(100.0, math.log10(liquidity_raw + 1.0) * 20.0)
+        rr = min(100.0, max(0.0, _safe_float(opp.get("risk_reward_ratio"), 0.0) * 20.0))
+        score = (
+            annualized * 0.30
+            + pop * 0.25
+            + iv_rank * 0.20
+            + liquidity * 0.15
+            + rr * 0.10
+        )
+        return round(max(0.0, min(100.0, score)), 2)
+
+    def scan_universe(self, strategies=None) -> dict:
+        default_strategies = ["covered_calls", "cash_secured_puts", "credit_spreads", "iron_condors"]
+        strategies = [str(item).strip().lower() for item in (strategies or default_strategies)]
+        cache_key = self._cache_key(strategies)
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        opportunities = []
+        scanned = 0
+        for symbol in self.watchlist:
+            scanned += 1
+            try:
+                iv_rank = self.chain_fetcher.get_iv_rank(symbol)
+                symbol_opps = []
+                if "covered_calls" in strategies and iv_rank >= 50:
+                    symbol_opps.extend(self.scan_covered_calls(symbol))
+                if "cash_secured_puts" in strategies and iv_rank >= 50:
+                    symbol_opps.extend(self.scan_cash_secured_puts(symbol))
+                if "credit_spreads" in strategies and iv_rank >= 50:
+                    symbol_opps.extend(self.scan_credit_spreads(symbol, "bull_put"))
+                    symbol_opps.extend(self.scan_credit_spreads(symbol, "bear_call"))
+                if "iron_condors" in strategies and iv_rank >= 50:
+                    symbol_opps.extend(self.scan_iron_condors(symbol))
+
+                for opp in symbol_opps:
+                    opp["iv_rank"] = round(_safe_float(opp.get("iv_rank"), iv_rank), 2)
+                    opp["score"] = self.score_opportunity(opp)
+                opportunities.extend(symbol_opps)
+            except Exception as exc:
+                _log(f"scan failed symbol={symbol} error={exc}")
+            time.sleep(0.5)
+
+        opportunities.sort(key=lambda row: (row.get("score", 0.0), row.get("annualized_yield", 0.0)), reverse=True)
+        avg_yield = sum(_safe_float(row.get("annualized_yield"), 0.0) for row in opportunities) / len(opportunities) if opportunities else 0.0
+        result = {
+            "scan_time": int(time.time()),
+            "opportunities": opportunities,
+            "summary": {
+                "total_scanned": scanned,
+                "opportunities_found": len(opportunities),
+                "best_opportunity": opportunities[0] if opportunities else None,
+                "avg_annualized_yield": round(avg_yield, 2),
+            },
+        }
+        self._cache_set(cache_key, result)
+        return result
+
+    def get_recommendation(self, capital_available, risk_tolerance="moderate") -> list:
+        capital_available = _safe_float(capital_available, 0.0)
+        risk_tolerance = str(risk_tolerance or "moderate").strip().lower()
+        scan = self.scan_universe()
+        opportunities = list(scan.get("opportunities") or [])
+        allowed = {
+            "conservative": {"covered_call", "cash_secured_put", "covered_calls", "cash_secured_puts"},
+            "moderate": {"covered_call", "cash_secured_put", "bull_put", "bear_call"},
+            "aggressive": {"covered_call", "cash_secured_put", "bull_put", "bear_call", "iron_condor"},
+        }.get(risk_tolerance, {"covered_call", "cash_secured_put", "bull_put", "bear_call"})
+
+        recommendations = []
+        for opp in opportunities:
+            strategy = str(opp.get("strategy") or "").strip().lower()
+            if strategy not in allowed:
+                continue
+            details = opp.get("details") or {}
+            required_capital = 0.0
+            if strategy == "cash_secured_put":
+                required_capital = _safe_float(details.get("secured_capital"), 0.0)
+            elif strategy in {"bull_put", "bear_call", "iron_condor"}:
+                width = _safe_float(details.get("width"), 0.0)
+                credit = _safe_float(details.get("credit"), 0.0)
+                required_capital = max(0.0, (width - credit) * 100.0)
+            else:
+                required_capital = 0.0
+
+            if required_capital > capital_available > 0:
+                continue
+
+            recommendations.append({
+                "symbol": opp.get("symbol"),
+                "strategy": opp.get("strategy"),
+                "expiration": opp.get("expiration"),
+                "score": opp.get("score"),
+                "annualized_yield": opp.get("annualized_yield"),
+                "prob_profit": opp.get("prob_profit"),
+                "iv_rank": opp.get("iv_rank"),
+                "required_capital": round(required_capital, 2),
+                "order_details": details,
+            })
+            if len(recommendations) >= 5:
+                break
+
+        return recommendations

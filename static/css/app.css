@@ -1516,15 +1516,23 @@ canvas {
 }
 
 .brand-mark {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
   display: grid;
   place-items: center;
   background: linear-gradient(180deg, rgba(56, 189, 248, 0.18), rgba(56, 189, 248, 0.08));
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  font-size: 20px;
-}
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    font-size: 20px;
+  }
+
+.brand-mark svg,
+.mobile-brand-mark svg,
+.public-brand-mark svg {
+    display: block;
+    width: 28px;
+    height: 28px;
+  }
 
 .brand-title {
   font-weight: 700;

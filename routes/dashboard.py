@@ -99,7 +99,7 @@ def backtesting_page():
 @dashboard_bp.route("/backtest", methods=["GET"])
 @require_dashboard_auth
 def backtest_page():
-    return _redirect_with_secret("/backtesting")
+    return _redirect_with_secret("/backtesting", "crypto")
 
 
 @dashboard_bp.route("/portfolio-backtest", methods=["GET"])

@@ -67,6 +67,7 @@ from services.config_proposal_service import (
 )
 from services.satellite_decision_engine import build_satellite_decisions
 from shadow_rotation_report import build_shadow_rotation_report
+from stock_backtester import StockBacktester
 from stock_scanner import StockScanner
 from stock_universe import StockUniverse
 from storage import get_portfolio_history_since
@@ -2873,6 +2874,34 @@ def api_stocks_quote():
             "change_pct": round(change_pct, 2),
             "volume": int(_safe_float(info.get("volume"), 0.0)),
             "market_cap": _safe_float(info.get("marketCap"), 0.0),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/backtest", methods=["POST"])
+@require_api_auth
+def api_stocks_backtest():
+    try:
+        data = request.get_json(silent=True) or {}
+        payload = {
+            "symbol": str(data.get("symbol") or "AAPL").upper().strip(),
+            "strategy": str(data.get("strategy") or "ema_momentum").strip().lower(),
+            "start_date": data.get("start_date"),
+            "end_date": data.get("end_date"),
+            "starting_capital": _safe_float(data.get("starting_capital"), 10000.0),
+            "fee_pct": _safe_float(data.get("fee_pct"), 0.0),
+            "params": dict(data.get("params") or {}),
+        }
+        bt = StockBacktester(config=payload)
+        result = bt.run()
+        return jsonify({
+            "ok": True,
+            "symbol": payload["symbol"],
+            "strategy": payload["strategy"],
+            "summary": dict((result or {}).get("summary") or {}),
+            "equity_curve": list((result or {}).get("equity_curve") or []),
+            "trade_log": list((result or {}).get("trade_log") or []),
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

@@ -97,18 +97,22 @@ def performance_page():
 @dashboard_bp.route("/backtesting", methods=["GET"])
 @require_dashboard_auth
 def backtesting_page():
-    return render_template("app/backtest.html", **_page_context("Backtesting"))
+    return render_template("app/backtesting.html", **_page_context("Backtesting"))
 
 
 @dashboard_bp.route("/backtest", methods=["GET"])
 @require_dashboard_auth
 def backtest_page():
+    if request.args.get("embed") == "1":
+        return render_template("app/backtest.html", embed_mode=True, **_page_context("Crypto Backtest"))
     return _redirect_with_secret("/backtesting", "crypto")
 
 
 @dashboard_bp.route("/portfolio-backtest", methods=["GET"])
 @require_dashboard_auth
 def portfolio_backtest_page():
+    if request.args.get("embed") == "1":
+        return render_template("app/portfolio_backtest.html", embed_mode=True, **_page_context("Portfolio Backtest"))
     return _redirect_with_secret("/backtesting", "portfolio")
 
 

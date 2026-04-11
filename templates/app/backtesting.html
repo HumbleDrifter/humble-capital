@@ -1,0 +1,420 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="bt-shell">
+  <section class="bt-header bt-observe">
+    <div class="bt-header-copy bt-reveal">
+      <div class="bt-kicker">Unified Backtesting Hub</div>
+      <h2 class="bt-title">Replay crypto, stocks, options, and full portfolio systems from one workspace.</h2>
+      <p class="bt-subtitle" id="hubMeta">Every tab uses the same KPI, curve, and trade review pattern so you can compare markets without switching tools.</p>
+    </div>
+  </section>
+
+  <div class="page-tabs">
+    <button class="page-tab active" data-tab="crypto" type="button">Crypto</button>
+    <button class="page-tab" data-tab="stocks" type="button">Stocks</button>
+    <button class="page-tab" data-tab="options" type="button">Options</button>
+    <button class="page-tab" data-tab="portfolio" type="button">Portfolio</button>
+  </div>
+
+  <div class="page-tab-content active" id="tab-crypto">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Crypto Backtesting"
+        src="{{ '/backtest?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/backtest?embed=1' }}"
+        style="width:100%; min-height:2350px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <div class="page-tab-content" id="tab-stocks">
+    <section class="bt-controls bt-observe">
+      <div class="hc-chart-section bt-reveal">
+        <div class="bt-section-head">
+          <div>
+            <h2 class="bt-section-title">Stock Backtester</h2>
+            <p class="bt-section-subtitle" id="stockBacktestMeta">Daily-bar backtests across Tier 1 and Tier 2 stocks.</p>
+          </div>
+          <button class="btn btn-primary bt-run-btn" id="stockRunBtn" type="button">Run Backtest</button>
+        </div>
+
+        <div class="bt-controls-grid">
+          <div class="form-card bt-form-card">
+            <label for="stockBtSymbol">Symbol</label>
+            <select id="stockBtSymbol" class="select"><option value="AAPL">Loading symbols...</option></select>
+            <div class="field-help" id="stockUniverseMeta">Loading Tier 1 + Tier 2 universe…</div>
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="stockBtLookback">Lookback</label>
+            <select id="stockBtLookback" class="select">
+              <option value="90">90d</option>
+              <option value="180" selected>180d</option>
+              <option value="365">1Y</option>
+              <option value="730">2Y</option>
+            </select>
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="stockBtStrategy">Strategy</label>
+            <select id="stockBtStrategy" class="select">
+              <option value="ema_momentum">EMA Momentum</option>
+              <option value="bb_breakout">BB Breakout</option>
+              <option value="mean_reversion">Mean Reversion</option>
+              <option value="trend_following">Trend Following</option>
+            </select>
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="stockBtCapital">Starting Capital</label>
+            <input id="stockBtCapital" class="form-input" type="number" min="1000" step="500" value="10000">
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="stockBtFee">Fee (%)</label>
+            <input id="stockBtFee" class="form-input" type="number" min="0" step="0.01" value="0.00">
+          </div>
+        </div>
+
+        <details class="configuration-advanced-toggle bt-advanced-toggle">
+          <summary>Parameter Overrides</summary>
+          <div class="bt-params-grid">
+            <div class="form-card bt-form-card"><label for="stockBtEmaFast">EMA Fast</label><input id="stockBtEmaFast" class="form-input" type="number" value="21"></div>
+            <div class="form-card bt-form-card"><label for="stockBtEmaMid">EMA Mid</label><input id="stockBtEmaMid" class="form-input" type="number" value="50"></div>
+            <div class="form-card bt-form-card"><label for="stockBtEmaSlow">EMA Slow</label><input id="stockBtEmaSlow" class="form-input" type="number" value="200"></div>
+            <div class="form-card bt-form-card"><label for="stockBtRsiBuy">RSI Buy</label><input id="stockBtRsiBuy" class="form-input" type="number" value="40"></div>
+            <div class="form-card bt-form-card"><label for="stockBtRsiExit">RSI Exit</label><input id="stockBtRsiExit" class="form-input" type="number" value="70"></div>
+            <div class="form-card bt-form-card"><label for="stockBtAdxMin">ADX Minimum</label><input id="stockBtAdxMin" class="form-input" type="number" value="20"></div>
+            <div class="form-card bt-form-card"><label for="stockBtBbPeriod">BB Period</label><input id="stockBtBbPeriod" class="form-input" type="number" value="20"></div>
+            <div class="form-card bt-form-card"><label for="stockBtBbStd">BB Std Dev</label><input id="stockBtBbStd" class="form-input" type="number" step="0.1" value="2.0"></div>
+          </div>
+        </details>
+        <div class="field-help" id="stockBtStatus">Ready to run.</div>
+      </div>
+    </section>
+
+    <section class="bt-kpi-grid bt-observe">
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Return</div><div class="hc-context-value" id="stockKpiReturn">0.00%</div><div class="hc-context-detail">Net of fees</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Win Rate</div><div class="hc-context-value" id="stockKpiWinRate">0.00%</div><div class="hc-context-detail">Closed trades</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Profit Factor</div><div class="hc-context-value" id="stockKpiProfitFactor">0.00</div><div class="hc-context-detail">Gross wins / losses</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Max DD</div><div class="hc-context-value" id="stockKpiDrawdown">0.00%</div><div class="hc-context-detail">Peak-to-trough</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Trades</div><div class="hc-context-value" id="stockKpiTrades">0</div><div class="hc-context-detail">BUY / EXIT cycles</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Avg Hold</div><div class="hc-context-value" id="stockKpiHold">0 bars</div><div class="hc-context-detail">Average duration</div></div>
+    </section>
+
+    <section class="bt-results-grid bt-observe">
+      <div class="hc-chart-section bt-reveal">
+        <div class="hc-chart-header"><div><span class="hc-chart-title">Stock Equity Curve</span><div class="bt-chart-meta" id="stockChartMeta">Run a stock backtest to render equity.</div></div></div>
+        <div id="stockChartHost" class="hc-chart-host"><div class="hc-chart-empty">Run a stock backtest to see the equity curve.</div></div>
+      </div>
+      <div class="hc-chart-section bt-reveal">
+        <div class="bt-section-head"><div><h2 class="bt-section-title">Trade Feed</h2><p class="bt-section-subtitle" id="stockTradeMeta">Trades will appear here after the run.</p></div></div>
+        <div class="bt-trade-feed" id="stockTradeFeed"><div class="hc-empty-card">No stock backtest results yet.</div></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-options">
+    <section class="bt-controls bt-observe">
+      <div class="hc-chart-section bt-reveal">
+        <div class="bt-section-head">
+          <div>
+            <h2 class="bt-section-title">Options Strategy Backtester</h2>
+            <p class="bt-section-subtitle" id="optionsBacktestMeta">Replay Wheel, spreads, iron condors, and earnings trades on historical stock moves.</p>
+          </div>
+          <button class="btn btn-primary bt-run-btn" id="optionsRunBtn" type="button">Run Backtest</button>
+        </div>
+
+        <div class="bt-controls-grid">
+          <div class="form-card bt-form-card">
+            <label for="optionsBtSymbol">Symbol</label>
+            <select id="optionsBtSymbol" class="select"><option value="AAPL">Loading symbols...</option></select>
+            <div class="field-help">Uses the same optionable universe as the stock scanner.</div>
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="optionsBtLookback">Lookback</label>
+            <select id="optionsBtLookback" class="select">
+              <option value="180">6M</option>
+              <option value="365" selected>1Y</option>
+              <option value="730">2Y</option>
+            </select>
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="optionsBtStrategy">Strategy</label>
+            <select id="optionsBtStrategy" class="select">
+              <option value="wheel">Wheel</option>
+              <option value="credit_spread">Credit Spread</option>
+              <option value="iron_condor">Iron Condor</option>
+              <option value="earnings_strangle">Earnings Strangle</option>
+            </select>
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="optionsBtCapital">Starting Capital</label>
+            <input id="optionsBtCapital" class="form-input" type="number" min="1000" step="500" value="5000">
+          </div>
+          <div class="form-card bt-form-card">
+            <label for="optionsBtFee">Fee / Contract</label>
+            <input id="optionsBtFee" class="form-input" type="number" min="0" step="0.05" value="0.65">
+          </div>
+        </div>
+
+        <details class="configuration-advanced-toggle bt-advanced-toggle">
+          <summary>Parameter Overrides</summary>
+          <div class="bt-params-grid">
+            <div class="form-card bt-form-card"><label for="optionsBtDelta">Delta</label><input id="optionsBtDelta" class="form-input" type="number" min="0.10" max="0.40" step="0.01" value="0.25"></div>
+            <div class="form-card bt-form-card"><label for="optionsBtDte">DTE</label><input id="optionsBtDte" class="form-input" type="number" min="7" max="60" step="1" value="30"></div>
+            <div class="form-card bt-form-card"><label for="optionsBtProfitTarget">Profit Target %</label><input id="optionsBtProfitTarget" class="form-input" type="number" min="25" max="75" step="1" value="50"></div>
+            <div class="form-card bt-form-card"><label for="optionsBtStopLoss">Stop Loss %</label><input id="optionsBtStopLoss" class="form-input" type="number" min="50" max="200" step="5" value="150"></div>
+            <div class="form-card bt-form-card"><label for="optionsBtSpreadWidth">Spread Width</label><input id="optionsBtSpreadWidth" class="form-input" type="number" min="1" max="10" step="1" value="5"></div>
+          </div>
+        </details>
+        <div class="field-help" id="optionsBtStatus">Ready to run.</div>
+      </div>
+    </section>
+
+    <section class="bt-kpi-grid bt-observe">
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Return</div><div class="hc-context-value" id="optionsKpiReturn">0.00%</div><div class="hc-context-detail">Net of fees</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Win Rate</div><div class="hc-context-value" id="optionsKpiWinRate">0.00%</div><div class="hc-context-detail">Closed trades</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Profit Factor</div><div class="hc-context-value" id="optionsKpiProfitFactor">0.00</div><div class="hc-context-detail">Gross wins / losses</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Premium</div><div class="hc-context-value" id="optionsKpiPremium">$0.00</div><div class="hc-context-detail">Collected premium</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Assignments</div><div class="hc-context-value" id="optionsKpiAssignments">0</div><div class="hc-context-detail">Wheel assignment events</div></div>
+      <div class="hc-context-card bt-reveal"><div class="hc-context-label">Avg Hold</div><div class="hc-context-value" id="optionsKpiHold">0 days</div><div class="hc-context-detail">Average duration</div></div>
+    </section>
+
+    <section class="bt-results-grid bt-observe">
+      <div class="hc-chart-section bt-reveal">
+        <div class="hc-chart-header"><div><span class="hc-chart-title">Options Equity Curve</span><div class="bt-chart-meta" id="optionsChartMeta">Run an options backtest to render equity.</div></div></div>
+        <div id="optionsChartHost" class="hc-chart-host"><div class="hc-chart-empty">Run an options backtest to see the equity curve.</div></div>
+      </div>
+      <div class="hc-chart-section bt-reveal">
+        <div class="bt-section-head"><div><h2 class="bt-section-title">Trade Feed</h2><p class="bt-section-subtitle" id="optionsTradeMeta">Entries, exits, premium, and assignment events will appear here.</p></div></div>
+        <div class="bt-trade-feed" id="optionsTradeFeed"><div class="hc-empty-card">No options backtest results yet.</div></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-portfolio">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Portfolio Backtesting"
+        src="{{ '/portfolio-backtest?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/portfolio-backtest?embed=1' }}"
+        style="width:100%; min-height:3200px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const API_SECRET = {{ api_secret|tojson }};
+  const FALLBACK_STOCKS = ["AAPL","AMD","AMZN","ABNB","BA","BAC","COIN","COST","CRM","CVX","DIS","F","GM","GME","GOOGL","GS","HD","INTC","IWM","JNJ","JPM","KO","LOW","MA","MARA","META","MSFT","MU","NFLX","NIO","NVDA","ORCL","PEP","PFE","PLTR","PYPL","QCOM","QQQ","RIOT","RIVN","SOFI","SQ","SPY","T","TSLA","UBER","V","VZ","WMT","XOM"];
+
+  function authUrl(path) {
+    if (!API_SECRET) return path;
+    return `${path}${path.includes("?") ? "&" : "?"}secret=${encodeURIComponent(API_SECRET)}`;
+  }
+
+  async function fetchJson(path, options) {
+    const response = await fetch(authUrl(path), Object.assign({ credentials: "same-origin" }, options || {}));
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  }
+
+  const fmtUsd = (v) => Number(v || 0).toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  const fmtPct = (v) => `${Number(v || 0).toFixed(2)}%`;
+  const fmtSignedPct = (v) => `${Number(v || 0) >= 0 ? "+" : "-"}${Math.abs(Number(v || 0)).toFixed(2)}%`;
+  const fmtDate = (v) => !v ? "—" : (Number(v) > 0 ? new Date(Number(v) * 1000).toLocaleDateString() : String(v));
+
+  function initTabs() {
+    const tabs = Array.from(document.querySelectorAll(".page-tab"));
+    const panels = Array.from(document.querySelectorAll(".page-tab-content"));
+    const showTab = (name) => {
+      tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
+      panels.forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${name}`));
+      history.replaceState(null, "", `#${name}`);
+    };
+    tabs.forEach((tab) => tab.addEventListener("click", () => showTab(tab.dataset.tab || "crypto")));
+    const hash = location.hash.slice(1);
+    if (hash && tabs.some((tab) => tab.dataset.tab === hash)) showTab(hash);
+  }
+
+  function setSelectOptions(id, symbols) {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const current = select.value || "AAPL";
+    const unique = Array.from(new Set((symbols || []).filter(Boolean))).sort();
+    select.innerHTML = unique.map((symbol) => `<option value="${symbol}" ${symbol === current ? "selected" : ""}>${symbol}</option>`).join("");
+    if (!unique.includes(current) && unique.length) select.value = unique[0];
+  }
+
+  async function loadStockUniverse() {
+    try {
+      const data = await fetchJson("/api/stocks/universe");
+      const tier1 = Array.isArray(data.tier1) ? data.tier1 : [];
+      const tier2 = Array.isArray(data.tier2) ? data.tier2 : [];
+      const merged = Array.from(new Set([...tier1, ...tier2]));
+      setSelectOptions("stockBtSymbol", merged.length ? merged : FALLBACK_STOCKS);
+      setSelectOptions("optionsBtSymbol", merged.length ? merged : FALLBACK_STOCKS);
+      document.getElementById("stockUniverseMeta").textContent = `${tier1.length} Tier 1 + ${tier2.length} Tier 2 symbols available`;
+    } catch (error) {
+      setSelectOptions("stockBtSymbol", FALLBACK_STOCKS);
+      setSelectOptions("optionsBtSymbol", FALLBACK_STOCKS);
+      document.getElementById("stockUniverseMeta").textContent = "Using fallback Tier 1 watchlist.";
+    }
+  }
+
+  function computeDateRange(days) {
+    const end = new Date();
+    const start = new Date(end.getTime() - (Number(days || 180) * 86400 * 1000));
+    return { start_date: start.toISOString().slice(0, 10), end_date: end.toISOString().slice(0, 10) };
+  }
+
+  function renderEquityChart(hostId, rows, key) {
+    const host = document.getElementById(hostId);
+    const points = Array.isArray(rows) ? rows.filter((row) => row && Number.isFinite(Number(row[key]))) : [];
+    if (!host) return;
+    if (!points.length) {
+      host.innerHTML = '<div class="hc-chart-empty">No equity data returned for this run.</div>';
+      return;
+    }
+    const width = 860, height = 310, lp = 68, rp = 22, tp = 18, bp = 34;
+    const cw = width - lp - rp, ch = height - tp - bp;
+    const values = points.map((row) => Number(row[key] || 0));
+    const min = Math.min(...values), max = Math.max(...values), spread = Math.max(1, max - min);
+    const coords = points.map((row, index) => ({ x: lp + ((cw * index) / Math.max(points.length - 1, 1)), y: tp + ((max - Number(row[key] || 0)) / spread) * ch }));
+    const line = coords.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ");
+    const area = `${line} L ${coords[coords.length - 1].x.toFixed(2)} ${(height - bp).toFixed(2)} L ${coords[0].x.toFixed(2)} ${(height - bp).toFixed(2)} Z`;
+    host.innerHTML = `<svg viewBox="0 0 ${width} ${height}" class="hc-chart-svg" role="img" aria-label="Equity curve"><defs><linearGradient id="${hostId}-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="rgba(56,189,248,0.36)"></stop><stop offset="100%" stop-color="rgba(56,189,248,0.04)"></stop></linearGradient></defs><path d="${area}" fill="url(#${hostId}-area)"></path><path d="${line}" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+  }
+
+  function renderTradeFeed(hostId, trades, type) {
+    const host = document.getElementById(hostId);
+    const rows = Array.isArray(trades) ? trades : [];
+    if (!host) return;
+    if (!rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No trade events for this run.</div>';
+      return;
+    }
+    host.innerHTML = rows.slice().reverse().slice(0, 60).map((trade) => {
+      const action = String(trade.action || trade.type || "TRADE").toUpperCase();
+      const pnl = Number(trade.pnl || 0);
+      const premium = Number(trade.premium || trade.premium_collected || 0);
+      const qty = Number(trade.qty || trade.contracts || 0);
+      return `<article class="bt-trade-card"><div class="bt-trade-head"><div><div class="bt-trade-title">${action}</div><div class="bt-trade-subtitle">${trade.symbol || ""}${trade.reason ? ` · ${trade.reason}` : ""}${trade.strike ? ` · $${trade.strike}` : ""}</div></div><span class="bt-trade-badge ${pnl >= 0 ? "buy" : "sell"}">${fmtDate(trade.date || trade.ts)}</span></div><div class="bt-trade-metrics"><div class="bt-trade-metric"><span>Price</span><strong>${trade.price != null ? fmtUsd(trade.price) : "—"}</strong></div><div class="bt-trade-metric"><span>P&amp;L</span><strong>${pnl ? fmtUsd(pnl) : "—"}</strong></div><div class="bt-trade-metric"><span>${type === "options" ? "Premium" : "Qty"}</span><strong>${type === "options" ? fmtUsd(premium) : qty.toFixed(4)}</strong></div></div></article>`;
+    }).join("");
+  }
+
+  function stockPayload() {
+    const range = computeDateRange(document.getElementById("stockBtLookback").value);
+    return {
+      symbol: document.getElementById("stockBtSymbol").value || "AAPL",
+      strategy: document.getElementById("stockBtStrategy").value || "ema_momentum",
+      start_date: range.start_date,
+      end_date: range.end_date,
+      starting_capital: Number(document.getElementById("stockBtCapital").value || 10000),
+      fee_pct: Number(document.getElementById("stockBtFee").value || 0) / 100,
+      params: {
+        ema_fast: Number(document.getElementById("stockBtEmaFast").value || 21),
+        ema_mid: Number(document.getElementById("stockBtEmaMid").value || 50),
+        ema_slow: Number(document.getElementById("stockBtEmaSlow").value || 200),
+        rsi_buy: Number(document.getElementById("stockBtRsiBuy").value || 40),
+        rsi_exit: Number(document.getElementById("stockBtRsiExit").value || 70),
+        adx_min: Number(document.getElementById("stockBtAdxMin").value || 20),
+        bb_period: Number(document.getElementById("stockBtBbPeriod").value || 20),
+        bb_std: Number(document.getElementById("stockBtBbStd").value || 2),
+      }
+    };
+  }
+
+  function optionsPayload() {
+    const range = computeDateRange(document.getElementById("optionsBtLookback").value);
+    return {
+      symbol: document.getElementById("optionsBtSymbol").value || "AAPL",
+      strategy: document.getElementById("optionsBtStrategy").value || "wheel",
+      start_date: range.start_date,
+      end_date: range.end_date,
+      starting_capital: Number(document.getElementById("optionsBtCapital").value || 5000),
+      params: {
+        delta: Number(document.getElementById("optionsBtDelta").value || 0.25),
+        dte: Number(document.getElementById("optionsBtDte").value || 30),
+        profit_target_pct: Number(document.getElementById("optionsBtProfitTarget").value || 50) / 100,
+        stop_loss_pct: Number(document.getElementById("optionsBtStopLoss").value || 150) / 100,
+        spread_width: Number(document.getElementById("optionsBtSpreadWidth").value || 5),
+      },
+      fee_per_contract: Number(document.getElementById("optionsBtFee").value || 0.65)
+    };
+  }
+
+  async function runStockBacktest() {
+    const button = document.getElementById("stockRunBtn");
+    const status = document.getElementById("stockBtStatus");
+    button.disabled = true;
+    button.textContent = "Running...";
+    status.textContent = "Fetching bars, computing indicators, and replaying trades...";
+    try {
+      const payload = stockPayload();
+      const data = await fetchJson("/api/stocks/backtest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const summary = data.summary || {};
+      document.getElementById("stockKpiReturn").textContent = fmtSignedPct(summary.total_return_pct || 0);
+      document.getElementById("stockKpiWinRate").textContent = fmtPct(summary.win_rate || 0);
+      document.getElementById("stockKpiProfitFactor").textContent = Number(summary.profit_factor || 0).toFixed(2);
+      document.getElementById("stockKpiDrawdown").textContent = fmtPct(summary.max_drawdown_pct || 0);
+      document.getElementById("stockKpiTrades").textContent = String(summary.total_trades || 0);
+      document.getElementById("stockKpiHold").textContent = `${Number(summary.avg_hold_bars || 0).toFixed(1)} bars`;
+      renderEquityChart("stockChartHost", data.equity_curve || [], "equity");
+      renderTradeFeed("stockTradeFeed", data.trade_log || [], "stock");
+      document.getElementById("stockChartMeta").textContent = `${payload.symbol} · ${String(payload.strategy || "").replace(/_/g, " ")} · ${(data.equity_curve || []).length} equity points`;
+      document.getElementById("stockTradeMeta").textContent = `${(data.trade_log || []).length} trade events captured for this run.`;
+      status.textContent = "Backtest complete.";
+    } catch (error) {
+      status.textContent = error.message || "Stock backtest failed.";
+      document.getElementById("stockChartHost").innerHTML = `<div class="hc-chart-empty">${status.textContent}</div>`;
+      document.getElementById("stockTradeFeed").innerHTML = `<div class="hc-empty-card">${status.textContent}</div>`;
+    } finally {
+      button.disabled = false;
+      button.textContent = "Run Backtest";
+    }
+  }
+
+  async function runOptionsBacktest() {
+    const button = document.getElementById("optionsRunBtn");
+    const status = document.getElementById("optionsBtStatus");
+    button.disabled = true;
+    button.textContent = "Running...";
+    status.textContent = "Pricing contracts, replaying trades, and building the options equity curve...";
+    try {
+      const payload = optionsPayload();
+      const data = await fetchJson("/api/options/backtest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const summary = data.summary || {};
+      const assignments = Array.isArray(data.assignment_log) ? data.assignment_log : [];
+      const tradeLog = Array.isArray(data.trade_log) ? data.trade_log : [];
+      document.getElementById("optionsKpiReturn").textContent = fmtSignedPct(summary.total_return_pct || 0);
+      document.getElementById("optionsKpiWinRate").textContent = fmtPct(summary.win_rate || 0);
+      document.getElementById("optionsKpiProfitFactor").textContent = Number(summary.profit_factor || 0).toFixed(2);
+      document.getElementById("optionsKpiPremium").textContent = fmtUsd(summary.total_premium_collected || 0);
+      document.getElementById("optionsKpiAssignments").textContent = String(assignments.length || 0);
+      document.getElementById("optionsKpiHold").textContent = `${Number(summary.avg_days_in_trade || 0).toFixed(1)} days`;
+      renderEquityChart("optionsChartHost", data.equity_curve || [], "equity");
+      renderTradeFeed("optionsTradeFeed", tradeLog, "options");
+      document.getElementById("optionsChartMeta").textContent = `${payload.symbol} · ${String(payload.strategy || "").replace(/_/g, " ")} · ${assignments.length} assignment events`;
+      document.getElementById("optionsTradeMeta").textContent = `${tradeLog.length} option events captured for this run.`;
+      status.textContent = "Options backtest complete.";
+    } catch (error) {
+      status.textContent = error.message || "Options backtest failed.";
+      document.getElementById("optionsChartHost").innerHTML = `<div class="hc-chart-empty">${status.textContent}</div>`;
+      document.getElementById("optionsTradeFeed").innerHTML = `<div class="hc-empty-card">${status.textContent}</div>`;
+    } finally {
+      button.disabled = false;
+      button.textContent = "Run Backtest";
+    }
+  }
+
+  document.getElementById("stockRunBtn").addEventListener("click", runStockBacktest);
+  document.getElementById("optionsRunBtn").addEventListener("click", runOptionsBacktest);
+
+  initTabs();
+  loadStockUniverse();
+})();
+</script>
+{% endblock %}

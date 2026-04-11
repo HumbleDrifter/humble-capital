@@ -15,6 +15,7 @@
   {% set portfolio_url = '/analytics?secret=' ~ (secret_value|urlencode) if secret_value else '/analytics' %}
   {% set performance_url = '/performance?secret=' ~ (secret_value|urlencode) if secret_value else '/performance' %}
   {% set backtest_url = '/backtest?secret=' ~ (secret_value|urlencode) if secret_value else '/backtest' %}
+  {% set portfolio_backtest_url = '/portfolio-backtest?secret=' ~ (secret_value|urlencode) if secret_value else '/portfolio-backtest' %}
   {% set charts_url = '/charts?secret=' ~ (secret_value|urlencode) if secret_value else '/charts' %}
   {% set algorithm_url = '/algorithm?secret=' ~ (secret_value|urlencode) if secret_value else '/algorithm' %}
   {% set opportunities_url = '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' %}
@@ -26,10 +27,11 @@
   {% set automation_active = current_path == '/configuration' %}
   {% set performance_active = current_path == '/performance' %}
   {% set backtest_active = current_path == '/backtest' %}
+  {% set portfolio_backtest_active = current_path == '/portfolio-backtest' %}
   {% set charts_active = current_path == '/charts' %}
   {% set algorithm_active = current_path == '/algorithm' %}
   {% set settings_active = current_path in ['/settings', '/system-status'] %}
-  {% set more_active = accounts_active or automation_active or settings_active or performance_active or backtest_active or charts_active or algorithm_active %}
+  {% set more_active = accounts_active or automation_active or settings_active or performance_active or backtest_active or portfolio_backtest_active or charts_active or algorithm_active %}
 
   <div class="app-shell">
     <aside class="sidebar">
@@ -51,8 +53,8 @@
         <a class="nav-link {% if current_path == '/performance' %}active{% endif %}" href="{{ performance_url }}">
           <span class="nav-link-label">Performance</span>
         </a>
-        <a class="nav-link {% if current_path == '/backtest' %}active{% endif %}" href="{{ backtest_url }}">
-          <span class="nav-link-label">Backtesting</span>
+        <a class="nav-link {% if portfolio_backtest_active %}active{% endif %}" href="{{ portfolio_backtest_url }}">
+          <span class="nav-link-label">Portfolio Backtest</span>
         </a>
         <a class="nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ opportunities_url }}">
           <span class="nav-link-label">Opportunities</span>
@@ -156,6 +158,7 @@
         <a class="mobile-more-link {% if performance_active %}active{% endif %}" href="{{ performance_url }}">Performance</a>
         <a class="mobile-more-link {% if current_path == '/trade-history' %}active{% endif %}" href="{{ activity_url }}">Activity</a>
         <a class="mobile-more-link {% if backtest_active %}active{% endif %}" href="{{ backtest_url }}">Backtesting</a>
+        <a class="mobile-more-link {% if portfolio_backtest_active %}active{% endif %}" href="{{ portfolio_backtest_url }}">Portfolio Backtest</a>
         <a class="mobile-more-link {% if accounts_active %}active{% endif %}" href="{{ accounts_url }}">Accounts</a>
         <a class="mobile-more-link {% if automation_active %}active{% endif %}" href="{{ automation_url }}">Automation</a>
         <a class="mobile-more-link {% if algorithm_active %}active{% endif %}" href="{{ algorithm_url }}">Algorithm</a>

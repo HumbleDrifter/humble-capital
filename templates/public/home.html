@@ -1,335 +1,369 @@
 {% extends "base_public.html" %}
 
 {% block content %}
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<section class="public-hero" id="top">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-bg-fade" aria-hidden="true"></div>
 
-<div class="lp-shell">
-  <section class="lp-hero lp-section lp-reveal-section">
-    <div class="lp-hero-content">
-      <div class="lp-badge lp-reveal">Automated Crypto Trading Infrastructure</div>
-      <h1 class="lp-hero-title lp-reveal">
-        Trade Smarter with <span class="lp-gradient-text">Signal-Driven</span> Precision
-      </h1>
-      <p class="lp-hero-subtitle lp-reveal">
-        Portfolio oversight, adaptive risk controls, and automated execution — all from one premium trading console built for serious crypto operators.
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <div class="hero-badge">Multi-Asset Trading Platform</div>
+
+      <h1 class="hero-title" style="font-family:'DM Sans', sans-serif;">Trade Smarter with <span style="color:#38bdf8;">AI-Powered</span> Market Intelligence</h1>
+
+      <p class="hero-subtitle">
+        Humble Capital combines technical analysis, social sentiment scanning, and regime-aware automation
+        to find the best opportunities across crypto, stocks, and options, then executes with discipline.
       </p>
-      <div class="lp-hero-actions lp-reveal">
-        <a class="lp-btn-primary" href="/login">Get Started</a>
-        <a class="lp-btn-secondary" href="#features">Explore Features</a>
+
+      <div class="hero-stat-strip">
+        <div class="hero-stat-card">
+          <div class="hero-stat-value">200+</div>
+          <div class="hero-stat-label">Assets Scanned</div>
+        </div>
+        <div class="hero-stat-card">
+          <div class="hero-stat-value">4</div>
+          <div class="hero-stat-label">Market Sources</div>
+        </div>
+        <div class="hero-stat-card">
+          <div class="hero-stat-value">24/7</div>
+          <div class="hero-stat-label">Automated</div>
+        </div>
       </div>
+
+      <div class="hero-actions">
+        <a class="btn btn-primary hero-btn" href="/login">Launch Console</a>
+        <a class="btn btn-secondary hero-btn" href="#features">See How It Works</a>
+      </div>
+
+      <p class="hero-footnote">
+        One dashboard for Coinbase crypto execution, Webull stock and options workflows, AI scoring, and full strategy validation before capital is committed.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="public-overview">
+  <div class="public-section-shell" id="pillars">
+    <div class="public-section-heading">
+      <div class="hero-badge">Platform Capabilities</div>
+      <h2 class="features-title" style="font-family:'DM Sans', sans-serif;">One platform. Three markets. Total coverage.</h2>
+      <p class="features-subtitle">
+        Humble Capital unifies crypto execution, options income workflows, and social intelligence into one operating system for active traders.
+      </p>
     </div>
 
-    <div class="lp-mockup-wrap lp-reveal" id="lpMockup">
-      <div class="lp-mockup">
-        <div class="lp-mockup-titlebar">
-          <span class="lp-dot lp-dot-red"></span>
-          <span class="lp-dot lp-dot-yellow"></span>
-          <span class="lp-dot lp-dot-green"></span>
-          <span class="lp-mockup-title">Humble Capital Trading Console</span>
-        </div>
-        <div class="lp-mockup-kpis">
-          <div class="lp-mockup-kpi">
-            <div class="lp-mockup-kpi-label">Portfolio Value</div>
-            <div class="lp-mockup-kpi-value">$84,240</div>
-          </div>
-          <div class="lp-mockup-kpi">
-            <div class="lp-mockup-kpi-label">Daily P&amp;L</div>
-            <div class="lp-mockup-kpi-value lp-teal">+$1,247</div>
-          </div>
-          <div class="lp-mockup-kpi">
-            <div class="lp-mockup-kpi-label">Risk Score</div>
-            <div class="lp-mockup-kpi-value lp-teal">32/100</div>
-          </div>
-        </div>
-        <div class="lp-mockup-chart">
-          <div class="lp-mockup-chart-header">
-            <span>Equity Curve</span>
-            <div class="lp-mockup-range-group">
-              <span class="lp-mockup-range">7D</span>
-              <span class="lp-mockup-range active">30D</span>
-              <span class="lp-mockup-range">ALL</span>
-            </div>
-          </div>
-          <svg viewBox="0 0 640 160" class="lp-mockup-svg" role="img" aria-label="Trading console equity chart preview">
-            <defs>
-              <linearGradient id="lpMockLine" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#2dd4bf"/>
-                <stop offset="100%" stop-color="#60a5fa"/>
-              </linearGradient>
-              <linearGradient id="lpMockArea" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="rgba(45,212,191,0.2)"/>
-                <stop offset="100%" stop-color="rgba(45,212,191,0)"/>
-              </linearGradient>
-            </defs>
-            <path d="M0 120 C60 115,100 95,160 88 S280 60,340 68 S460 95,500 72 S580 40,640 28" fill="none" stroke="url(#lpMockLine)" stroke-width="2.5" stroke-linecap="round"/>
-            <path d="M0 120 C60 115,100 95,160 88 S280 60,340 68 S460 95,500 72 S580 40,640 28 L640 160 L0 160Z" fill="url(#lpMockArea)"/>
-            <circle cx="640" cy="28" r="4" fill="#2dd4bf"/>
-            <circle cx="640" cy="28" r="8" fill="rgba(45,212,191,0.2)"/>
+    <div class="workflow-grid">
+      <article class="workflow-card pillar-card">
+        <div class="workflow-step" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20"/>
+            <path d="M7 5.5c0-1.7 2.2-3 5-3s5 1.3 5 3-2.2 3-5 3-5 1.3-5 3 2.2 3 5 3 5 1.3 5 3-2.2 3-5 3-5-1.3-5-3"/>
           </svg>
         </div>
-        <div class="lp-mockup-holdings">
-          <div class="lp-mockup-holding"><span class="lp-mockup-sym">BTC</span><span class="lp-teal">+2.1%</span></div>
-          <div class="lp-mockup-holding"><span class="lp-mockup-sym">ETH</span><span class="lp-teal">+1.8%</span></div>
-          <div class="lp-mockup-holding"><span class="lp-mockup-sym">SOL</span><span class="lp-teal">+3.4%</span></div>
-          <div class="lp-mockup-holding"><span class="lp-mockup-sym">DOGE</span><span class="lp-red">-0.7%</span></div>
+        <h3>Crypto Trading</h3>
+        <p>
+          Automated core accumulation in BTC, ETH, SOL, and XRP with selective satellite rotation, defensive regime selling, and flash-crash protection.
+        </p>
+        <ul>
+          <li>114+ Coinbase assets scanned on schedule</li>
+          <li>Core DCA plus selective satellite rotation</li>
+          <li>Defensive selling during caution and risk-off regimes</li>
+          <li>Trailing exits and velocity-based protection</li>
+        </ul>
+      </article>
+
+      <article class="workflow-card pillar-card">
+        <div class="workflow-step" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="5" width="18" height="14" rx="2"/>
+            <path d="M7 9h10"/>
+            <path d="M7 13h6"/>
+          </svg>
         </div>
-      </div>
-    </div>
+        <h3>Options Trading</h3>
+        <p>
+          Screen liquid stocks for covered calls, cash-secured puts, credit spreads, iron condors, and custom multi-leg structures.
+        </p>
+        <ul>
+          <li>Real-time option chain analysis with Greeks</li>
+          <li>IV rank scoring for premium-selling setups</li>
+          <li>Strategy builder with live P&amp;L diagrams</li>
+          <li>Backtests for Wheel, spreads, condors, and earnings trades</li>
+        </ul>
+      </article>
 
-    <div class="lp-scroll-hint" id="lpScrollHint">
-      <div class="lp-scroll-mouse"><div class="lp-scroll-dot"></div></div>
+      <article class="workflow-card pillar-card">
+        <div class="workflow-step" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 18v-5a2 2 0 0 1 2-2h3l3-5 3 10 2-3h3a2 2 0 0 1 2 2v3"/>
+          </svg>
+        </div>
+        <h3>Social Intelligence</h3>
+        <p>
+          Scan Reddit, StockTwits, Google News, and optional YouTube data to understand how the crowd and the media are leaning before you trade.
+        </p>
+        <ul>
+          <li>Reddit coverage for stocks and crypto communities</li>
+          <li>StockTwits sentiment and watcher activity</li>
+          <li>Google News and headline scoring</li>
+          <li>Composite sentiment scoring from -100 to +100</li>
+        </ul>
+      </article>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="lp-stats-strip lp-section lp-reveal-section">
-    <div class="lp-stats-grid">
-      <div class="lp-stat lp-reveal">
-        <div class="lp-stat-value" data-count="24" data-suffix="/7">0</div>
-        <div class="lp-stat-label">Automated Trading</div>
-      </div>
-      <div class="lp-stat lp-reveal">
-        <div class="lp-stat-value" data-count="6" data-suffix="">0</div>
-        <div class="lp-stat-label">Signal Types</div>
-      </div>
-      <div class="lp-stat lp-reveal">
-        <div class="lp-stat-value" data-count="30" data-suffix="s">0</div>
-        <div class="lp-stat-label">Avg Execution</div>
-      </div>
-      <div class="lp-stat lp-reveal">
-        <div class="lp-stat-value" data-count="99" data-suffix="%">0</div>
-        <div class="lp-stat-label">Uptime</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="lp-feature lp-feature-right lp-section lp-reveal-section" id="features">
-    <div class="lp-feature-copy">
-      <div class="lp-kicker lp-kicker-teal lp-reveal">PORTFOLIO INTELLIGENCE</div>
-      <h2 class="lp-feature-title lp-reveal">Real-time visibility into every position</h2>
-      <p class="lp-feature-text lp-reveal">
-        Keep portfolio weights, capital deployment, and live account posture in view without breaking concentration. The console turns a complex crypto book into a tighter operator interface.
+<section class="public-overview" id="features">
+  <div class="public-section-shell">
+    <div class="public-section-heading">
+      <div class="hero-badge">The Engine</div>
+      <h2 class="features-title" style="font-family:'DM Sans', sans-serif;">Four layers of intelligence working together</h2>
+      <p class="features-subtitle">
+        The platform continuously scans, scores, executes, and protects so decisions are grounded in context instead of guesswork.
       </p>
-      <div class="lp-bullet-list">
-        <div class="lp-bullet lp-reveal"><span class="lp-bullet-icon">✓</span><span>Track core, satellite, cash, and reserve allocation in one glance.</span></div>
-        <div class="lp-bullet lp-reveal"><span class="lp-bullet-icon">✓</span><span>Review holdings, trend, and portfolio health from one surface.</span></div>
-        <div class="lp-bullet lp-reveal"><span class="lp-bullet-icon">✓</span><span>Stay close to what matters without digging through fragmented screens.</span></div>
-      </div>
     </div>
-    <div class="lp-feature-graphic lp-reveal">
-      <div class="lp-donut-card">
-        <svg class="lp-donut" viewBox="0 0 240 240" role="img" aria-label="Portfolio allocation breakdown">
-          <circle class="lp-donut-track" cx="120" cy="120" r="78"></circle>
-          <circle class="lp-donut-seg lp-donut-core" cx="120" cy="120" r="78"></circle>
-          <circle class="lp-donut-seg lp-donut-sat" cx="120" cy="120" r="78"></circle>
-          <circle class="lp-donut-seg lp-donut-cash" cx="120" cy="120" r="78"></circle>
-          <circle class="lp-donut-seg lp-donut-reserve" cx="120" cy="120" r="78"></circle>
-        </svg>
-        <div class="lp-donut-center">
-          <div class="lp-donut-value">92%</div>
-          <div class="lp-donut-label">Deployed</div>
-        </div>
-        <div class="lp-donut-legend">
-          <span><i style="background:#2dd4bf"></i>Core 45%</span>
-          <span><i style="background:#60a5fa"></i>Satellite 32%</span>
-          <span><i style="background:#818cf8"></i>Cash 15%</span>
-          <span><i style="background:rgba(255,255,255,0.15)"></i>Reserve 8%</span>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <section class="lp-feature lp-feature-left lp-section lp-reveal-section">
-    <div class="lp-feature-graphic">
-      <div class="lp-signal-flow">
-        <div class="lp-signal-line"></div>
-        <div class="lp-signal-step lp-reveal-left">
-          <div class="lp-signal-icon">📡</div>
-          <div class="lp-signal-copy">
-            <strong>TradingView Signal</strong>
-            <span>Structured alert enters the system.</span>
+    <div class="workflow-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+      <article class="workflow-card">
+        <div class="workflow-step">01</div>
+        <h3>Scan</h3>
+        <p>
+          Every cycle, the engine scans crypto, stocks, and options setups. It pulls social sentiment, computes indicators, and refreshes tradable universes automatically.
+        </p>
+      </article>
+
+      <article class="workflow-card">
+        <div class="workflow-step">02</div>
+        <h3>Score</h3>
+        <p>
+          Each opportunity gets a composite score from technical analysis, social sentiment, momentum, and regime fit. The highest-quality setups rise to the top.
+        </p>
+      </article>
+
+      <article class="workflow-card">
+        <div class="workflow-step">03</div>
+        <h3>Execute</h3>
+        <p>
+          In semi-auto mode you review scored opportunities. In full-auto mode the bot executes with position sizing, correlation filters, cash reserves, and explicit exits.
+        </p>
+      </article>
+
+      <article class="workflow-card">
+        <div class="workflow-step">04</div>
+        <h3>Protect</h3>
+        <p>
+          The regime engine monitors market health and automatically changes behavior during downturns. Defensive selling, trailing stops, and velocity exits help protect capital.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="public-features">
+  <div class="features-inner">
+    <div class="public-section-heading">
+      <h2 class="features-title" style="font-family:'DM Sans', sans-serif;">Built for serious traders</h2>
+      <p class="features-subtitle">
+        Everything is designed around disciplined execution, fast review loops, and seeing exactly why a trade is being suggested.
+      </p>
+    </div>
+
+    <div class="feature-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+      <article class="feature-card">
+        <div class="feature-kicker">Backtesting</div>
+        <h3>Test before you trade</h3>
+        <p>Run single-asset and portfolio-level simulations with DCA, rebalancing, defensive selling, and options strategy validation before risking real capital.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-kicker">Charts</div>
+        <h3>Interactive signal visualization</h3>
+        <p>Candlestick charts show signal markers, Bollinger Bands, EMAs, RSI, IV estimates, and option overlays so you can inspect setups visually.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-kicker">Regime Engine</div>
+        <h3>Market-aware automation</h3>
+        <p>Four regime states adjust exposure automatically. The system becomes defensive in caution and risk-off conditions and leans back in when markets improve.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-kicker">Options Screener</div>
+        <h3>Premium-selling opportunities</h3>
+        <p>Scan for covered calls, cash-secured puts, credit spreads, iron condors, and Wheel setups with IV rank, earnings filters, and social sentiment overlays.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-kicker">Multi-Broker</div>
+        <h3>Coinbase plus Webull</h3>
+        <p>Trade crypto on Coinbase and stocks or options on Webull while monitoring both from one unified dashboard and analytics surface.</p>
+      </article>
+
+      <article class="feature-card">
+        <div class="feature-kicker">Risk Controls</div>
+        <h3>Professional-grade guardrails</h3>
+        <p>Volatility-aware sizing, drawdown controls, cash reserve enforcement, and correlation filters keep the automation disciplined when markets get noisy.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="public-product-peek">
+  <div class="product-peek-shell">
+    <div class="product-peek-copy">
+      <div class="hero-badge">Console Preview</div>
+      <h2 class="features-title" style="font-family:'DM Sans', sans-serif; font-size:52px;">See the whole system in one place</h2>
+      <p class="features-subtitle" style="margin-left:0; text-align:left;">
+        The console brings portfolio holdings, auto-trading posture, options positions, and active opportunities into one operating view so you can move quickly with context.
+      </p>
+      <div class="product-peek-points">
+        <div class="product-peek-point">
+          <strong>Unified portfolio view</strong>
+          <span>Track crypto holdings, option exposure, cash reserves, and active signals together instead of bouncing between broker dashboards.</span>
+        </div>
+        <div class="product-peek-point">
+          <strong>Actionable workflows</strong>
+          <span>Review scanner output, inspect charts, stage options trades, and validate strategies with backtests from the same environment.</span>
+        </div>
+        <div class="product-peek-point">
+          <strong>Automation with operator control</strong>
+          <span>Stay in semi-auto when you want approval steps, or move toward full automation when your rules and scoring model are ready.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="console-frame console-frame-large">
+      <div class="console-topbar">
+        <span class="console-dot"></span>
+        <span class="console-dot"></span>
+        <span class="console-dot"></span>
+        <span class="console-title">Humble Capital Console</span>
+      </div>
+
+      <div class="console-screen">
+        <div class="console-kpi-row">
+          <div class="console-kpi-card">
+            <div class="console-kpi-label">Portfolio Value</div>
+            <div class="console-kpi-value">$128,420</div>
+          </div>
+          <div class="console-kpi-card">
+            <div class="console-kpi-label">Auto-Trading Mode</div>
+            <div class="console-kpi-value">Semi-Auto</div>
+          </div>
+          <div class="console-kpi-card">
+            <div class="console-kpi-label">Options Premium MTD</div>
+            <div class="console-kpi-value">$1,284</div>
           </div>
         </div>
-        <div class="lp-signal-step lp-reveal-left">
-          <div class="lp-signal-icon">⚡</div>
-          <div class="lp-signal-copy">
-            <strong>Webhook Received</strong>
-            <span>Signal is normalized and routed instantly.</span>
+
+        <div class="console-main-grid">
+          <div class="console-chart-card">
+            <div class="console-card-head">
+              <span>Composite Opportunity Scoreboard</span>
+              <span class="console-chip console-chip-good">Bull Regime</span>
+            </div>
+            <svg viewBox="0 0 640 220" class="console-chart" role="img" aria-label="Composite score and equity preview">
+              <defs>
+                <linearGradient id="homeLine" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#38bdf8"></stop>
+                  <stop offset="100%" stop-color="#60a5fa"></stop>
+                </linearGradient>
+                <linearGradient id="homeArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="rgba(56,189,248,0.26)"></stop>
+                  <stop offset="100%" stop-color="rgba(56,189,248,0.02)"></stop>
+                </linearGradient>
+              </defs>
+              <path d="M18 164 C80 160,122 136,170 124 S274 82,330 96 S422 128,474 102 S560 66,620 54" fill="none" stroke="url(#homeLine)" stroke-width="3" stroke-linecap="round"></path>
+              <path d="M18 164 C80 160,122 136,170 124 S274 82,330 96 S422 128,474 102 S560 66,620 54 L620 204 L18 204 Z" fill="url(#homeArea)"></path>
+              <line x1="18" y1="110" x2="620" y2="110" stroke="rgba(255,255,255,0.08)" stroke-dasharray="5 7"></line>
+              <circle cx="474" cy="102" r="5" fill="#22c55e"></circle>
+              <circle cx="560" cy="66" r="5" fill="#f59e0b"></circle>
+              <circle cx="620" cy="54" r="5" fill="#38bdf8"></circle>
+            </svg>
+            <div class="console-chip-row">
+              <span class="console-chip">BTC-USD score 78</span>
+              <span class="console-chip">DOGE-USD score 71</span>
+              <span class="console-chip">AAPL IV Rank 64</span>
+            </div>
+          </div>
+
+          <div class="console-side-stack">
+            <div class="console-side-card">
+              <div class="console-card-head">
+                <span>Allocation</span>
+              </div>
+              <div class="console-allocation-bar">
+                <span class="console-alloc-core"></span>
+                <span class="console-alloc-sat"></span>
+                <span class="console-alloc-cash"></span>
+              </div>
+              <div class="console-legend">
+                <span>Core 63%</span>
+                <span>Satellite 18%</span>
+                <span>Cash 19%</span>
+              </div>
+            </div>
+
+            <div class="console-side-card">
+              <div class="console-card-head">
+                <span>Open Options</span>
+              </div>
+              <div class="console-chip-row">
+                <span class="console-chip console-chip-good">AAPL 16 MAY 2026 200C x1</span>
+                <span class="console-chip">MSFT 20 JUN 2026 380P x1</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="lp-signal-step lp-reveal-left">
-          <div class="lp-signal-icon">🛡</div>
-          <div class="lp-signal-copy">
-            <strong>Risk Check</strong>
-            <span>Capital, sizing, and posture are validated.</span>
+
+        <div class="console-table-card">
+          <div class="console-card-head">
+            <span>Live Positions</span>
+            <span class="console-chip">7 Active</span>
+          </div>
+          <div class="console-table">
+            <div class="console-row console-row-head">
+              <span>Asset</span>
+              <span>Exposure</span>
+              <span>P&amp;L</span>
+            </div>
+            <div class="console-row">
+              <span>BTC-USD</span>
+              <span>$42,180</span>
+              <span style="color:#38bdf8;">+6.4%</span>
+            </div>
+            <div class="console-row">
+              <span>SOL-USD</span>
+              <span>$16,940</span>
+              <span style="color:#38bdf8;">+9.1%</span>
+            </div>
+            <div class="console-row">
+              <span>DOGE-USD</span>
+              <span>$4,860</span>
+              <span style="color:#fb923c;">-1.7%</span>
+            </div>
+            <div class="console-row">
+              <span>AAPL 200C</span>
+              <span>$1,240 premium</span>
+              <span style="color:#38bdf8;">+18.2%</span>
+            </div>
           </div>
         </div>
-        <div class="lp-signal-step lp-signal-step-final lp-reveal-left">
-          <div class="lp-signal-icon">✓</div>
-          <div class="lp-signal-copy">
-            <strong>Order Executed</strong>
-            <span>Approved trades move to the venue fast.</span>
-          </div>
-        </div>
       </div>
     </div>
-    <div class="lp-feature-copy">
-      <div class="lp-kicker lp-kicker-blue lp-reveal">SIGNAL EXECUTION</div>
-      <h2 class="lp-feature-title lp-reveal">From TradingView alert to filled order in seconds</h2>
-      <p class="lp-feature-text lp-reveal">
-        Humble Capital is designed for signal-driven operators who want fewer handoffs between alert, validation, and action. The workflow keeps execution fast without losing context.
-      </p>
-      <div class="lp-bullet-list">
-        <div class="lp-bullet lp-bullet-blue lp-reveal"><span class="lp-bullet-icon">✓</span><span>Signals move through a clear, inspectable pipeline.</span></div>
-        <div class="lp-bullet lp-bullet-blue lp-reveal"><span class="lp-bullet-icon">✓</span><span>Risk checks happen before the trade reaches the exchange.</span></div>
-        <div class="lp-bullet lp-bullet-blue lp-reveal"><span class="lp-bullet-icon">✓</span><span>Execution remains close to the portfolio and operating context.</span></div>
-      </div>
+  </div>
+</section>
+
+<section class="public-cta">
+  <div class="cta-inner">
+    <h2 style="font-family:'DM Sans', sans-serif;">Stop guessing. Start trading with intelligence.</h2>
+    <p>
+      Launch Humble Capital and let the engine scan markets, rank opportunities, and manage risk while you stay focused on strategy.
+    </p>
+    <div class="hero-actions" style="justify-content:center;">
+      <a class="btn btn-primary hero-btn" href="/login">Launch Console</a>
     </div>
-  </section>
-
-  <section class="lp-feature lp-feature-right lp-section lp-reveal-section">
-    <div class="lp-feature-copy">
-      <div class="lp-kicker lp-kicker-purple lp-reveal">ADAPTIVE RISK</div>
-      <h2 class="lp-feature-title lp-reveal">The market shifts. Your bot adapts automatically.</h2>
-      <p class="lp-feature-text lp-reveal">
-        Trading conditions are not static, and your infrastructure should not be either. Humble Capital adjusts portfolio posture and deployment behavior as regime conditions evolve.
-      </p>
-      <div class="lp-regime-grid">
-        <div class="lp-regime-card lp-reveal">
-          <div class="lp-regime-dot" style="background:#2dd4bf"></div>
-          <strong>Risk On</strong>
-          <span>Full deployment</span>
-        </div>
-        <div class="lp-regime-card lp-reveal">
-          <div class="lp-regime-dot" style="background:#94a3b8"></div>
-          <strong>Neutral</strong>
-          <span>Balanced sizing</span>
-        </div>
-        <div class="lp-regime-card lp-reveal">
-          <div class="lp-regime-dot" style="background:#fbbf24"></div>
-          <strong>Caution</strong>
-          <span>Reduced exposure</span>
-        </div>
-        <div class="lp-regime-card lp-reveal">
-          <div class="lp-regime-dot" style="background:#fb7185"></div>
-          <strong>Risk Off</strong>
-          <span>Capital protection</span>
-        </div>
-      </div>
-    </div>
-    <div class="lp-feature-graphic lp-reveal">
-      <div class="lp-regime-wheel-card">
-        <div class="lp-regime-wheel"></div>
-        <div class="lp-regime-wheel-center">
-          <div class="lp-regime-wheel-value">4</div>
-          <div class="lp-regime-wheel-label">Regime States</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="lp-quote-section lp-section lp-reveal-section">
-    <div class="lp-quote-inner lp-reveal">
-      <div class="lp-kicker lp-kicker-teal">Built for Operators</div>
-      <blockquote class="lp-quote-text">
-        "The kind of infrastructure I wished existed when I started trading crypto seriously."
-      </blockquote>
-      <p class="lp-quote-attr">— Built and operated by the Humble Capital team</p>
-    </div>
-  </section>
-
-  <section class="lp-cta-section lp-section lp-reveal-section">
-    <div class="lp-cta-inner lp-reveal">
-      <h2 class="lp-cta-title">Ready to trade from a sharper console?</h2>
-      <p class="lp-cta-text">
-        Launch the Humble Capital trading console and take control of your portfolio with signal-driven precision.
-      </p>
-      <a class="lp-btn-primary lp-btn-large" href="/login">Launch Console</a>
-    </div>
-  </section>
-
-  <footer class="lp-footer">
-    © 2026 Humble Capital. All rights reserved.
-  </footer>
-</div>
-
-<script>
-  (function() {
-    const sectionObserver = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add("lp-visible");
-        const revealChildren = entry.target.querySelectorAll(".lp-reveal, .lp-reveal-left");
-        revealChildren.forEach((node) => node.classList.add("lp-visible"));
-      });
-    }, {
-      threshold: 0.18,
-      rootMargin: "0px 0px -10% 0px"
-    });
-
-    document.querySelectorAll(".lp-reveal-section").forEach((section) => {
-      sectionObserver.observe(section);
-    });
-
-    const statSection = document.querySelector(".lp-stats-strip");
-    let statsAnimated = false;
-
-    function easeOutCubic(t) {
-      return 1 - Math.pow(1 - t, 3);
-    }
-
-    function animateCounter(element) {
-      const target = Number(element.dataset.count || 0);
-      const suffix = String(element.dataset.suffix || "");
-      const startTime = performance.now();
-      const duration = 1500;
-
-      function tick(now) {
-        const progress = Math.min(1, (now - startTime) / duration);
-        const eased = easeOutCubic(progress);
-        const value = Math.round(target * eased);
-        element.textContent = `${value}${suffix}`;
-        if (progress < 1) {
-          requestAnimationFrame(tick);
-        }
-      }
-
-      requestAnimationFrame(tick);
-    }
-
-    if (statSection) {
-      const statObserver = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting || statsAnimated) return;
-          statsAnimated = true;
-          entry.target.querySelectorAll("[data-count]").forEach((node) => animateCounter(node));
-        });
-      }, { threshold: 0.4 });
-      statObserver.observe(statSection);
-    }
-
-    const mockup = document.getElementById("lpMockup");
-    const scrollHint = document.getElementById("lpScrollHint");
-
-    function updateHeroMotion() {
-      const scrollY = window.scrollY || 0;
-      if (mockup) {
-        const tilt = Math.min(8, scrollY * 0.015);
-        const translate = Math.min(30, scrollY * 0.06);
-        mockup.style.transform = `perspective(1600px) rotateX(${tilt}deg) translateY(${translate}px)`;
-      }
-      if (scrollHint) {
-        const opacity = scrollY > 100 ? 0 : 1 - (scrollY / 100);
-        scrollHint.style.opacity = String(Math.max(0, opacity));
-      }
-    }
-
-    updateHeroMotion();
-    window.addEventListener("scroll", updateHeroMotion, { passive: true });
-
-    const signalSteps = document.querySelectorAll(".lp-signal-step");
-    signalSteps.forEach((step, index) => {
-      step.style.transitionDelay = `${index * 0.18}s`;
-    });
-  })();
-</script>
+  </div>
+</section>
 {% endblock %}

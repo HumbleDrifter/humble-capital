@@ -1,5 +1,7 @@
 import os
 from functools import wraps
+from urllib.parse import urlencode
+
 from flask import Blueprint, render_template, request, redirect, session, url_for
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -53,40 +55,57 @@ def _page_context(page_title):
     }
 
 
+def _redirect_with_secret(path, hash_fragment=""):
+    provided_secret = (request.args.get("secret") or "").strip()
+    query = urlencode({"secret": provided_secret}) if provided_secret else ""
+    target = path
+    if query:
+        target = f"{target}?{query}"
+    if hash_fragment:
+        target = f"{target}#{hash_fragment}"
+    return redirect(target)
+
+
 @dashboard_bp.route("/dashboard", methods=["GET"])
 @require_dashboard_auth
 def dashboard():
     return render_template("app/dashboard.html", **_page_context("Dashboard"))
 
 
+@dashboard_bp.route("/portfolio", methods=["GET"])
+@require_dashboard_auth
+def portfolio_page():
+    return render_template("app/analytics.html", **_page_context("Portfolio"))
+
+
 @dashboard_bp.route("/analytics", methods=["GET"])
 @require_dashboard_auth
 def analytics():
-    return render_template("app/analytics.html", **_page_context("Portfolio"))
+    return _redirect_with_secret("/portfolio")
 
 
 @dashboard_bp.route("/performance", methods=["GET"])
 @require_dashboard_auth
 def performance_page():
-    return render_template("app/performance.html", **_page_context("Performance"))
+    return _redirect_with_secret("/portfolio", "performance")
+
+
+@dashboard_bp.route("/backtesting", methods=["GET"])
+@require_dashboard_auth
+def backtesting_page():
+    return render_template("app/backtest.html", **_page_context("Backtesting"))
 
 
 @dashboard_bp.route("/backtest", methods=["GET"])
 @require_dashboard_auth
 def backtest_page():
-    return render_template("app/backtest.html", **_page_context("Backtesting"))
+    return _redirect_with_secret("/backtesting")
 
 
 @dashboard_bp.route("/portfolio-backtest", methods=["GET"])
 @require_dashboard_auth
 def portfolio_backtest_page():
-    return render_template("app/portfolio_backtest.html", **_page_context("Portfolio Backtest"))
-
-
-@dashboard_bp.route("/charts", methods=["GET"])
-@require_dashboard_auth
-def charts_page():
-    return render_template("app/charts.html", **_page_context("Charts"))
+    return _redirect_with_secret("/backtesting", "portfolio")
 
 
 @dashboard_bp.route("/options", methods=["GET"])
@@ -95,55 +114,73 @@ def options_page():
     return render_template("app/options.html", **_page_context("Options"))
 
 
-@dashboard_bp.route("/options-chart", methods=["GET"])
-@require_dashboard_auth
-def options_chart_page():
-    return render_template("app/options_chart.html", **_page_context("Options Chart"))
-
-
-@dashboard_bp.route("/options-strategy", methods=["GET"])
-@require_dashboard_auth
-def options_strategy_page():
-    return render_template("app/options_strategy.html", **_page_context("Options Strategy"))
-
-
 @dashboard_bp.route("/algorithm", methods=["GET"])
 @require_dashboard_auth
 def algorithm_page():
     return render_template("app/algorithm.html", **_page_context("Algorithm"))
 
 
+@dashboard_bp.route("/trading", methods=["GET"])
+@require_dashboard_auth
+def trading_page():
+    return render_template("app/meme_rotation.html", **_page_context("Trading"))
+
+
 @dashboard_bp.route("/meme-rotation", methods=["GET"])
 @require_dashboard_auth
 def meme_rotation():
-    return render_template("app/meme_rotation.html", **_page_context("Opportunities"))
+    return _redirect_with_secret("/trading")
 
 
-@dashboard_bp.route("/trade-history", methods=["GET"])
+@dashboard_bp.route("/charts", methods=["GET"])
 @require_dashboard_auth
-def trade_history():
+def charts_page():
+    return _redirect_with_secret("/trading", "charts")
+
+
+@dashboard_bp.route("/activity", methods=["GET"])
+@require_dashboard_auth
+def activity_page():
     return render_template("app/trade_history.html", **_page_context("Activity"))
-
-
-@dashboard_bp.route("/configuration", methods=["GET"])
-@require_dashboard_auth
-def configuration():
-    return render_template("app/configuration.html", **_page_context("Automation"))
-
-
-@dashboard_bp.route("/accounts", methods=["GET"])
-@require_dashboard_auth
-def accounts():
-    return render_template("app/settings.html", **_page_context("Accounts"))
 
 
 @dashboard_bp.route("/settings", methods=["GET"])
 @require_dashboard_auth
 def settings():
-    return render_template("app/system_status.html", **_page_context("Settings"))
+    return render_template("app/configuration.html", **_page_context("Settings"))
+
+
+@dashboard_bp.route("/trade-history", methods=["GET"])
+@require_dashboard_auth
+def trade_history():
+    return _redirect_with_secret("/activity")
+
+
+@dashboard_bp.route("/configuration", methods=["GET"])
+@require_dashboard_auth
+def configuration():
+    return _redirect_with_secret("/settings", "automation")
+
+
+@dashboard_bp.route("/accounts", methods=["GET"])
+@require_dashboard_auth
+def accounts():
+    return _redirect_with_secret("/settings", "accounts")
 
 
 @dashboard_bp.route("/system-status", methods=["GET"])
 @require_dashboard_auth
 def system_status():
-    return render_template("app/system_status.html", **_page_context("Settings"))
+    return _redirect_with_secret("/settings", "system")
+
+
+@dashboard_bp.route("/options-chart", methods=["GET"])
+@require_dashboard_auth
+def options_chart_page():
+    return _redirect_with_secret("/options", "charts")
+
+
+@dashboard_bp.route("/options-strategy", methods=["GET"])
+@require_dashboard_auth
+def options_strategy_page():
+    return _redirect_with_secret("/options", "strategy")

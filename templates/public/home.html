@@ -1,369 +1,184 @@
 {% extends "base_public.html" %}
 
 {% block content %}
-<section class="public-hero" id="top">
-  <div class="hero-bg" aria-hidden="true"></div>
-  <div class="hero-bg-fade" aria-hidden="true"></div>
-
-  <div class="hero-inner">
-    <div class="hero-copy">
-      <div class="hero-badge">Multi-Asset Trading Platform</div>
-
-      <h1 class="hero-title" style="font-family:'DM Sans', sans-serif;">Trade Smarter with <span style="color:#38bdf8;">AI-Powered</span> Market Intelligence</h1>
-
-      <p class="hero-subtitle">
-        Humble Capital combines technical analysis, social sentiment scanning, and regime-aware automation
-        to find the best opportunities across crypto, stocks, and options, then executes with discipline.
-      </p>
-
-      <div class="hero-stat-strip">
-        <div class="hero-stat-card">
-          <div class="hero-stat-value">200+</div>
-          <div class="hero-stat-label">Assets Scanned</div>
-        </div>
-        <div class="hero-stat-card">
-          <div class="hero-stat-value">4</div>
-          <div class="hero-stat-label">Market Sources</div>
-        </div>
-        <div class="hero-stat-card">
-          <div class="hero-stat-value">24/7</div>
-          <div class="hero-stat-label">Automated</div>
-        </div>
-      </div>
-
-      <div class="hero-actions">
-        <a class="btn btn-primary hero-btn" href="/login">Launch Console</a>
-        <a class="btn btn-secondary hero-btn" href="#features">See How It Works</a>
-      </div>
-
-      <p class="hero-footnote">
-        One dashboard for Coinbase crypto execution, Webull stock and options workflows, AI scoring, and full strategy validation before capital is committed.
-      </p>
-    </div>
-  </div>
-</section>
-
-<section class="public-overview">
-  <div class="public-section-shell" id="pillars">
-    <div class="public-section-heading">
-      <div class="hero-badge">Platform Capabilities</div>
-      <h2 class="features-title" style="font-family:'DM Sans', sans-serif;">One platform. Three markets. Total coverage.</h2>
-      <p class="features-subtitle">
-        Humble Capital unifies crypto execution, options income workflows, and social intelligence into one operating system for active traders.
-      </p>
-    </div>
-
-    <div class="workflow-grid">
-      <article class="workflow-card pillar-card">
-        <div class="workflow-step" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2v20"/>
-            <path d="M7 5.5c0-1.7 2.2-3 5-3s5 1.3 5 3-2.2 3-5 3-5 1.3-5 3 2.2 3 5 3 5 1.3 5 3-2.2 3-5 3-5-1.3-5-3"/>
-          </svg>
-        </div>
-        <h3>Crypto Trading</h3>
-        <p>
-          Automated core accumulation in BTC, ETH, SOL, and XRP with selective satellite rotation, defensive regime selling, and flash-crash protection.
-        </p>
-        <ul>
-          <li>114+ Coinbase assets scanned on schedule</li>
-          <li>Core DCA plus selective satellite rotation</li>
-          <li>Defensive selling during caution and risk-off regimes</li>
-          <li>Trailing exits and velocity-based protection</li>
-        </ul>
-      </article>
-
-      <article class="workflow-card pillar-card">
-        <div class="workflow-step" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="5" width="18" height="14" rx="2"/>
-            <path d="M7 9h10"/>
-            <path d="M7 13h6"/>
-          </svg>
-        </div>
-        <h3>Options Trading</h3>
-        <p>
-          Screen liquid stocks for covered calls, cash-secured puts, credit spreads, iron condors, and custom multi-leg structures.
-        </p>
-        <ul>
-          <li>Real-time option chain analysis with Greeks</li>
-          <li>IV rank scoring for premium-selling setups</li>
-          <li>Strategy builder with live P&amp;L diagrams</li>
-          <li>Backtests for Wheel, spreads, condors, and earnings trades</li>
-        </ul>
-      </article>
-
-      <article class="workflow-card pillar-card">
-        <div class="workflow-step" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 18v-5a2 2 0 0 1 2-2h3l3-5 3 10 2-3h3a2 2 0 0 1 2 2v3"/>
-          </svg>
-        </div>
-        <h3>Social Intelligence</h3>
-        <p>
-          Scan Reddit, StockTwits, Google News, and optional YouTube data to understand how the crowd and the media are leaning before you trade.
-        </p>
-        <ul>
-          <li>Reddit coverage for stocks and crypto communities</li>
-          <li>StockTwits sentiment and watcher activity</li>
-          <li>Google News and headline scoring</li>
-          <li>Composite sentiment scoring from -100 to +100</li>
-        </ul>
-      </article>
-    </div>
-  </div>
-</section>
-
-<section class="public-overview" id="features">
-  <div class="public-section-shell">
-    <div class="public-section-heading">
-      <div class="hero-badge">The Engine</div>
-      <h2 class="features-title" style="font-family:'DM Sans', sans-serif;">Four layers of intelligence working together</h2>
-      <p class="features-subtitle">
-        The platform continuously scans, scores, executes, and protects so decisions are grounded in context instead of guesswork.
-      </p>
-    </div>
-
-    <div class="workflow-grid" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
-      <article class="workflow-card">
-        <div class="workflow-step">01</div>
-        <h3>Scan</h3>
-        <p>
-          Every cycle, the engine scans crypto, stocks, and options setups. It pulls social sentiment, computes indicators, and refreshes tradable universes automatically.
-        </p>
-      </article>
-
-      <article class="workflow-card">
-        <div class="workflow-step">02</div>
-        <h3>Score</h3>
-        <p>
-          Each opportunity gets a composite score from technical analysis, social sentiment, momentum, and regime fit. The highest-quality setups rise to the top.
-        </p>
-      </article>
-
-      <article class="workflow-card">
-        <div class="workflow-step">03</div>
-        <h3>Execute</h3>
-        <p>
-          In semi-auto mode you review scored opportunities. In full-auto mode the bot executes with position sizing, correlation filters, cash reserves, and explicit exits.
-        </p>
-      </article>
-
-      <article class="workflow-card">
-        <div class="workflow-step">04</div>
-        <h3>Protect</h3>
-        <p>
-          The regime engine monitors market health and automatically changes behavior during downturns. Defensive selling, trailing stops, and velocity exits help protect capital.
-        </p>
-      </article>
-    </div>
-  </div>
-</section>
-
-<section class="public-features">
-  <div class="features-inner">
-    <div class="public-section-heading">
-      <h2 class="features-title" style="font-family:'DM Sans', sans-serif;">Built for serious traders</h2>
-      <p class="features-subtitle">
-        Everything is designed around disciplined execution, fast review loops, and seeing exactly why a trade is being suggested.
-      </p>
-    </div>
-
-    <div class="feature-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-      <article class="feature-card">
-        <div class="feature-kicker">Backtesting</div>
-        <h3>Test before you trade</h3>
-        <p>Run single-asset and portfolio-level simulations with DCA, rebalancing, defensive selling, and options strategy validation before risking real capital.</p>
-      </article>
-
-      <article class="feature-card">
-        <div class="feature-kicker">Charts</div>
-        <h3>Interactive signal visualization</h3>
-        <p>Candlestick charts show signal markers, Bollinger Bands, EMAs, RSI, IV estimates, and option overlays so you can inspect setups visually.</p>
-      </article>
-
-      <article class="feature-card">
-        <div class="feature-kicker">Regime Engine</div>
-        <h3>Market-aware automation</h3>
-        <p>Four regime states adjust exposure automatically. The system becomes defensive in caution and risk-off conditions and leans back in when markets improve.</p>
-      </article>
-
-      <article class="feature-card">
-        <div class="feature-kicker">Options Screener</div>
-        <h3>Premium-selling opportunities</h3>
-        <p>Scan for covered calls, cash-secured puts, credit spreads, iron condors, and Wheel setups with IV rank, earnings filters, and social sentiment overlays.</p>
-      </article>
-
-      <article class="feature-card">
-        <div class="feature-kicker">Multi-Broker</div>
-        <h3>Coinbase plus Webull</h3>
-        <p>Trade crypto on Coinbase and stocks or options on Webull while monitoring both from one unified dashboard and analytics surface.</p>
-      </article>
-
-      <article class="feature-card">
-        <div class="feature-kicker">Risk Controls</div>
-        <h3>Professional-grade guardrails</h3>
-        <p>Volatility-aware sizing, drawdown controls, cash reserve enforcement, and correlation filters keep the automation disciplined when markets get noisy.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
-<section class="public-product-peek">
-  <div class="product-peek-shell">
-    <div class="product-peek-copy">
-      <div class="hero-badge">Console Preview</div>
-      <h2 class="features-title" style="font-family:'DM Sans', sans-serif; font-size:52px;">See the whole system in one place</h2>
-      <p class="features-subtitle" style="margin-left:0; text-align:left;">
-        The console brings portfolio holdings, auto-trading posture, options positions, and active opportunities into one operating view so you can move quickly with context.
-      </p>
-      <div class="product-peek-points">
-        <div class="product-peek-point">
-          <strong>Unified portfolio view</strong>
-          <span>Track crypto holdings, option exposure, cash reserves, and active signals together instead of bouncing between broker dashboards.</span>
-        </div>
-        <div class="product-peek-point">
-          <strong>Actionable workflows</strong>
-          <span>Review scanner output, inspect charts, stage options trades, and validate strategies with backtests from the same environment.</span>
-        </div>
-        <div class="product-peek-point">
-          <strong>Automation with operator control</strong>
-          <span>Stay in semi-auto when you want approval steps, or move toward full automation when your rules and scoring model are ready.</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="console-frame console-frame-large">
-      <div class="console-topbar">
-        <span class="console-dot"></span>
-        <span class="console-dot"></span>
-        <span class="console-dot"></span>
-        <span class="console-title">Humble Capital Console</span>
-      </div>
-
-      <div class="console-screen">
-        <div class="console-kpi-row">
-          <div class="console-kpi-card">
-            <div class="console-kpi-label">Portfolio Value</div>
-            <div class="console-kpi-value">$128,420</div>
-          </div>
-          <div class="console-kpi-card">
-            <div class="console-kpi-label">Auto-Trading Mode</div>
-            <div class="console-kpi-value">Semi-Auto</div>
-          </div>
-          <div class="console-kpi-card">
-            <div class="console-kpi-label">Options Premium MTD</div>
-            <div class="console-kpi-value">$1,284</div>
-          </div>
-        </div>
-
-        <div class="console-main-grid">
-          <div class="console-chart-card">
-            <div class="console-card-head">
-              <span>Composite Opportunity Scoreboard</span>
-              <span class="console-chip console-chip-good">Bull Regime</span>
-            </div>
-            <svg viewBox="0 0 640 220" class="console-chart" role="img" aria-label="Composite score and equity preview">
-              <defs>
-                <linearGradient id="homeLine" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#38bdf8"></stop>
-                  <stop offset="100%" stop-color="#60a5fa"></stop>
-                </linearGradient>
-                <linearGradient id="homeArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="rgba(56,189,248,0.26)"></stop>
-                  <stop offset="100%" stop-color="rgba(56,189,248,0.02)"></stop>
-                </linearGradient>
-              </defs>
-              <path d="M18 164 C80 160,122 136,170 124 S274 82,330 96 S422 128,474 102 S560 66,620 54" fill="none" stroke="url(#homeLine)" stroke-width="3" stroke-linecap="round"></path>
-              <path d="M18 164 C80 160,122 136,170 124 S274 82,330 96 S422 128,474 102 S560 66,620 54 L620 204 L18 204 Z" fill="url(#homeArea)"></path>
-              <line x1="18" y1="110" x2="620" y2="110" stroke="rgba(255,255,255,0.08)" stroke-dasharray="5 7"></line>
-              <circle cx="474" cy="102" r="5" fill="#22c55e"></circle>
-              <circle cx="560" cy="66" r="5" fill="#f59e0b"></circle>
-              <circle cx="620" cy="54" r="5" fill="#38bdf8"></circle>
-            </svg>
-            <div class="console-chip-row">
-              <span class="console-chip">BTC-USD score 78</span>
-              <span class="console-chip">DOGE-USD score 71</span>
-              <span class="console-chip">AAPL IV Rank 64</span>
-            </div>
-          </div>
-
-          <div class="console-side-stack">
-            <div class="console-side-card">
-              <div class="console-card-head">
-                <span>Allocation</span>
-              </div>
-              <div class="console-allocation-bar">
-                <span class="console-alloc-core"></span>
-                <span class="console-alloc-sat"></span>
-                <span class="console-alloc-cash"></span>
-              </div>
-              <div class="console-legend">
-                <span>Core 63%</span>
-                <span>Satellite 18%</span>
-                <span>Cash 19%</span>
-              </div>
-            </div>
-
-            <div class="console-side-card">
-              <div class="console-card-head">
-                <span>Open Options</span>
-              </div>
-              <div class="console-chip-row">
-                <span class="console-chip console-chip-good">AAPL 16 MAY 2026 200C x1</span>
-                <span class="console-chip">MSFT 20 JUN 2026 380P x1</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="console-table-card">
-          <div class="console-card-head">
-            <span>Live Positions</span>
-            <span class="console-chip">7 Active</span>
-          </div>
-          <div class="console-table">
-            <div class="console-row console-row-head">
-              <span>Asset</span>
-              <span>Exposure</span>
-              <span>P&amp;L</span>
-            </div>
-            <div class="console-row">
-              <span>BTC-USD</span>
-              <span>$42,180</span>
-              <span style="color:#38bdf8;">+6.4%</span>
-            </div>
-            <div class="console-row">
-              <span>SOL-USD</span>
-              <span>$16,940</span>
-              <span style="color:#38bdf8;">+9.1%</span>
-            </div>
-            <div class="console-row">
-              <span>DOGE-USD</span>
-              <span>$4,860</span>
-              <span style="color:#fb923c;">-1.7%</span>
-            </div>
-            <div class="console-row">
-              <span>AAPL 200C</span>
-              <span>$1,240 premium</span>
-              <span style="color:#38bdf8;">+18.2%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="public-cta">
-  <div class="cta-inner">
-    <h2 style="font-family:'DM Sans', sans-serif;">Stop guessing. Start trading with intelligence.</h2>
-    <p>
-      Launch Humble Capital and let the engine scan markets, rank opportunities, and manage risk while you stay focused on strategy.
+<section class="hc-public-hero hero-grid hc-reveal" id="top">
+  <div class="hc-public-hero-inner">
+    <div class="hero-badge hc-public-badge">Multi-Asset Trading Platform</div>
+    <h1 class="hc-public-hero-title">Trade Smarter with <span class="hc-public-gradient">AI-Powered</span> Market Intelligence</h1>
+    <p class="hero-subtitle hc-public-hero-subtitle">
+      Humble Capital scans 200+ assets across crypto, stocks, and options using technical analysis,
+      social sentiment from Reddit and StockTwits, and regime-aware automation to find the
+      highest-probability trades.
     </p>
-    <div class="hero-actions" style="justify-content:center;">
-      <a class="btn btn-primary hero-btn" href="/login">Launch Console</a>
+
+    <div class="hero-stat-strip hc-public-stat-strip">
+      <div class="hero-stat-card hc-public-glass hc-reveal-child">
+        <div class="hero-stat-value">200+</div>
+        <div class="hero-stat-label">Assets</div>
+      </div>
+      <div class="hero-stat-card hc-public-glass hc-reveal-child">
+        <div class="hero-stat-value">4</div>
+        <div class="hero-stat-label">Intelligence Sources</div>
+      </div>
+      <div class="hero-stat-card hc-public-glass hc-reveal-child">
+        <div class="hero-stat-value">24/7</div>
+        <div class="hero-stat-label">Automated</div>
+      </div>
+    </div>
+
+    <div class="hero-actions hc-public-actions">
+      <a class="btn btn-primary hero-btn hc-public-cta-primary" href="/login">Launch Console</a>
+      <a class="btn btn-secondary hero-btn hc-public-cta-secondary" href="#engine">See How It Works</a>
+    </div>
+  </div>
+
+  <a class="hc-public-scroll" href="#pillars" aria-label="Scroll to features">
+    <span class="hc-public-scroll-arrow"></span>
+  </a>
+</section>
+
+<section class="hc-public-section hc-reveal" id="pillars">
+  <div class="hc-public-section-head">
+    <div class="hero-badge hc-public-badge">Platform Capabilities</div>
+    <h2>One platform. Three markets. Total coverage.</h2>
+  </div>
+  <div class="hc-public-pillar-grid">
+    <article class="hc-public-glass hc-public-pillar hc-reveal-child">
+      <div class="hc-public-pillar-icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20"/><path d="M7 5.5c0-1.7 2.2-3 5-3s5 1.3 5 3-2.2 3-5 3-5 1.3-5 3 2.2 3 5 3 5 1.3 5 3-2.2 3-5 3-5-1.3-5-3"/></svg>
+      </div>
+      <h3>Crypto Trading</h3>
+      <p>Automated DCA, regime-aware defense, and intelligent satellite rotation across 114+ Coinbase assets. The system preserved 10% more capital than buy-and-hold during the last bear market.</p>
+      <ul>
+        <li>Hourly scanning</li>
+        <li>Defensive selling</li>
+        <li>Trailing stops</li>
+        <li>Core DCA</li>
+      </ul>
+    </article>
+
+    <article class="hc-public-glass hc-public-pillar hc-reveal-child">
+      <div class="hc-public-pillar-icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <h3>Stock Trading</h3>
+      <p>Scan 50 liquid stocks with combined technical and social sentiment scoring. The unified scoring engine ranks every opportunity by technical setup, Reddit buzz, momentum, and market regime.</p>
+      <ul>
+        <li>Technical + sentiment scoring</li>
+        <li>Real-time signals</li>
+        <li>Webull execution</li>
+        <li>Full backtesting</li>
+      </ul>
+    </article>
+
+    <article class="hc-public-glass hc-public-pillar hc-reveal-child">
+      <div class="hc-public-pillar-icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      </div>
+      <h3>Options Trading</h3>
+      <p>Screen for covered calls, credit spreads, and iron condors with real-time IV rank analysis. The Wheel strategy targets 24-48% annualized returns through systematic premium selling.</p>
+      <ul>
+        <li>IV rank screening</li>
+        <li>Strategy builder</li>
+        <li>P&amp;L diagrams</li>
+        <li>Greeks analysis</li>
+      </ul>
+    </article>
+  </div>
+</section>
+
+<section class="hc-public-section hc-reveal" id="engine">
+  <div class="hc-public-section-head">
+    <div class="hero-badge hc-public-badge">The Engine</div>
+    <h2>Four layers of intelligence working together</h2>
+  </div>
+  <div class="hc-public-timeline">
+    <div class="hc-public-timeline-line"></div>
+    <article class="hc-public-glass hc-public-step hc-reveal-child"><div class="hc-public-step-no">01</div><h3>Scan</h3><p>Every hour the engine scans multi-asset markets, sentiment channels, and broker data for fresh opportunity sets.</p></article>
+    <article class="hc-public-glass hc-public-step hc-reveal-child"><div class="hc-public-step-no">02</div><h3>Score</h3><p>Each asset gets a composite score from technicals, social sentiment, momentum, and regime fit before it surfaces.</p></article>
+    <article class="hc-public-glass hc-public-step hc-reveal-child"><div class="hc-public-step-no">03</div><h3>Execute</h3><p>Use semi-auto review flows or full-auto execution with pre-set sizing, filters, and broker integration.</p></article>
+    <article class="hc-public-glass hc-public-step hc-reveal-child"><div class="hc-public-step-no">04</div><h3>Protect</h3><p>Regime-aware defense, trailing exits, defensive selling, and risk controls work together when markets deteriorate.</p></article>
+  </div>
+</section>
+
+<section class="hc-public-section hc-reveal" id="preview">
+  <div class="hc-public-section-head">
+    <div class="hero-badge hc-public-badge">See it in action</div>
+    <h2>Console preview</h2>
+  </div>
+  <div class="hc-public-glass hc-public-console hc-reveal-child">
+    <div class="hc-public-console-bar">
+      <span></span><span></span><span></span>
+      <strong>Humble Capital Console</strong>
+    </div>
+    <div class="hc-public-console-body">
+      <div class="hc-public-console-kpis">
+        <div class="hc-public-console-kpi"><label>Portfolio Value</label><strong>$128,420</strong></div>
+        <div class="hc-public-console-kpi"><label>Market Regime</label><strong>Bull</strong></div>
+        <div class="hc-public-console-kpi"><label>Options Income</label><strong>$1,284 MTD</strong></div>
+      </div>
+      <div class="hc-public-console-main">
+        <div class="hc-public-console-chart">
+          <svg viewBox="0 0 640 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="hcEquityFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(56,189,248,0.32)"/>
+                <stop offset="100%" stop-color="rgba(129,140,248,0.02)"/>
+              </linearGradient>
+            </defs>
+            <path d="M24 214C78 204 114 182 152 168C194 153 230 160 274 136C316 114 354 122 404 92C448 66 504 80 616 34V236H24V214Z" fill="url(#hcEquityFill)" opacity="0.55"/>
+            <path class="equity-line" d="M24 214C78 204 114 182 152 168C194 153 230 160 274 136C316 114 354 122 404 92C448 66 504 80 616 34" stroke="url(#hcLineGradient)" stroke-width="5" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="hcLineGradient" x1="24" y1="214" x2="616" y2="34">
+                <stop offset="0%" stop-color="#38bdf8"/>
+                <stop offset="100%" stop-color="#818cf8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="hc-public-console-side">
+          <div class="hc-public-console-card"><span>Core Holdings</span><strong>BTC 30% · ETH 15% · SOL 13%</strong></div>
+          <div class="hc-public-console-card"><span>Signal Feed</span><strong>BUY COIN · SELL PUT AAPL · EXIT PEPE</strong></div>
+          <div class="hc-public-console-card"><span>Options</span><strong>AAPL 200C · AMD CSP · SPY IC</strong></div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
+
+<section class="hc-public-section hc-reveal" id="features">
+  <div class="hc-public-section-head">
+    <h2>Built for serious traders</h2>
+  </div>
+  <div class="hc-public-feature-grid">
+    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Backtesting</div><h3>Test before you trade</h3><p>Run full strategy validation across single assets or entire portfolios before capital goes live.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Signal Charts</div><h3>Interactive signal visualization</h3><p>Inspect trades on chart with indicators, overlays, and client-side parameter tuning.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Regime Engine</div><h3>Market-aware automation</h3><p>Automation changes its behavior as conditions move from bull to caution to risk-off.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Options Screener</div><h3>Premium selling opportunities</h3><p>IV rank, earnings avoidance, chain analysis, and strategy scoring in one workflow.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Multi-Broker</div><h3>Coinbase + Webull</h3><p>Crypto, stocks, and options managed in one console instead of siloed broker tabs.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Risk Controls</div><h3>Professional-grade guardrails</h3><p>Volatility-aware sizing, correlation limits, reserves, and defensive selling are built in.</p></article>
+  </div>
+</section>
+
+<section class="hc-public-cta-section hc-reveal">
+  <div class="hc-public-glass hc-public-cta-box hc-reveal-child">
+    <h2>Stop guessing. Start trading with intelligence.</h2>
+    <p>Launch the console and let the engine surface high-probability opportunities while you stay focused on strategy.</p>
+    <div class="hero-actions hc-public-actions">
+      <a class="btn btn-primary hero-btn hc-public-cta-primary" href="/login">Launch Console</a>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) entry.target.classList.add('visible');
+    });
+  }, { threshold: 0.18 });
+
+  document.querySelectorAll('.hc-reveal').forEach((node) => observer.observe(node));
+})();
+</script>
 {% endblock %}

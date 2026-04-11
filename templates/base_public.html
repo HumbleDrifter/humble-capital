@@ -4,48 +4,41 @@
   <meta charset="utf-8">
   <title>{{ page_title or "Humble Capital" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#080d14">
-
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=6">
+  <meta name="theme-color" content="#0a0e17">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=7">
 </head>
-<body class="theme-dark public-body">
-  <div class="public-bg">
-    <div class="public-bg-glow public-bg-glow-a"></div>
-    <div class="public-bg-glow public-bg-glow-b"></div>
-    <div class="public-bg-glow public-bg-glow-c"></div>
-
-    <div class="public-orb public-orb-a"></div>
-    <div class="public-orb public-orb-b"></div>
-
-    <div class="public-grid-lines"></div>
-    <div class="public-noise"></div>
+<body class="theme-dark public-body hc-public-body">
+  <div class="public-bg hc-public-bg" aria-hidden="true">
+    <div class="hc-public-glow hc-public-glow-a"></div>
+    <div class="hc-public-glow hc-public-glow-b"></div>
+    <div class="hc-public-noise"></div>
   </div>
 
-  <div class="public-site">
-    <header class="public-topbar">
-      <a class="public-brand" href="/">
-        <span class="public-brand-mark" aria-hidden="true">
+  <div class="public-site hc-public-site">
+    <header class="public-topbar hc-public-topbar">
+      <a class="public-brand hc-public-brand" href="/">
+        <span class="public-brand-mark hc-public-brand-mark" aria-hidden="true">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
             <rect x="2" y="4" width="4" height="20" rx="2" fill="#38bdf8"/>
             <rect x="22" y="4" width="4" height="20" rx="2" fill="#38bdf8"/>
             <path d="M6 18 L22 10" stroke="#38bdf8" stroke-width="3" stroke-linecap="round"/>
           </svg>
         </span>
-        <span class="public-brand-copy">
+        <span class="public-brand-copy hc-public-brand-copy">
           <span class="public-brand-title">Humble Capital</span>
-          <span class="public-brand-subtitle">Trading Console</span>
+          <span class="public-brand-subtitle">Multi-Asset Trading Intelligence</span>
         </span>
       </a>
 
-      <nav class="public-nav">
-        <a class="public-nav-link" href="/">Home</a>
-        <a class="public-nav-link" href="/explore">Explore</a>
-        <a class="public-nav-link public-nav-cta" href="/login">Login</a>
+      <nav class="public-nav hc-public-nav">
+        <a class="public-nav-link" href="#features">Features</a>
+        <a class="public-nav-link" href="#engine">How It Works</a>
+        <a class="public-nav-link public-nav-cta" href="/login">Launch Console</a>
       </nav>
     </header>
 
-    <main class="public-shell">
+    <main class="public-shell hc-public-shell">
       {% block content %}{% endblock %}
     </main>
   </div>

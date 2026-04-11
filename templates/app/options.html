@@ -169,8 +169,9 @@
   <div class="page-tab-content" id="tab-charts">
     <div class="hc-chart-section" style="padding:0; overflow:hidden;">
       <iframe
+        id="optionsChartsFrame"
         title="Options Charts"
-        src="{{ '/options-chart?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/options-chart?embed=1' }}"
+        data-src="{{ '/options-chart?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/options-chart?embed=1' }}"
         style="width:100%; min-height:2200px; border:0; background:#0a1018; display:block;"
         loading="lazy"></iframe>
     </div>
@@ -179,8 +180,9 @@
   <div class="page-tab-content" id="tab-strategy">
     <div class="hc-chart-section" style="padding:0; overflow:hidden;">
       <iframe
+        id="optionsStrategyFrame"
         title="Options Strategy Builder"
-        src="{{ '/options-strategy?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/options-strategy?embed=1' }}"
+        data-src="{{ '/options-strategy?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/options-strategy?embed=1' }}"
         style="width:100%; min-height:1800px; border:0; background:#0a1018; display:block;"
         loading="lazy"></iframe>
     </div>
@@ -809,9 +811,23 @@
   const tabs = Array.from(document.querySelectorAll(".page-tab"));
   const panels = Array.from(document.querySelectorAll(".page-tab-content"));
 
+  function ensureTabFrame(tabName) {
+    const frameMap = {
+      charts: document.getElementById("optionsChartsFrame"),
+      strategy: document.getElementById("optionsStrategyFrame"),
+    };
+    const frame = frameMap[tabName];
+    if (!frame || frame.getAttribute("src")) return;
+    const src = frame.getAttribute("data-src");
+    if (src) {
+      frame.setAttribute("src", src);
+    }
+  }
+
   function showTab(name) {
     tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
     panels.forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${name}`));
+    ensureTabFrame(name);
     history.replaceState(null, "", `#${name}`);
   }
 

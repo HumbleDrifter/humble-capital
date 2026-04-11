@@ -24,8 +24,9 @@
   <div class="page-tab-content active" id="tab-crypto">
     <div class="hc-chart-section" style="padding:0; overflow:hidden;">
       <iframe
+        id="backtestingCryptoFrame"
         title="Crypto Backtesting"
-        src="{{ '/backtest?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/backtest?embed=1' }}"
+        data-src="{{ '/backtest?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/backtest?embed=1' }}"
         style="width:100%; min-height:2350px; border:0; background:#0a1018; display:block;"
         loading="lazy"></iframe>
     </div>
@@ -196,8 +197,9 @@
   <div class="page-tab-content" id="tab-portfolio">
     <div class="hc-chart-section" style="padding:0; overflow:hidden;">
       <iframe
+        id="backtestingPortfolioFrame"
         title="Portfolio Backtesting"
-        src="{{ '/portfolio-backtest?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/portfolio-backtest?embed=1' }}"
+        data-src="{{ '/portfolio-backtest?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/portfolio-backtest?embed=1' }}"
         style="width:100%; min-height:3200px; border:0; background:#0a1018; display:block;"
         loading="lazy"></iframe>
     </div>
@@ -229,14 +231,29 @@
   function initTabs() {
     const tabs = Array.from(document.querySelectorAll(".page-tab"));
     const panels = Array.from(document.querySelectorAll(".page-tab-content"));
+    function ensureTabFrame(name) {
+      const frameMap = {
+        crypto: document.getElementById("backtestingCryptoFrame"),
+        portfolio: document.getElementById("backtestingPortfolioFrame"),
+      };
+      const frame = frameMap[name];
+      if (!frame || frame.getAttribute("src")) return;
+      const src = frame.getAttribute("data-src");
+      if (src) frame.setAttribute("src", src);
+    }
     const showTab = (name) => {
       tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
       panels.forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${name}`));
+      ensureTabFrame(name);
       history.replaceState(null, "", `#${name}`);
     };
     tabs.forEach((tab) => tab.addEventListener("click", () => showTab(tab.dataset.tab || "crypto")));
     const hash = location.hash.slice(1);
-    if (hash && tabs.some((tab) => tab.dataset.tab === hash)) showTab(hash);
+    if (hash && tabs.some((tab) => tab.dataset.tab === hash)) {
+      showTab(hash);
+    } else {
+      ensureTabFrame("crypto");
+    }
   }
 
   function setSelectOptions(id, symbols) {

@@ -76,6 +76,12 @@
         "unknown": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false}
     },
     "sell_policy_overrides": {},
+    "defensive_sell_enabled": true,
+    "defensive_sell_regimes": ["risk_off", "caution"],
+    "defensive_sell_pct_per_cycle": 0.05,
+    "defensive_sell_max_pct": 0.90,
+    "defensive_rebuy_regimes": ["bull", "neutral"],
+    "defensive_rebuy_pct_per_cycle": 0.10,
     "max_active_satellites": 4,
     "min_meme_score": 65.0
 }

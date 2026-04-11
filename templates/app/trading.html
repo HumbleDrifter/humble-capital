@@ -424,6 +424,26 @@
       </div>
       <div id="futuresOpportunitiesGrid" class="futures-grid"><div class="hc-empty-card">Loading futures opportunities...</div></div>
     </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Funding Arbitrage</h3>
+          <p class="opp-section-subtitle">Perps with elevated funding rates — short perp + long spot carry trade candidates.</p>
+        </div>
+      </div>
+      <div id="futuresFundingGrid" class="futures-grid"><div class="hc-empty-card">Loading funding arb data...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Basis Trade</h3>
+          <p class="opp-section-subtitle">Dated futures trading at premium to spot — annualized basis yield opportunities.</p>
+        </div>
+      </div>
+      <div id="futuresBasisGrid" class="futures-grid"><div class="hc-empty-card">Loading basis trade data...</div></div>
+    </section>
   </div>
 
   <div class="page-tab-content" id="tab-charts">
@@ -952,12 +972,59 @@
     });
   }
 
+  function renderFuturesFunding(rows) {
+    const host = document.getElementById("futuresFundingGrid");
+    if (!rows || !rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No funding arb opportunities right now.</div>';
+      return;
+    }
+    host.innerHTML = rows.slice(0, 12).map((row) => `
+      <article class="futures-card">
+        <div class="futures-card-head">
+          <div>
+            <div class="futures-card-title">${escapeHtml(row.product_id || "Unknown")}</div>
+            <div class="futures-card-subtitle">Short Perp + Long Spot</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(Math.min(row.funding_annualized_pct || 0, 100))}">${fmtNum(row.funding_annualized_pct || 0, 1)}% APR</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">8h Rate</span><strong>${fmtNum(row.funding_rate_8h || 0, 4)}%</strong></div>
+          <div><span class="futures-metric-label">Est. Daily</span><strong>${fmtUsd(row.estimated_daily_income || 0, 4)}</strong></div>
+        </div>
+      </article>`).join("");
+  }
+
+  function renderFuturesBasis(rows) {
+    const host = document.getElementById("futuresBasisGrid");
+    if (!rows || !rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No basis trade opportunities right now.</div>';
+      return;
+    }
+    host.innerHTML = rows.slice(0, 12).map((row) => `
+      <article class="futures-card">
+        <div class="futures-card-head">
+          <div>
+            <div class="futures-card-title">${escapeHtml(row.futures_product || "Unknown")}</div>
+            <div class="futures-card-subtitle">vs ${escapeHtml(row.spot_product || "")} · ${row.days_to_expiry || "?"} days</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(Math.min(row.premium_annualized_pct || 0, 100))}">${fmtNum(row.premium_annualized_pct || 0, 1)}% APR</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">Spot</span><strong>${fmtUsd(row.spot_price || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Futures</span><strong>${fmtUsd(row.futures_price || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Premium</span><strong>${fmtNum(row.premium_pct || 0, 3)}%</strong></div>
+        </div>
+      </article>`).join("");
+  }
+
   async function loadFutures() {
-    const [balanceData, positionsData, productsData, scannerData] = await Promise.all([
+    const [balanceData, positionsData, productsData, scannerData, fundingData, basisData] = await Promise.all([
       fetchJson("/api/futures/balance"),
       fetchJson("/api/futures/positions"),
       fetchJson("/api/futures/products"),
-      fetchJson("/api/futures/scanner/perps?regime=neutral")
+      fetchJson("/api/futures/scanner/perps?regime=neutral"),
+      fetchJson("/api/futures/scanner/funding"),
+      fetchJson("/api/futures/scanner/basis")
     ]);
     futuresProducts = Array.isArray(productsData.products) ? productsData.products : [];
     futuresPositions = Array.isArray(positionsData.positions) ? positionsData.positions : [];
@@ -968,7 +1035,12 @@
     renderFuturesPositions(futuresPositions);
     renderFuturesProducts();
     renderFuturesOpportunities(futuresOpportunities);
-    document.getElementById("futuresSummaryMeta").textContent = `${futuresPositions.length} open positions · ${futuresProducts.length} products loaded · ${futuresOpportunities.length} opportunities`;
+    renderFuturesFunding(Array.isArray(fundingData.results) ? fundingData.results : []);
+    renderFuturesBasis(Array.isArray(basisData.results) ? basisData.results : []);
+    const oppCount = futuresOpportunities.length;
+    const fundCount = Array.isArray(fundingData.results) ? fundingData.results.length : 0;
+    const basisCount = Array.isArray(basisData.results) ? basisData.results.length : 0;
+    document.getElementById("futuresSummaryMeta").textContent = `${futuresPositions.length} open positions · ${futuresProducts.length} products · ${oppCount} setups · ${fundCount} funding arb · ${basisCount} basis trades`;
   }
 
   function sma(values, period) {

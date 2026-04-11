@@ -95,6 +95,12 @@ def options_page():
     return render_template("app/options.html", **_page_context("Options"))
 
 
+@dashboard_bp.route("/options-chart", methods=["GET"])
+@require_dashboard_auth
+def options_chart_page():
+    return render_template("app/options_chart.html", **_page_context("Options Chart"))
+
+
 @dashboard_bp.route("/algorithm", methods=["GET"])
 @require_dashboard_auth
 def algorithm_page():

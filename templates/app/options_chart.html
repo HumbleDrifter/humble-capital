@@ -1,0 +1,500 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<style>
+  .optc-shell { display:grid; gap:18px; font-family:"DM Sans",system-ui,-apple-system,sans-serif; color:var(--hc-text,#ecf3ff); }
+  .optc-card { border:1px solid rgba(255,255,255,.08); border-radius:18px; background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.02)); box-shadow:0 18px 40px rgba(0,0,0,.24); }
+  .optc-controls { padding:18px; display:grid; gap:16px; }
+  .optc-grid { display:grid; gap:14px; grid-template-columns:2fr 1fr 1fr 1fr; }
+  .optc-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .optc-select,.optc-input { width:100%; min-height:46px; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(11,16,24,.78); color:var(--hc-text,#ecf3ff); padding:0 14px; }
+  .optc-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.56); margin-bottom:8px; display:block; }
+  .optc-slider-card { padding:14px; border-radius:14px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); }
+  .optc-slider { width:100%; accent-color:#38bdf8; }
+  .optc-value { font-size:13px; color:rgba(255,255,255,.68); }
+  .optc-layout { display:grid; gap:18px; grid-template-columns:minmax(0,1.8fr) minmax(300px,.9fr); }
+  .optc-chart-stack { display:grid; gap:16px; }
+  .optc-chart-card { padding:16px; position:relative; overflow:hidden; }
+  .optc-chart-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }
+  .optc-title { margin:0; font-size:18px; font-weight:800; letter-spacing:-.02em; }
+  .optc-subtitle { margin:4px 0 0; color:rgba(255,255,255,.62); font-size:13px; }
+  .optc-main-wrap { position:relative; }
+  .optc-main-chart { height:430px; }
+  .optc-overlay { position:absolute; inset:0; pointer-events:none; }
+  .optc-event-line { position:absolute; top:0; bottom:0; width:1px; border-left:1px dotted rgba(255,255,255,.24); }
+  .optc-event-line span { position:absolute; top:8px; left:4px; font-size:10px; font-weight:800; color:#fbbf24; }
+  .optc-mini-chart { height:180px; }
+  .optc-panel { padding:18px; display:grid; gap:16px; align-content:start; }
+  .optc-kpis { display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .optc-kpi { padding:14px; border-radius:14px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); }
+  .optc-kpi-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.52); }
+  .optc-kpi-value { margin-top:6px; font-size:24px; font-weight:800; letter-spacing:-.03em; }
+  .optc-kpi-value.good { color:#34d399; }
+  .optc-kpi-value.bad { color:#fb7185; }
+  .optc-state { display:flex; flex-wrap:wrap; gap:8px; }
+  .optc-pill { padding:7px 10px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.04); color:rgba(255,255,255,.82); }
+  .optc-pill.csp { color:#38bdf8; background:rgba(56,189,248,.12); border-color:rgba(56,189,248,.2); }
+  .optc-pill.cc { color:#60a5fa; background:rgba(96,165,250,.12); border-color:rgba(96,165,250,.2); }
+  .optc-pill.flat { color:#94a3b8; }
+  .optc-feed { max-height:430px; overflow:auto; display:grid; gap:10px; }
+  .optc-feed-card { padding:14px; border-radius:14px; border:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.025); }
+  .optc-feed-top { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+  .optc-badge { padding:6px 10px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+  .optc-badge.put { background:rgba(34,197,94,.14); color:#34d399; }
+  .optc-badge.assign { background:rgba(245,158,11,.14); color:#fbbf24; }
+  .optc-badge.call { background:rgba(56,189,248,.14); color:#38bdf8; }
+  .optc-badge.away { background:rgba(239,68,68,.14); color:#f87171; }
+  .optc-badge.spread { background:rgba(168,85,247,.14); color:#c084fc; }
+  .optc-badge.exit { background:rgba(251,113,133,.14); color:#fb7185; }
+  .optc-timeline { display:flex; flex-wrap:wrap; gap:2px; align-items:center; }
+  .optc-seg { flex:1 1 0; min-width:20px; height:18px; border-radius:999px; opacity:.8; }
+  .optc-seg.bull { background:#34d399; }
+  .optc-seg.neutral { background:#38bdf8; }
+  .optc-seg.caution { background:#f59e0b; }
+  .optc-seg.risk_off { background:#ef4444; }
+  .optc-empty { padding:18px; border-radius:14px; background:rgba(255,255,255,.025); border:1px dashed rgba(255,255,255,.1); color:rgba(255,255,255,.6); }
+  @media (max-width: 1100px) { .optc-layout,.optc-grid { grid-template-columns:1fr; } .optc-kpis { grid-template-columns:1fr 1fr; } }
+</style>
+
+<div class="optc-shell">
+  <section class="optc-card optc-controls">
+    <div class="optc-chart-head">
+      <div>
+        <h2 class="optc-title">Options Chart</h2>
+        <p class="optc-subtitle">Interactive underlying chart with client-side premium strategy replay and assignment-aware overlays.</p>
+      </div>
+      <div class="optc-row">
+        <button class="btn btn-primary" id="optcRefreshBtn" type="button">Refresh Data</button>
+      </div>
+    </div>
+
+    <div class="optc-grid">
+      <div>
+        <label class="optc-label" for="optcSymbol">Symbol</label>
+        <input id="optcSymbol" class="optc-input" type="text" value="AAPL" placeholder="AAPL">
+      </div>
+      <div>
+        <label class="optc-label" for="optcStrategy">Strategy</label>
+        <select id="optcStrategy" class="optc-select">
+          <option value="wheel">Wheel</option>
+          <option value="credit_spread">Credit Spread</option>
+          <option value="iron_condor">Iron Condor</option>
+          <option value="earnings_strangle">Earnings</option>
+        </select>
+      </div>
+      <div>
+        <label class="optc-label">View</label>
+        <div class="optc-row">
+          <button class="hc-range-btn optc-range active" data-days="30" type="button">1D</button>
+          <button class="hc-range-btn optc-range" data-days="120" type="button">1W</button>
+          <button class="hc-range-btn optc-range" data-days="365" type="button">1M</button>
+        </div>
+      </div>
+      <div>
+        <label class="optc-label" for="optcMeta">Dataset</label>
+        <div id="optcMeta" class="optc-value">Loading...</div>
+      </div>
+    </div>
+
+    <div class="optc-grid">
+      <div class="optc-slider-card">
+        <label class="optc-label" for="optcDelta">Delta</label>
+        <input id="optcDelta" class="optc-slider" type="range" min="0.10" max="0.40" step="0.01" value="0.25">
+        <div class="optc-value" id="optcDeltaValue">0.25</div>
+      </div>
+      <div class="optc-slider-card">
+        <label class="optc-label" for="optcDte">DTE</label>
+        <input id="optcDte" class="optc-slider" type="range" min="7" max="60" step="1" value="30">
+        <div class="optc-value" id="optcDteValue">30 days</div>
+      </div>
+      <div class="optc-slider-card">
+        <label class="optc-label" for="optcProfit">Profit Target</label>
+        <input id="optcProfit" class="optc-slider" type="range" min="25" max="75" step="1" value="50">
+        <div class="optc-value" id="optcProfitValue">50%</div>
+      </div>
+      <div class="optc-slider-card">
+        <label class="optc-label" for="optcWidth">Spread Width</label>
+        <input id="optcWidth" class="optc-slider" type="range" min="1" max="10" step="1" value="5">
+        <div class="optc-value" id="optcWidthValue">$5</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="optc-layout">
+    <section class="optc-chart-stack">
+      <div class="optc-card optc-chart-card">
+        <div class="optc-chart-head">
+          <div>
+            <h3 class="optc-title">Underlying Price</h3>
+            <p class="optc-subtitle">Candles, Bollinger Bands, 200 EMA, earnings markers, and simulated option actions.</p>
+          </div>
+          <div class="optc-value" id="optcStatus">Ready.</div>
+        </div>
+        <div class="optc-main-wrap">
+          <div id="optcMainChart" class="optc-main-chart"></div>
+          <div id="optcEventOverlay" class="optc-overlay"></div>
+        </div>
+      </div>
+
+      <div class="optc-card optc-chart-card">
+        <div class="optc-chart-head">
+          <div>
+            <h3 class="optc-title">IV and IV Rank</h3>
+            <p class="optc-subtitle">Estimated IV area, IV rank, and premium-selling threshold.</p>
+          </div>
+        </div>
+        <div id="optcIvChart" class="optc-mini-chart"></div>
+      </div>
+    </section>
+
+    <aside class="optc-card optc-panel">
+      <div>
+        <h3 class="optc-title">Strategy P&amp;L</h3>
+        <p class="optc-subtitle">Client-side replay updates instantly as you change parameters.</p>
+      </div>
+      <div class="optc-kpis">
+        <div class="optc-kpi"><div class="optc-kpi-label">Running P&amp;L</div><div id="optcPnl" class="optc-kpi-value">$0.00</div></div>
+        <div class="optc-kpi"><div class="optc-kpi-label">Premium Collected</div><div id="optcPremium" class="optc-kpi-value">$0.00</div></div>
+        <div class="optc-kpi"><div class="optc-kpi-label">Win Streak</div><div id="optcWinStreak" class="optc-kpi-value">0</div></div>
+        <div class="optc-kpi"><div class="optc-kpi-label">Loss Streak</div><div id="optcLossStreak" class="optc-kpi-value">0</div></div>
+      </div>
+      <div>
+        <div class="optc-label">Position Status</div>
+        <div id="optcState" class="optc-state"></div>
+      </div>
+      <div>
+        <div class="optc-label">Regime Timeline</div>
+        <div id="optcTimeline" class="optc-timeline"></div>
+      </div>
+      <div>
+        <div class="optc-label">Trade Feed</div>
+        <div id="optcTradeFeed" class="optc-feed"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(() => {
+  const API_SECRET = {{ api_secret|tojson }};
+  const FALLBACK_SYMBOLS = ["AAPL","MSFT","NVDA","AMZN","META","TSLA","AMD","SPY","QQQ"];
+  let bars = [];
+  let viewDays = 30;
+  let refreshTimer = null;
+  let currentSim = null;
+  let mainChart, ivChart, candleSeries, emaSeries, bbUpperSeries, bbLowerSeries, ivSeries, ivRankSeries, ivThresholdSeries, assignmentSeries;
+
+  function authUrl(path) { const sep = path.includes("?") ? "&" : "?"; return API_SECRET ? `${path}${sep}secret=${encodeURIComponent(API_SECRET)}` : path; }
+  async function fetchJson(path, options={}) {
+    const response = await fetch(authUrl(path), { credentials:"same-origin", headers:{ "Content-Type":"application/json", ...(options.headers||{}) }, ...options });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  }
+  function fmtUsd(v){ return Number(v||0).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:2}); }
+  function esc(v){ return String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;"); }
+  function debounce(fn, wait){ let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); }; }
+  function defaultParams(){ return { delta:Number(document.getElementById("optcDelta").value), dte:Number(document.getElementById("optcDte").value), profitTargetPct:Number(document.getElementById("optcProfit").value)/100, spreadWidth:Number(document.getElementById("optcWidth").value) }; }
+  function symbol(){ return (document.getElementById("optcSymbol").value || "AAPL").toUpperCase().trim(); }
+  function strategy(){ return document.getElementById("optcStrategy").value; }
+  function rangeWindowData(data){ if (viewDays >= 365) return data; return data.slice(-viewDays); }
+  function setStatus(text){ document.getElementById("optcStatus").textContent = text; }
+
+  function createChart(node, height){
+    return LightweightCharts.createChart(node, {
+      width: node.clientWidth, height,
+      layout: { background: { color: "#0a1018" }, textColor: "rgba(236,243,255,0.82)" },
+      grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
+      rightPriceScale: { borderColor: "rgba(255,255,255,0.08)" },
+      timeScale: { borderColor: "rgba(255,255,255,0.08)", timeVisible: true, secondsVisible: false },
+      crosshair: { vertLine: { color: "rgba(255,255,255,0.14)" }, horzLine: { color: "rgba(255,255,255,0.14)" } }
+    });
+  }
+
+  function ensureCharts(){
+    if (mainChart) return;
+    mainChart = createChart(document.getElementById("optcMainChart"), 430);
+    ivChart = createChart(document.getElementById("optcIvChart"), 180);
+    candleSeries = mainChart.addCandlestickSeries({ upColor:"#38bdf8", downColor:"#fb7185", borderUpColor:"#38bdf8", borderDownColor:"#fb7185", wickUpColor:"#38bdf8", wickDownColor:"#fb7185" });
+    emaSeries = mainChart.addLineSeries({ color:"#e2e8f0", lineWidth:2 });
+    bbUpperSeries = mainChart.addLineSeries({ color:"rgba(96,165,250,0.75)", lineWidth:1 });
+    bbLowerSeries = mainChart.addLineSeries({ color:"rgba(96,165,250,0.75)", lineWidth:1 });
+    assignmentSeries = mainChart.addLineSeries({ color:"rgba(245,158,11,0.65)", lineWidth:2, lineStyle: LightweightCharts.LineStyle.Dashed });
+    ivSeries = ivChart.addAreaSeries({ lineColor:"#38bdf8", topColor:"rgba(56,189,248,0.22)", bottomColor:"rgba(56,189,248,0.02)" });
+    ivRankSeries = ivChart.addHistogramSeries({ base:0, priceFormat:{ type:"volume" } });
+    ivThresholdSeries = ivChart.addLineSeries({ color:"rgba(255,255,255,0.24)", lineWidth:1, lineStyle: LightweightCharts.LineStyle.Dashed });
+    window.addEventListener("resize", debounce(() => {
+      if (!mainChart) return;
+      mainChart.applyOptions({ width: document.getElementById("optcMainChart").clientWidth });
+      ivChart.applyOptions({ width: document.getElementById("optcIvChart").clientWidth });
+      renderEventOverlay(currentSim?.earnings || []);
+    }, 50));
+  }
+
+  function erf(x){
+    const sign = x >= 0 ? 1 : -1; x = Math.abs(x);
+    const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+    const t = 1/(1+p*x); const y = 1-(((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x)); return sign*y;
+  }
+  function normalCdf(x){ return 0.5 * (1 + erf(x / Math.sqrt(2))); }
+  function optionPrice(spot, strike, dteDays, iv, type){
+    const t = Math.max(1/365, dteDays/365); iv = Math.max(0.01, iv || 0.35);
+    const d1 = (Math.log(spot/strike) + (0.05 + 0.5*iv*iv)*t) / (iv*Math.sqrt(t));
+    const d2 = d1 - iv*Math.sqrt(t);
+    return type === "put"
+      ? Math.max(0.01, strike*Math.exp(-0.05*t)*normalCdf(-d2) - spot*normalCdf(-d1))
+      : Math.max(0.01, spot*normalCdf(d1) - strike*Math.exp(-0.05*t)*normalCdf(d2));
+  }
+  function estimateCurrentShortPremium(entryPremium, elapsed, dte, spot, strike, iv, type){
+    const remaining = Math.max(1, dte - elapsed);
+    const theo = optionPrice(spot, strike, remaining, iv, type);
+    return Math.min(entryPremium, theo);
+  }
+  function regimeForBar(bar){
+    const close = Number(bar.close || 0), ema200 = Number(bar.ema200 ?? 0), rsi = Number(bar.rsi ?? 50);
+    if (close > ema200 && rsi > 55) return "bull";
+    if (close > ema200 || rsi > 45) return "neutral";
+    if (rsi < 35) return "risk_off";
+    return "caution";
+  }
+  function earningsDates(dataset){
+    const out = [], seen = new Set();
+    dataset.forEach((bar) => {
+      const month = String(bar.date || "").slice(5, 7), day = String(bar.date || "").slice(8, 10);
+      if (["01","04","07","10"].includes(month) && ["23","24","25","26","27"].includes(day) && !seen.has(bar.date)) {
+        seen.add(bar.date); out.push({ date: bar.date, ts: bar.time, label: "E" });
+      }
+    });
+    return out;
+  }
+
+  function simulate(dataset, params){
+    const strat = strategy();
+    const trades = [];
+    const markers = [];
+    const assignmentLine = [];
+    const earnings = earningsDates(dataset);
+    let premiumCollected = 0, realizedPnl = 0, winRun = 0, lossRun = 0, bestWin = 0, worstLoss = 0;
+    let open = null, sharesHeld = 0, state = "flat";
+
+    function registerPnl(pnl){
+      realizedPnl += pnl;
+      if (pnl >= 0) { winRun += 1; lossRun = 0; bestWin = Math.max(bestWin, winRun); }
+      else { lossRun += 1; winRun = 0; worstLoss = Math.max(worstLoss, lossRun); }
+    }
+    function closeTrade(bar, action, reason, debit, pnl){
+      registerPnl(pnl);
+      trades.push({ date: bar.date, action, strike: open ? (open.strike ?? `${open.shortPut?.toFixed(2)}-${open.shortCall?.toFixed(2)}`) : "", premium: -debit, pnl, reason });
+      open = null;
+      state = sharesHeld > 0 ? "cc_ready" : "flat";
+    }
+
+    dataset.forEach((bar, index) => {
+      const close = Number(bar.close || 0), iv = Number(bar.iv_estimate || 0.35), bbMiddle = Number(bar.bb_middle || 0);
+      const rsi = Number(bar.rsi || 50), ivRank = Number(bar.iv_rank ?? 50), regime = regimeForBar(bar);
+
+      if (open) {
+        open.elapsed += 1;
+        assignmentLine.push(open.kind === "wheel" && open.type === "put" ? { time: bar.time, value: open.strike } : { time: bar.time, value: null });
+        const currentPremium = open.kind === "wheel"
+          ? estimateCurrentShortPremium(open.entryPremium, open.elapsed, open.dte, close, open.strike, iv, open.type)
+          : Math.max(0.05, open.entryPremium * Math.max(0.2, 1 - (open.elapsed / Math.max(1, open.dte))));
+        const targetHit = currentPremium <= open.entryPremium * (1 - params.profitTargetPct);
+        const expired = open.elapsed >= open.dte;
+        const assigned = expired && open.kind === "wheel" && open.type === "put" && Number(bar.low || close) <= open.strike;
+        const calledAway = expired && open.kind === "wheel" && open.type === "call" && Number(bar.high || close) >= open.strike;
+        const spreadBreached = open.kind === "spread" && ((open.type === "put" && close <= open.shortStrike) || (open.type === "call" && close >= open.shortStrike));
+        const condorBreached = open.kind === "condor" && (close <= open.shortPut || close >= open.shortCall);
+        const earningsExit = open.kind === "earnings" && open.exitIndex <= index;
+
+        if (assigned) {
+          sharesHeld = 100;
+          trades.push({ date: bar.date, action: "ASSIGNED", strike: open.strike, premium: 0, pnl: 0, reason: "put_assignment" });
+          markers.push({ time: bar.time, position: "belowBar", color: "#f59e0b", shape: "arrowUp", text: "ASSIGNED" });
+          open = null; state = "cc_ready";
+        } else if (calledAway) {
+          const pnl = (open.strike - (open.shareCostBasis || close)) * 100 + open.entryPremium * 100;
+          sharesHeld = 0;
+          trades.push({ date: bar.date, action: "CALLED_AWAY", strike: open.strike, premium: open.entryPremium * 100, pnl, reason: "call_exercised" });
+          markers.push({ time: bar.time, position: "aboveBar", color: "#ef4444", shape: "arrowDown", text: "CALLED AWAY" });
+          registerPnl(pnl);
+          open = null; state = "flat";
+        } else if (open.kind === "wheel" && targetHit) {
+          closeTrade(bar, "BUY_TO_CLOSE", "profit_target", currentPremium * 100, (open.entryPremium - currentPremium) * 100);
+          markers.push({ time: bar.time, position: open.type === "put" ? "belowBar" : "aboveBar", color: "#fb7185", shape: "circle", text: "EXIT" });
+        } else if (open.kind === "spread" && (targetHit || spreadBreached || expired)) {
+          const mark = currentPremium * 100;
+          closeTrade(bar, "CLOSE_SPREAD", spreadBreached ? "breach" : (targetHit ? "target" : "expiry"), mark, open.credit - mark);
+          markers.push({ time: bar.time, position: "aboveBar", color: "#fb7185", shape: "circle", text: "SPREAD EXIT" });
+        } else if (open.kind === "condor" && (targetHit || condorBreached || expired)) {
+          const mark = currentPremium * 200;
+          closeTrade(bar, "CLOSE_CONDOR", condorBreached ? "breach" : (targetHit ? "target" : "expiry"), mark, open.credit - mark);
+          markers.push({ time: bar.time, position: "aboveBar", color: "#fb7185", shape: "circle", text: "CONDOR EXIT" });
+        } else if (earningsExit) {
+          const proceeds = (optionPrice(close, open.callStrike, 1, iv, "call") + optionPrice(close, open.putStrike, 1, iv, "put")) * 100;
+          const pnl = proceeds - open.debit;
+          trades.push({ date: bar.date, action: "SELL_STRANGLE", strike: `${open.putStrike.toFixed(2)}-${open.callStrike.toFixed(2)}`, premium: proceeds, pnl, reason: "post_earnings" });
+          registerPnl(pnl);
+          markers.push({ time: bar.time, position: "aboveBar", color: "#c084fc", shape: "circle", text: "E EXIT" });
+          open = null; state = "flat";
+        }
+      } else {
+        assignmentLine.push({ time: bar.time, value: null });
+      }
+
+      if (!open) {
+        if (strat === "wheel" && sharesHeld === 0 && close > bbMiddle && ivRank >= 45 && rsi >= 40 && rsi <= 70) {
+          const strike = close * (1 - params.delta * 0.4), premium = optionPrice(close, strike, params.dte, iv, "put");
+          open = { kind: "wheel", type: "put", strike, entryPremium: premium, elapsed: 0, dte: params.dte };
+          premiumCollected += premium * 100;
+          trades.push({ date: bar.date, action: "SELL PUT", strike, premium: premium * 100, pnl: 0, reason: `${regime}_premium` });
+          markers.push({ time: bar.time, position: "belowBar", color: "#22c55e", shape: "arrowUp", text: "SELL PUT" });
+          state = "csp_active";
+        } else if (strat === "wheel" && sharesHeld >= 100 && ivRank >= 40 && rsi >= 45) {
+          const strike = close * (1 + params.delta * 0.4), premium = optionPrice(close, strike, params.dte, iv, "call");
+          open = { kind: "wheel", type: "call", strike, entryPremium: premium, elapsed: 0, dte: params.dte, shareCostBasis: close };
+          premiumCollected += premium * 100;
+          trades.push({ date: bar.date, action: "SELL CALL", strike, premium: premium * 100, pnl: 0, reason: "covered_call" });
+          markers.push({ time: bar.time, position: "aboveBar", color: "#38bdf8", shape: "arrowDown", text: "SELL CALL" });
+          state = "cc_active";
+        } else if (strat === "credit_spread" && ivRank >= 50 && Math.abs(close - bbMiddle) / Math.max(1, close) < 0.05) {
+          const bullish = close >= Number(bar.ema200 || close), shortStrike = bullish ? close * 0.95 : close * 1.05;
+          open = { kind: "spread", type: bullish ? "put" : "call", shortStrike, entryPremium: Math.max(0.5, close * 0.004), credit: Math.max(40, close * 0.01 * 100), elapsed: 0, dte: params.dte };
+          premiumCollected += open.credit;
+          trades.push({ date: bar.date, action: "SPREAD", strike: shortStrike, premium: open.credit, pnl: 0, reason: bullish ? "bull_put" : "bear_call" });
+          markers.push({ time: bar.time, position: bullish ? "belowBar" : "aboveBar", color: "#a855f7", shape: "circle", text: "SPREAD" });
+          state = "spread_active";
+        } else if (strat === "iron_condor" && ivRank >= 55 && rsi > 40 && rsi < 60) {
+          open = { kind: "condor", shortPut: close * 0.93, shortCall: close * 1.07, credit: Math.max(55, close * 0.014 * 100), entryPremium: Math.max(0.5, close * 0.004), elapsed: 0, dte: params.dte };
+          premiumCollected += open.credit;
+          trades.push({ date: bar.date, action: "SPREAD", strike: `${open.shortPut.toFixed(2)}-${open.shortCall.toFixed(2)}`, premium: open.credit, pnl: 0, reason: "high_iv_range" });
+          markers.push({ time: bar.time, position: "aboveBar", color: "#a855f7", shape: "circle", text: "SPREAD" });
+          state = "condor_active";
+        } else if (strat === "earnings_strangle" && earnings.some((e) => e.date === bar.date)) {
+          const callStrike = close * 1.03, putStrike = close * 0.97, debit = (optionPrice(close, callStrike, Math.min(14, params.dte), iv, "call") + optionPrice(close, putStrike, Math.min(14, params.dte), iv, "put")) * 100;
+          open = { kind: "earnings", callStrike, putStrike, debit, dte: Math.min(14, params.dte), elapsed: 0, exitIndex: index + 1 };
+          trades.push({ date: bar.date, action: "SPREAD", strike: `${putStrike.toFixed(2)}-${callStrike.toFixed(2)}`, premium: -debit, pnl: 0, reason: "pre_earnings" });
+          markers.push({ time: bar.time, position: "aboveBar", color: "#c084fc", shape: "circle", text: "EARNINGS" });
+          state = "earnings_active";
+        }
+      }
+    });
+
+    return { trades, markers, earnings, assignmentLine, premiumCollected, realizedPnl, state, winStreak: bestWin, lossStreak: worstLoss };
+  }
+
+  function renderEventOverlay(events){
+    const host = document.getElementById("optcEventOverlay");
+    if (!mainChart || !host) return;
+    host.innerHTML = "";
+    events.forEach((event) => {
+      const x = mainChart.timeScale().timeToCoordinate(event.ts);
+      if (x == null) return;
+      const el = document.createElement("div");
+      el.className = "optc-event-line";
+      el.style.left = `${x}px`;
+      el.innerHTML = `<span>${event.label || "E"}</span>`;
+      host.appendChild(el);
+    });
+  }
+
+  function renderTradeFeed(trades){
+    const host = document.getElementById("optcTradeFeed");
+    if (!trades.length) { host.innerHTML = `<div class="optc-empty">No simulated trades yet for this symbol and strategy.</div>`; return; }
+    host.innerHTML = trades.slice().reverse().map((trade) => {
+      const action = String(trade.action || "");
+      const badgeClass = action.includes("PUT") ? "put" : action.includes("ASSIGN") ? "assign" : action.includes("CALL") ? "call" : action.includes("AWAY") ? "away" : action.includes("SPREAD") ? "spread" : "exit";
+      return `<div class="optc-feed-card">
+        <div class="optc-feed-top"><span class="optc-badge ${badgeClass}">${esc(action)}</span><span class="optc-value">${esc(trade.date)}</span></div>
+        <div style="margin-top:8px;font-weight:700;">Strike: ${esc(trade.strike)}</div>
+        <div class="optc-value" style="margin-top:4px;">Premium ${fmtUsd(trade.premium)} · P&amp;L ${fmtUsd(trade.pnl)} · ${esc(trade.reason)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderPanel(sim){
+    const pnlNode = document.getElementById("optcPnl");
+    pnlNode.textContent = fmtUsd(sim.realizedPnl);
+    pnlNode.className = `optc-kpi-value ${sim.realizedPnl >= 0 ? "good" : "bad"}`;
+    document.getElementById("optcPremium").textContent = fmtUsd(sim.premiumCollected);
+    document.getElementById("optcWinStreak").textContent = String(sim.winStreak || 0);
+    document.getElementById("optcLossStreak").textContent = String(sim.lossStreak || 0);
+    document.getElementById("optcState").innerHTML = `<span class="optc-pill ${sim.state.includes("csp") ? "csp" : sim.state.includes("cc") ? "cc" : "flat"}">${esc(sim.state.replaceAll("_"," "))}</span>`;
+    const regimes = rangeWindowData(bars).map((bar) => regimeForBar(bar));
+    document.getElementById("optcTimeline").innerHTML = regimes.map((regime) => `<span class="optc-seg ${regime}" title="${regime}"></span>`).join("");
+    renderTradeFeed(sim.trades);
+  }
+
+  function renderCharts(){
+    ensureCharts();
+    const visibleBars = rangeWindowData(bars);
+    candleSeries.setData(visibleBars.map((bar) => ({ time: bar.time, open: bar.open, high: bar.high, low: bar.low, close: bar.close })));
+    emaSeries.setData(visibleBars.filter((bar) => bar.ema200 != null).map((bar) => ({ time: bar.time, value: bar.ema200 })));
+    bbUpperSeries.setData(visibleBars.filter((bar) => bar.bb_upper != null).map((bar) => ({ time: bar.time, value: bar.bb_upper })));
+    bbLowerSeries.setData(visibleBars.filter((bar) => bar.bb_lower != null).map((bar) => ({ time: bar.time, value: bar.bb_lower })));
+    currentSim = simulate(visibleBars, defaultParams());
+    candleSeries.setMarkers(currentSim.markers);
+    assignmentSeries.setData(currentSim.assignmentLine.filter((row) => row.value != null));
+    renderEventOverlay(currentSim.earnings);
+    renderPanel(currentSim);
+    ivSeries.setData(visibleBars.filter((bar) => bar.iv_estimate != null).map((bar) => ({ time: bar.time, value: bar.iv_estimate })));
+    ivRankSeries.setData(visibleBars.filter((bar) => bar.iv_rank != null).map((bar) => ({ time: bar.time, value: bar.iv_rank, color: Number(bar.iv_rank) >= 50 ? "rgba(52,211,153,0.68)" : "rgba(148,163,184,0.6)" })));
+    ivThresholdSeries.setData(visibleBars.map((bar) => ({ time: bar.time, value: 50 })));
+    document.getElementById("optcMeta").textContent = `${symbol()} · ${visibleBars.length} bars loaded`;
+  }
+
+  async function loadBars(){
+    setStatus("Loading bars...");
+    const data = await fetchJson(`/api/options/bars?symbol=${encodeURIComponent(symbol())}&timeframe=D&days=365`);
+    bars = (data.bars || []).map((bar, idx) => ({
+      ...bar,
+      time: Number(bar.ts || 0),
+      ema200: data.indicators?.ema200?.[idx] ?? null,
+      bb_upper: data.indicators?.bb_upper?.[idx] ?? null,
+      bb_lower: data.indicators?.bb_lower?.[idx] ?? null,
+      bb_middle: data.indicators?.bb_middle?.[idx] ?? null,
+      rsi: data.indicators?.rsi?.[idx] ?? null,
+      iv_estimate: data.indicators?.iv_estimate?.[idx] ?? null,
+      iv_rank: data.indicators?.iv_rank?.[idx] ?? null
+    }));
+    setStatus("Bars loaded.");
+    renderCharts();
+  }
+
+  const rerender = debounce(() => { if (bars.length) renderCharts(); }, 500);
+  function bindControls(){
+    [["optcDelta","optcDeltaValue",(v)=>Number(v).toFixed(2)],["optcDte","optcDteValue",(v)=>`${v} days`],["optcProfit","optcProfitValue",(v)=>`${v}%`],["optcWidth","optcWidthValue",(v)=>`$${v}`]].forEach(([id, out, fmt]) => {
+      const input = document.getElementById(id), label = document.getElementById(out);
+      const sync = () => { label.textContent = fmt(input.value); rerender(); };
+      input.addEventListener("input", sync); sync();
+    });
+    document.getElementById("optcStrategy").addEventListener("change", rerender);
+    document.getElementById("optcSymbol").addEventListener("change", loadBars);
+    document.getElementById("optcRefreshBtn").addEventListener("click", loadBars);
+    document.querySelectorAll(".optc-range").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".optc-range").forEach((node) => node.classList.remove("active"));
+        btn.classList.add("active");
+        viewDays = Number(btn.dataset.days || 365);
+        rerender();
+      });
+    });
+  }
+
+  async function init(){
+    bindControls();
+    if (!document.getElementById("optcSymbol").value) document.getElementById("optcSymbol").value = FALLBACK_SYMBOLS[0];
+    await loadBars();
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => { loadBars().catch((err) => setStatus(err.message || "Refresh failed")); }, 60000);
+  }
+
+  init().catch((err) => setStatus(err.message || "Failed to load options chart"));
+})();
+</script>
+{% endblock %}

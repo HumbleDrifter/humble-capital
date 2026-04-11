@@ -43,6 +43,7 @@ load_dotenv("/root/tradingbot/.env", override=True)
 MAX_QUOTE_SIZE = float(os.getenv("MAX_QUOTE_PER_TRADE_USD", "25"))
 _SELL_LOCKS = {}
 _SELL_LOCKS_LOCK = threading.Lock()
+_DEFENSIVE_STATE = {"sold_value": 0.0, "active": False}
 
 
 def _log_rebalancer_event(event, payload=None):
@@ -958,3 +959,117 @@ def run_trailing_exit_sweep():
     except Exception as exc:
         _log_rebalancer_event("trailing_exit_sweep_failed", {"error": str(exc)})
         return {"ok": False, "error": str(exc), "exits": []}
+
+
+def run_defensive_regime_check():
+    """
+    Called periodically (by the trailing exit sweep scheduler).
+    During risk_off regime, gradually sell core positions to cash.
+    During bull/neutral after a defensive sell period, gradually rebuy.
+    """
+    try:
+        snapshot = get_portfolio_snapshot()
+        if not isinstance(snapshot, dict):
+            return {"ok": False, "error": "snapshot_unavailable"}
+
+        config = snapshot.get("config", {})
+        regime = str(snapshot.get("market_regime", "neutral")).lower().strip()
+
+        global _DEFENSIVE_STATE
+        if not isinstance(_DEFENSIVE_STATE, dict):
+            _DEFENSIVE_STATE = {"sold_value": 0.0, "active": False}
+
+        sell_regimes = ["risk_off"]
+        rebuy_regimes = ["bull", "neutral"]
+
+        actions = []
+
+        if regime in sell_regimes:
+            _DEFENSIVE_STATE["active"] = True
+            core_assets = config.get("core_assets", {})
+            positions = snapshot.get("positions", {})
+            total_value = float(snapshot.get("total_value_usd", 0) or 0)
+
+            for product_id in core_assets:
+                pos = positions.get(product_id, {})
+                value = float(pos.get("value_total_usd", 0) or 0)
+
+                target_weight = float(core_assets.get(product_id, {}).get("target_weight", 0) or 0)
+                floor_value = total_value * target_weight * 0.30
+
+                sellable = max(0, value - floor_value)
+                sell_amount = sellable * 0.05
+
+                if sell_amount < 5.0:
+                    continue
+
+                result = execute_trim(
+                    product_id=product_id,
+                    trim_usd=sell_amount,
+                    snapshot=snapshot,
+                    signal_type="DEFENSIVE_REGIME_SELL",
+                    external_order_id=None,
+                )
+
+                if result.get("ok"):
+                    _DEFENSIVE_STATE["sold_value"] += sell_amount
+                    actions.append({"product_id": product_id, "action": "sell", "amount": sell_amount})
+
+                    _log_rebalancer_event("defensive_regime_sell", {
+                        "product_id": product_id,
+                        "regime": regime,
+                        "sell_amount": round(sell_amount, 2),
+                        "total_defensive_sold": round(_DEFENSIVE_STATE["sold_value"], 2),
+                    })
+
+        elif regime in rebuy_regimes and _DEFENSIVE_STATE.get("active"):
+            if _DEFENSIVE_STATE.get("sold_value", 0) <= 1.0:
+                _DEFENSIVE_STATE["active"] = False
+                return {"ok": True, "actions": [], "note": "defensive_cycle_complete"}
+
+            core_assets = config.get("core_assets", {})
+            total_value = float(snapshot.get("total_value_usd", 0) or 0)
+            cash = float(snapshot.get("usd_cash", 0) or 0)
+            reserve = total_value * float(config.get("min_cash_reserve", 0.08) or 0.08)
+            available = max(0, cash - reserve)
+
+            rebuy_budget = available * 0.10
+            if rebuy_budget < 5.0:
+                return {"ok": True, "actions": actions}
+
+            for product_id, asset_config in core_assets.items():
+                target_weight = float(asset_config.get("target_weight", 0) or 0)
+                current_weight = float(snapshot.get("positions", {}).get(product_id, {}).get("weight_total", 0) or 0)
+
+                if current_weight >= target_weight:
+                    continue
+
+                buy_amount = min(rebuy_budget / max(1, len(core_assets)), available)
+                if buy_amount < 5.0:
+                    continue
+
+                result = dispatch_signal_action(
+                    product_id=product_id,
+                    action="BUY",
+                    signal_type="DEFENSIVE_REGIME_REBUY",
+                    timeframe="regime",
+                    strategy="defensive_regime_recovery",
+                    quote_size=buy_amount,
+                )
+
+                if result.get("ok"):
+                    _DEFENSIVE_STATE["sold_value"] = max(0, _DEFENSIVE_STATE["sold_value"] - buy_amount)
+                    actions.append({"product_id": product_id, "action": "buy", "amount": buy_amount})
+
+                    _log_rebalancer_event("defensive_regime_rebuy", {
+                        "product_id": product_id,
+                        "regime": regime,
+                        "buy_amount": round(buy_amount, 2),
+                        "remaining_defensive_sold": round(_DEFENSIVE_STATE["sold_value"], 2),
+                    })
+
+        return {"ok": True, "actions": actions, "regime": regime, "defensive_active": _DEFENSIVE_STATE.get("active", False)}
+
+    except Exception as exc:
+        _log_rebalancer_event("defensive_regime_check_failed", {"error": str(exc)})
+        return {"ok": False, "error": str(exc)}

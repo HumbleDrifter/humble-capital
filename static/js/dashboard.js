@@ -388,6 +388,8 @@
     const totalValue = Number(snapshot?.total_value_usd || 0);
     const coinbaseValue = Number(snapshot?.brokers?.coinbase?.value || snapshot?.coinbase_value_usd || 0);
     const webullValue = Number(snapshot?.brokers?.webull?.value || snapshot?.webull_value_usd || 0);
+    const futuresBalance = Number(snapshot?.futures?.balance?.futures_balance || 0);
+    const spotCoinbaseValue = Math.max(0, Number(snapshot?.coinbase_value_usd || coinbaseValue) - futuresBalance);
     const coinbasePct = totalValue > 0 ? (coinbaseValue / totalValue) * 100 : 0;
     const webullPct = totalValue > 0 ? (webullValue / totalValue) * 100 : 0;
 
@@ -398,7 +400,11 @@
 
     if (coinbaseBar) coinbaseBar.style.width = `${Math.max(0, coinbasePct)}%`;
     if (webullBar) webullBar.style.width = `${Math.max(0, webullPct)}%`;
-    if (coinbaseLabel) coinbaseLabel.textContent = `${fmtUsd(coinbaseValue)} (${coinbasePct.toFixed(1)}%)`;
+    if (coinbaseLabel) {
+      coinbaseLabel.textContent = futuresBalance > 0
+        ? `${fmtUsd(coinbaseValue)} (Spot ${fmtUsd(spotCoinbaseValue)} + Futures ${fmtUsd(futuresBalance)})`
+        : `${fmtUsd(coinbaseValue)} (${coinbasePct.toFixed(1)}%)`;
+    }
     if (webullLabel) webullLabel.textContent = `${fmtUsd(webullValue)} (${webullPct.toFixed(1)}%)`;
   }
 
@@ -422,8 +428,11 @@
     const webullOptions = Array.isArray(snapshot?.brokers?.webull?.options)
       ? snapshot.brokers.webull.options.filter((row) => Number(row?.market_value || 0) >= dustMinValueUsd)
       : [];
+    const futuresPositions = Array.isArray(snapshot?.futures?.positions)
+      ? snapshot.futures.positions.filter((row) => Math.abs(Number(row?.unrealized_pnl || 0)) >= 0 || Number(row?.size || 0) > 0)
+      : [];
 
-    if (!cryptoRows.length && !webullStocks.length && !webullOptions.length) {
+    if (!cryptoRows.length && !webullStocks.length && !webullOptions.length && !futuresPositions.length) {
       host.innerHTML = `<div class="hc-empty-card">No active holdings available.</div>`;
       return;
     }
@@ -495,12 +504,30 @@
       );
     }).join("");
 
+    const futuresCards = futuresPositions.map((row) => {
+      const pnl = Number(row.unrealized_pnl || 0);
+      const side = String(row.side || "").toLowerCase() === "short" ? "SHORT" : "LONG";
+      const leverage = Number(row.leverage || 0);
+      const displayName = row.display_name || row.product_id || "Futures";
+      return buildHoldingCard(
+        displayName,
+        `${side} · ${fmtNum(row.size || 0, 4)} @ ${fmtUsd(row.entry_price || 0)}${leverage > 0 ? ` · ${fmtNum(leverage, 1)}x` : ""}`,
+        Number(row.margin_used || row.unrealized_pnl || 0),
+        `${fmtSignedUsd(pnl)}${leverage > 0 ? ` · ${fmtNum(leverage, 1)}x` : ""}`,
+        side === "LONG" ? "positive" : "negative",
+        `/trading?symbol=${encodeURIComponent(row.product_id || "")}#charts`,
+        "satellite"
+      );
+    }).join("");
+
     const cryptoTotal = cryptoRows.reduce((sum, { row }) => sum + Number(row.value_total_usd || 0), 0);
     const stockTotal = webullStocks.reduce((sum, row) => sum + Number(row.market_value || 0), 0);
     const optionsTotal = webullOptions.reduce((sum, row) => sum + Number(row.market_value || 0), 0);
+    const futuresTotal = Number(snapshot?.futures?.balance?.futures_balance || 0);
 
     host.innerHTML = [
       renderHoldingsSection("Crypto", cryptoTotal, "Coinbase", cryptoCards),
+      renderHoldingsSection("Futures", futuresTotal, "Coinbase", futuresCards),
       renderHoldingsSection("Stocks", stockTotal, "Webull", stockCards),
       renderHoldingsSection("Options", optionsTotal, "Webull", optionCards)
     ].join("");
@@ -539,10 +566,24 @@
 
   async function loadDashboard() {
     try {
-      const resp = await fetchJson("/api/portfolio");
+      const [resp, futuresPositionsResp, futuresBalanceResp] = await Promise.all([
+        fetchJson("/api/portfolio"),
+        fetchJson("/api/futures/positions").catch(() => ({ positions: [] })),
+        fetchJson("/api/futures/balance").catch(() => ({ balance: {} }))
+      ]);
       const snapshot = resp.snapshot || {};
       const summary = resp.summary || {};
-      const totalValue = Number(snapshot.total_value_usd || 0);
+      snapshot.futures = {
+        positions: Array.isArray(futuresPositionsResp?.positions) ? futuresPositionsResp.positions : [],
+        balance: futuresBalanceResp?.balance || {}
+      };
+      const futuresBalanceRaw = Number(futuresBalanceResp?.balance?.futures_balance || 0);
+      const futuresBalanceFull = futuresBalanceResp?.balance || {};
+      const coinbaseValueRaw = Number(snapshot.coinbase_value_usd || 0);
+      const futuresAlreadyInCoinbase = coinbaseValueRaw > 0 && futuresBalanceRaw > 0 &&
+        Math.abs(coinbaseValueRaw - futuresBalanceRaw) > futuresBalanceRaw * 0.5;
+      const totalValue = Number(snapshot.total_value_usd || 0) +
+        (futuresAlreadyInCoinbase ? 0 : futuresBalanceRaw);
       const cash = Number(snapshot.usd_cash || 0);
       const coreValue = Number(snapshot.core_value_usd || 0);
       const satelliteValue = Number(snapshot.satellite_value_usd || 0);
@@ -564,19 +605,25 @@
 
         const meta = document.getElementById("heroMeta");
         if (meta) {
+        const futuresBalance = Number(snapshot?.futures?.balance?.futures_balance || 0);
         const coinbaseValue = Number(snapshot.coinbase_value_usd || Math.max(0, totalValue - Number(snapshot.webull_value_usd || 0)));
+        const spotCoinbaseValue = Math.max(0, coinbaseValue - futuresBalance);
         const webullValue = Number(snapshot.webull_value_usd || 0);
-        if (webullValue > 0) {
-          meta.innerHTML = `Portfolio: <span>${escapeHtml(fmtUsd(totalValue))}</span> (Coinbase ${escapeHtml(fmtUsd(coinbaseValue))} + Webull ${escapeHtml(fmtUsd(webullValue))}) · All-time: <span id="heroTotalPnl">${escapeHtml(fmtSignedUsd(totalPnl))}</span>`;
+        if (webullValue > 0 || futuresBalance > 0) {
+          meta.innerHTML = `Portfolio: <span>${escapeHtml(fmtUsd(totalValue))}</span> (Coinbase ${escapeHtml(fmtUsd(coinbaseValue))}${futuresBalance > 0 ? ` = Spot ${escapeHtml(fmtUsd(spotCoinbaseValue))} + Futures ${escapeHtml(fmtUsd(futuresBalance))}` : ""}${webullValue > 0 ? ` + Webull ${escapeHtml(fmtUsd(webullValue))}` : ""}) · All-time: <span id="heroTotalPnl">${escapeHtml(fmtSignedUsd(totalPnl))}</span>`;
         } else {
           meta.innerHTML = `All-time: <span id="heroTotalPnl">${escapeHtml(fmtSignedUsd(totalPnl))}</span>`;
         }
         }
         updateBrokerBreakdown(snapshot);
 
+        const futuresBalance = Number(snapshot?.futures?.balance?.futures_balance || 0);
+        const futuresBuyingPower = Number(snapshot?.futures?.balance?.buying_power || 0);
+        const futuresMarginUsed = Number(snapshot?.futures?.balance?.initial_margin || 0);
         const cashPct = totalValue > 0 ? cash / totalValue : 0;
         const corePct = totalValue > 0 ? coreValue / totalValue : 0;
         const satPct = totalValue > 0 ? satelliteValue / totalValue : 0;
+        const futuresPct = totalValue > 0 ? futuresBalance / totalValue : 0;
 
       const risk = inferRiskScore(snapshot);
       const riskScoreEl = document.getElementById("ctxRiskScore");
@@ -594,17 +641,31 @@
         const meaningfulCrypto = positions.filter(([, row]) => Number(row?.value_total_usd || 0) >= dustMin);
         const webullStocks = Array.isArray(snapshot?.brokers?.webull?.stocks) ? snapshot.brokers.webull.stocks.filter((row) => Number(row?.market_value || 0) >= dustMin) : [];
         const webullOptions = Array.isArray(snapshot?.brokers?.webull?.options) ? snapshot.brokers.webull.options.filter((row) => Number(row?.market_value || 0) >= dustMin) : [];
+        const futuresPositions = Array.isArray(snapshot?.futures?.positions) ? snapshot.futures.positions.filter((row) => Number(row?.size || 0) > 0) : [];
         const coreCount = meaningfulCrypto.filter(([productId]) => coreAssets.has(productId)).length;
-        const satelliteCount = meaningfulCrypto.filter(([productId]) => !coreAssets.has(productId)).length + webullStocks.length + webullOptions.length;
+        const satelliteCount = meaningfulCrypto.filter(([productId]) => !coreAssets.has(productId)).length + webullStocks.length + webullOptions.length + futuresPositions.length;
 
         document.getElementById("ctxCash").textContent = fmtUsd(cash);
       document.getElementById("ctxCashPct").textContent = `${fmtPct(cashPct)} of portfolio`;
       document.getElementById("allocCore").style.width = `${Math.max(0, corePct * 100)}%`;
       document.getElementById("allocSat").style.width = `${Math.max(0, satPct * 100)}%`;
+      document.getElementById("allocFutures").style.width = `${Math.max(0, futuresPct * 100)}%`;
       document.getElementById("allocCash").style.width = `${Math.max(0, cashPct * 100)}%`;
       document.getElementById("allocCorePct").textContent = Math.round(corePct * 100);
       document.getElementById("allocSatPct").textContent = Math.round(satPct * 100);
+      document.getElementById("allocFuturesPct").textContent = Math.round(futuresPct * 100);
       document.getElementById("allocCashPct").textContent = Math.round(cashPct * 100);
+      const futuresDetail = document.getElementById("allocFuturesDetail");
+      if (futuresDetail) {
+        if (futuresBalance > 0) {
+          futuresDetail.style.display = "block";
+          document.getElementById("allocFuturesBalance").textContent = fmtUsd(futuresBalance);
+          document.getElementById("allocFuturesBuyingPower").textContent = fmtUsd(futuresBuyingPower);
+          document.getElementById("allocFuturesMarginUsed").textContent = fmtUsd(futuresMarginUsed);
+        } else {
+          futuresDetail.style.display = "none";
+        }
+      }
       document.getElementById("ctxPositionCount").textContent = String(coreCount + satelliteCount);
       document.getElementById("ctxPositionBreakdown").textContent = `${coreCount} core · ${satelliteCount} satellite`;
 

@@ -175,6 +175,7 @@
     .broker-legend-value { font-weight: 600; color: #ecf3ff; }
     .broker-dot { width: 8px; height: 8px; border-radius: 50%; }
     .broker-dot.coinbase { background: #38bdf8; }
+    .hc-alloc-futures { background: #f59e0b; }
     .broker-dot.webull { background: #818cf8; }
     .holdings-section { margin-bottom: 24px; }
     .holdings-group-title {
@@ -268,12 +269,17 @@
       <div class="hc-alloc-bar">
         <div class="hc-alloc-seg hc-alloc-core" id="allocCore" style="width:0%"></div>
         <div class="hc-alloc-seg hc-alloc-sat" id="allocSat" style="width:0%"></div>
+        <div class="hc-alloc-seg hc-alloc-futures" id="allocFutures" style="width:0%"></div>
         <div class="hc-alloc-seg hc-alloc-cash" id="allocCash" style="width:0%"></div>
       </div>
       <div class="hc-alloc-legend">
         <span><span class="hc-alloc-dot" style="background:#2dd4bf"></span>Core <span id="allocCorePct">0</span>%</span>
         <span><span class="hc-alloc-dot" style="background:#60a5fa"></span>Sat <span id="allocSatPct">0</span>%</span>
+        <span><span class="hc-alloc-dot" style="background:#f59e0b"></span>Futures <span id="allocFuturesPct">0</span>%</span>
         <span><span class="hc-alloc-dot" style="background:rgba(255,255,255,0.3)"></span>Cash <span id="allocCashPct">0</span>%</span>
+      </div>
+      <div id="allocFuturesDetail" style="display:none; margin-top:6px; font-size:12px; color:rgba(236,243,255,0.5);">
+        Balance: <span id="allocFuturesBalance">$0.00</span> · Buying Power: <span id="allocFuturesBuyingPower">$0.00</span> · Margin Used: <span id="allocFuturesMarginUsed">$0.00</span>
       </div>
     </div>
     <div class="hc-context-card">
@@ -287,7 +293,7 @@
     <div class="hc-section-head">
       <div>
         <h2 class="hc-section-title">Holdings</h2>
-        <p class="hc-section-subtitle">Live portfolio positions across core and satellite exposure.</p>
+        <p class="hc-section-subtitle">Live positions across Coinbase spot and futures plus Webull stocks and options.</p>
       </div>
     </div>
     <div class="hc-pos-grid" id="hcHoldingsGrid" data-clickable-holdings="true">

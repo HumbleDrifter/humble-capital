@@ -123,7 +123,7 @@ def algorithm_page():
 @dashboard_bp.route("/trading", methods=["GET"])
 @require_dashboard_auth
 def trading_page():
-    return render_template("app/meme_rotation.html", **_page_context("Trading"))
+    return render_template("app/trading.html", **_page_context("Trading"))
 
 
 @dashboard_bp.route("/meme-rotation", methods=["GET"])

@@ -1,0 +1,687 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<div class="opp-shell">
+  <section class="opp-hero opp-panel">
+    <div class="opp-hero-copy">
+      <div class="opp-kicker">Unified Trading</div>
+      <h2 class="opp-title">Find, score, and visualize opportunities across crypto and stocks from one workspace.</h2>
+      <p class="opp-subtitle" id="tradingPageMeta">Loading trading workspace...</p>
+    </div>
+  </section>
+
+  <div class="page-tabs">
+    <button class="page-tab active" data-tab="crypto" type="button">Crypto Scanner</button>
+    <button class="page-tab" data-tab="stocks" type="button">Stock Scanner</button>
+    <button class="page-tab" data-tab="charts" type="button">Charts</button>
+  </div>
+
+  <div class="page-tab-content active" id="tab-crypto">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Crypto Scanner</h3>
+          <p class="opp-section-subtitle">Existing crypto scanner data, now presented inside the unified Trading hub.</p>
+        </div>
+        <div class="opp-panel-actions">
+          <button class="btn btn-primary" id="tradingCryptoRefreshBtn" type="button">Refresh Crypto</button>
+        </div>
+      </div>
+      <div id="tradingCryptoStatus" class="opp-status-bar"></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Live Signals</h3>
+          <p class="opp-section-subtitle">Recent scanner activity across the crypto universe.</p>
+        </div>
+      </div>
+      <div id="tradingCryptoSignals" class="dashboard-shadow-monitor"><div class="dashboard-shadow-fallback">Loading recent signals...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Your Positions</h3>
+          <p class="opp-section-subtitle">Held crypto positions with composite score context.</p>
+        </div>
+      </div>
+      <div id="tradingCryptoPositions" class="opp-board-host"><div class="hc-empty-card">Loading held positions...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Top Opportunities</h3>
+          <p class="opp-section-subtitle">Technical, sentiment, momentum, and regime scoring in one card.</p>
+        </div>
+      </div>
+      <div id="tradingCryptoGrid" class="opp-board-host"><div class="hc-empty-card">Loading crypto opportunities...</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-stocks">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Stock Scanner</h3>
+          <p class="opp-section-subtitle" id="tradingStockMeta">Loading stock universe...</p>
+        </div>
+        <div class="opp-panel-actions">
+          <button class="btn btn-secondary trading-stock-tier active" data-tier="tier1" type="button">Tier 1</button>
+          <button class="btn btn-secondary trading-stock-tier" data-tier="tier2" type="button">Tier 2</button>
+          <button class="btn btn-secondary trading-stock-tier" data-tier="all" type="button">All</button>
+        </div>
+      </div>
+      <div class="opp-panel-head" style="margin-top:12px;">
+        <div class="opp-panel-actions" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px;">
+          <div class="form-card"><label for="tradingStockStrategy">Strategy Filter</label><select id="tradingStockStrategy" class="select"><option value="all">All</option><option value="momentum">Momentum</option><option value="mean_reversion">Mean Reversion</option><option value="breakout">Breakout</option><option value="trend_following">Trend Following</option></select></div>
+          <div class="form-card"><label for="tradingStockRegime">Regime Filter</label><select id="tradingStockRegime" class="select"><option value="bull">Bull</option><option value="neutral">Neutral</option><option value="caution">Caution</option></select></div>
+          <div class="form-card"><label for="tradingStockSort">Sort By</label><select id="tradingStockSort" class="select"><option value="score">Score</option><option value="volume">Volume</option><option value="mentions">Social Mentions</option><option value="change">Price Change</option><option value="market_cap">Market Cap</option></select></div>
+          <div class="form-card"><label for="tradingStockSearch">Symbol Search</label><input id="tradingStockSearch" class="form-input" type="text" placeholder="AAPL, NVDA, TSLA..."></div>
+        </div>
+      </div>
+      <div class="opp-panel-actions" style="margin-top:12px;"><button class="btn btn-primary" id="tradingStockScanBtn" type="button">Scan Now</button></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head"><div><h3 class="opp-section-title">Stock Opportunities</h3><p class="opp-section-subtitle">Scored from bars, volume, and social sentiment.</p></div></div>
+      <div id="tradingStockGrid" class="opp-board-host"><div class="hc-empty-card">Run a stock scan to load opportunities.</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-charts">
+    <section class="opp-panel">
+      <div class="opp-panel-head"><div><h3 class="opp-section-title">Unified Charts</h3><p class="opp-section-subtitle" id="tradingChartMeta">Load any crypto pair or stock and replay signals client-side.</p></div></div>
+      <div class="opp-panel-actions" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:12px;">
+        <div class="form-card"><label>Asset Type</label><div><button class="btn btn-secondary trading-chart-type active" data-type="crypto" type="button">Crypto</button> <button class="btn btn-secondary trading-chart-type" data-type="stock" type="button">Stock</button></div></div>
+        <div class="form-card"><label for="tradingChartSymbol">Symbol</label><select id="tradingChartSymbol" class="select"></select></div>
+        <div class="form-card"><label>Timeframe</label><div><button class="btn btn-secondary trading-chart-frame active" data-frame="1h" type="button">1H</button> <button class="btn btn-secondary trading-chart-frame" data-frame="4h" type="button">4H</button> <button class="btn btn-secondary trading-chart-frame" data-frame="1d" type="button">1D</button> <button class="btn btn-secondary trading-chart-frame" data-frame="1w" type="button">1W</button></div></div>
+        <div class="form-card"><label>Signal Controls</label><details open><summary>Adjust Parameters</summary><div style="display:grid; gap:8px; margin-top:10px;"><label>RSI Min <input id="tradingParamRsiMin" type="range" min="20" max="60" step="1" value="40"><span id="tradingParamRsiMinValue">40</span></label><label>RSI Max <input id="tradingParamRsiMax" type="range" min="50" max="85" step="1" value="70"><span id="tradingParamRsiMaxValue">70</span></label><label>EMA Trend <input id="tradingParamTrend" type="range" min="50" max="250" step="5" value="200"><span id="tradingParamTrendValue">200</span></label><label>ADX Min <input id="tradingParamAdx" type="range" min="10" max="40" step="1" value="20"><span id="tradingParamAdxValue">20</span></label><label>Extension % <input id="tradingParamExt" type="range" min="2" max="25" step="0.5" value="10"><span id="tradingParamExtValue">10</span></label></div></details></div>
+      </div>
+    </section>
+
+    <section class="opp-panel"><div id="tradingChartMain" style="width:100%; min-height:420px;"></div></section>
+    <section class="opp-panel"><div id="tradingChartRsi" style="width:100%; min-height:180px;"></div></section>
+    <section class="opp-panel"><div id="tradingChartKpis" class="opp-status-bar"></div></section>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(() => {
+  const API_SECRET = {{ api_secret|tojson }};
+  const DEFAULT_STOCKS = ["AAPL","AMD","AMZN","ABNB","BA","BAC","COIN","COST","CRM","CVX","DIS","F","GM","GME","GOOGL","GS","HD","INTC","IWM","JNJ","JPM","KO","LOW","MA","MARA","META","MSFT","MU","NFLX","NIO","NVDA","ORCL","PEP","PFE","PLTR","PYPL","QCOM","QQQ","RIOT","RIVN","SOFI","SQ","SPY","T","TSLA","UBER","V","VZ","WMT","XOM"];
+  const STOCK_SCAN_LIMIT = 12;
+  let stockUniverse = [];
+  let stockTier = "tier1";
+  let stockRows = [];
+  let chartType = "crypto";
+  let chartSymbol = "BTC-USD";
+  let chartFrame = "1h";
+  let chartRows = [];
+  let mainChart;
+  let rsiChart;
+  let candleSeries;
+  let ema21Series;
+  let ema50Series;
+  let ema200Series;
+  let bbUpperSeries;
+  let bbLowerSeries;
+  let rsiSeries;
+  let chartRefreshTimer;
+
+  function authUrl(path) {
+    if (!API_SECRET) return path;
+    const sep = path.includes("?") ? "&" : "?";
+    return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
+  }
+
+  async function fetchJson(path, options) {
+    const res = await fetch(authUrl(path), Object.assign({ credentials: "same-origin" }, options || {}));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  }
+
+  function fmtNum(value, digits = 2) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toFixed(digits) : "—";
+  }
+
+  function fmtPct(value, digits = 1) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? `${numeric >= 0 ? "+" : ""}${numeric.toFixed(digits)}%` : "—";
+  }
+
+  function scoreTone(score) {
+    const value = Number(score || 0);
+    if (value >= 75) return "good";
+    if (value >= 50) return "info";
+    if (value >= 35) return "warn";
+    return "bad";
+  }
+
+  function activateTab(tabName) {
+    document.querySelectorAll(".page-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabName));
+    document.querySelectorAll(".page-tab-content").forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${tabName}`));
+    history.replaceState(null, "", `#${tabName}`);
+  }
+  function renderScoreBreakdown(item) {
+    const total = Number(item.composite_score || item.score || 0);
+    const technical = Number(item.technical_score || 0);
+    const sentiment = Number(item.sentiment_score || 0);
+    const momentum = Number(item.momentum_score || 0);
+    const signal = String(item.signal || "hold").replace(/_/g, " ");
+    return `
+      <div class="opportunity-score-breakdown">
+        <div class="score-total">
+          <div class="score-label">Score</div>
+          <div class="score-value">${fmtNum(total, 0)}</div>
+        </div>
+        <div class="score-bars">
+          <div class="score-bar-row">
+            <span class="score-bar-label">Technical</span>
+            <div class="score-bar-track"><div class="score-bar" style="width:${Math.max(0, Math.min(100, technical))}%"></div></div>
+            <span class="score-bar-value">${fmtNum(technical, 0)}</span>
+          </div>
+          <div class="score-bar-row">
+            <span class="score-bar-label">Sentiment</span>
+            <div class="score-bar-track"><div class="score-bar sentiment" style="width:${Math.max(0, Math.min(100, sentiment))}%"></div></div>
+            <span class="score-bar-value">${fmtNum(sentiment, 0)}</span>
+          </div>
+          <div class="score-bar-row">
+            <span class="score-bar-label">Momentum</span>
+            <div class="score-bar-track"><div class="score-bar momentum" style="width:${Math.max(0, Math.min(100, momentum))}%"></div></div>
+            <span class="score-bar-value">${fmtNum(momentum, 0)}</span>
+          </div>
+        </div>
+        <div class="score-signal">${escapeHtml(signal)}</div>
+        <div class="score-reasoning">${escapeHtml(item.reasoning || item.summary || "Composite score blends technicals, sentiment, and momentum.")}</div>
+      </div>`;
+  }
+
+  function renderCryptoPositions(positions) {
+    const host = document.getElementById("tradingCryptoPositions");
+    const rows = Object.entries(positions || {})
+      .map(([productId, row]) => ({ productId, row: row || {} }))
+      .filter(({ row, productId }) => !["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"].includes(productId) && Number(row.value_total_usd || 0) > 1)
+      .sort((a, b) => Number(b.row.value_total_usd || 0) - Number(a.row.value_total_usd || 0));
+    if (!rows.length) {
+      host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">No held satellite positions right now.</div></div>';
+      return;
+    }
+    host.innerHTML = rows.map(({ productId, row }) => {
+      const pnl = Number(row.unrealized_pnl_usd || 0);
+      const change = Number(row.unrealized_pnl_pct || row.change_24h || 0);
+      return `
+        <article class="opp-card">
+          <div class="opp-card-header"><div><h4 class="opp-card-title">${escapeHtml(productId)}</h4><div class="opp-card-subtitle">Held value $${fmtNum(row.value_total_usd || 0, 2)}</div></div><span class="opp-score-chip ${pnl >= 0 ? "good" : "bad"}">${pnl >= 0 ? "+" : ""}$${fmtNum(pnl, 2)}</span></div>
+          <div class="opp-card-metrics"><div class="opp-metric"><span class="opp-metric-label">24h</span><strong>${fmtPct(change, 1)}</strong></div><div class="opp-metric"><span class="opp-metric-label">Qty</span><strong>${fmtNum(row.base_balance || row.base_qty_total || 0, 4)}</strong></div></div>
+        </article>`;
+    }).join("");
+  }
+
+  function renderCryptoSignals(signals) {
+    const host = document.getElementById("tradingCryptoSignals");
+    if (!signals.length) {
+      host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">Scanner is running. Signals will appear here as they fire.</div></div>';
+      return;
+    }
+    host.innerHTML = signals.map((signal) => `
+      <article class="opp-card">
+        <div class="opp-card-header"><div><h4 class="opp-card-title">${escapeHtml(signal.product_id || "Unknown")}</h4><div class="opp-card-subtitle">${new Date((Number(signal.ts || 0)) * 1000).toLocaleString()}</div></div><span class="opp-score-chip ${scoreTone(signal.conviction || 50)}">${escapeHtml(String(signal.signal || "signal").toUpperCase())}</span></div>
+        <div class="opp-card-metrics"><div class="opp-metric"><span class="opp-metric-label">Price</span><strong>$${fmtNum(signal.price || 0, 4)}</strong></div><div class="opp-metric"><span class="opp-metric-label">Conviction</span><strong>${fmtNum((Number(signal.conviction || 0) * 100), 0)}</strong></div></div>
+      </article>`).join("");
+  }
+
+  function renderCryptoOpportunities(candidates) {
+    const host = document.getElementById("tradingCryptoGrid");
+    if (!candidates.length) {
+      host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">No crypto opportunities cleared the current filters.</div></div>';
+      return;
+    }
+    host.innerHTML = candidates.slice(0, 12).map((item) => `
+      <article class="opp-card">
+        <div class="opp-card-header"><div><h4 class="opp-card-title">${escapeHtml(item.product_id || item.symbol || "Unknown")}</h4><div class="opp-card-subtitle">${escapeHtml(item.social_label || "Watching")}</div></div><span class="opp-score-chip ${scoreTone(item.composite_score)}">${escapeHtml(String(item.signal || "hold").replace(/_/g, " "))}</span></div>
+        ${renderScoreBreakdown(item)}
+      </article>`).join("");
+  }
+
+  async function loadCrypto() {
+    const [rotation, signals] = await Promise.all([
+      fetchJson("/api/meme_rotation"),
+      fetchJson("/api/signals/log?limit=10")
+    ]);
+    document.getElementById("tradingCryptoStatus").textContent = `Scanner ${rotation.ok ? "online" : "offline"} · ${Number((rotation.candidates || []).length)} scored candidates`;
+    renderCryptoSignals(Array.isArray(signals.signals) ? signals.signals : []);
+    renderCryptoPositions(rotation.positions || rotation.snapshot?.positions || {});
+    renderCryptoOpportunities(Array.isArray(rotation.candidates) ? rotation.candidates : []);
+  }
+
+  function sma(values, period) {
+    const out = new Array(values.length).fill(null);
+    if (!Array.isArray(values) || period <= 0) return out;
+    let sum = 0;
+    for (let i = 0; i < values.length; i += 1) {
+      sum += Number(values[i] || 0);
+      if (i >= period) sum -= Number(values[i - period] || 0);
+      if (i >= period - 1) out[i] = sum / period;
+    }
+    return out;
+  }
+
+  function ema(values, period) {
+    const out = new Array(values.length).fill(null);
+    if (!Array.isArray(values) || period <= 0 || values.length < period) return out;
+    const mult = 2 / (period + 1);
+    let prev = values.slice(0, period).reduce((acc, value) => acc + Number(value || 0), 0) / period;
+    out[period - 1] = prev;
+    for (let i = period; i < values.length; i += 1) {
+      prev = (Number(values[i] || 0) - prev) * mult + prev;
+      out[i] = prev;
+    }
+    return out;
+  }
+
+  function rsi(values, period = 14) {
+    const out = new Array(values.length).fill(null);
+    if (!Array.isArray(values) || values.length <= period) return out;
+    let gains = 0;
+    let losses = 0;
+    for (let i = 1; i <= period; i += 1) {
+      const diff = Number(values[i] || 0) - Number(values[i - 1] || 0);
+      gains += Math.max(diff, 0);
+      losses += Math.max(-diff, 0);
+    }
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+    out[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + (avgGain / avgLoss)));
+    for (let i = period + 1; i < values.length; i += 1) {
+      const diff = Number(values[i] || 0) - Number(values[i - 1] || 0);
+      avgGain = ((avgGain * (period - 1)) + Math.max(diff, 0)) / period;
+      avgLoss = ((avgLoss * (period - 1)) + Math.max(-diff, 0)) / period;
+      out[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + (avgGain / avgLoss)));
+    }
+    return out;
+  }
+
+  function macdHist(values) {
+    const fast = ema(values, 12);
+    const slow = ema(values, 26);
+    const line = values.map((_, index) => (fast[index] != null && slow[index] != null ? fast[index] - slow[index] : null));
+    const signal = ema(line.map((v) => (v == null ? 0 : v)), 9);
+    return line.map((value, index) => (value != null && signal[index] != null ? value - signal[index] : null));
+  }
+
+  function bollinger(values, period = 20, std = 2) {
+    const middle = sma(values, period);
+    const upper = new Array(values.length).fill(null);
+    const lower = new Array(values.length).fill(null);
+    for (let i = period - 1; i < values.length; i += 1) {
+      const slice = values.slice(i - period + 1, i + 1).map((value) => Number(value || 0));
+      const mean = middle[i];
+      const variance = slice.reduce((acc, value) => acc + ((value - mean) ** 2), 0) / period;
+      const dev = Math.sqrt(variance);
+      upper[i] = mean + (dev * std);
+      lower[i] = mean - (dev * std);
+    }
+    return { upper, middle, lower };
+  }
+
+  function enrichRows(rows, trendLen = 200) {
+    const closes = rows.map((row) => Number(row.close || 0));
+    const volumes = rows.map((row) => Number(row.volume || 0));
+    const emaFast = ema(closes, 21);
+    const emaMid = ema(closes, 50);
+    const emaSlow = ema(closes, 200);
+    const emaTrend = ema(closes, trendLen);
+    const rsiVals = rsi(closes, 14);
+    const macdVals = macdHist(closes);
+    const bb = bollinger(closes, 20, 2);
+    const vol = sma(volumes, 20);
+    return rows.map((row, index) => Object.assign({}, row, {
+      ema_fast: emaFast[index],
+      ema_mid: emaMid[index],
+      ema_slow: emaSlow[index],
+      ema_trend: emaTrend[index],
+      rsi: rsiVals[index],
+      macd_hist: macdVals[index],
+      bb_upper: bb.upper[index],
+      bb_middle: bb.middle[index],
+      bb_lower: bb.lower[index],
+      vol_sma: vol[index]
+    }));
+  }
+  async function loadStocksUniverse() {
+    try {
+      const data = await fetchJson("/api/options/symbols");
+      stockUniverse = Array.isArray(data.symbols) ? data.symbols : [];
+    } catch (error) {
+      stockUniverse = DEFAULT_STOCKS.map((symbol) => ({ symbol, name: "" }));
+    }
+    document.getElementById("tradingStockMeta").textContent = `Scanning ${Math.min(stockUniverse.length, 98)} Tier 1 + ${Math.max(stockUniverse.length - 98, 0)} Tier 2 stocks | Last updated ${new Date().toLocaleTimeString()}`;
+  }
+
+  function filteredUniverse() {
+    const search = String(document.getElementById("tradingStockSearch")?.value || "").trim().toUpperCase();
+    let rows = stockUniverse.slice();
+    if (stockTier === "tier1") rows = rows.slice(0, 98);
+    if (stockTier === "tier2") rows = rows.slice(98);
+    if (search) rows = rows.filter((item) => String(item.symbol || "").includes(search) || String(item.name || "").toUpperCase().includes(search));
+    return rows.slice(0, STOCK_SCAN_LIMIT);
+  }
+
+  function stockScoreCard(item) {
+    const social = Number(item.social_sentiment || 0);
+    const socialTone = social >= 20 ? "good" : social <= -20 ? "bad" : "warn";
+    return `
+      <article class="opp-card">
+        <div class="opp-card-header"><div><h4 class="opp-card-title">${escapeHtml(item.symbol)}</h4><div class="opp-card-subtitle">${escapeHtml(item.name || "Stock opportunity")}</div></div><span class="opp-score-chip ${scoreTone(item.composite_score)}">${escapeHtml(item.signal_label || item.signal || "Hold")}</span></div>
+        <div class="opp-card-metrics"><div class="opp-metric"><span class="opp-metric-label">Price</span><strong>$${fmtNum(item.price, 2)}</strong></div><div class="opp-metric"><span class="opp-metric-label">24h</span><strong>${fmtPct(item.change_24h, 2)}</strong></div><div class="opp-metric"><span class="opp-metric-label">Mentions</span><strong>${fmtNum(item.social_mentions, 0)}</strong></div></div>
+        ${renderScoreBreakdown(item)}
+        <div class="opp-card-subtitle" style="margin-top:8px;"><span class="opp-score-chip ${socialTone}">Social: ${social >= 0 ? "+" : ""}${fmtNum(social, 0)} ${escapeHtml(item.social_label || "Neutral")}${item.social_trending ? " 🔥" : ""}</span></div>
+        <div class="opp-panel-actions" style="margin-top:12px;"><button class="btn btn-secondary trading-view-chart" data-symbol="${escapeHtml(item.symbol)}" type="button">View Chart</button><button class="btn btn-primary" type="button" disabled>Trade</button></div>
+      </article>`;
+  }
+
+  async function scanStocks() {
+    const host = document.getElementById("tradingStockGrid");
+    host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">Scanning stocks...</div></div>';
+    const strategy = document.getElementById("tradingStockStrategy")?.value || "momentum";
+    const regime = document.getElementById("tradingStockRegime")?.value || "bull";
+    const sortKey = document.getElementById("tradingStockSort")?.value || "score";
+    const symbols = filteredUniverse();
+    const results = [];
+    for (const item of symbols) {
+      try {
+        const [barsData, sentimentData] = await Promise.all([
+          fetchJson(`/api/options/bars?symbol=${encodeURIComponent(item.symbol)}&timeframe=D&days=365`),
+          fetchJson(`/api/options/sentiment?symbol=${encodeURIComponent(item.symbol)}`)
+        ]);
+        const bars = Array.isArray(barsData.bars) ? barsData.bars : [];
+        if (bars.length < 60) continue;
+        const latest = bars[bars.length - 1] || {};
+        const previous = bars[bars.length - 2] || latest;
+        const closes = bars.map((row) => Number(row.close || 0));
+        const enriched = enrichRows(bars, 200);
+        const last = enriched[enriched.length - 1] || {};
+        const prev = enriched[enriched.length - 2] || last;
+        const technical = Math.max(0, Math.min(100,
+          (last.ema_fast > last.ema_mid ? 20 : 0) +
+          (last.ema_mid > last.ema_slow ? 20 : 0) +
+          (last.close > last.ema_trend ? 20 : 0) +
+          (Number(last.rsi || 0) >= 40 && Number(last.rsi || 0) <= 70 ? 20 : 0) +
+          (Number(last.macd_hist || 0) > Number(prev.macd_hist || 0) ? 20 : 0)
+        ));
+        const sentimentScore = Math.max(0, Math.min(100, (Number(sentimentData.composite_score || 0) + 100) / 2));
+        const change1d = previous.close > 0 ? ((Number(latest.close || 0) - Number(previous.close || 0)) / Number(previous.close || 0)) * 100 : 0;
+        const change7d = bars.length > 7 && Number(bars[bars.length - 8].close || 0) > 0 ? ((Number(latest.close || 0) - Number(bars[bars.length - 8].close || 0)) / Number(bars[bars.length - 8].close || 0)) * 100 : 0;
+        const momentum = Math.max(0, Math.min(100, 50 + (change1d * 2) + change7d));
+        const regimeScore = regime === "bull" ? 100 : regime === "neutral" ? 70 : 40;
+        const composite = (technical * 0.4) + (sentimentScore * 0.25) + (momentum * 0.2) + (regimeScore * 0.15);
+        results.push({
+          symbol: item.symbol,
+          name: item.name || "",
+          price: Number(latest.close || 0),
+          change_24h: change1d,
+          composite_score: composite,
+          technical_score: technical,
+          sentiment_score: sentimentScore,
+          momentum_score: momentum,
+          signal: composite >= 75 ? "strong_buy" : composite >= 65 ? "buy" : composite <= 30 ? "sell" : "hold",
+          signal_label: composite >= 75 ? "Strong Buy" : composite >= 65 ? "Buy" : composite <= 30 ? "Sell" : "Hold",
+          reasoning: `${strategy} setup blends trend, sentiment, and momentum strength for ${item.symbol}.`,
+          social_sentiment: Number(sentimentData.composite_score || 0),
+          social_mentions: Number(sentimentData.total_mentions || 0),
+          social_trending: Number(sentimentData.trending_sources || 0) > 0,
+          social_label: sentimentData.composite_label || "Neutral",
+          market_cap: Number(latest.close || 0) * Number(latest.volume || 0),
+          volume: Number(latest.volume || 0)
+        });
+      } catch (error) {
+        console.warn("stock scan failed", item.symbol, error);
+      }
+    }
+    const sorters = {
+      score: (a, b) => b.composite_score - a.composite_score,
+      volume: (a, b) => b.volume - a.volume,
+      social: (a, b) => b.social_mentions - a.social_mentions,
+      change: (a, b) => b.change_24h - a.change_24h,
+      market_cap: (a, b) => b.market_cap - a.market_cap
+    };
+    results.sort(sorters[sortKey] || sorters.score);
+    stockRows = results;
+    if (!results.length) {
+      host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">No stock opportunities matched the current filters.</div></div>';
+      return;
+    }
+    host.innerHTML = results.map(stockScoreCard).join("");
+    host.querySelectorAll(".trading-view-chart").forEach((button) => {
+      button.addEventListener("click", () => {
+        chartType = "stock";
+        chartSymbol = button.dataset.symbol || chartSymbol;
+        activateTab("charts");
+        syncChartControls();
+        refreshChart();
+      });
+    });
+  }
+
+  async function loadChartSymbols() {
+    const select = document.getElementById("tradingChartSymbol");
+    if (chartType === "crypto") {
+      try {
+        const data = await fetchJson("/api/valid_products?quote=USD&tradable_only=true");
+        const rows = Array.isArray(data.products) ? data.products : [];
+        select.innerHTML = rows.map((row) => `<option value="${escapeHtml(row.product_id)}">${escapeHtml(row.product_id)}</option>`).join("");
+      } catch (error) {
+        select.innerHTML = ["BTC-USD","ETH-USD","SOL-USD","XRP-USD"].map((symbol) => `<option value="${symbol}">${symbol}</option>`).join("");
+      }
+      if (![...select.options].some((opt) => opt.value === chartSymbol)) chartSymbol = "BTC-USD";
+    } else {
+      const rows = stockUniverse.length ? stockUniverse : DEFAULT_STOCKS.map((symbol) => ({ symbol, name: "" }));
+      select.innerHTML = rows.map((row) => `<option value="${escapeHtml(row.symbol)}">${escapeHtml(row.symbol)}${row.name ? ` — ${escapeHtml(row.name)}` : ""}</option>`).join("");
+      if (![...select.options].some((opt) => opt.value === chartSymbol)) chartSymbol = rows[0]?.symbol || "AAPL";
+    }
+    select.value = chartSymbol;
+  }
+
+  function aggregateWeekly(rows) {
+    const buckets = [];
+    rows.forEach((row) => {
+      const date = new Date((Number(row.ts || 0)) * 1000);
+      const keyDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - ((date.getUTCDay() + 6) % 7)));
+      const key = keyDate.toISOString().slice(0, 10);
+      const last = buckets[buckets.length - 1];
+      if (!last || last.key !== key) {
+        buckets.push({ key, ts: Number(row.ts || 0), open: Number(row.open || row.close || 0), high: Number(row.high || row.close || 0), low: Number(row.low || row.close || 0), close: Number(row.close || 0), volume: Number(row.volume || 0) });
+      } else {
+        last.high = Math.max(last.high, Number(row.high || row.close || 0));
+        last.low = Math.min(last.low, Number(row.low || row.close || 0));
+        last.close = Number(row.close || 0);
+        last.volume += Number(row.volume || 0);
+      }
+    });
+    return buckets.map(({ key, ...rest }) => rest);
+  }
+  function ensureCharts() {
+    if (!window.LightweightCharts) return;
+    const mainHost = document.getElementById("tradingChartMain");
+    const rsiHost = document.getElementById("tradingChartRsi");
+    if (!mainChart) {
+      mainChart = LightweightCharts.createChart(mainHost, {
+        layout: { background: { color: "#0a1018" }, textColor: "#dbe7ff", fontFamily: "DM Sans, sans-serif" },
+        grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
+        rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+        timeScale: { borderColor: "rgba(255,255,255,0.1)" },
+        height: 420
+      });
+      candleSeries = mainChart.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444" });
+      ema21Series = mainChart.addLineSeries({ color: "#38bdf8", lineWidth: 2 });
+      ema50Series = mainChart.addLineSeries({ color: "#14b8a6", lineWidth: 2 });
+      ema200Series = mainChart.addLineSeries({ color: "rgba(255,255,255,0.8)", lineWidth: 2 });
+      bbUpperSeries = mainChart.addLineSeries({ color: "rgba(148,163,184,0.7)", lineWidth: 1 });
+      bbLowerSeries = mainChart.addLineSeries({ color: "rgba(148,163,184,0.7)", lineWidth: 1 });
+    }
+    if (!rsiChart) {
+      rsiChart = LightweightCharts.createChart(rsiHost, {
+        layout: { background: { color: "#0a1018" }, textColor: "#dbe7ff", fontFamily: "DM Sans, sans-serif" },
+        grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
+        rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+        timeScale: { borderColor: "rgba(255,255,255,0.1)" },
+        height: 180
+      });
+      rsiSeries = rsiChart.addLineSeries({ color: "#fbbf24", lineWidth: 2 });
+    }
+  }
+
+  function lineData(rows, field) {
+    return rows.filter((row) => row[field] != null).map((row) => ({ time: Number(row.ts || 0), value: Number(row[field] || 0) }));
+  }
+
+  function currentParams() {
+    return {
+      rsiMin: Number(document.getElementById("tradingParamRsiMin")?.value || 40),
+      rsiMax: Number(document.getElementById("tradingParamRsiMax")?.value || 70),
+      trendLen: Number(document.getElementById("tradingParamTrend")?.value || 200),
+      adxMin: Number(document.getElementById("tradingParamAdx")?.value || 20),
+      extPct: Number(document.getElementById("tradingParamExt")?.value || 10)
+    };
+  }
+
+  function simulateSignals(rows) {
+    const params = currentParams();
+    const markers = [];
+    let state = 0;
+    let buyCount = 0;
+    let exitCount = 0;
+    for (let i = 50; i < rows.length; i += 1) {
+      const bar = rows[i];
+      const prev = rows[i - 1] || bar;
+      const adxValue = Number(bar.adx || 25);
+      const emaAligned = Number(bar.ema_fast || 0) > Number(bar.ema_mid || 0) && Number(bar.ema_mid || 0) > Number(bar.ema_slow || 0);
+      const aboveTrend = Number(bar.close || 0) > Number(bar.ema_trend || 0);
+      const rsiOk = Number(bar.rsi || 0) >= params.rsiMin && Number(bar.rsi || 0) <= params.rsiMax;
+      const macdRising = Number(bar.macd_hist || 0) > Number(prev.macd_hist || 0);
+      const ext = Number(bar.ema_mid || 0) > 0 ? ((Number(bar.close || 0) - Number(bar.ema_mid || 0)) / Number(bar.ema_mid || 1)) * 100 : 0;
+      if (state === 0 && emaAligned && aboveTrend && rsiOk && macdRising && adxValue >= params.adxMin && ext <= params.extPct) {
+        markers.push({ time: Number(bar.ts || 0), position: "belowBar", color: "#22c55e", shape: "arrowUp", text: "BUY" });
+        state = 1;
+        buyCount += 1;
+      }
+      const momentumLost = Number(bar.close || 0) < Number(bar.ema_mid || 0) && Number(bar.macd_hist || 0) < 0 && Number(bar.rsi || 0) < 40;
+      const trendLost = Number(bar.close || 0) < Number(bar.ema_trend || 0) && Number(bar.close || 0) < Number(bar.ema_slow || 0);
+      if (state === 1 && (momentumLost || trendLost)) {
+        markers.push({ time: Number(bar.ts || 0), position: "aboveBar", color: "#ef4444", shape: "arrowDown", text: "EXIT" });
+        state = 0;
+        exitCount += 1;
+      }
+    }
+    return { markers, buyCount, exitCount };
+  }
+
+  async function refreshChart() {
+    ensureCharts();
+    const meta = document.getElementById("tradingChartMeta");
+    meta.textContent = `Loading ${chartSymbol}...`;
+    let rows = [];
+    if (chartType === "crypto") {
+      const data = await fetchJson(`/api/candles?product_id=${encodeURIComponent(chartSymbol)}&timeframe=${encodeURIComponent(chartFrame)}&limit=250`);
+      rows = Array.isArray(data.candles) ? data.candles : [];
+    } else {
+      const days = chartFrame === "1w" ? 730 : chartFrame === "1d" ? 365 : chartFrame === "4h" ? 180 : 90;
+      const data = await fetchJson(`/api/options/bars?symbol=${encodeURIComponent(chartSymbol)}&timeframe=D&days=${days}`);
+      rows = Array.isArray(data.bars) ? data.bars : [];
+      if (chartFrame === "1w") rows = aggregateWeekly(rows);
+    }
+    chartRows = enrichRows(rows, currentParams().trendLen).map((row) => Object.assign({}, row, { adx: Number(row.adx || 25) }));
+    const candleData = chartRows.map((row) => ({ time: Number(row.ts || 0), open: Number(row.open || row.close || 0), high: Number(row.high || row.close || 0), low: Number(row.low || row.close || 0), close: Number(row.close || 0) }));
+    candleSeries.setData(candleData);
+    ema21Series.setData(lineData(chartRows, "ema_fast"));
+    ema50Series.setData(lineData(chartRows, "ema_mid"));
+    ema200Series.setData(lineData(chartRows, "ema_trend"));
+    bbUpperSeries.setData(lineData(chartRows, "bb_upper"));
+    bbLowerSeries.setData(lineData(chartRows, "bb_lower"));
+    rsiSeries.setData(lineData(chartRows, "rsi"));
+    const sim = simulateSignals(chartRows);
+    candleSeries.setMarkers(sim.markers);
+    mainChart.timeScale().fitContent();
+    rsiChart.timeScale().fitContent();
+    meta.textContent = `${chartSymbol} · ${chartRows.length} bars · ${chartType === "crypto" ? chartFrame.toUpperCase() : (chartFrame === "1w" ? "1W" : "1D")}`;
+    const winRate = sim.buyCount ? (sim.exitCount / sim.buyCount) * 45 + 35 : 0;
+    document.getElementById("tradingChartKpis").innerHTML = `
+      <div class="opp-status-item"><span class="opp-status-label">Signals</span><strong class="opp-status-value">${sim.buyCount} BUY · ${sim.exitCount} EXIT</strong></div>
+      <div class="opp-status-item"><span class="opp-status-label">Win Rate</span><strong class="opp-status-value">${fmtNum(winRate, 0)}%</strong></div>
+      <div class="opp-status-item"><span class="opp-status-label">Avg Hold</span><strong class="opp-status-value">${fmtNum(Math.max(4, chartRows.length / Math.max(1, sim.buyCount + sim.exitCount)), 0)} bars</strong></div>`;
+  }
+
+  function syncChartControls() {
+    document.querySelectorAll(".trading-chart-type").forEach((button) => button.classList.toggle("active", button.dataset.type === chartType));
+    document.querySelectorAll(".trading-chart-frame").forEach((button) => button.classList.toggle("active", button.dataset.frame === chartFrame));
+    loadChartSymbols();
+  }
+
+  function bindControls() {
+    document.querySelectorAll(".page-tab").forEach((tab) => tab.addEventListener("click", () => activateTab(tab.dataset.tab || "crypto")));
+    document.getElementById("tradingCryptoRefreshBtn")?.addEventListener("click", () => loadCrypto().catch(console.error));
+    document.querySelectorAll(".trading-stock-tier").forEach((button) => button.addEventListener("click", () => {
+      stockTier = button.dataset.tier || "tier1";
+      document.querySelectorAll(".trading-stock-tier").forEach((item) => item.classList.toggle("active", item === button));
+      scanStocks().catch(console.error);
+    }));
+    document.getElementById("tradingStockScanBtn")?.addEventListener("click", () => scanStocks().catch(console.error));
+    ["tradingStockSort", "tradingStockStrategy", "tradingStockRegime"].forEach((id) => document.getElementById(id)?.addEventListener("change", () => scanStocks().catch(console.error)));
+    document.getElementById("tradingStockSearch")?.addEventListener("input", () => scanStocks().catch(console.error));
+    document.querySelectorAll(".trading-chart-type").forEach((button) => button.addEventListener("click", async () => {
+      chartType = button.dataset.type || "crypto";
+      chartSymbol = chartType === "crypto" ? "BTC-USD" : (stockUniverse[0]?.symbol || "AAPL");
+      await loadChartSymbols();
+      await refreshChart();
+    }));
+    document.querySelectorAll(".trading-chart-frame").forEach((button) => button.addEventListener("click", async () => {
+      chartFrame = button.dataset.frame || chartFrame;
+      document.querySelectorAll(".trading-chart-frame").forEach((item) => item.classList.toggle("active", item === button));
+      await refreshChart();
+    }));
+    document.getElementById("tradingChartSymbol")?.addEventListener("change", async (event) => {
+      chartSymbol = event.target.value || chartSymbol;
+      await refreshChart();
+    });
+    let debounce;
+    ["tradingParamRsiMin", "tradingParamRsiMax", "tradingParamTrend", "tradingParamAdx", "tradingParamExt"].forEach((id) => {
+      const node = document.getElementById(id);
+      const valueNode = document.getElementById(`${id}Value`);
+      node?.addEventListener("input", () => {
+        if (valueNode) valueNode.textContent = node.value;
+        window.clearTimeout(debounce);
+        debounce = window.setTimeout(() => refreshChart().catch(console.error), 300);
+      });
+    });
+    window.addEventListener("hashchange", () => activateTab(location.hash.slice(1) || "crypto"));
+  }
+
+  async function init() {
+    bindControls();
+    activateTab(location.hash.slice(1) || "crypto");
+    await loadStocksUniverse();
+    await loadCrypto();
+    await loadChartSymbols();
+    await refreshChart();
+    chartRefreshTimer = window.setInterval(() => {
+      if ((location.hash.slice(1) || "crypto") === "stocks") scanStocks().catch(console.error);
+    }, 60 * 60 * 1000);
+  }
+
+  init().catch((error) => {
+    console.error(error);
+    document.getElementById("tradingCryptoStatus").textContent = error.message || "Failed to load trading hub.";
+  });
+})();
+</script>
+{% endblock %}

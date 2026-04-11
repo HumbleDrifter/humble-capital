@@ -43,6 +43,7 @@ from backtester import Backtester, bollinger_bands, ema as bt_ema, rsi as bt_rsi
 from brokers.webull_adapter import WebullAdapter
 from options.backtester import OptionsBacktester
 from options.chain_fetcher import OptionChainFetcher
+from options.earnings import EarningsCalendar
 from options.screener import OptionsScreener
 from portfolio_backtester import PortfolioBacktester
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
@@ -2788,6 +2789,46 @@ def api_options_iv_rank():
             "iv_rank": fetcher.get_iv_rank(symbol),
             "current_iv": round(current_iv, 4),
         })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/earnings", methods=["GET"])
+@require_api_auth
+def api_options_earnings():
+    try:
+        days_ahead = max(1, int(request.args.get("days_ahead") or 14))
+        calendar = EarningsCalendar()
+        return jsonify(
+            {
+                "ok": True,
+                "days_ahead": days_ahead,
+                "earnings": calendar.get_upcoming_earnings(days_ahead=days_ahead),
+            }
+        )
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/earnings/history", methods=["GET"])
+@require_api_auth
+def api_options_earnings_history():
+    try:
+        symbol = (request.args.get("symbol") or "").upper().strip()
+        if not symbol:
+            return jsonify({"ok": False, "error": "missing_symbol"}), 400
+        lookback_quarters = max(1, int(request.args.get("lookback_quarters") or 8))
+        calendar = EarningsCalendar()
+        history = calendar.get_earnings_dates(symbol, lookback_quarters=lookback_quarters)
+        return jsonify(
+            {
+                "ok": True,
+                "symbol": symbol,
+                "lookback_quarters": lookback_quarters,
+                "historical_move_avg": round(calendar.get_historical_earnings_move(symbol), 4),
+                "earnings_history": history,
+            }
+        )
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

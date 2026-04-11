@@ -3113,8 +3113,8 @@ def api_symbols():
 
     if asset_type == "crypto":
         try:
-            from coinbase_universe import get_tradable_universe
-            symbols = sorted(set(get_tradable_universe() or []))
+            from coinbase_universe import get_all_usd_products
+            symbols = sorted(set(get_all_usd_products() or []))
         except Exception:
             symbols = ["BTC-USD", "ETH-USD", "SOL-USD"]
     else:

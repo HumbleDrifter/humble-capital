@@ -10709,6 +10709,16 @@ tbody tr:last-child td {
   background: rgba(255,255,255,0.015);
 }
 
+.opt-chain-table td.opt-contract-cell {
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.opt-chain-table td.opt-contract-cell:hover {
+  background: rgba(56,189,248,0.16);
+  color: #e0f2fe;
+}
+
 .opt-chain-strike {
   text-align: center !important;
 }

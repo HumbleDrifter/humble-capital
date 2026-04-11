@@ -19,6 +19,7 @@
   {% set charts_url = '/charts?secret=' ~ (secret_value|urlencode) if secret_value else '/charts' %}
   {% set options_url = '/options?secret=' ~ (secret_value|urlencode) if secret_value else '/options' %}
   {% set options_chart_url = '/options-chart?secret=' ~ (secret_value|urlencode) if secret_value else '/options-chart' %}
+  {% set options_strategy_url = '/options-strategy?secret=' ~ (secret_value|urlencode) if secret_value else '/options-strategy' %}
   {% set algorithm_url = '/algorithm?secret=' ~ (secret_value|urlencode) if secret_value else '/algorithm' %}
   {% set opportunities_url = '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' %}
   {% set activity_url = '/trade-history?secret=' ~ (secret_value|urlencode) if secret_value else '/trade-history' %}
@@ -33,9 +34,10 @@
   {% set charts_active = current_path == '/charts' %}
   {% set options_active = current_path == '/options' %}
   {% set options_chart_active = current_path == '/options-chart' %}
+  {% set options_strategy_active = current_path == '/options-strategy' %}
   {% set algorithm_active = current_path == '/algorithm' %}
   {% set settings_active = current_path in ['/settings', '/system-status'] %}
-  {% set more_active = accounts_active or automation_active or settings_active or performance_active or backtest_active or portfolio_backtest_active or charts_active or options_active or options_chart_active or algorithm_active %}
+  {% set more_active = accounts_active or automation_active or settings_active or performance_active or backtest_active or portfolio_backtest_active or charts_active or options_active or options_chart_active or options_strategy_active or algorithm_active %}
 
   <div class="app-shell">
     <aside class="sidebar">
@@ -71,6 +73,9 @@
         </a>
         <a class="nav-link {% if options_chart_active %}active{% endif %}" href="{{ options_chart_url }}">
           <span class="nav-link-label">Options Chart</span>
+        </a>
+        <a class="nav-link {% if options_strategy_active %}active{% endif %}" href="{{ options_strategy_url }}">
+          <span class="nav-link-label">Options Strategy</span>
         </a>
         <a class="nav-link {% if accounts_active %}active{% endif %}" href="{{ accounts_url }}">
           <span class="nav-link-label">Accounts</span>
@@ -171,6 +176,7 @@
         <a class="mobile-more-link {% if portfolio_backtest_active %}active{% endif %}" href="{{ portfolio_backtest_url }}">Portfolio Backtest</a>
         <a class="mobile-more-link {% if options_active %}active{% endif %}" href="{{ options_url }}">Options Scanner</a>
         <a class="mobile-more-link {% if options_chart_active %}active{% endif %}" href="{{ options_chart_url }}">Options Chart</a>
+        <a class="mobile-more-link {% if options_strategy_active %}active{% endif %}" href="{{ options_strategy_url }}">Options Strategy</a>
         <a class="mobile-more-link {% if accounts_active %}active{% endif %}" href="{{ accounts_url }}">Accounts</a>
         <a class="mobile-more-link {% if automation_active %}active{% endif %}" href="{{ automation_url }}">Automation</a>
         <a class="mobile-more-link {% if algorithm_active %}active{% endif %}" href="{{ algorithm_url }}">Algorithm</a>

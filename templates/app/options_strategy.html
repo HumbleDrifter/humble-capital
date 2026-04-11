@@ -1,0 +1,757 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<style>
+  .osb-shell { display:grid; gap:18px; font-family:"DM Sans",system-ui,-apple-system,sans-serif; color:var(--hc-text,#ecf3ff); }
+  .osb-card { border:1px solid rgba(255,255,255,.08); border-radius:18px; background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.02)); box-shadow:0 18px 40px rgba(0,0,0,.24); }
+  .osb-header,.osb-builder,.osb-results,.osb-feed { padding:18px; }
+  .osb-head { display:flex; justify-content:space-between; gap:14px; align-items:flex-start; }
+  .osb-title { margin:0; font-size:20px; font-weight:800; letter-spacing:-.02em; }
+  .osb-subtitle { margin:6px 0 0; color:rgba(255,255,255,.62); font-size:14px; max-width:760px; }
+  .osb-layout { display:grid; gap:18px; grid-template-columns:minmax(0,1.4fr) minmax(320px,.95fr); }
+  .osb-tools { display:grid; gap:16px; }
+  .osb-controls { display:grid; gap:14px; grid-template-columns:1.2fr 1fr 1fr; }
+  .osb-select,.osb-input { width:100%; min-height:46px; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(11,16,24,.78); color:var(--hc-text,#ecf3ff); padding:0 14px; }
+  .osb-label { display:block; margin-bottom:8px; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.56); }
+  .osb-templates { display:flex; flex-wrap:wrap; gap:10px; }
+  .osb-template { padding:10px 14px; border-radius:999px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03); color:rgba(255,255,255,.86); font-weight:700; cursor:pointer; }
+  .osb-leg-list { display:grid; gap:12px; }
+  .osb-leg { padding:14px; border-radius:16px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); display:grid; gap:12px; }
+  .osb-leg-head { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+  .osb-leg-grid { display:grid; gap:12px; grid-template-columns:1fr 1fr 1.2fr 1fr; }
+  .osb-slider { width:100%; accent-color:#38bdf8; }
+  .osb-slider-row { display:grid; gap:8px; }
+  .osb-slider-meta { font-size:12px; color:rgba(255,255,255,.64); }
+  .osb-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .osb-status { font-size:13px; color:rgba(255,255,255,.64); }
+  .osb-kpis { display:grid; gap:12px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .osb-kpi { padding:14px; border-radius:14px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.06); }
+  .osb-kpi-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.52); }
+  .osb-kpi-value { margin-top:6px; font-size:24px; font-weight:800; letter-spacing:-.03em; }
+  .osb-kpi-value.good { color:#34d399; }
+  .osb-kpi-value.bad { color:#fb7185; }
+  .osb-svg-wrap { position:relative; min-height:340px; border-radius:16px; background:rgba(8,13,20,.72); border:1px solid rgba(255,255,255,.06); padding:12px; }
+  .osb-diagram { width:100%; height:320px; display:block; }
+  .osb-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:rgba(255,255,255,.64); margin-top:10px; }
+  .osb-legend span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:999px; margin-right:6px; vertical-align:middle; }
+  .osb-legend .profit::before { background:#34d399; }
+  .osb-legend .loss::before { background:#fb7185; }
+  .osb-summary { display:grid; gap:12px; }
+  .osb-pill-row { display:flex; flex-wrap:wrap; gap:8px; }
+  .osb-pill { padding:8px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.04); font-size:12px; font-weight:700; }
+  .osb-feed-list { display:grid; gap:10px; max-height:360px; overflow:auto; }
+  .osb-feed-card { padding:14px; border-radius:14px; border:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.025); }
+  .osb-empty { padding:18px; border-radius:14px; border:1px dashed rgba(255,255,255,.1); color:rgba(255,255,255,.6); background:rgba(255,255,255,.02); }
+  .osb-dialog { border:none; padding:0; background:transparent; }
+  .osb-dialog-card { width:min(560px,92vw); padding:18px; border-radius:18px; background:#0f1722; border:1px solid rgba(255,255,255,.08); color:var(--hc-text,#ecf3ff); box-shadow:0 24px 54px rgba(0,0,0,.42); }
+  .osb-dialog::backdrop { background:rgba(0,0,0,.5); backdrop-filter:blur(6px); }
+  @media (max-width: 1100px){ .osb-layout,.osb-controls,.osb-leg-grid { grid-template-columns:1fr; } .osb-kpis { grid-template-columns:1fr 1fr; } }
+</style>
+
+<div class="osb-shell">
+  <section class="osb-card osb-header">
+    <div class="osb-head">
+      <div>
+        <h2 class="osb-title">Options Strategy Builder</h2>
+        <p class="osb-subtitle">Combine option legs, inspect the expiration payoff diagram, see the net Greeks, and stage a backtest or live execution flow from the same workspace.</p>
+      </div>
+      <div class="osb-actions">
+        <button class="btn btn-secondary" id="osbResetBtn" type="button">Reset Builder</button>
+        <button class="btn btn-primary" id="osbAddLegBtn" type="button">Add Leg</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="osb-layout">
+    <section class="osb-card osb-builder">
+      <div class="osb-controls">
+        <div>
+          <label class="osb-label" for="osbSymbol">Underlying Symbol</label>
+          <input id="osbSymbol" class="osb-input" type="text" value="AAPL" placeholder="AAPL">
+        </div>
+        <div>
+          <label class="osb-label" for="osbCapital">Backtest Capital</label>
+          <input id="osbCapital" class="osb-input" type="number" min="1000" step="500" value="5000">
+        </div>
+        <div>
+          <label class="osb-label" for="osbDays">Backtest Window</label>
+          <select id="osbDays" class="osb-select">
+            <option value="90">90 Days</option>
+            <option value="180">180 Days</option>
+            <option value="365" selected>365 Days</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="osb-label">Pre-Built Templates</label>
+        <div class="osb-templates">
+          <button class="osb-template" data-template="covered_call" type="button">Covered Call</button>
+          <button class="osb-template" data-template="cash_secured_put" type="button">Cash-Secured Put</button>
+          <button class="osb-template" data-template="bull_put_spread" type="button">Bull Put Spread</button>
+          <button class="osb-template" data-template="iron_condor" type="button">Iron Condor</button>
+          <button class="osb-template" data-template="straddle" type="button">Straddle</button>
+          <button class="osb-template" data-template="strangle" type="button">Strangle</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="osb-label">Strategy Legs</label>
+        <div id="osbLegList" class="osb-leg-list"></div>
+      </div>
+
+      <div class="osb-actions">
+        <button class="btn btn-primary" id="osbBacktestBtn" type="button">Backtest This Strategy</button>
+        <button class="btn btn-secondary" id="osbTradeBtn" type="button">Place Trade</button>
+        <span class="osb-status" id="osbStatus">Ready.</span>
+      </div>
+    </section>
+
+    <aside class="osb-tools">
+      <section class="osb-card osb-results">
+        <div class="osb-head">
+          <div>
+            <h3 class="osb-title">P&amp;L Diagram</h3>
+            <p class="osb-subtitle">Expiration payoff across a +/-20% stock price range with breakeven markers and profit/loss zones.</p>
+          </div>
+        </div>
+        <div class="osb-svg-wrap">
+          <svg id="osbDiagram" class="osb-diagram" viewBox="0 0 720 320" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="osb-legend">
+          <span class="profit">Profit Zone</span>
+          <span class="loss">Loss Zone</span>
+        </div>
+      </section>
+
+      <section class="osb-card osb-results">
+        <div class="osb-head">
+          <div>
+            <h3 class="osb-title">Net Greeks</h3>
+            <p class="osb-subtitle">Combined exposures across the current staged legs using theoretical option pricing.</p>
+          </div>
+        </div>
+        <div class="osb-kpis">
+          <div class="osb-kpi"><div class="osb-kpi-label">Delta</div><div id="osbDelta" class="osb-kpi-value">0.00</div></div>
+          <div class="osb-kpi"><div class="osb-kpi-label">Gamma</div><div id="osbGamma" class="osb-kpi-value">0.00</div></div>
+          <div class="osb-kpi"><div class="osb-kpi-label">Theta</div><div id="osbTheta" class="osb-kpi-value">0.00</div></div>
+          <div class="osb-kpi"><div class="osb-kpi-label">Vega</div><div id="osbVega" class="osb-kpi-value">0.00</div></div>
+        </div>
+        <div class="osb-summary">
+          <div class="osb-pill-row" id="osbSummaryPills"></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <section class="osb-card osb-feed">
+    <div class="osb-head">
+      <div>
+        <h3 class="osb-title">Trade Feed</h3>
+        <p class="osb-subtitle">Backtest results or staged execution details appear here after you run the strategy.</p>
+      </div>
+    </div>
+    <div id="osbTradeFeed" class="osb-feed-list">
+      <div class="osb-empty">Build a strategy, then run a backtest to populate the feed.</div>
+    </div>
+  </section>
+</div>
+
+<dialog id="osbTradeDialog" class="osb-dialog">
+  <form method="dialog" class="osb-dialog-card">
+    <div class="osb-head">
+      <div>
+        <h3 class="osb-title">Confirm Multi-Leg Trade</h3>
+        <p class="osb-subtitle">Each leg will be submitted in sequence through the existing options trade endpoint.</p>
+      </div>
+      <button class="btn btn-secondary" value="cancel">Close</button>
+    </div>
+    <div id="osbTradeSummary" class="osb-summary"></div>
+    <div class="osb-actions" style="margin-top:16px;">
+      <button class="btn btn-primary" id="osbTradeConfirmBtn" type="button">Submit Legs</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const API_SECRET = {{ api_secret|tojson }};
+  const DEFAULT_IV = 0.38;
+  const DEFAULT_LEG = () => ({ id: crypto.randomUUID(), optionType: "call", action: "buy", delta: 0.25, dte: 30, qty: 1 });
+  const state = { legs: [DEFAULT_LEG()], spot: 0, iv: DEFAULT_IV, bars: [], backtest: null };
+  const templates = {
+    covered_call: [{ optionType: "call", action: "sell", delta: 0.30, dte: 30, qty: 1 }],
+    cash_secured_put: [{ optionType: "put", action: "sell", delta: 0.25, dte: 30, qty: 1 }],
+    bull_put_spread: [
+      { optionType: "put", action: "sell", delta: 0.25, dte: 30, qty: 1 },
+      { optionType: "put", action: "buy", delta: 0.10, dte: 30, qty: 1 }
+    ],
+    iron_condor: [
+      { optionType: "put", action: "sell", delta: 0.18, dte: 30, qty: 1 },
+      { optionType: "put", action: "buy", delta: 0.08, dte: 30, qty: 1 },
+      { optionType: "call", action: "sell", delta: 0.18, dte: 30, qty: 1 },
+      { optionType: "call", action: "buy", delta: 0.08, dte: 30, qty: 1 }
+    ],
+    straddle: [
+      { optionType: "call", action: "buy", delta: 0.50, dte: 30, qty: 1 },
+      { optionType: "put", action: "buy", delta: 0.50, dte: 30, qty: 1 }
+    ],
+    strangle: [
+      { optionType: "call", action: "buy", delta: 0.30, dte: 30, qty: 1 },
+      { optionType: "put", action: "buy", delta: 0.30, dte: 30, qty: 1 }
+    ]
+  };
+
+  function authUrl(path) {
+    if (!API_SECRET) return path;
+    const joiner = path.includes("?") ? "&" : "?";
+    return `${path}${joiner}secret=${encodeURIComponent(API_SECRET)}`;
+  }
+
+  async function fetchJson(path, options) {
+    const response = await fetch(authUrl(path), {
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+      ...options
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || `Request failed (${response.status})`);
+    }
+    return data;
+  }
+
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[ch] || ch);
+  }
+
+  function fmtUsd(value) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(value || 0));
+  }
+
+  function fmtPct(value) {
+    return `${Number(value || 0).toFixed(1)}%`;
+  }
+
+  function status(message) {
+    const node = document.getElementById("osbStatus");
+    if (node) node.textContent = message;
+  }
+
+  function symbol() {
+    return (document.getElementById("osbSymbol")?.value || "AAPL").toUpperCase().trim();
+  }
+
+  function capital() {
+    return Number(document.getElementById("osbCapital")?.value || 5000);
+  }
+
+  function backtestDays() {
+    return Number(document.getElementById("osbDays")?.value || 365);
+  }
+
+  function debounce(fn, wait) {
+    let timeout = null;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), wait);
+    };
+  }
+
+  function erf(x) {
+    const sign = x < 0 ? -1 : 1;
+    const ax = Math.abs(x);
+    const a1 = 0.254829592;
+    const a2 = -0.284496736;
+    const a3 = 1.421413741;
+    const a4 = -1.453152027;
+    const a5 = 1.061405429;
+    const p = 0.3275911;
+    const t = 1 / (1 + p * ax);
+    const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-ax * ax);
+    return sign * y;
+  }
+
+  function normalCdf(x) {
+    return 0.5 * (1 + erf(x / Math.sqrt(2)));
+  }
+
+  function normalPdf(x) {
+    return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+  }
+
+  function deltaToStrike(spot, delta, optionType) {
+    const pct = Math.max(0.02, Math.min(0.45, (0.5 - delta) * 0.35 + 0.06));
+    return optionType === "call" ? spot * (1 + pct) : spot * (1 - pct);
+  }
+
+  function optionTheo(spot, strike, dteDays, iv, optionType) {
+    const t = Math.max(1, dteDays) / 365;
+    const sigma = Math.max(0.05, iv || DEFAULT_IV);
+    const rate = 0.045;
+    if (spot <= 0 || strike <= 0 || t <= 0) return 0;
+    const d1 = (Math.log(spot / strike) + (rate + 0.5 * sigma * sigma) * t) / (sigma * Math.sqrt(t));
+    const d2 = d1 - sigma * Math.sqrt(t);
+    if (optionType === "call") {
+      return spot * normalCdf(d1) - strike * Math.exp(-rate * t) * normalCdf(d2);
+    }
+    return strike * Math.exp(-rate * t) * normalCdf(-d2) - spot * normalCdf(-d1);
+  }
+
+  function optionGreeks(spot, strike, dteDays, iv, optionType) {
+    const t = Math.max(1, dteDays) / 365;
+    const sigma = Math.max(0.05, iv || DEFAULT_IV);
+    const rate = 0.045;
+    if (spot <= 0 || strike <= 0 || t <= 0) return { delta: 0, gamma: 0, theta: 0, vega: 0 };
+    const d1 = (Math.log(spot / strike) + (rate + 0.5 * sigma * sigma) * t) / (sigma * Math.sqrt(t));
+    const d2 = d1 - sigma * Math.sqrt(t);
+    const pdf = normalPdf(d1);
+    const delta = optionType === "call" ? normalCdf(d1) : normalCdf(d1) - 1;
+    const gamma = pdf / (spot * sigma * Math.sqrt(t));
+    const vega = (spot * pdf * Math.sqrt(t)) / 100;
+    let theta = -(spot * pdf * sigma) / (2 * Math.sqrt(t));
+    if (optionType === "call") {
+      theta -= rate * strike * Math.exp(-rate * t) * normalCdf(d2);
+    } else {
+      theta += rate * strike * Math.exp(-rate * t) * normalCdf(-d2);
+    }
+    return {
+      delta,
+      gamma,
+      theta: theta / 365,
+      vega
+    };
+  }
+
+  async function loadBars() {
+    status(`Loading ${symbol()} data...`);
+    const data = await fetchJson(`/api/options/bars?symbol=${encodeURIComponent(symbol())}&timeframe=D&days=${backtestDays()}`);
+    state.bars = Array.isArray(data.bars) ? data.bars : [];
+    const closes = state.bars.map((bar) => Number(bar.close || 0)).filter((value) => value > 0);
+    state.spot = closes.length ? closes[closes.length - 1] : 0;
+    const ivSeries = Array.isArray(data.indicators?.iv_estimate) ? data.indicators.iv_estimate : [];
+    const latestIv = ivSeries.length ? Number(ivSeries[ivSeries.length - 1] || DEFAULT_IV) : DEFAULT_IV;
+    state.iv = latestIv > 0 ? latestIv : DEFAULT_IV;
+    status(`Loaded ${state.bars.length} daily bars for ${symbol()}.`);
+  }
+
+  function renderLegs() {
+    const host = document.getElementById("osbLegList");
+    if (!host) return;
+    if (!state.legs.length) {
+      host.innerHTML = `<div class="osb-leg-empty">No legs yet. Add a leg or start from a template.</div>`;
+      return;
+    }
+    host.innerHTML = state.legs.map((leg, index) => `
+      <div class="osb-leg-card" data-leg-id="${esc(leg.id)}">
+        <div class="osb-leg-head">
+          <strong>Leg ${index + 1}</strong>
+          <button type="button" class="btn btn-secondary osb-leg-remove" data-remove-leg="${esc(leg.id)}">Remove</button>
+        </div>
+        <div class="osb-leg-grid">
+          <label class="osb-field">
+            <span>Type</span>
+            <select class="select" data-field="optionType" data-leg-id="${esc(leg.id)}">
+              <option value="call" ${leg.optionType === "call" ? "selected" : ""}>Call</option>
+              <option value="put" ${leg.optionType === "put" ? "selected" : ""}>Put</option>
+            </select>
+          </label>
+          <label class="osb-field">
+            <span>Action</span>
+            <select class="select" data-field="action" data-leg-id="${esc(leg.id)}">
+              <option value="buy" ${leg.action === "buy" ? "selected" : ""}>Buy</option>
+              <option value="sell" ${leg.action === "sell" ? "selected" : ""}>Sell</option>
+            </select>
+          </label>
+          <label class="osb-field">
+            <span>Delta <strong>${Number(leg.delta || 0).toFixed(2)}</strong></span>
+            <input type="range" min="0.05" max="0.95" step="0.01" value="${Number(leg.delta || 0.25).toFixed(2)}" data-field="delta" data-leg-id="${esc(leg.id)}">
+          </label>
+          <label class="osb-field">
+            <span>DTE</span>
+            <select class="select" data-field="dte" data-leg-id="${esc(leg.id)}">
+              <option value="7" ${Number(leg.dte) === 7 ? "selected" : ""}>Weekly</option>
+              <option value="14" ${Number(leg.dte) === 14 ? "selected" : ""}>2 Weeks</option>
+              <option value="30" ${Number(leg.dte) === 30 ? "selected" : ""}>Monthly</option>
+              <option value="45" ${Number(leg.dte) === 45 ? "selected" : ""}>45 Days</option>
+            </select>
+          </label>
+          <label class="osb-field">
+            <span>Quantity</span>
+            <input class="input" type="number" min="1" max="10" step="1" value="${Number(leg.qty || 1)}" data-field="qty" data-leg-id="${esc(leg.id)}">
+          </label>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function legMetrics() {
+    const spot = Math.max(1, state.spot || 0);
+    const iv = Math.max(0.05, state.iv || DEFAULT_IV);
+    return state.legs.map((leg) => {
+      const strike = deltaToStrike(spot, Number(leg.delta || 0.25), leg.optionType);
+      const premium = optionTheo(spot, strike, Number(leg.dte || 30), iv, leg.optionType);
+      const greeks = optionGreeks(spot, strike, Number(leg.dte || 30), iv, leg.optionType);
+      const side = leg.action === "sell" ? -1 : 1;
+      return {
+        ...leg,
+        strike,
+        premium,
+        side,
+        greeks: {
+          delta: greeks.delta * side * Number(leg.qty || 1) * 100,
+          gamma: greeks.gamma * side * Number(leg.qty || 1) * 100,
+          theta: greeks.theta * side * Number(leg.qty || 1) * 100,
+          vega: greeks.vega * side * Number(leg.qty || 1) * 100
+        }
+      };
+    });
+  }
+
+  function renderGreeks() {
+    const metrics = legMetrics();
+    const totals = metrics.reduce((acc, leg) => {
+      acc.delta += Number(leg.greeks.delta || 0);
+      acc.gamma += Number(leg.greeks.gamma || 0);
+      acc.theta += Number(leg.greeks.theta || 0);
+      acc.vega += Number(leg.greeks.vega || 0);
+      return acc;
+    }, { delta: 0, gamma: 0, theta: 0, vega: 0 });
+
+    const values = {
+      osbDelta: totals.delta,
+      osbGamma: totals.gamma,
+      osbTheta: totals.theta,
+      osbVega: totals.vega
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const node = document.getElementById(id);
+      if (node) node.textContent = Number(value || 0).toFixed(2);
+    });
+
+    const pills = document.getElementById("osbSummaryPills");
+    if (!pills) return;
+    const totalCredit = metrics.reduce((sum, leg) => sum + (leg.action === "sell" ? leg.premium * Number(leg.qty || 1) * 100 : 0), 0);
+    const totalDebit = metrics.reduce((sum, leg) => sum + (leg.action === "buy" ? leg.premium * Number(leg.qty || 1) * 100 : 0), 0);
+    pills.innerHTML = `
+      <span class="osb-pill"><strong>Spot</strong> ${fmtUsd(state.spot)}</span>
+      <span class="osb-pill"><strong>Est. Credit</strong> ${fmtUsd(totalCredit)}</span>
+      <span class="osb-pill"><strong>Est. Debit</strong> ${fmtUsd(totalDebit)}</span>
+      <span class="osb-pill"><strong>Est. IV</strong> ${fmtPct(state.iv * 100)}</span>
+    `;
+  }
+
+  function payoffAtExpiry(metrics, stockPrice) {
+    return metrics.reduce((sum, leg) => {
+      const qty = Number(leg.qty || 1) * 100;
+      const intrinsic = leg.optionType === "call"
+        ? Math.max(0, stockPrice - leg.strike)
+        : Math.max(0, leg.strike - stockPrice);
+      const premium = leg.premium;
+      if (leg.action === "buy") {
+        return sum + ((intrinsic - premium) * qty);
+      }
+      return sum + ((premium - intrinsic) * qty);
+    }, 0);
+  }
+
+  function payoffProfile(metrics) {
+    const spot = Math.max(1, state.spot || 0);
+    const low = spot * 0.8;
+    const high = spot * 1.2;
+    const steps = 60;
+    const points = [];
+    for (let i = 0; i <= steps; i += 1) {
+      const stockPrice = low + ((high - low) * i) / steps;
+      points.push({ x: stockPrice, y: payoffAtExpiry(metrics, stockPrice) });
+    }
+    return points;
+  }
+
+  function computeBreakEvens(metrics) {
+    const pts = payoffProfile(metrics);
+    const out = [];
+    for (let i = 1; i < pts.length; i += 1) {
+      const prev = pts[i - 1];
+      const curr = pts[i];
+      if ((prev.y <= 0 && curr.y >= 0) || (prev.y >= 0 && curr.y <= 0)) {
+        out.push(((prev.x + curr.x) / 2));
+      }
+    }
+    return out;
+  }
+
+  function renderDiagram() {
+    const host = document.getElementById("osbDiagram");
+    if (!host) return;
+    const metrics = legMetrics();
+    if (!metrics.length || !state.spot) {
+      host.innerHTML = `<text x="20" y="32" fill="rgba(255,255,255,0.6)" font-size="14">Load a symbol to preview payoff.</text>`;
+      return;
+    }
+
+    const width = 860;
+    const height = 340;
+    const padX = 48;
+    const padTop = 24;
+    const padBottom = 40;
+    const profile = payoffProfile(metrics);
+    const ys = profile.map((p) => p.y);
+    const minY = Math.min(...ys, 0);
+    const maxY = Math.max(...ys, 0);
+    const spread = Math.max(1, maxY - minY);
+    const xMin = profile[0].x;
+    const xMax = profile[profile.length - 1].x;
+    const chartWidth = width - padX * 2;
+    const chartHeight = height - padTop - padBottom;
+    const toX = (x) => padX + ((x - xMin) / Math.max(0.0001, xMax - xMin)) * chartWidth;
+    const toY = (y) => padTop + ((maxY - y) / spread) * chartHeight;
+    const path = profile.map((p, idx) => `${idx === 0 ? "M" : "L"} ${toX(p.x).toFixed(2)} ${toY(p.y).toFixed(2)}`).join(" ");
+    const axisY = toY(0);
+    const breaks = computeBreakEvens(metrics);
+    const maxProfit = Math.max(...ys);
+    const maxLoss = Math.min(...ys);
+
+    host.innerHTML = `
+      <defs>
+        <linearGradient id="osbProfitFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="rgba(34,197,94,0.35)"></stop>
+          <stop offset="100%" stop-color="rgba(34,197,94,0.02)"></stop>
+        </linearGradient>
+        <linearGradient id="osbLossFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="rgba(239,68,68,0.28)"></stop>
+          <stop offset="100%" stop-color="rgba(239,68,68,0.02)"></stop>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="rgba(255,255,255,0.02)"></rect>
+      <line x1="${padX}" y1="${axisY.toFixed(2)}" x2="${(width - padX)}" y2="${axisY.toFixed(2)}" stroke="rgba(255,255,255,0.18)" stroke-dasharray="5 5"></line>
+      <path d="${path}" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"></path>
+      ${breaks.map((price) => `<line x1="${toX(price).toFixed(2)}" y1="${padTop}" x2="${toX(price).toFixed(2)}" y2="${height - padBottom}" stroke="rgba(251,191,36,0.45)" stroke-dasharray="4 6"></line><text x="${toX(price).toFixed(2)}" y="${height - 12}" text-anchor="middle" fill="#fbbf24" font-size="11">${price.toFixed(2)}</text>`).join("")}
+      <text x="${padX}" y="16" fill="#ffffff" font-size="12">Max Profit ${fmtUsd(maxProfit)}</text>
+      <text x="${width - padX}" y="16" text-anchor="end" fill="#ffffff" font-size="12">Max Loss ${fmtUsd(maxLoss)}</text>
+      ${profile.filter((p) => p.y >= 0).length ? `<path d="${profile.filter((p) => p.y >= 0).map((p, idx, arr) => `${idx === 0 ? "M" : "L"} ${toX(p.x).toFixed(2)} ${toY(p.y).toFixed(2)}`).join(" ")}" fill="none" stroke="#22c55e" stroke-width="2"></path>` : ""}
+      ${profile.filter((p) => p.y < 0).length ? `<path d="${profile.filter((p) => p.y < 0).map((p, idx, arr) => `${idx === 0 ? "M" : "L"} ${toX(p.x).toFixed(2)} ${toY(p.y).toFixed(2)}`).join(" ")}" fill="none" stroke="#ef4444" stroke-width="2"></path>` : ""}
+    `;
+  }
+
+  function renderAll() {
+    renderLegs();
+    renderGreeks();
+    renderDiagram();
+    bindLegEvents();
+  }
+
+  function applyTemplate(name) {
+    const template = templates[name];
+    if (!template) return;
+    state.legs = template.map((leg) => ({ ...DEFAULT_LEG(), ...leg, id: crypto.randomUUID() }));
+    renderAll();
+  }
+
+  function bindLegEvents() {
+    document.querySelectorAll("[data-field][data-leg-id]").forEach((element) => {
+      element.oninput = element.onchange = () => {
+        const legId = element.getAttribute("data-leg-id");
+        const field = element.getAttribute("data-field");
+        const leg = state.legs.find((row) => row.id === legId);
+        if (!leg) return;
+        const raw = element.value;
+        if (field === "delta") leg[field] = Number(raw);
+        else if (field === "qty" || field === "dte") leg[field] = Number(raw);
+        else leg[field] = raw;
+        renderAll();
+      };
+    });
+
+    document.querySelectorAll("[data-remove-leg]").forEach((button) => {
+      button.onclick = () => {
+        const id = button.getAttribute("data-remove-leg");
+        state.legs = state.legs.filter((leg) => leg.id !== id);
+        renderAll();
+      };
+    });
+  }
+
+  function mappedStrategy() {
+    if (state.legs.length === 1) {
+      const [leg] = state.legs;
+      if (leg.action === "sell" && leg.optionType === "call") return "wheel";
+      if (leg.action === "sell" && leg.optionType === "put") return "wheel";
+    }
+    if (state.legs.length === 2 && state.legs.every((leg) => leg.optionType === "put")) return "credit_spread";
+    if (state.legs.length === 4) return "iron_condor";
+    return "earnings_strangle";
+  }
+
+  function backtestPayload() {
+    return {
+      symbol: symbol(),
+      strategy: mappedStrategy(),
+      starting_capital: capital(),
+      params: {
+        custom_legs: legMetrics().map((leg) => ({
+          option_type: leg.optionType,
+          side: leg.action,
+          delta: Number(leg.delta || 0),
+          dte: Number(leg.dte || 30),
+          qty: Number(leg.qty || 1),
+          strike: Number(leg.strike || 0)
+        }))
+      }
+    };
+  }
+
+  async function runBacktest() {
+    status(`Running ${mappedStrategy()} backtest for ${symbol()}...`);
+    const result = await fetchJson("/api/options/backtest", {
+      method: "POST",
+      body: JSON.stringify(backtestPayload())
+    });
+    state.backtest = result;
+    const host = document.getElementById("osbTradeFeed");
+    const trades = Array.isArray(result.trade_log) ? result.trade_log : [];
+    if (host) {
+      host.innerHTML = trades.length ? trades.slice(0, 24).map((trade) => `
+        <div class="osb-feed-card">
+          <div class="osb-feed-meta">
+            <strong>${esc(trade.action || "TRADE")}</strong>
+            <span>${esc(trade.date || "")}</span>
+          </div>
+          <div class="osb-feed-main">
+            <span>${esc(trade.symbol || symbol())}</span>
+            <span>${trade.type ? esc(String(trade.type).toUpperCase()) : ""}</span>
+            <span>${trade.strike ? fmtUsd(trade.strike) : ""}</span>
+            <span>${trade.premium != null ? `Premium ${fmtUsd(trade.premium)}` : ""}</span>
+            <span>${trade.pnl != null ? `PnL ${fmtUsd(trade.pnl)}` : ""}</span>
+            <span>${trade.reason ? esc(trade.reason) : ""}</span>
+          </div>
+        </div>
+      `).join("") : `<div class="osb-feed-empty">No simulated trades yet.</div>`;
+    }
+    status(`Backtest complete. ${trades.length} simulated trades.`);
+    renderTradeDialog();
+  }
+
+  function renderTradeDialog() {
+    const host = document.getElementById("osbTradeSummary");
+    if (!host) return;
+    const metrics = legMetrics();
+    const summary = state.backtest?.summary || {};
+    host.innerHTML = `
+      <div class="osb-dialog-line"><strong>Symbol</strong><span>${esc(symbol())}</span></div>
+      <div class="osb-dialog-line"><strong>Strategy</strong><span>${esc(mappedStrategy())}</span></div>
+      <div class="osb-dialog-line"><strong>Legs</strong><span>${metrics.length}</span></div>
+      <div class="osb-dialog-line"><strong>Net Return</strong><span>${summary.total_return_pct != null ? fmtPct(summary.total_return_pct) : "Not run"}</span></div>
+      <div class="osb-dialog-line"><strong>Total Trades</strong><span>${summary.total_trades ?? 0}</span></div>
+    `;
+  }
+
+  async function placeTrade() {
+    const metrics = legMetrics();
+    if (!metrics.length) {
+      status("Add at least one leg before sending a trade.");
+      return;
+    }
+    status(`Sending ${metrics.length} leg(s) to broker...`);
+    const results = [];
+    for (const leg of metrics) {
+      const payload = {
+        symbol: symbol(),
+        strategy: mappedStrategy(),
+        expiration: null,
+        strike: Number(leg.strike || 0),
+        qty: Number(leg.qty || 1),
+        side: leg.action,
+        option_type: leg.optionType,
+        delta: Number(leg.delta || 0),
+        dte: Number(leg.dte || 30),
+        limit_price: Number(leg.premium || 0).toFixed(2)
+      };
+      try {
+        const response = await fetchJson("/api/options/trade", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        results.push(response);
+      } catch (error) {
+        results.push({ ok: false, error: error.message });
+      }
+    }
+    const successCount = results.filter((row) => row && row.ok !== false).length;
+    status(`Trade submission finished. ${successCount}/${results.length} legs accepted.`);
+    document.getElementById("osbTradeDialog")?.close();
+  }
+
+  function bindUi() {
+    document.getElementById("osbAddLegBtn")?.addEventListener("click", () => {
+      state.legs.push(DEFAULT_LEG());
+      renderAll();
+    });
+
+    document.querySelectorAll("[data-template]").forEach((button) => {
+      button.addEventListener("click", () => applyTemplate(button.getAttribute("data-template")));
+    });
+
+    document.getElementById("osbRunBacktestBtn")?.addEventListener("click", async () => {
+      try {
+        await loadBars();
+        await runBacktest();
+      } catch (error) {
+        status(`Backtest failed: ${error.message}`);
+      }
+    });
+
+    document.getElementById("osbPlaceTradeBtn")?.addEventListener("click", () => {
+      renderTradeDialog();
+      document.getElementById("osbTradeDialog")?.showModal();
+    });
+
+    document.getElementById("osbTradeConfirmBtn")?.addEventListener("click", async () => {
+      try {
+        await placeTrade();
+      } catch (error) {
+        status(`Trade failed: ${error.message}`);
+      }
+    });
+
+    document.getElementById("osbDialogCancelBtn")?.addEventListener("click", () => {
+      document.getElementById("osbTradeDialog")?.close();
+    });
+
+    const delayedRefresh = debounce(async () => {
+      try {
+        await loadBars();
+      } catch (error) {
+        status(`Quote refresh failed: ${error.message}`);
+      }
+      renderAll();
+    }, 500);
+
+    ["osbSymbol", "osbCapital", "osbDays"].forEach((id) => {
+      document.getElementById(id)?.addEventListener("input", delayedRefresh);
+      document.getElementById(id)?.addEventListener("change", delayedRefresh);
+    });
+  }
+
+  async function init() {
+    bindUi();
+    renderAll();
+    await loadBars();
+    renderAll();
+    renderTradeDialog();
+  }
+
+  init().catch((error) => status(`Builder failed: ${error.message}`));
+})();
+</script>
+{% endblock %}

@@ -1059,17 +1059,257 @@ async function handleReviewProposalAction() {
   await generateReviewProposal();
 }
 
+function relativeTimeFromTs(ts) {
+  const numeric = Number(ts || 0);
+  if (!numeric) return "Unknown";
+  const diffSec = Math.max(0, Math.floor(Date.now() / 1000) - numeric);
+  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} min ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return `${Math.floor(diffSec / 86400)}d ago`;
+}
+
+function buildChartsHref(productId) {
+  const base = API_SECRET
+    ? `/charts?secret=${encodeURIComponent(API_SECRET)}`
+    : "/charts";
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}product_id=${encodeURIComponent(productId)}`;
+}
+
+function toneClass(value) {
+  const numeric = Number(value || 0);
+  if (numeric > 0) return "positive";
+  if (numeric < 0) return "negative";
+  return "";
+}
+
+function renderStatus(data, systemData, shadowData = {}, signals = []) {
+  const status = document.getElementById("heatmapStatus");
+  if (!status) return;
+
+  const scannerEnabled = Boolean(systemData?.admin_state?.meme_rotation_enabled);
+  const regime = normalizeRegime(data.market_regime || systemData?.portfolio_summary?.market_regime || "unknown");
+  const regimeClass = regimeTone(data.market_regime || systemData?.portfolio_summary?.market_regime || "unknown");
+  const lastSweepTs = Number(
+    shadowData?.last_updated_ts ||
+    shadowData?.generated_at ||
+    signals?.[0]?.ts ||
+    data?.updated_at ||
+    0
+  );
+
+  status.innerHTML = `
+    <div class="opp-status-left">
+      <span class="badge ${scannerEnabled ? "good" : "warn"}">${scannerEnabled ? "Scanner Enabled" : "Scanner Paused"}</span>
+      <span class="opportunity-summary-regime opp-regime-pill ${escapeHtml(regimeClass)}">${escapeHtml(regime)}</span>
+      <span class="pill">Last sweep: ${escapeHtml(relativeTimeFromTs(lastSweepTs))}</span>
+    </div>
+    <div class="opp-status-right">
+      <span class="tiny">${escapeHtml(`${resolveUniverseCount(data) ?? 0} assets in view`)}</span>
+    </div>
+  `;
+}
+
+function renderLiveSignals(signals) {
+  const host = document.getElementById("dashboardShadowRotation");
+  if (!host) return;
+
+  const rows = Array.isArray(signals) ? signals.slice(0, 10) : [];
+  if (!rows.length) {
+    host.innerHTML = `<div class="dashboard-shadow-fallback">Scanner is running. Signals will appear here as they fire.</div>`;
+    return;
+  }
+
+  host.innerHTML = rows.map((row) => {
+    const signal = String(row.signal || "").trim().toLowerCase();
+    const badgeTone = signal === "buy" ? "good" : signal === "trim" ? "warn" : "bad";
+    const conviction = Number(row.conviction || 0);
+    return `
+      <article class="hc-trade-card chart-signal-card">
+        <div class="hc-trade-main">
+          <span class="hc-trade-badge ${badgeTone}">${escapeHtml(signal.toUpperCase() || "SIGNAL")}</span>
+          <div class="hc-trade-copy">
+            <div class="hc-trade-title">${escapeHtml(row.product_id || "—")} at ${escapeHtml(fmtUsd(row.price || 0))}</div>
+            <div class="hc-trade-subtitle">${escapeHtml(formatUnixTime(row.ts))} · conviction ${(conviction * 100).toFixed(0)}%</div>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderPositions(data) {
+  const host = document.getElementById("opportunitySummary");
+  if (!host) return;
+
+  const rows = Array.isArray(data.candidates) ? data.candidates : [];
+  const held = rows
+    .filter((row) => Number(row.held_value_usd || row.value_total_usd || 0) > 1.0)
+    .sort((a, b) => Number(b.held_value_usd || b.value_total_usd || 0) - Number(a.held_value_usd || a.value_total_usd || 0));
+
+  if (!held.length) {
+    host.innerHTML = `<div class="hc-empty-card">No held satellite positions above $1 right now.</div>`;
+    return;
+  }
+
+  host.innerHTML = held.map((row) => {
+    const productId = String(row.product_id || row.symbol || "—");
+    const symbol = productId.split("-")[0];
+    const heldValue = Number(row.held_value_usd || row.value_total_usd || 0);
+    const unrealizedPct = Number(row.unrealized_pnl_pct || 0);
+    const move24h = resolve24hMove(row);
+    return `
+      <article class="hc-pos-card opp-card" style="${opportunityCardThemeStyle(resolveOpportunityScore(row))}">
+        <div class="hc-pos-icon satellite">${escapeHtml(symbol.slice(0, 2))}</div>
+        <div class="hc-pos-info">
+          <div class="hc-pos-symbol">${escapeHtml(symbol)}</div>
+          <div class="hc-pos-name">${escapeHtml(productId)}</div>
+          <div class="opportunity-subline opp-subline">Held value ${escapeHtml(fmtUsd(heldValue))}</div>
+        </div>
+        <div class="hc-pos-right">
+          <div class="hc-pos-value ${toneClass(unrealizedPct)}">${unrealizedPct >= 0 ? "+" : ""}${fmtPct(unrealizedPct)}</div>
+          <div class="hc-pos-change ${toneClass(move24h || 0)}">${formatPercentOrNA(move24h)}</div>
+          <button class="btn btn-secondary opportunity-action-btn opp-action-btn" type="button" title="Uses the existing disable control path." onclick="setOpportunityMode('${escapeHtml(productId)}','disable')">Close</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderTopOpportunities(data) {
+  const meta = document.getElementById("heatmapMeta");
+  const host = document.getElementById("heatmapGrid");
+  const sortKey = document.getElementById("heatmapSort")?.value || "score";
+  if (!host) return;
+
+  const rows = Array.isArray(data.candidates) ? data.candidates : [];
+  const opportunities = sortCandidates(
+    rows.filter((row) => {
+      const heldValue = Number(row.held_value_usd || row.value_total_usd || 0);
+      return heldValue <= 1.0 && !row.blocked && row.enabled !== false && !row.core;
+    }),
+    sortKey
+  ).slice(0, 12);
+
+  if (meta) {
+    meta.textContent = `${opportunities.length} top opportunities loaded • regime ${normalizeRegime(data.market_regime || "unknown")}`;
+  }
+
+  if (!opportunities.length) {
+    host.innerHTML = `<div class="hc-empty-card">No unheld opportunities are standing out right now.</div>`;
+    return;
+  }
+
+  host.innerHTML = `<div class="opps-board opp-board">${opportunities.map((row) => {
+    const productId = String(row.product_id || row.symbol || "—");
+    const score = Math.max(0, Math.min(100, resolveOpportunityScore(row)));
+    const move24h = resolve24hMove(row);
+    return `
+      <article class="opportunity-card opp-card hc-pos-card ${opportunityTone(score)}" style="${opportunityCardThemeStyle(score)}">
+        <div class="opportunity-card-head opp-card-head">
+          <div>
+            <div class="opportunity-symbol opp-symbol">${escapeHtml(productId)}</div>
+            <div class="opportunity-subline opp-subline">${escapeHtml(assetTypeForCandidate(row))}</div>
+          </div>
+          <div class="opportunity-score-wrap opp-score-wrap">
+            <div class="opportunity-score-kicker opp-score-kicker">Score</div>
+            <div class="opportunity-score opp-score" style="color:${scoreTextColor(score)}">${fmtNumber(score)}</div>
+          </div>
+        </div>
+        <div class="opp-progress-shell">
+          <div class="opp-progress-bar">
+            <span class="opp-progress-fill" style="width:${score}%; background:${scoreColor(score)};"></span>
+          </div>
+        </div>
+        <div class="opportunity-metrics opp-metrics">
+          <div class="opportunity-metric opp-metric">
+            <span class="opportunity-metric-label opp-metric-label">24H Move</span>
+            <strong class="${toneClass(move24h || 0)}">${formatPercentOrNA(move24h)}</strong>
+          </div>
+          <div class="opportunity-metric opp-metric">
+            <span class="opportunity-metric-label opp-metric-label">Target Weight</span>
+            <strong>${fmtPct(row.portfolio_weight || 0, false)}</strong>
+          </div>
+        </div>
+        <div class="opportunity-actions opp-actions">
+          <a class="btn btn-secondary opportunity-action-btn opp-action-btn" href="${buildChartsHref(productId)}">View Chart</a>
+          <button class="btn btn-primary opportunity-action-btn opp-action-btn" type="button" onclick="setOpportunityMode('${escapeHtml(productId)}','enable')">Enable</button>
+        </div>
+      </article>
+    `;
+  }).join("")}</div>`;
+}
+
+function renderBlockedAssets(data) {
+  const host = document.getElementById("shadowNearMissCandidates");
+  if (!host) return;
+
+  const rows = (Array.isArray(data.candidates) ? data.candidates : [])
+    .filter((row) => row.blocked || row.enabled === false)
+    .sort((a, b) => resolveOpportunityScore(b) - resolveOpportunityScore(a));
+
+  if (!rows.length) {
+    host.innerHTML = `<div class="dashboard-shadow-fallback">No blocked assets right now.</div>`;
+    return;
+  }
+
+  host.innerHTML = rows.map((row) => `
+    <div class="shadow-eligible-row opp-eligible-card">
+      <div class="shadow-eligible-main opp-eligible-main">
+        <div class="shadow-eligible-head opp-eligible-head">
+          <div class="shadow-eligible-symbol opp-eligible-symbol">${escapeHtml(row.product_id || "—")}</div>
+          <span class="badge bad">Blocked</span>
+          <span class="badge accent">score ${Number(resolveOpportunityScore(row)).toFixed(1)}</span>
+        </div>
+        <div class="shadow-eligible-reasons opp-eligible-reasons">
+          <div class="shadow-eligible-reason"><strong>24H move:</strong> ${escapeHtml(formatPercentOrNA(resolve24hMove(row)))}</div>
+          <div class="shadow-eligible-reason"><strong>Status:</strong> ${escapeHtml(statusText(row))}</div>
+        </div>
+      </div>
+      <div class="opp-actions">
+        <button class="btn btn-secondary" type="button" onclick="setOpportunityMode('${escapeHtml(row.product_id || "")}','auto')">Unblock</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function runScannerNow() {
+  const button = document.getElementById("oppRunScanBtn");
+  if (button) button.disabled = true;
+  try {
+    const result = await postJson("/api/scanner/run", {});
+    const core = Array.isArray(result?.core_signals) ? result.core_signals.length : 0;
+    const sat = Array.isArray(result?.satellite_signals) ? result.satellite_signals.length : 0;
+    const summaryEl = document.getElementById("scannerStatusSummary");
+    if (summaryEl) {
+      summaryEl.textContent = `Manual scan complete. Core signals ${core}, satellite signals ${sat}.`;
+    }
+    await refreshMemeRotation();
+  } catch (err) {
+    console.error(err);
+    const summaryEl = document.getElementById("scannerStatusSummary");
+    if (summaryEl) {
+      summaryEl.textContent = `Manual scan failed: ${err.message}`;
+    }
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 async function refreshMemeRotation() {
   try {
-    const [data, systemData, shadowRotationData, configData, proposalData] = await Promise.all([
+    const [data, systemData, shadowRotationData, configData, proposalData, signalLog] = await Promise.all([
       fetchJson("/api/meme_rotation"),
       fetchJson("/api/system_snapshot").catch(() => ({})),
       fetchJson("/api/shadow_rotation_report").catch(() => ({})),
       fetchJson("/api/config").catch(() => ({ config: {} })),
-      fetchJson("/api/config_proposals/recent?limit=10").catch(() => ({ items: [] }))
+      fetchJson("/api/config_proposals/recent?limit=10").catch(() => ({ items: [] })),
+      fetchJson("/api/signals/log?limit=10").catch(() => ({ signals: [] }))
     ]);
     const config = safeObject(configData?.config);
     const recentProposals = Array.isArray(proposalData?.items) ? proposalData.items : [];
+    const recentSignals = Array.isArray(signalLog?.signals) ? signalLog.signals : [];
     const eligibleRows = Array.isArray(shadowRotationData?.shadow_eligible_candidates)
       ? shadowRotationData.shadow_eligible_candidates
       : [];
@@ -1083,14 +1323,14 @@ async function refreshMemeRotation() {
       shadow_near_miss_candidates: enrichRows(Array.isArray(shadowRotationData?.shadow_near_miss_candidates) ? shadowRotationData.shadow_near_miss_candidates : [])
     };
 
-    renderStatus(data, systemData || {});
+    renderStatus(data, systemData || {}, enrichedShadowData || {}, recentSignals);
     renderScannerStatus(systemData || {});
-    renderShadowRotationReport(enrichedShadowData || {}, data || {});
+    renderLiveSignals(recentSignals);
     renderShadowProposalActionState(enrichedShadowData || {}, recentProposals);
     renderShadowEligibleCandidates(enrichedShadowData || {});
-    renderShadowNearMissCandidates(enrichedShadowData || {});
-    renderScoreLegend(data);
-    renderGroups(data);
+    renderPositions(data);
+    renderTopOpportunities(data);
+    renderBlockedAssets(data);
   } catch (err) {
     console.error(err);
     const grid = document.getElementById("heatmapGrid");
@@ -1113,8 +1353,11 @@ window.refreshMemeRotation = refreshMemeRotation;
 window.setOpportunityMode = setOpportunityMode;
 window.toggleOpportunityScanner = toggleOpportunityScanner;
 window.applyHeatmapTheme = applyHeatmapTheme;
+window.runScannerNow = runScannerNow;
 
 const savedTheme = getHeatmapTheme();
 const themeSelect = document.getElementById("heatmapColorTheme");
 if (themeSelect) themeSelect.value = savedTheme;
+const runScanButton = document.getElementById("oppRunScanBtn");
+if (runScanButton) runScanButton.addEventListener("click", runScannerNow);
 refreshMemeRotation();

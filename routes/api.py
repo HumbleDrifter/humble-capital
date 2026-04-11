@@ -2530,6 +2530,12 @@ def api_backtest_quick():
         product_id = (request.args.get("product_id") or "BTC-USD").upper().strip()
         timeframe = (request.args.get("timeframe") or "4h").lower().strip()
         days = int(request.args.get("days") or 90)
+        params = request.args.get("params")
+        if params:
+            try:
+                params = json.loads(params)
+            except Exception:
+                params = None
 
         end = datetime.utcnow()
         start = end - timedelta(days=days)
@@ -2542,7 +2548,7 @@ def api_backtest_quick():
         )
         candles = bt.load_candles()
         candles = bt.compute_indicators(candles)
-        result = bt.run_strategy(candles)
+        result = bt.run_strategy(candles, params=params)
         summary = bt.get_summary(result)
 
         return jsonify({
@@ -2553,6 +2559,8 @@ def api_backtest_quick():
             "candle_count": len(candles),
             "summary": summary,
             "trade_count": len(result.get("trades", [])),
+            "trades": result.get("trades", []),
+            "equity_curve": result.get("equity_curve", []),
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

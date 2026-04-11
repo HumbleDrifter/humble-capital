@@ -83,6 +83,12 @@ def charts_page():
     return render_template("app/charts.html", **_page_context("Charts"))
 
 
+@dashboard_bp.route("/algorithm", methods=["GET"])
+@require_dashboard_auth
+def algorithm_page():
+    return render_template("app/algorithm.html", **_page_context("Algorithm"))
+
+
 @dashboard_bp.route("/meme-rotation", methods=["GET"])
 @require_dashboard_auth
 def meme_rotation():

@@ -1,0 +1,364 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="algo-shell">
+  <section class="algo-header algo-observe">
+    <div class="algo-header-copy algo-reveal">
+      <div class="algo-kicker">Algorithm Editor</div>
+      <h2 class="algo-title">Tune the live scanner, preview how signals change, then deploy updates with a clear diff.</h2>
+      <p class="algo-subtitle" id="algoMeta">Loading scanner parameters...</p>
+    </div>
+  </section>
+
+  <section class="algo-layout algo-observe">
+    <div class="algo-editor algo-reveal">
+      <div class="hc-chart-section algo-panel">
+        <div class="algo-section-head">
+          <div>
+            <h2 class="algo-section-title">Satellite 1H Parameters</h2>
+            <p class="algo-section-subtitle">Fast-cycle satellite scanner tuning.</p>
+          </div>
+        </div>
+        <div id="algoSatelliteEditor" class="algo-param-grid"></div>
+        <div class="algo-actions">
+          <button class="btn btn-secondary" id="algoSatelliteReset" type="button">Reset to Defaults</button>
+          <button class="btn btn-primary" id="algoSatelliteSave" type="button">Save Parameters</button>
+        </div>
+      </div>
+
+      <div class="hc-chart-section algo-panel">
+        <div class="algo-section-head">
+          <div>
+            <h2 class="algo-section-title">Core 4H Parameters</h2>
+            <p class="algo-section-subtitle">Trend-oriented core allocation tuning.</p>
+          </div>
+        </div>
+        <div id="algoCoreEditor" class="algo-param-grid"></div>
+        <div class="algo-actions">
+          <button class="btn btn-secondary" id="algoCoreReset" type="button">Reset to Defaults</button>
+          <button class="btn btn-primary" id="algoCoreSave" type="button">Save Parameters</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="algo-preview algo-reveal">
+      <div class="hc-chart-section algo-panel">
+        <div class="algo-section-head">
+          <div>
+            <h2 class="algo-section-title">Live Preview</h2>
+            <p class="algo-section-subtitle" id="algoPreviewMeta">Debounced preview driven by current slider values.</p>
+          </div>
+        </div>
+        <div class="algo-preview-controls">
+          <select id="algoPreviewProduct" class="select"></select>
+          <button class="btn btn-secondary" id="algoPreviewBtn" type="button">Preview</button>
+        </div>
+        <div id="algoPreviewChart" class="algo-preview-chart"></div>
+        <div class="algo-kpi-grid">
+          <div class="hc-context-card">
+            <div class="hc-context-label">Win Rate</div>
+            <div class="hc-context-value" id="algoWinRate">0%</div>
+          </div>
+          <div class="hc-context-card">
+            <div class="hc-context-label">Total Return</div>
+            <div class="hc-context-value" id="algoTotalReturn">0%</div>
+          </div>
+          <div class="hc-context-card">
+            <div class="hc-context-label">Profit Factor</div>
+            <div class="hc-context-value" id="algoProfitFactor">0.00</div>
+          </div>
+          <div class="hc-context-card">
+            <div class="hc-context-label">Trade Count</div>
+            <div class="hc-context-value" id="algoTradeCount">0</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="algo-deploy algo-observe">
+    <div class="hc-chart-section algo-panel algo-reveal">
+      <div class="algo-section-head">
+        <div>
+          <h2 class="algo-section-title">Deploy to Live Scanner</h2>
+          <p class="algo-section-subtitle" id="algoDeployMeta">No changes pending.</p>
+        </div>
+      </div>
+      <div id="algoDiffList" class="algo-diff-list">
+        <div class="hc-empty-card">No parameter changes yet.</div>
+      </div>
+      <div class="algo-actions">
+        <button class="btn btn-primary" id="algoDeployBtn" type="button">Deploy</button>
+      </div>
+      <div class="hc-context-detail" id="algoLastDeployed">Last deployed: never</div>
+    </div>
+  </section>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+  (function () {
+    const API_SECRET = {{ api_secret|tojson }};
+    const FALLBACK_PRODUCTS = ["BTC-USD","ETH-USD","SOL-USD","XRP-USD","DOGE-USD","SHIB-USD","PEPE-USD","BONK-USD","SUI-USD","RENDER-USD","JASMY-USD","HYPE-USD","TAO-USD","ICP-USD","WIF-USD","PENGU-USD"];
+    const DEFAULTS = {
+      satellite_1h: {
+        ema_fast: 9, ema_mid: 21, ema_slow: 50, ema_trend: 200,
+        rsi_len: 14, rsi_buy_min: 45, rsi_buy_max: 75,
+        rsi_trim_thresh: 82, rsi_exit_thresh: 38,
+        ext_pct: 10.0, cooldown_bars: 3, trim_cooldown: 4, vol_mult: 1.0
+      },
+      core_4h: {
+        ema_fast: 21, ema_mid: 50, ema_slow: 200, ema_trend: 200,
+        rsi_len: 14, rsi_buy_min: 35, rsi_buy_max: 70,
+        rsi_trim_thresh: 80, rsi_exit_thresh: 40,
+        ext_pct: 8.0, cooldown_bars: 4, trim_cooldown: 8, vol_mult: 1.0
+      }
+    };
+    const FIELD_META = [
+      ["ema_fast","EMA Fast",3,20,1],
+      ["ema_mid","EMA Mid",10,50,1],
+      ["ema_slow","EMA Slow",30,100,1],
+      ["ema_trend","EMA Trend",100,300,1],
+      ["rsi_len","RSI Length",7,21,1],
+      ["rsi_buy_min","RSI Buy Min",30,60,1],
+      ["rsi_buy_max","RSI Buy Max",55,85,1],
+      ["rsi_trim_thresh","RSI Trim Threshold",65,92,1],
+      ["rsi_exit_thresh","RSI Exit Threshold",20,50,1],
+      ["ext_pct","Max Extension %",3,25,0.1],
+      ["cooldown_bars","Cooldown Bars",1,12,1],
+      ["trim_cooldown","Trim Cooldown",2,24,1],
+      ["vol_mult","Volume Multiplier",0.5,3.0,0.1]
+    ];
+    let liveParams = { satellite_1h: {...DEFAULTS.satellite_1h}, core_4h: {...DEFAULTS.core_4h} };
+    let workingParams = { satellite_1h: {...DEFAULTS.satellite_1h}, core_4h: {...DEFAULTS.core_4h} };
+    let currentPreset = "satellite_1h";
+    let previewProduct = "BTC-USD";
+    let debounceTimer = null;
+    let previewChart = null;
+    let equitySeries = null;
+
+    function authUrl(path) {
+      if (!API_SECRET) return path;
+      const sep = path.includes("?") ? "&" : "?";
+      return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
+    }
+
+    async function fetchJson(path, options) {
+      const response = await fetch(authUrl(path), Object.assign({ credentials: "same-origin" }, options || {}));
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`);
+      return data;
+    }
+
+    function fmt(value, digits = 2) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n.toFixed(digits) : "—";
+    }
+
+    function setMeta(text) {
+      const node = document.getElementById("algoMeta");
+      if (node) node.textContent = text;
+    }
+
+    function buildField(preset, key, label, min, max, step) {
+      const value = workingParams[preset][key];
+      return `
+        <div class="algo-param-card" data-preset="${preset}" data-key="${key}">
+          <div class="algo-param-head">
+            <label>${label}</label>
+            <button class="btn btn-secondary algo-reset-mini" type="button" data-reset="${preset}:${key}">Reset</button>
+          </div>
+          <div class="algo-param-body">
+            <input class="algo-range" type="range" min="${min}" max="${max}" step="${step}" value="${value}" data-range="${preset}:${key}">
+            <input class="form-input algo-number" type="number" min="${min}" max="${max}" step="${step}" value="${value}" data-number="${preset}:${key}">
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEditor(preset, containerId) {
+      const host = document.getElementById(containerId);
+      host.innerHTML = FIELD_META.map(([key,label,min,max,step]) => buildField(preset, key, label, min, max, step)).join("");
+    }
+
+    function renderAllEditors() {
+      renderEditor("satellite_1h", "algoSatelliteEditor");
+      renderEditor("core_4h", "algoCoreEditor");
+      bindFieldEvents();
+      renderDiff();
+    }
+
+    function bindFieldEvents() {
+      document.querySelectorAll("[data-range]").forEach((input) => {
+        input.oninput = () => syncField(input.dataset.range, input.value, "range");
+      });
+      document.querySelectorAll("[data-number]").forEach((input) => {
+        input.oninput = () => syncField(input.dataset.number, input.value, "number");
+      });
+      document.querySelectorAll("[data-reset]").forEach((button) => {
+        button.onclick = () => {
+          const [preset, key] = button.dataset.reset.split(":");
+          workingParams[preset][key] = DEFAULTS[preset][key];
+          renderAllEditors();
+          queuePreview();
+        };
+      });
+    }
+
+    function syncField(path, value, source) {
+      const [preset, key] = path.split(":");
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return;
+      workingParams[preset][key] = numeric;
+      const selector = source === "range" ? `[data-number="${path}"]` : `[data-range="${path}"]`;
+      const target = document.querySelector(selector);
+      if (target) target.value = numeric;
+      currentPreset = preset;
+      renderDiff();
+      queuePreview();
+    }
+
+    function diffEntries() {
+      const rows = [];
+      ["satellite_1h","core_4h"].forEach((preset) => {
+        FIELD_META.forEach(([key,label]) => {
+          const live = Number(liveParams[preset][key]);
+          const working = Number(workingParams[preset][key]);
+          if (live !== working) {
+            rows.push({ preset, key, label, live, working });
+          }
+        });
+      });
+      return rows;
+    }
+
+    function renderDiff() {
+      const host = document.getElementById("algoDiffList");
+      const rows = diffEntries();
+      document.getElementById("algoDeployMeta").textContent = rows.length ? `${rows.length} parameter changes ready to deploy.` : "No changes pending.";
+      if (!rows.length) {
+        host.innerHTML = '<div class="hc-empty-card">No parameter changes yet.</div>';
+        return;
+      }
+      host.innerHTML = rows.map((row) => `
+        <div class="algo-diff-row">
+          <span>${row.preset === "satellite_1h" ? "Satellite 1H" : "Core 4H"} · ${row.label}</span>
+          <strong>${row.live} → ${row.working}</strong>
+        </div>
+      `).join("");
+    }
+
+    async function savePreset(preset) {
+      await fetchJson("/api/scanner/params", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preset, params: workingParams[preset] })
+      });
+      liveParams[preset] = { ...workingParams[preset] };
+      renderDiff();
+      document.getElementById("algoLastDeployed").textContent = `Last deployed: ${new Date().toLocaleString()}`;
+    }
+
+    function ensurePreviewChart() {
+      if (previewChart) return;
+      const node = document.getElementById("algoPreviewChart");
+      previewChart = LightweightCharts.createChart(node, {
+        width: node.clientWidth,
+        height: 320,
+        layout: { background: { color: "#0a1018" }, textColor: "rgba(236,243,255,0.82)" },
+        grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
+        rightPriceScale: { borderColor: "rgba(255,255,255,0.08)" },
+        timeScale: { borderColor: "rgba(255,255,255,0.08)", timeVisible: true, secondsVisible: false }
+      });
+      equitySeries = previewChart.addLineSeries({ color: "#38bdf8", lineWidth: 2 });
+      window.addEventListener("resize", () => previewChart.applyOptions({ width: node.clientWidth }));
+    }
+
+    function renderPreviewMetrics(summary, trades) {
+      document.getElementById("algoWinRate").textContent = `${fmt(Number(summary.win_rate || 0) * 100)}%`;
+      document.getElementById("algoTotalReturn").textContent = `${summary.total_pnl_pct >= 0 ? "+" : ""}${fmt(summary.total_pnl_pct)}%`;
+      document.getElementById("algoProfitFactor").textContent = fmt(summary.profit_factor);
+      document.getElementById("algoTradeCount").textContent = String((trades || []).length);
+    }
+
+    function markersFromTrades(trades) {
+      return (trades || []).map((trade) => {
+        const action = String(trade.action || "").toUpperCase();
+        if (action === "BUY") return { time: Number(trade.ts || 0), position: "belowBar", color: "#34d399", shape: "arrowUp", text: "BUY" };
+        if (action === "TRIM") return { time: Number(trade.ts || 0), position: "aboveBar", color: "#fbbf24", shape: "arrowDown", text: "TRIM" };
+        return { time: Number(trade.ts || 0), position: "aboveBar", color: "#fb7185", shape: "arrowDown", text: "EXIT" };
+      });
+    }
+
+    async function runPreview() {
+      ensurePreviewChart();
+      const timeframe = currentPreset === "satellite_1h" ? "1h" : "4h";
+      const params = encodeURIComponent(JSON.stringify(workingParams[currentPreset]));
+      const result = await fetchJson(`/api/backtest/quick?product_id=${encodeURIComponent(previewProduct)}&timeframe=${timeframe}&days=90&params=${params}`);
+      const equity = (result.equity_curve || []).map((point) => ({ time: Number(point.ts || 0), value: Number(point.equity || 0) }));
+      equitySeries.setData(equity);
+      equitySeries.setMarkers(markersFromTrades(result.trades || []));
+      renderPreviewMetrics(result.summary || {}, result.trades || []);
+      document.getElementById("algoPreviewMeta").textContent = `${previewProduct} · ${timeframe.toUpperCase()} preview with current editor values`;
+    }
+
+    function queuePreview() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => { runPreview().catch((err) => { document.getElementById("algoPreviewMeta").textContent = `Preview failed: ${err.message}`; }); }, 500);
+    }
+
+    async function loadProducts() {
+      try {
+        const data = await fetchJson("/api/portfolio");
+        const config = (data.snapshot || {}).config || {};
+        const products = Array.from(new Set([...Object.keys(config.core_assets || {}), ...(config.satellite_allowed || []), ...FALLBACK_PRODUCTS])).sort();
+        const select = document.getElementById("algoPreviewProduct");
+        select.innerHTML = products.map((product) => `<option value="${product}">${product}</option>`).join("");
+        select.value = previewProduct;
+      } catch (error) {
+        const select = document.getElementById("algoPreviewProduct");
+        select.innerHTML = FALLBACK_PRODUCTS.map((product) => `<option value="${product}">${product}</option>`).join("");
+        select.value = previewProduct;
+      }
+    }
+
+    async function loadLiveParams() {
+      const data = await fetchJson("/api/scanner/params");
+      liveParams = {
+        satellite_1h: { ...DEFAULTS.satellite_1h, ...(data.params || {}).satellite_1h },
+        core_4h: { ...DEFAULTS.core_4h, ...(data.params || {}).core_4h }
+      };
+      workingParams = {
+        satellite_1h: { ...liveParams.satellite_1h },
+        core_4h: { ...liveParams.core_4h }
+      };
+      setMeta("Loaded live scanner parameters. Adjust sliders to preview and deploy.");
+      renderAllEditors();
+      queuePreview();
+    }
+
+    function bindActions() {
+      document.getElementById("algoSatelliteSave").onclick = () => savePreset("satellite_1h");
+      document.getElementById("algoCoreSave").onclick = () => savePreset("core_4h");
+      document.getElementById("algoSatelliteReset").onclick = () => { workingParams.satellite_1h = { ...DEFAULTS.satellite_1h }; renderAllEditors(); queuePreview(); };
+      document.getElementById("algoCoreReset").onclick = () => { workingParams.core_4h = { ...DEFAULTS.core_4h }; renderAllEditors(); queuePreview(); };
+      document.getElementById("algoPreviewBtn").onclick = () => runPreview();
+      document.getElementById("algoPreviewProduct").onchange = (e) => { previewProduct = e.target.value || "BTC-USD"; queuePreview(); };
+      document.getElementById("algoDeployBtn").onclick = async () => {
+        const rows = diffEntries();
+        if (!rows.length) return;
+        if (!window.confirm(`Deploy ${rows.length} parameter changes to the live scanner?`)) return;
+        await savePreset("satellite_1h");
+        await savePreset("core_4h");
+      };
+    }
+
+    loadProducts().then(loadLiveParams).catch((err) => { setMeta(`Failed to load editor data: ${err.message}`); });
+    bindActions();
+  })();
+</script>
+{% endblock %}

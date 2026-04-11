@@ -9697,3 +9697,200 @@ tbody tr:last-child td {
     height: 150px;
   }
 }
+
+/* =========================================================
+   ALGORITHM EDITOR — HUMBLE CAPITAL (algo-*)
+========================================================= */
+
+.algo-shell {
+  display: grid;
+  gap: 24px;
+  color: var(--hc-text);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  padding-top: 8px;
+}
+
+.algo-header,
+.algo-layout,
+.algo-deploy {
+  animation: hcFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.algo-header-copy {
+  display: grid;
+  gap: 10px;
+  max-width: 780px;
+}
+
+.algo-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hc-teal);
+}
+
+.algo-title {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--hc-text);
+}
+
+.algo-subtitle,
+.algo-section-subtitle {
+  margin: 0;
+  color: var(--hc-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.algo-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(340px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.algo-editor,
+.algo-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.algo-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02));
+}
+
+.algo-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.algo-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--hc-text);
+}
+
+.algo-param-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.algo-param-card {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+}
+
+.algo-param-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.algo-param-head label {
+  color: var(--hc-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.algo-reset-mini {
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.algo-param-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 10px;
+  align-items: center;
+}
+
+.algo-range {
+  width: 100%;
+}
+
+.algo-number {
+  min-height: 40px;
+}
+
+.algo-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.algo-preview-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.algo-preview-chart {
+  width: 100%;
+  height: 320px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0a1018;
+}
+
+.algo-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.algo-diff-list {
+  display: grid;
+  gap: 10px;
+}
+
+.algo-diff-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  color: var(--hc-text-secondary);
+  font-size: 14px;
+}
+
+.algo-diff-row strong {
+  color: var(--hc-text);
+}
+
+@media (max-width: 1080px) {
+  .algo-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .algo-shell {
+    gap: 20px;
+  }
+
+  .algo-param-grid,
+  .algo-kpi-grid,
+  .algo-preview-controls {
+    grid-template-columns: 1fr;
+  }
+}

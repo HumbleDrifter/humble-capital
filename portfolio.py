@@ -21,6 +21,11 @@ try:
     _HAS_DYNAMIC_UNIVERSE = True
 except ImportError:
     _HAS_DYNAMIC_UNIVERSE = False
+try:
+    from core_rotation import compute_adjusted_weights
+    _HAS_CORE_ROTATION = True
+except ImportError:
+    _HAS_CORE_ROTATION = False
 
 _RUNTIME_ENV_PATH = load_runtime_env()
 
@@ -37,6 +42,8 @@ PORTFOLIO_CACHE_TTL_SEC = float(os.getenv("PORTFOLIO_CACHE_TTL_SEC", "20"))
 PORTFOLIO_CACHE_STALE_SEC = float(os.getenv("PORTFOLIO_CACHE_STALE_SEC", "180"))
 PORTFOLIO_HISTORY_MIN_INTERVAL_SEC = float(os.getenv("PORTFOLIO_HISTORY_MIN_INTERVAL_SEC", "120"))
 PORTFOLIO_HISTORY_MIN_CHANGE_USD = float(os.getenv("PORTFOLIO_HISTORY_MIN_CHANGE_USD", "1.0"))
+_ROTATED_WEIGHTS_CACHE = {"ts": 0, "value": {}}
+_ROTATED_WEIGHTS_TTL_SEC = 900  # 15 minutes
 
 _PORTFOLIO_CACHE_LOCK = threading.Lock()
 _PORTFOLIO_CACHE = {
@@ -666,7 +673,40 @@ def get_asset_weight(snapshot, product_id):
     return float(snapshot["positions"].get(product_id, {}).get("weight_total", 0.0) or 0.0)
 
 
+def _get_rotated_core_weights(snapshot):
+    """
+    Returns a dict of {product_id: adjusted_weight} from the core rotation module.
+    Cached for 15 minutes. Falls back to empty dict on error.
+    """
+    now = time.time()
+    if (now - _ROTATED_WEIGHTS_CACHE["ts"]) < _ROTATED_WEIGHTS_TTL_SEC:
+        return _ROTATED_WEIGHTS_CACHE["value"]
+
+    try:
+        core_assets = snapshot.get("config", {}).get("core_assets", {})
+        if not core_assets:
+            return {}
+
+        adjustments = compute_adjusted_weights(core_assets, lookback_days=14, max_tilt_pct=0.30)
+        weights = {}
+        for product_id, data in adjustments.items():
+            weights[product_id] = float(data.get("adjusted_weight", 0.0))
+
+        _ROTATED_WEIGHTS_CACHE["ts"] = now
+        _ROTATED_WEIGHTS_CACHE["value"] = weights
+        _log_portfolio(f"refreshed rotated core weights: {weights}")
+        return weights
+    except Exception as exc:
+        _log_portfolio(f"core rotation weight lookup failed, using static: {exc}")
+        return {}
+
+
 def get_core_target_weight(product_id, snapshot):
+    if _HAS_CORE_ROTATION:
+        rotated = _get_rotated_core_weights(snapshot)
+        if product_id in rotated:
+            return float(rotated[product_id])
+
     return float(snapshot["config"]["core_assets"].get(product_id, {}).get("target_weight", 0.0))
 
 

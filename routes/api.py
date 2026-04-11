@@ -4,7 +4,7 @@ import os
 import sqlite3
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import Blueprint, jsonify, request, session
@@ -39,7 +39,7 @@ from performance import (
     get_product_breakdown,
     get_round_trips,
 )
-from backtester import Backtester
+from backtester import Backtester, bollinger_bands, ema as bt_ema, rsi as bt_rsi
 from brokers.webull_adapter import WebullAdapter
 from options.backtester import OptionsBacktester
 from options.chain_fetcher import OptionChainFetcher
@@ -2920,6 +2920,105 @@ def api_options_trade():
 
         result = adapter.place_options_order(explicit_order)
         return jsonify(result), (200 if result.get("ok") else 500)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/bars", methods=["GET"])
+@require_api_auth
+def api_options_bars():
+    try:
+        symbol = str(request.args.get("symbol") or "AAPL").upper().strip()
+        timeframe = str(request.args.get("timeframe") or "D").upper().strip()
+        days = max(30, int(request.args.get("days") or 365))
+
+        if timeframe != "D":
+            return jsonify({"ok": False, "error": "unsupported_timeframe"}), 400
+
+        end_dt = datetime.utcnow()
+        start_dt = end_dt - timedelta(days=days)
+        fetcher = OptionsBacktester(
+            config={
+                "symbol": symbol,
+                "start_date": start_dt.strftime("%Y-%m-%d"),
+                "end_date": end_dt.strftime("%Y-%m-%d"),
+            }
+        )
+        bars = fetcher.fetch_underlying_bars(
+            symbol,
+            start_dt.strftime("%Y-%m-%d"),
+            end_dt.strftime("%Y-%m-%d"),
+        )
+
+        enriched_bars = []
+        for row in bars:
+            date_value = str(row.get("date") or "")
+            try:
+                ts = int(datetime.fromisoformat(date_value).replace(tzinfo=timezone.utc).timestamp())
+            except Exception:
+                ts = 0
+            enriched_bars.append(
+                {
+                    "ts": ts,
+                    "date": date_value,
+                    "open": _safe_float(row.get("open"), 0.0),
+                    "high": _safe_float(row.get("high"), 0.0),
+                    "low": _safe_float(row.get("low"), 0.0),
+                    "close": _safe_float(row.get("close"), 0.0),
+                    "volume": int(_safe_float(row.get("volume"), 0.0)),
+                }
+            )
+
+        closes = [_safe_float(row.get("close"), 0.0) for row in enriched_bars]
+        ema200 = bt_ema(closes, 200)
+        bb_upper, bb_middle, bb_lower = bollinger_bands(closes, 20, 2.0)
+        rsi14 = bt_rsi(closes, 14)
+
+        iv_estimate = [None] * len(enriched_bars)
+        iv_rank = [None] * len(enriched_bars)
+        for idx in range(len(enriched_bars)):
+            if idx < 30:
+                continue
+            sample = closes[max(0, idx - 29): idx + 1]
+            returns = []
+            for j in range(1, len(sample)):
+                prev = _safe_float(sample[j - 1], 0.0)
+                curr = _safe_float(sample[j], 0.0)
+                if prev > 0 and curr > 0:
+                    returns.append(math.log(curr / prev))
+            if len(returns) < 2:
+                continue
+            mean_ret = sum(returns) / len(returns)
+            variance = sum((value - mean_ret) ** 2 for value in returns) / max(1, len(returns) - 1)
+            realized_vol = math.sqrt(variance) * math.sqrt(252.0)
+            iv_now = max(0.01, realized_vol * 1.2)
+            iv_estimate[idx] = iv_now
+
+            lookback = [value for value in iv_estimate[max(0, idx - 251): idx + 1] if value is not None]
+            if len(lookback) >= 2:
+                iv_low = min(lookback)
+                iv_high = max(lookback)
+                if iv_high > iv_low:
+                    iv_rank[idx] = ((iv_now - iv_low) / (iv_high - iv_low)) * 100.0
+                else:
+                    iv_rank[idx] = 50.0
+
+        return jsonify(
+            {
+                "ok": True,
+                "symbol": symbol,
+                "bars": enriched_bars,
+                "indicators": {
+                    "ema200": ema200,
+                    "bb_upper": bb_upper,
+                    "bb_lower": bb_lower,
+                    "bb_middle": bb_middle,
+                    "rsi": rsi14,
+                    "iv_estimate": iv_estimate,
+                    "iv_rank": iv_rank,
+                },
+            }
+        )
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

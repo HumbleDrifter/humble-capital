@@ -9104,6 +9104,220 @@ tbody tr:last-child td {
   }
 }
 
+.cfg-grid {
+  align-items: start;
+}
+
+.cfg-status-panel,
+.cfg-main-panel,
+.cfg-activity-panel,
+.cfg-advanced-panel {
+  padding-top: 22px;
+}
+
+.cfg-status-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.cfg-status-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.cfg-status-chip,
+.cfg-status-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--hc-text);
+}
+
+.cfg-status-chip-primary {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.08));
+  border-color: rgba(56, 189, 248, 0.22);
+}
+
+.cfg-status-chip-label {
+  color: var(--hc-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cfg-status-text-wide {
+  min-width: min(420px, 100%);
+}
+
+.cfg-status-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.cfg-status-meta {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.cfg-status-meta-line,
+.cfg-status-inline {
+  color: var(--hc-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cfg-status-inline {
+  margin-top: 12px;
+}
+
+.cfg-status-badge {
+  min-height: 42px;
+}
+
+.cfg-section-header {
+  margin-bottom: 18px;
+}
+
+.cfg-subsection-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.cfg-subsection-head h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--hc-text);
+}
+
+.cfg-subsection-head-inline {
+  margin-bottom: 12px;
+}
+
+.cfg-control-stack + .cfg-control-stack {
+  margin-top: 18px;
+}
+
+.cfg-preset-panel,
+.cfg-preset-note {
+  display: grid;
+  gap: 12px;
+}
+
+.cfg-preset-row {
+  flex-wrap: wrap;
+}
+
+.cfg-hidden-utility,
+.cfg-hidden-toggle {
+  display: none !important;
+}
+
+.cfg-primary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cfg-risk-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.cfg-focus-card .field-help,
+.cfg-main-panel .field-help,
+.cfg-advanced-panel .field-help {
+  color: rgba(217, 240, 255, 0.72);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.cfg-primary-actions {
+  margin-top: 18px;
+}
+
+.cfg-recommendations-toggle > summary strong,
+.cfg-advanced-panel .configuration-advanced-toggle > summary strong,
+.cfg-advanced-panel .advanced-config-group > summary strong {
+  font-size: 16px;
+}
+
+.cfg-advanced-panel .configuration-advanced-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.cfg-advanced-panel .config-proposal-automation-panel,
+.cfg-advanced-panel .config-proposal-history-panel,
+.cfg-activity-panel .config-proposal-automation-panel,
+.cfg-activity-panel .config-proposal-card,
+.cfg-activity-panel .config-proposal-history-panel {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .cfg-status-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .cfg-status-actions {
+    justify-content: space-between;
+  }
+
+  .cfg-status-meta {
+    text-align: left;
+  }
+}
+
+@media (max-width: 900px) {
+  .cfg-primary-grid,
+  .cfg-risk-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cfg-status-summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cfg-status-chip,
+  .cfg-status-text {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cfg-status-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cfg-status-actions .btn {
+    width: 100%;
+  }
+
+  .cfg-subsection-head,
+  .cfg-subsection-head-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 /* =========================================================
    PERFORMANCE ANALYTICS — HUMBLE CAPITAL (perf-*)
 ========================================================= */

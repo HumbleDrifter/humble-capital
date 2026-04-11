@@ -1,8 +1,10 @@
+import json
 import os
 import time
 import uuid
 import threading
 from decimal import Decimal, ROUND_DOWN
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import requests
@@ -34,6 +36,12 @@ _PRODUCT_CACHE = {
     'products': [],
     'error': None,
 }
+_EXECUTION_CONFIG_CACHE = {
+    'ts': 0.0,
+    'value': {},
+}
+_EXECUTION_CONFIG_TTL_SEC = 30.0
+_ASSET_CONFIG_PATH = Path(__file__).resolve().parent / 'asset_config.json'
 
 
 def _current_coinbase_creds():
@@ -133,6 +141,33 @@ def _to_dict(x: Any) -> Dict[str, Any]:
     return x.to_dict() if hasattr(x, 'to_dict') else x
 
 
+def _load_execution_config() -> Dict[str, Any]:
+    now = time.time()
+    if (now - float(_EXECUTION_CONFIG_CACHE.get('ts', 0.0) or 0.0)) < _EXECUTION_CONFIG_TTL_SEC:
+        return dict(_EXECUTION_CONFIG_CACHE.get('value') or {})
+
+    try:
+        with _ASSET_CONFIG_PATH.open('r', encoding='utf-8') as handle:
+            data = json.load(handle) or {}
+            if not isinstance(data, dict):
+                data = {}
+    except Exception as exc:
+        print(f"[execution] failed to load asset_config.json: {exc}")
+        data = {}
+
+    _EXECUTION_CONFIG_CACHE['ts'] = now
+    _EXECUTION_CONFIG_CACHE['value'] = dict(data)
+    return dict(data)
+
+
+def _use_limit_orders() -> bool:
+    cfg = _load_execution_config()
+    value = cfg.get('use_limit_orders', True)
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() not in {'0', 'false', 'no', 'off'}
+
+
 def _extract_order_id(resp_dict: Dict[str, Any]) -> str | None:
     return (
         resp_dict.get('success_response', {}).get('order_id')
@@ -223,6 +258,24 @@ def _calc_limit_price(product_id: str, side: str, offset_bps: int) -> Tuple[Deci
     return bid, ask, limit_price
 
 
+def _calc_aggressive_limit_price(product_id: str, side: str) -> Tuple[Decimal, Decimal, Decimal]:
+    side = side.upper()
+    bid, ask = get_best_bid_ask(product_id)
+    inc = get_quote_increment(product_id)
+    product = _to_dict(_coinbase_call(get_client().get_product, product_id=product_id))
+    current_price = Decimal(str(product.get('price') or ask if side == 'BUY' else bid))
+
+    if side == 'BUY':
+        raw_price = current_price * Decimal('1.001')
+    else:
+        raw_price = current_price * Decimal('0.999')
+
+    limit_price = round_to_increment(raw_price, inc)
+    if limit_price <= 0:
+        limit_price = ask if side == 'BUY' else bid
+    return bid, ask, limit_price
+
+
 def get_quote_attempts(signal_type: str = "", volatility_bucket: str = ""):
     signal_type = str(signal_type or "").upper().strip()
     volatility_bucket = str(volatility_bucket or "").lower().strip()
@@ -290,6 +343,121 @@ def _get_order_status(order_id: str) -> Tuple[str, float, float, Dict[str, Any]]
     return status, filled_base, avg_price, order
 
 
+def _finalize_order_result(
+    *,
+    order_id: str,
+    status: str,
+    bid: Decimal | None,
+    ask: Decimal | None,
+    limit_price: Decimal | None,
+    requested_quote_usd: float | None,
+    requested_base_size: str | None,
+    filled_base: float,
+    avg_fill_price: float,
+    raw_order: Dict[str, Any],
+    execution_path: str,
+    fill_liquidity: str,
+    result: str | None = None,
+    cancel: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    payload = {
+        'ok': True,
+        'coinbase_order_id': order_id,
+        'status': status,
+        'best_bid': str(bid) if bid is not None else None,
+        'best_ask': str(ask) if ask is not None else None,
+        'limit_price': str(limit_price) if limit_price is not None else None,
+        'requested_quote_usd': requested_quote_usd,
+        'requested_base_size': requested_base_size,
+        'filled_base': filled_base,
+        'avg_fill_price': avg_fill_price,
+        'execution_path': execution_path,
+        'fill_liquidity': fill_liquidity,
+        'raw': raw_order,
+    }
+    if result is not None:
+        payload['result'] = result
+    if cancel is not None:
+        payload['cancel'] = cancel
+    print(
+        f"[execution] {execution_path} status={status} liquidity={fill_liquidity} "
+        f"order_id={order_id} filled_base={filled_base:.8f} avg_fill_price={avg_fill_price:.8f}"
+    )
+    return payload
+
+
+def _place_market_order_with_timeout(
+    *,
+    product_id: str,
+    side: str,
+    quote_size_usd: float | None = None,
+    base_size: float | Decimal | None = None,
+    timeout_sec: int = 30,
+) -> Dict[str, Any]:
+    side = side.upper()
+    client = get_client()
+    method_candidates = []
+
+    if side == 'BUY':
+        if quote_size_usd is None or float(quote_size_usd or 0.0) <= 0:
+            return {'ok': False, 'error': 'invalid_quote_size_for_market_buy'}
+        method_candidates = [
+            ('market_order_buy', {'product_id': product_id, 'quote_size': str(quote_size_usd)}),
+            ('market_order_ioc_buy', {'product_id': product_id, 'quote_size': str(quote_size_usd)}),
+        ]
+    else:
+        base_size_value = float(base_size or 0.0)
+        if base_size_value <= 0:
+            return {'ok': False, 'error': 'invalid_base_size_for_market_sell'}
+        base_inc = get_base_increment(product_id)
+        rounded_base = round_to_increment(Decimal(str(base_size_value)), base_inc)
+        if rounded_base <= 0:
+            return {'ok': False, 'error': 'base_size_rounded_to_zero'}
+        method_candidates = [
+            ('market_order_sell', {'product_id': product_id, 'base_size': str(rounded_base)}),
+            ('market_order_ioc_sell', {'product_id': product_id, 'base_size': str(rounded_base)}),
+        ]
+
+    chosen = None
+    for method_name, kwargs in method_candidates:
+        if hasattr(client, method_name):
+            chosen = (getattr(client, method_name), method_name, kwargs)
+            break
+
+    if chosen is None:
+        return {'ok': False, 'error': f'no_market_order_method_available_for_{side.lower()}'}
+
+    method, method_name, kwargs = chosen
+    order_resp = _coinbase_call(method, **kwargs)
+    od = _to_dict(order_resp)
+    order_id = _extract_order_id(od)
+
+    if not order_id:
+        return {'ok': False, 'error': 'no_order_id_returned', 'raw': od}
+
+    deadline = time.time() + float(timeout_sec)
+    while time.time() < deadline:
+        status, filled_base, avg_price, raw_order = _get_order_status(order_id)
+        if status in TERMINAL_STATUSES:
+            return _finalize_order_result(
+                order_id=order_id,
+                status=status,
+                bid=None,
+                ask=None,
+                limit_price=None,
+                requested_quote_usd=quote_size_usd,
+                requested_base_size=str(base_size) if base_size is not None else None,
+                filled_base=filled_base,
+                avg_fill_price=avg_price,
+                raw_order=raw_order,
+                execution_path=method_name,
+                fill_liquidity='taker',
+            )
+        time.sleep(1)
+
+    return {'ok': False, 'error': 'market_order_not_terminal_before_timeout', 'coinbase_order_id': order_id, 'raw': od}
+
+
 def place_limit_quote_with_timeout(
     product_id: str,
     side: str,
@@ -299,7 +467,15 @@ def place_limit_quote_with_timeout(
     post_only: bool = True,
 ) -> Dict[str, Any]:
     side = side.upper()
-    bid, ask, limit_price = _calc_limit_price(product_id, side, offset_bps)
+    if _use_limit_orders():
+        bid, ask, limit_price = _calc_aggressive_limit_price(product_id, side)
+    else:
+        return _place_market_order_with_timeout(
+            product_id=product_id,
+            side=side,
+            quote_size_usd=quote_size_usd,
+            timeout_sec=max(int(timeout_sec), 30),
+        )
 
     base_inc = get_base_increment(product_id)
     raw_base_size = Decimal(str(quote_size_usd)) / limit_price
@@ -331,46 +507,60 @@ def place_limit_quote_with_timeout(
     if not order_id:
         return {'ok': False, 'error': 'no_order_id_returned', 'raw': od}
 
-    deadline = time.time() + float(timeout_sec)
+    deadline = time.time() + float(max(timeout_sec, 30))
 
     while time.time() < deadline:
         status, filled_base, avg_price, raw_order = _get_order_status(order_id)
 
         if status in TERMINAL_STATUSES:
-            return {
-                'ok': True,
-                'coinbase_order_id': order_id,
-                'status': status,
-                'best_bid': str(bid),
-                'best_ask': str(ask),
-                'limit_price': str(limit_price),
-                'requested_quote_usd': quote_size_usd,
-                'requested_base_size': str(base_size),
-                'filled_base': filled_base,
-                'avg_fill_price': avg_price,
-                'raw': raw_order,
-            }
+            return _finalize_order_result(
+                order_id=order_id,
+                status=status,
+                bid=bid,
+                ask=ask,
+                limit_price=limit_price,
+                requested_quote_usd=quote_size_usd,
+                requested_base_size=str(base_size),
+                filled_base=filled_base,
+                avg_fill_price=avg_price,
+                raw_order=raw_order,
+                execution_path='limit_order_gtc',
+                fill_liquidity='taker_limit',
+            )
 
         time.sleep(1)
 
     cancel_resp = _to_dict(_coinbase_call(get_client().cancel_orders, order_ids=[order_id]))
     status, filled_base, avg_price, raw_order = _get_order_status(order_id)
 
-    return {
-        'ok': True,
-        'coinbase_order_id': order_id,
-        'status': status,
-        'result': 'timeout_cancel',
-        'best_bid': str(bid),
-        'best_ask': str(ask),
-        'limit_price': str(limit_price),
-        'requested_quote_usd': quote_size_usd,
-        'requested_base_size': str(base_size),
-        'filled_base': filled_base,
-        'avg_fill_price': avg_price,
-        'cancel': cancel_resp,
-        'raw': raw_order,
-    }
+    if filled_base <= 0 and status not in {'FILLED'}:
+        fallback = _place_market_order_with_timeout(
+            product_id=product_id,
+            side=side,
+            quote_size_usd=quote_size_usd,
+            timeout_sec=30,
+        )
+        if fallback.get('ok'):
+            fallback['fallback_from'] = 'limit_order_gtc'
+            fallback['limit_cancel'] = cancel_resp
+            return fallback
+
+    return _finalize_order_result(
+        order_id=order_id,
+        status=status,
+        bid=bid,
+        ask=ask,
+        limit_price=limit_price,
+        requested_quote_usd=quote_size_usd,
+        requested_base_size=str(base_size),
+        filled_base=filled_base,
+        avg_fill_price=avg_price,
+        raw_order=raw_order,
+        execution_path='limit_order_gtc',
+        fill_liquidity='taker_limit',
+        result='timeout_cancel',
+        cancel=cancel_resp,
+    )
 
 
 def place_limit_base_with_timeout(
@@ -382,7 +572,15 @@ def place_limit_base_with_timeout(
     post_only: bool = True,
 ) -> Dict[str, Any]:
     side = side.upper()
-    bid, ask, limit_price = _calc_limit_price(product_id, side, offset_bps)
+    if _use_limit_orders():
+        bid, ask, limit_price = _calc_aggressive_limit_price(product_id, side)
+    else:
+        return _place_market_order_with_timeout(
+            product_id=product_id,
+            side=side,
+            base_size=base_size,
+            timeout_sec=max(int(timeout_sec), 30),
+        )
 
     base_inc = get_base_increment(product_id)
     base_size_dec = round_to_increment(Decimal(str(base_size)), base_inc)
@@ -413,44 +611,60 @@ def place_limit_base_with_timeout(
     if not order_id:
         return {'ok': False, 'error': 'no_order_id_returned', 'raw': od}
 
-    deadline = time.time() + float(timeout_sec)
+    deadline = time.time() + float(max(timeout_sec, 30))
 
     while time.time() < deadline:
         status, filled_base, avg_price, raw_order = _get_order_status(order_id)
 
         if status in TERMINAL_STATUSES:
-            return {
-                'ok': True,
-                'coinbase_order_id': order_id,
-                'status': status,
-                'best_bid': str(bid),
-                'best_ask': str(ask),
-                'limit_price': str(limit_price),
-                'requested_base_size': str(base_size_dec),
-                'filled_base': filled_base,
-                'avg_fill_price': avg_price,
-                'raw': raw_order,
-            }
+            return _finalize_order_result(
+                order_id=order_id,
+                status=status,
+                bid=bid,
+                ask=ask,
+                limit_price=limit_price,
+                requested_quote_usd=None,
+                requested_base_size=str(base_size_dec),
+                filled_base=filled_base,
+                avg_fill_price=avg_price,
+                raw_order=raw_order,
+                execution_path='limit_order_gtc',
+                fill_liquidity='taker_limit',
+            )
 
         time.sleep(2)
 
     cancel_resp = _to_dict(_coinbase_call(get_client().cancel_orders, order_ids=[order_id]))
     status, filled_base, avg_price, raw_order = _get_order_status(order_id)
 
-    return {
-        'ok': True,
-        'coinbase_order_id': order_id,
-        'status': status,
-        'result': 'timeout_cancel',
-        'best_bid': str(bid),
-        'best_ask': str(ask),
-        'limit_price': str(limit_price),
-        'requested_base_size': str(base_size_dec),
-        'filled_base': filled_base,
-        'avg_fill_price': avg_price,
-        'cancel': cancel_resp,
-        'raw': raw_order,
-    }
+    if filled_base <= 0 and status not in {'FILLED'}:
+        fallback = _place_market_order_with_timeout(
+            product_id=product_id,
+            side=side,
+            base_size=float(base_size_dec),
+            timeout_sec=30,
+        )
+        if fallback.get('ok'):
+            fallback['fallback_from'] = 'limit_order_gtc'
+            fallback['limit_cancel'] = cancel_resp
+            return fallback
+
+    return _finalize_order_result(
+        order_id=order_id,
+        status=status,
+        bid=bid,
+        ask=ask,
+        limit_price=limit_price,
+        requested_quote_usd=None,
+        requested_base_size=str(base_size_dec),
+        filled_base=filled_base,
+        avg_fill_price=avg_price,
+        raw_order=raw_order,
+        execution_path='limit_order_gtc',
+        fill_liquidity='taker_limit',
+        result='timeout_cancel',
+        cancel=cancel_resp,
+    )
 
 
 def place_limit_quote_with_retries(

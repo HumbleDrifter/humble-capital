@@ -14,6 +14,7 @@
     "dust_min_value_usd": 2.0,
     "trade_min_value_usd": 5.0,
     "max_quote_per_trade_usd": 75.0,
+    "use_limit_orders": true,
     "min_cash_reserve": 0.08,
     "satellite_mode": "rotation",
     "satellite_total_target": 0.20,

@@ -80,6 +80,188 @@
     color: #38bdf8;
     font-weight: 600;
   }
+
+  .futures-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+  }
+
+  .futures-kpi {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  .futures-kpi-label {
+    font-size: 12px;
+    color: rgba(236,243,255,0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .futures-kpi-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ecf3ff;
+  }
+
+  .futures-table-wrap {
+    overflow: auto;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+  }
+
+  .futures-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 820px;
+  }
+
+  .futures-table th,
+  .futures-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 13px;
+    color: rgba(236,243,255,0.82);
+  }
+
+  .futures-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(236,243,255,0.5);
+    background: rgba(12,18,30,0.75);
+  }
+
+  .futures-side {
+    font-weight: 700;
+  }
+
+  .futures-side.long { color: #22c55e; }
+  .futures-side.short { color: #ef4444; }
+
+  .futures-filter-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .futures-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+
+  .futures-card,
+  .futures-opportunity {
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.52);
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .futures-card-head,
+  .futures-opportunity-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .futures-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ecf3ff;
+  }
+
+  .futures-card-subtitle {
+    font-size: 12px;
+    color: rgba(236,243,255,0.55);
+  }
+
+  .futures-card-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ecf3ff;
+  }
+
+  .futures-card-change.positive { color: #22c55e; }
+  .futures-card-change.negative { color: #ef4444; }
+
+  .futures-card-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .futures-metric-label {
+    display: block;
+    font-size: 11px;
+    color: rgba(236,243,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  .futures-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-long {
+    background: rgba(34,197,94,0.18);
+    border-color: rgba(34,197,94,0.35);
+    color: #22c55e;
+  }
+
+  .btn-short {
+    background: rgba(239,68,68,0.16);
+    border-color: rgba(239,68,68,0.35);
+    color: #ef4444;
+  }
+
+  .futures-order-modal {
+    width: min(560px, calc(100vw - 32px));
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    background: #0f1729;
+    color: #ecf3ff;
+    padding: 20px;
+  }
+
+  .futures-order-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 14px 0;
+  }
+
+  .futures-order-grid label {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    color: rgba(236,243,255,0.72);
+  }
+
+  .order-preview {
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: rgba(236,243,255,0.82);
+    font-size: 13px;
+    display: grid;
+    gap: 4px;
+  }
 </style>
 <div class="opp-shell">
   <section class="opp-hero opp-panel">
@@ -93,6 +275,7 @@
   <div class="page-tabs">
     <button class="page-tab active" data-tab="crypto" type="button">Crypto Scanner</button>
     <button class="page-tab" data-tab="stocks" type="button">Stock Scanner</button>
+    <button class="page-tab" data-tab="futures" type="button">Futures</button>
     <button class="page-tab" data-tab="charts" type="button">Charts</button>
   </div>
 
@@ -168,6 +351,78 @@
     <section class="opp-panel">
       <div class="opp-panel-head"><div><h3 class="opp-section-title">Stock Opportunities</h3><p class="opp-section-subtitle">Scored from bars, volume, and social sentiment.</p></div></div>
       <div id="tradingStockGrid" class="opp-board-host"><div class="hc-empty-card">Run a stock scan to load opportunities.</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-futures">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Futures Account Summary</h3>
+          <p class="opp-section-subtitle" id="futuresSummaryMeta">Live Coinbase futures balances and open risk.</p>
+        </div>
+      </div>
+      <div class="futures-summary">
+        <div class="futures-kpi"><span class="futures-kpi-label">Buying Power</span><span class="futures-kpi-value" id="futuresBuyingPower">$0.00</span></div>
+        <div class="futures-kpi"><span class="futures-kpi-label">Futures Balance</span><span class="futures-kpi-value" id="futuresBalance">$0.00</span></div>
+        <div class="futures-kpi"><span class="futures-kpi-label">Unrealized P&amp;L</span><span class="futures-kpi-value" id="futuresPnl">$0.00</span></div>
+        <div class="futures-kpi"><span class="futures-kpi-label">Daily P&amp;L</span><span class="futures-kpi-value" id="futuresDailyPnl">$0.00</span></div>
+      </div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Open Positions</h3>
+          <p class="opp-section-subtitle">Long and short futures positions with live P&amp;L.</p>
+        </div>
+      </div>
+      <div class="futures-table-wrap">
+        <table class="futures-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Side</th>
+              <th>Size</th>
+              <th>Entry</th>
+              <th>Mark</th>
+              <th>P&amp;L</th>
+              <th>Margin</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="futuresPositionsBody">
+            <tr><td colspan="8">Loading open futures positions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Futures Market Browser</h3>
+          <p class="opp-section-subtitle">Browse futures products by category and launch orders or charts.</p>
+        </div>
+      </div>
+      <div class="futures-filter-pills">
+        <button class="chart-pill futures-category-pill active" data-category="all" type="button">All</button>
+        <button class="chart-pill futures-category-pill" data-category="crypto_perp" type="button">Crypto Perps</button>
+        <button class="chart-pill futures-category-pill" data-category="crypto_dated" type="button">Dated</button>
+        <button class="chart-pill futures-category-pill" data-category="commodity" type="button">Commodities</button>
+        <button class="chart-pill futures-category-pill" data-category="index" type="button">Indices</button>
+      </div>
+      <div id="futuresProductsGrid" class="futures-grid"><div class="hc-empty-card">Loading futures products...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Opportunities</h3>
+          <p class="opp-section-subtitle">Scanner-ranked perpetual setups with leverage and stop guidance.</p>
+        </div>
+      </div>
+      <div id="futuresOpportunitiesGrid" class="futures-grid"><div class="hc-empty-card">Loading futures opportunities...</div></div>
     </section>
   </div>
 
@@ -250,6 +505,49 @@
   </div>
 </div>
 
+<dialog id="futuresOrderDialog" class="futures-order-modal">
+  <form method="dialog" id="futuresOrderForm">
+    <div class="opp-panel-head" style="margin-bottom:10px;">
+      <div>
+        <h3 class="opp-section-title" id="futuresOrderTitle">Futures Order</h3>
+        <p class="opp-section-subtitle" id="futuresOrderSubtitle">Configure size, leverage, and execution style.</p>
+      </div>
+      <button class="btn btn-secondary" value="cancel" type="submit">Close</button>
+    </div>
+    <div class="futures-order-grid">
+      <label>Order Type
+        <select id="futuresOrderType" class="select">
+          <option value="market">Market</option>
+          <option value="limit">Limit</option>
+        </select>
+      </label>
+      <label>Size
+        <input id="futuresOrderSize" class="form-input" type="number" min="0" step="0.001" value="1">
+      </label>
+      <label>Leverage
+        <select id="futuresOrderLeverage" class="select">
+          <option value="1">1x</option>
+          <option value="2">2x</option>
+          <option value="3">3x</option>
+          <option value="5">5x</option>
+          <option value="10">10x</option>
+        </select>
+      </label>
+      <label>Limit Price
+        <input id="futuresOrderLimitPrice" class="form-input" type="number" min="0" step="0.01" placeholder="Optional">
+      </label>
+    </div>
+    <div class="order-preview" id="futuresOrderPreview">
+      <div>Est. Margin Required: $0.00</div>
+      <div>Est. Liquidation Price: $0.00</div>
+    </div>
+    <div class="futures-card-actions" style="margin-top:14px;">
+      <button class="btn btn-long" id="futuresConfirmLong" type="button">Confirm Long</button>
+      <button class="btn btn-short" id="futuresConfirmShort" type="button">Confirm Short</button>
+    </div>
+  </form>
+</dialog>
+
 <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 (() => {
@@ -279,9 +577,15 @@
   let rsiLowerSeries;
   let chartRefreshTimer;
   let quoteRefreshTimer;
+  let futuresRefreshTimer;
   let chartReady = false;
   let chartBooting = false;
   let currentMarkers = [];
+  let futuresCategory = "all";
+  let futuresProducts = [];
+  let futuresPositions = [];
+  let futuresOpportunities = [];
+  let pendingFuturesOrder = null;
   const chartOverlayState = { ema21: true, ema50: true, ema200: false, bb: true, vwap: false, signals: true };
 
   function authUrl(path) {
@@ -350,6 +654,9 @@
     if (tabName === "charts") {
       console.log("Charts tab activated");
       window.setTimeout(onChartsTabActivated, 150);
+    }
+    if (tabName === "futures") {
+      loadFutures().catch(console.error);
     }
   }
   function renderScoreBreakdown(item) {
@@ -442,6 +749,226 @@
     renderCryptoSignals(Array.isArray(signals.signals) ? signals.signals : []);
     renderCryptoPositions(rotation.positions || rotation.snapshot?.positions || {});
     renderCryptoOpportunities(Array.isArray(rotation.candidates) ? rotation.candidates : []);
+  }
+
+  function renderFuturesSummary(balance) {
+    const unrealized = Number(balance.unrealized_pnl || 0);
+    const daily = Number(balance.daily_realized_pnl || 0);
+    document.getElementById("futuresBuyingPower").textContent = fmtUsd(balance.buying_power || 0);
+    document.getElementById("futuresBalance").textContent = fmtUsd(balance.futures_balance || balance.total_balance || 0);
+    const pnlNode = document.getElementById("futuresPnl");
+    const dailyNode = document.getElementById("futuresDailyPnl");
+    pnlNode.textContent = fmtUsd(unrealized);
+    dailyNode.textContent = fmtUsd(daily);
+    pnlNode.style.color = unrealized >= 0 ? "#22c55e" : "#ef4444";
+    dailyNode.style.color = daily >= 0 ? "#22c55e" : "#ef4444";
+  }
+
+  function renderFuturesPositions(rows) {
+    const body = document.getElementById("futuresPositionsBody");
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="8">No open futures positions.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((row) => {
+      const pnl = Number(row.unrealized_pnl || 0);
+      const side = String(row.side || "").toLowerCase();
+      return `
+        <tr>
+          <td><strong>${escapeHtml(row.display_name || row.product_id || "Unknown")}</strong><br><span class="futures-card-subtitle">${escapeHtml(row.product_id || "")}</span></td>
+          <td><span class="futures-side ${side === "short" ? "short" : "long"}">${side === "short" ? "Short" : "Long"}</span></td>
+          <td>${fmtNum(row.size, 3)}</td>
+          <td>${fmtUsd(row.entry_price || 0, 2)}</td>
+          <td>${fmtUsd(row.mark_price || 0, 2)}</td>
+          <td style="color:${pnl >= 0 ? "#22c55e" : "#ef4444"}">${fmtUsd(pnl, 2)}</td>
+          <td>${fmtUsd(row.margin_used || 0, 2)}</td>
+          <td><button class="btn btn-secondary futures-close-btn" data-product="${escapeHtml(row.product_id || "")}" type="button">Close</button></td>
+        </tr>`;
+    }).join("");
+    body.querySelectorAll(".futures-close-btn").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const productId = button.dataset.product || "";
+        button.disabled = true;
+        try {
+          const result = await fetchJson("/api/futures/close", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ product_id: productId })
+          });
+          document.getElementById("futuresSummaryMeta").textContent = result.ok ? `Close submitted for ${productId}.` : `Close failed for ${productId}.`;
+          await loadFutures();
+        } catch (error) {
+          console.error(error);
+          document.getElementById("futuresSummaryMeta").textContent = error.message || "Failed to close futures position.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+  }
+
+  function filteredFuturesProducts() {
+    if (futuresCategory === "all") return futuresProducts.slice();
+    return futuresProducts.filter((row) => String(row.category || "") === futuresCategory);
+  }
+
+  function openFuturesOrderModal(product, direction) {
+    const dialog = document.getElementById("futuresOrderDialog");
+    if (!dialog) return;
+    pendingFuturesOrder = { product, direction };
+    document.getElementById("futuresOrderTitle").textContent = `${product.display_name || product.product_id} — ${direction === "short" ? "Short" : "Long"}`;
+    document.getElementById("futuresOrderSubtitle").textContent = `${product.product_id} · ${product.category || "future"}`;
+    document.getElementById("futuresOrderSize").value = "1";
+    document.getElementById("futuresOrderLeverage").value = String(direction === "short" ? 3 : 2);
+    document.getElementById("futuresOrderLimitPrice").value = Number(product.price || 0) > 0 ? Number(product.price).toFixed(2) : "";
+    updateFuturesOrderPreview();
+    dialog.showModal();
+  }
+
+  function updateFuturesOrderPreview() {
+    const preview = document.getElementById("futuresOrderPreview");
+    if (!preview || !pendingFuturesOrder) return;
+    const size = Number(document.getElementById("futuresOrderSize")?.value || 0);
+    const leverage = Number(document.getElementById("futuresOrderLeverage")?.value || 1);
+    const price = Number(document.getElementById("futuresOrderLimitPrice")?.value || pendingFuturesOrder.product?.price || 0);
+    const margin = leverage > 0 ? (size * price) / leverage : 0;
+    const liq = pendingFuturesOrder.direction === "short"
+      ? price * (1 + (0.85 / Math.max(leverage, 1)))
+      : price * (1 - (0.85 / Math.max(leverage, 1)));
+    preview.innerHTML = `<div>Est. Margin Required: ${fmtUsd(margin, 2)}</div><div>Est. Liquidation Price: ${fmtUsd(liq, 2)}</div>`;
+  }
+
+  async function submitFuturesOrder(forceDirection) {
+    if (!pendingFuturesOrder) return;
+    const product = pendingFuturesOrder.product || {};
+    const direction = forceDirection || pendingFuturesOrder.direction || "long";
+    const side = direction === "short" ? "SELL" : "BUY";
+    try {
+      const payload = {
+        product_id: product.product_id,
+        side,
+        size: Number(document.getElementById("futuresOrderSize")?.value || 0),
+        order_type: document.getElementById("futuresOrderType")?.value || "market",
+        limit_price: document.getElementById("futuresOrderLimitPrice")?.value || null,
+        leverage: Number(document.getElementById("futuresOrderLeverage")?.value || 1)
+      };
+      const result = await fetchJson("/api/futures/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      document.getElementById("futuresSummaryMeta").textContent = result.ok ? `Order submitted for ${product.product_id}.` : `Order failed for ${product.product_id}.`;
+      document.getElementById("futuresOrderDialog")?.close();
+      await loadFutures();
+    } catch (error) {
+      console.error(error);
+      document.getElementById("futuresSummaryMeta").textContent = error.message || "Failed to place futures order.";
+    }
+  }
+
+  function renderFuturesProducts() {
+    const host = document.getElementById("futuresProductsGrid");
+    const rows = filteredFuturesProducts();
+    if (!rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No futures products in this category.</div>';
+      return;
+    }
+    host.innerHTML = rows.map((row) => {
+      const change = Number(row.change_24h || 0);
+      return `
+        <article class="futures-card">
+          <div class="futures-card-head">
+            <div>
+              <div class="futures-card-title">${escapeHtml(row.display_name || row.product_id || "Unknown")}</div>
+              <div class="futures-card-subtitle">${escapeHtml(row.product_id || "")}</div>
+            </div>
+            <span class="opp-score-chip ${scoreTone(Math.abs(change) * 10)}">${escapeHtml((row.category || "").replace(/_/g, " "))}</span>
+          </div>
+          <div>
+            <div class="futures-card-price">${fmtUsd(row.price || 0, 2)}</div>
+            <div class="futures-card-change ${change >= 0 ? "positive" : "negative"}">${fmtPct(change, 2)}</div>
+          </div>
+          <div class="futures-card-metrics">
+            <div><span class="futures-metric-label">Funding</span><strong>${row.is_perp ? fmtPct((Number(row.funding_rate || 0) * 100), 4) : "—"}</strong></div>
+            <div><span class="futures-metric-label">24h Vol</span><strong>${fmtCompact(row.volume_24h || 0)}</strong></div>
+          </div>
+          <div class="futures-card-actions">
+            <button class="btn btn-long futures-long-btn" data-product="${escapeHtml(row.product_id || "")}" type="button">Long</button>
+            <button class="btn btn-short futures-short-btn" data-product="${escapeHtml(row.product_id || "")}" type="button">Short</button>
+            <button class="btn btn-secondary futures-chart-btn" data-product="${escapeHtml(row.product_id || "")}" type="button">Chart</button>
+          </div>
+        </article>`;
+    }).join("");
+    const productMap = new Map(futuresProducts.map((row) => [String(row.product_id || ""), row]));
+    host.querySelectorAll(".futures-long-btn").forEach((button) => {
+      button.addEventListener("click", () => openFuturesOrderModal(productMap.get(button.dataset.product || "") || { product_id: button.dataset.product || "", display_name: button.dataset.product || "", price: 0, category: "future" }, "long"));
+    });
+    host.querySelectorAll(".futures-short-btn").forEach((button) => {
+      button.addEventListener("click", () => openFuturesOrderModal(productMap.get(button.dataset.product || "") || { product_id: button.dataset.product || "", display_name: button.dataset.product || "", price: 0, category: "future" }, "short"));
+    });
+    host.querySelectorAll(".futures-chart-btn").forEach((button) => {
+      button.addEventListener("click", async () => {
+        chartType = "crypto";
+        chartSymbol = button.dataset.product || chartSymbol;
+        activateTab("charts");
+        await loadChartSymbols();
+        await refreshChart();
+      });
+    });
+  }
+
+  function renderFuturesOpportunities(rows) {
+    const host = document.getElementById("futuresOpportunitiesGrid");
+    if (!rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No futures scanner opportunities right now.</div>';
+      return;
+    }
+    host.innerHTML = rows.slice(0, 12).map((row) => `
+      <article class="futures-opportunity">
+        <div class="futures-opportunity-head">
+          <div>
+            <div class="futures-card-title">${escapeHtml(row.display_name || row.product_id || "Unknown")}</div>
+            <div class="futures-card-subtitle">${escapeHtml(String(row.direction || "").toUpperCase())} · ${escapeHtml(row.signal || "neutral")}</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(row.score)}">${fmtNum(row.score, 0)}</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">Funding</span><strong>${fmtPct((Number(row.funding_rate || 0) * 100), 4)}</strong></div>
+          <div><span class="futures-metric-label">Leverage</span><strong>${fmtNum(row.leverage_suggested || 1, 0)}x</strong></div>
+          <div><span class="futures-metric-label">Stop</span><strong>${fmtUsd(row.stop_loss || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Target</span><strong>${fmtUsd(row.take_profit || 0, 2)}</strong></div>
+        </div>
+        <div class="futures-card-subtitle">${escapeHtml(row.reasoning || "Scanner-ranked futures opportunity.")}</div>
+        <div class="futures-card-actions">
+          <button class="btn ${String(row.direction || "").toLowerCase() === "short" ? "btn-short" : "btn-long"} futures-execute-btn" data-product="${escapeHtml(row.product_id || "")}" data-direction="${escapeHtml(row.direction || "long")}" type="button">Execute</button>
+        </div>
+      </article>`).join("");
+    const productMap = new Map(futuresProducts.map((row) => [String(row.product_id || ""), row]));
+    host.querySelectorAll(".futures-execute-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const product = productMap.get(button.dataset.product || "") || { product_id: button.dataset.product || "", display_name: button.dataset.product || "", price: 0, category: "future" };
+        openFuturesOrderModal(product, String(button.dataset.direction || "long").toLowerCase());
+      });
+    });
+  }
+
+  async function loadFutures() {
+    const [balanceData, positionsData, productsData, scannerData] = await Promise.all([
+      fetchJson("/api/futures/balance"),
+      fetchJson("/api/futures/positions"),
+      fetchJson("/api/futures/products"),
+      fetchJson("/api/futures/scanner/perps?regime=neutral")
+    ]);
+    futuresProducts = Array.isArray(productsData.products) ? productsData.products : [];
+    futuresPositions = Array.isArray(positionsData.positions) ? positionsData.positions : [];
+    futuresOpportunities = Array.isArray(scannerData.results) ? scannerData.results : [];
+    const fundingByProduct = new Map((futuresOpportunities || []).map((row) => [String(row.product_id || ""), row]));
+    futuresProducts = futuresProducts.map((row) => Object.assign({}, row, { funding_rate: Number((fundingByProduct.get(String(row.product_id || "")) || {}).funding_rate || 0) }));
+    renderFuturesSummary(balanceData.balance || {});
+    renderFuturesPositions(futuresPositions);
+    renderFuturesProducts();
+    renderFuturesOpportunities(futuresOpportunities);
+    document.getElementById("futuresSummaryMeta").textContent = `${futuresPositions.length} open positions · ${futuresProducts.length} products loaded · ${futuresOpportunities.length} opportunities`;
   }
 
   function sma(values, period) {
@@ -1087,6 +1614,11 @@
   function bindControls() {
     document.querySelectorAll(".page-tab").forEach((tab) => tab.addEventListener("click", () => activateTab(tab.dataset.tab || "crypto")));
     document.getElementById("tradingCryptoRefreshBtn")?.addEventListener("click", () => loadCrypto().catch(console.error));
+    document.querySelectorAll(".futures-category-pill").forEach((button) => button.addEventListener("click", () => {
+      futuresCategory = button.dataset.category || "all";
+      document.querySelectorAll(".futures-category-pill").forEach((item) => item.classList.toggle("active", item === button));
+      renderFuturesProducts();
+    }));
     document.querySelectorAll(".trading-stock-tier").forEach((button) => button.addEventListener("click", () => {
       stockTier = button.dataset.tier || "tier1";
       document.querySelectorAll(".trading-stock-tier").forEach((item) => item.classList.toggle("active", item === button));
@@ -1154,6 +1686,12 @@
         toggleOverlay(btn.dataset.overlay, btn.classList.contains("active"));
       });
     });
+    document.getElementById("futuresOrderType")?.addEventListener("change", updateFuturesOrderPreview);
+    document.getElementById("futuresOrderSize")?.addEventListener("input", updateFuturesOrderPreview);
+    document.getElementById("futuresOrderLeverage")?.addEventListener("change", updateFuturesOrderPreview);
+    document.getElementById("futuresOrderLimitPrice")?.addEventListener("input", updateFuturesOrderPreview);
+    document.getElementById("futuresConfirmLong")?.addEventListener("click", () => submitFuturesOrder("long"));
+    document.getElementById("futuresConfirmShort")?.addEventListener("click", () => submitFuturesOrder("short"));
     window.addEventListener("hashchange", () => activateTab(currentTabFromHash()));
   }
 
@@ -1174,6 +1712,10 @@
     chartRefreshTimer = window.setInterval(() => {
       if (currentTabFromHash() === "stocks") scanStocks().catch(console.error);
     }, 60 * 60 * 1000);
+    window.clearInterval(futuresRefreshTimer);
+    futuresRefreshTimer = window.setInterval(() => {
+      if (currentTabFromHash() === "futures") loadFutures().catch(console.error);
+    }, 30000);
     window.clearInterval(quoteRefreshTimer);
     quoteRefreshTimer = window.setInterval(() => {
       if (currentTabFromHash() === "charts") loadLiveQuote().catch(console.error);

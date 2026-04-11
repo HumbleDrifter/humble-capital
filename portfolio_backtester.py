@@ -6,7 +6,7 @@ from execution import get_client
 from backtester import (
     ema,
     rsi,
-    macd_histogram,
+    macd,
     bollinger_bands,
     bb_width,
     bb_percent_b,
@@ -224,7 +224,7 @@ class PortfolioBacktester:
                 vol_sma_vals = sma(volumes, 20)
                 ema50 = ema(closes, 50)
                 ema200 = ema(closes, 200)
-                macd_hist = macd_histogram(closes, 12, 26, 9)
+                _, _, macd_hist = macd(closes, 12, 26, 9)
 
                 rows = []
                 for idx, candle in enumerate(candles):

@@ -93,7 +93,7 @@
 
   <div class="page-tab-content" id="tab-charts">
     <section class="opp-panel">
-      <div class="opp-panel-head"><div><h3 class="opp-section-title">Unified Charts</h3><p class="opp-section-subtitle" id="tradingChartMeta">Load any crypto pair or stock and replay signals client-side.</p></div></div>
+      <div class="opp-panel-head"><div><h3 class="opp-section-title">Unified Charts</h3><p class="opp-section-subtitle" id="tradingChartMeta">Load any crypto pair or stock and replay signals client-side.</p></div><div class="opp-panel-actions"><button class="btn btn-secondary" id="tradingBackBtn" type="button">← Back to Dashboard</button></div></div>
       <div class="opp-panel-actions" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:12px;">
         <div class="form-card"><label>Asset Type</label><div><button class="btn btn-secondary trading-chart-type active" data-type="crypto" type="button">Crypto</button> <button class="btn btn-secondary trading-chart-type" data-type="stock" type="button">Stock</button></div></div>
         <div class="form-card"><label for="tradingChartSymbol">Symbol</label><select id="tradingChartSymbol" class="select"></select></div>
@@ -102,8 +102,50 @@
       </div>
     </section>
 
-    <section class="opp-panel"><div id="tradingChartMain" style="width:100%; min-height:420px;"></div></section>
-    <section class="opp-panel"><div id="tradingChartRsi" style="width:100%; min-height:180px;"></div></section>
+    <section class="opp-panel">
+      <div class="chart-price-header">
+        <div class="chart-price-symbol">
+          <span class="chart-symbol-name" id="chartSymbolName">BTC-USD</span>
+          <span class="chart-symbol-type" id="chartSymbolType">Crypto</span>
+        </div>
+        <div class="chart-price-main">
+          <span class="chart-price-value" id="chartPrice">$0.00</span>
+          <span class="chart-price-change positive" id="chartChange">+$0.00 (+0.00%)</span>
+        </div>
+        <div class="chart-price-detail">
+          <div class="chart-bid-ask"><span class="chart-label">Bid</span><span class="chart-bid" id="chartBid">$0.00</span></div>
+          <div class="chart-bid-ask"><span class="chart-label">Ask</span><span class="chart-ask" id="chartAsk">$0.00</span></div>
+          <div class="chart-bid-ask"><span class="chart-label">Spread</span><span class="chart-spread" id="chartSpread">$0.00</span></div>
+          <div class="chart-bid-ask"><span class="chart-label">24h Vol</span><span id="chartVolume">$0.00</span></div>
+          <div class="chart-bid-ask"><span class="chart-label">24h High</span><span id="chartHigh">$0.00</span></div>
+          <div class="chart-bid-ask"><span class="chart-label">24h Low</span><span id="chartLow">$0.00</span></div>
+        </div>
+      </div>
+      <div class="chart-overlay-toggles">
+        <button class="chart-toggle active" data-overlay="ema21" type="button">EMA 21</button>
+        <button class="chart-toggle active" data-overlay="ema50" type="button">EMA 50</button>
+        <button class="chart-toggle" data-overlay="ema200" type="button">EMA 200</button>
+        <button class="chart-toggle active" data-overlay="bb" type="button">Bollinger</button>
+        <button class="chart-toggle" data-overlay="vwap" type="button">VWAP</button>
+        <button class="chart-toggle active" data-overlay="signals" type="button">Signals</button>
+      </div>
+      <div class="chart-stack">
+        <div class="chart-main" id="tradingChartMain" style="height:400px;"></div>
+        <div class="chart-volume" id="tradingChartVolume" style="height:80px;"></div>
+        <div class="chart-rsi" id="tradingChartRsi" style="height:100px;"></div>
+      </div>
+      <div class="chart-tooltip" id="chartTooltip">
+        <span class="tooltip-label">O</span><span id="tooltipO">-</span>
+        <span class="tooltip-label">H</span><span id="tooltipH">-</span>
+        <span class="tooltip-label">L</span><span id="tooltipL">-</span>
+        <span class="tooltip-label">C</span><span id="tooltipC">-</span>
+        <span class="tooltip-label">Vol</span><span id="tooltipV">-</span>
+        <span class="tooltip-label">RSI</span><span id="tooltipRsi">-</span>
+        <span class="tooltip-label">E21</span><span id="tooltipEma21">-</span>
+        <span class="tooltip-label">E50</span><span id="tooltipEma50">-</span>
+        <span class="tooltip-label">E200</span><span id="tooltipEma200">-</span>
+      </div>
+    </section>
     <section class="opp-panel"><div id="tradingChartKpis" class="opp-status-bar"></div></section>
   </div>
 </div>
@@ -122,6 +164,7 @@
   let chartFrame = "1h";
   let chartRows = [];
   let mainChart;
+  let volumeChart;
   let rsiChart;
   let candleSeries;
   let ema21Series;
@@ -129,8 +172,15 @@
   let ema200Series;
   let bbUpperSeries;
   let bbLowerSeries;
+  let vwapSeries;
+  let volumeSeries;
   let rsiSeries;
+  let rsiUpperSeries;
+  let rsiLowerSeries;
   let chartRefreshTimer;
+  let quoteRefreshTimer;
+  let currentMarkers = [];
+  const chartOverlayState = { ema21: true, ema50: true, ema200: false, bb: true, vwap: false, signals: true };
 
   function authUrl(path) {
     if (!API_SECRET) return path;
@@ -149,6 +199,25 @@
     return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
   }
 
+  function fmtUsd(value, digits = 2) {
+    const numeric = Number(value || 0);
+    return Number.isFinite(numeric) ? numeric.toLocaleString(undefined, {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }) : "—";
+  }
+
+  function fmtCompact(value) {
+    const numeric = Number(value || 0);
+    if (!Number.isFinite(numeric)) return "—";
+    return numeric.toLocaleString(undefined, {
+      notation: "compact",
+      maximumFractionDigits: 1
+    });
+  }
+
   function fmtNum(value, digits = 2) {
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric.toFixed(digits) : "—";
@@ -157,6 +226,11 @@
   function fmtPct(value, digits = 1) {
     const numeric = Number(value);
     return Number.isFinite(numeric) ? `${numeric >= 0 ? "+" : ""}${numeric.toFixed(digits)}%` : "—";
+  }
+
+  function currentTabFromHash() {
+    const raw = String(location.hash || "").replace(/^#/, "");
+    return (raw.split("?")[0] || "crypto").trim() || "crypto";
   }
 
   function scoreTone(score) {
@@ -345,7 +419,16 @@
     const macdVals = macdHist(closes);
     const bb = bollinger(closes, 20, 2);
     const vol = sma(volumes, 20);
+    let cumulativePv = 0;
+    let cumulativeVolume = 0;
     return rows.map((row, index) => Object.assign({}, row, {
+      vwap: (() => {
+        const typical = (Number(row.high || row.close || 0) + Number(row.low || row.close || 0) + Number(row.close || 0)) / 3;
+        const volume = Number(row.volume || 0);
+        cumulativePv += typical * volume;
+        cumulativeVolume += volume;
+        return cumulativeVolume > 0 ? cumulativePv / cumulativeVolume : null;
+      })(),
       ema_fast: emaFast[index],
       ema_mid: emaMid[index],
       ema_slow: emaSlow[index],
@@ -513,21 +596,38 @@
   function ensureCharts() {
     if (!window.LightweightCharts) return;
     const mainHost = document.getElementById("tradingChartMain");
+    const volumeHost = document.getElementById("tradingChartVolume");
     const rsiHost = document.getElementById("tradingChartRsi");
     if (!mainChart) {
       mainChart = LightweightCharts.createChart(mainHost, {
         layout: { background: { color: "#0a1018" }, textColor: "#dbe7ff", fontFamily: "DM Sans, sans-serif" },
         grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
         rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
-        timeScale: { borderColor: "rgba(255,255,255,0.1)" },
-        height: 420
+        timeScale: { borderColor: "rgba(255,255,255,0.1)", visible: false },
+        crosshair: {
+          vertLine: { color: "rgba(56,189,248,0.28)", labelBackgroundColor: "#0f172a" },
+          horzLine: { color: "rgba(56,189,248,0.18)", labelBackgroundColor: "#0f172a" }
+        },
+        height: 400
       });
       candleSeries = mainChart.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444" });
-      ema21Series = mainChart.addLineSeries({ color: "#38bdf8", lineWidth: 2 });
-      ema50Series = mainChart.addLineSeries({ color: "#14b8a6", lineWidth: 2 });
-      ema200Series = mainChart.addLineSeries({ color: "rgba(255,255,255,0.8)", lineWidth: 2 });
-      bbUpperSeries = mainChart.addLineSeries({ color: "rgba(148,163,184,0.7)", lineWidth: 1 });
-      bbLowerSeries = mainChart.addLineSeries({ color: "rgba(148,163,184,0.7)", lineWidth: 1 });
+      ema21Series = mainChart.addLineSeries({ color: "#38bdf8", lineWidth: 1 });
+      ema50Series = mainChart.addLineSeries({ color: "#f59e0b", lineWidth: 1 });
+      ema200Series = mainChart.addLineSeries({ color: "#ef4444", lineWidth: 1 });
+      bbUpperSeries = mainChart.addLineSeries({ color: "rgba(139,92,246,0.5)", lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed });
+      bbLowerSeries = mainChart.addLineSeries({ color: "rgba(139,92,246,0.5)", lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed });
+      vwapSeries = mainChart.addLineSeries({ color: "rgba(20,184,166,0.9)", lineWidth: 1 });
+      mainChart.subscribeCrosshairMove(updateTooltipFromCrosshair);
+    }
+    if (!volumeChart) {
+      volumeChart = LightweightCharts.createChart(volumeHost, {
+        layout: { background: { color: "#0a1018" }, textColor: "#9fb0d0", fontFamily: "DM Sans, sans-serif" },
+        grid: { vertLines: { color: "rgba(255,255,255,0.03)" }, horzLines: { color: "rgba(255,255,255,0.03)" } },
+        rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+        timeScale: { borderColor: "rgba(255,255,255,0.1)", visible: false },
+        height: 80
+      });
+      volumeSeries = volumeChart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "" });
     }
     if (!rsiChart) {
       rsiChart = LightweightCharts.createChart(rsiHost, {
@@ -535,14 +635,45 @@
         grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
         rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
         timeScale: { borderColor: "rgba(255,255,255,0.1)" },
-        height: 180
+        height: 100
       });
-      rsiSeries = rsiChart.addLineSeries({ color: "#fbbf24", lineWidth: 2 });
+      rsiSeries = rsiChart.addLineSeries({ color: "#38bdf8", lineWidth: 2 });
+      rsiUpperSeries = rsiChart.addLineSeries({ color: "rgba(239,68,68,0.6)", lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed });
+      rsiLowerSeries = rsiChart.addLineSeries({ color: "rgba(34,197,94,0.6)", lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed });
+    }
+    if (mainChart && volumeChart && rsiChart && !mainChart.__synced) {
+      mainChart.__synced = true;
+      mainChart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+        if (range) {
+          volumeChart.timeScale().setVisibleRange(range);
+          rsiChart.timeScale().setVisibleRange(range);
+        }
+      });
     }
   }
 
   function lineData(rows, field) {
     return rows.filter((row) => row[field] != null).map((row) => ({ time: Number(row.ts || 0), value: Number(row[field] || 0) }));
+  }
+
+  function setSeriesVisible(series, visible) {
+    if (!series) return;
+    series.applyOptions({ visible: !!visible });
+  }
+
+  function toggleOverlay(overlay, enabled) {
+    chartOverlayState[overlay] = !!enabled;
+    if (overlay === "ema21") setSeriesVisible(ema21Series, enabled);
+    if (overlay === "ema50") setSeriesVisible(ema50Series, enabled);
+    if (overlay === "ema200") setSeriesVisible(ema200Series, enabled);
+    if (overlay === "bb") {
+      setSeriesVisible(bbUpperSeries, enabled);
+      setSeriesVisible(bbLowerSeries, enabled);
+    }
+    if (overlay === "vwap") setSeriesVisible(vwapSeries, enabled);
+    if (overlay === "signals" && candleSeries) {
+      candleSeries.setMarkers(enabled ? currentMarkers : []);
+    }
   }
 
   function currentParams() {
@@ -586,6 +717,72 @@
     return { markers, buyCount, exitCount };
   }
 
+  function updateTooltipFromCrosshair(param) {
+    if (!param || !param.time) return;
+    const row = chartRows.find((item) => Number(item.ts || 0) === Number(param.time || 0));
+    const candle = param.seriesData?.get?.(candleSeries) || row;
+    if (!candle || !row) return;
+    document.getElementById("tooltipO").textContent = fmtNum(candle.open, 2);
+    document.getElementById("tooltipH").textContent = fmtNum(candle.high, 2);
+    document.getElementById("tooltipL").textContent = fmtNum(candle.low, 2);
+    document.getElementById("tooltipC").textContent = fmtNum(candle.close, 2);
+    document.getElementById("tooltipV").textContent = fmtCompact(row.volume || 0);
+    document.getElementById("tooltipRsi").textContent = fmtNum(row.rsi, 1);
+    document.getElementById("tooltipEma21").textContent = fmtNum(row.ema_fast, 2);
+    document.getElementById("tooltipEma50").textContent = fmtNum(row.ema_mid, 2);
+    document.getElementById("tooltipEma200").textContent = fmtNum(row.ema_trend, 2);
+  }
+
+  function updatePriceHeader(data, assetType) {
+    const price = Number(data.price || 0);
+    const changePct = Number(data.price_change_24h ?? data.change_pct ?? 0);
+    const previous = assetType === "crypto"
+      ? (changePct !== 0 ? price / (1 + (changePct / 100)) : price)
+      : Number(data.previous_close || 0);
+    const changeValue = previous > 0 ? price - previous : 0;
+    const bid = Number(data.bid || price || 0);
+    const ask = Number(data.ask || price || 0);
+    const spread = Math.max(0, ask - bid);
+    document.getElementById("chartSymbolName").textContent = assetType === "crypto" ? chartSymbol : (data.symbol || chartSymbol);
+    document.getElementById("chartSymbolType").textContent = assetType === "crypto" ? "Crypto" : "Stock";
+    document.getElementById("chartPrice").textContent = fmtUsd(price);
+    const changeNode = document.getElementById("chartChange");
+    changeNode.textContent = `${changeValue >= 0 ? "+" : "-"}${fmtUsd(Math.abs(changeValue))} (${fmtPct(changePct, 2)})`;
+    changeNode.classList.toggle("positive", changeValue >= 0);
+    changeNode.classList.toggle("negative", changeValue < 0);
+    document.getElementById("chartBid").textContent = fmtUsd(bid);
+    document.getElementById("chartAsk").textContent = fmtUsd(ask);
+    document.getElementById("chartSpread").textContent = fmtUsd(spread);
+    document.getElementById("chartVolume").textContent = assetType === "crypto" ? fmtCompact(data.volume_24h || 0) : fmtCompact(data.volume || 0);
+    document.getElementById("chartHigh").textContent = fmtUsd(data.high_24h || 0);
+    document.getElementById("chartLow").textContent = fmtUsd(data.low_24h || 0);
+  }
+
+  async function loadLiveQuote() {
+    try {
+      if (chartType === "crypto") {
+        const data = await fetchJson(`/api/ticker?product_id=${encodeURIComponent(chartSymbol)}`);
+        updatePriceHeader(data, "crypto");
+      } else {
+        const data = await fetchJson(`/api/stocks/quote?symbol=${encodeURIComponent(chartSymbol)}`);
+        updatePriceHeader(data, "stock");
+      }
+    } catch (error) {
+      console.warn("quote refresh failed", error);
+    }
+  }
+
+  function parseInitialChartSymbol() {
+    const params = new URLSearchParams(location.search);
+    const fromQuery = params.get("symbol");
+    const [, hashQuery = ""] = String(location.hash || "").split("?");
+    const fromHashQuery = new URLSearchParams(hashQuery).get("symbol");
+    const fromHashSplit = String(location.hash || "").includes("symbol=")
+      ? decodeURIComponent(String(location.hash || "").split("symbol=")[1].split("&")[0])
+      : "";
+    return (fromQuery || fromHashQuery || fromHashSplit || "").toUpperCase().trim();
+  }
+
   async function refreshChart() {
     ensureCharts();
     const meta = document.getElementById("tradingChartMeta");
@@ -608,10 +805,25 @@
     ema200Series.setData(lineData(chartRows, "ema_trend"));
     bbUpperSeries.setData(lineData(chartRows, "bb_upper"));
     bbLowerSeries.setData(lineData(chartRows, "bb_lower"));
+    vwapSeries.setData(lineData(chartRows, "vwap"));
+    volumeSeries.setData(chartRows.map((row) => ({
+      time: Number(row.ts || 0),
+      value: Number(row.volume || 0),
+      color: Number(row.close || 0) >= Number(row.open || 0) ? "rgba(34,197,94,0.75)" : "rgba(239,68,68,0.75)"
+    })));
     rsiSeries.setData(lineData(chartRows, "rsi"));
+    rsiUpperSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 70 })));
+    rsiLowerSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 30 })));
     const sim = simulateSignals(chartRows);
-    candleSeries.setMarkers(sim.markers);
+    currentMarkers = sim.markers;
+    candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
+    toggleOverlay("ema21", chartOverlayState.ema21);
+    toggleOverlay("ema50", chartOverlayState.ema50);
+    toggleOverlay("ema200", chartOverlayState.ema200);
+    toggleOverlay("bb", chartOverlayState.bb);
+    toggleOverlay("vwap", chartOverlayState.vwap);
     mainChart.timeScale().fitContent();
+    volumeChart.timeScale().fitContent();
     rsiChart.timeScale().fitContent();
     meta.textContent = `${chartSymbol} · ${chartRows.length} bars · ${chartType === "crypto" ? chartFrame.toUpperCase() : (chartFrame === "1w" ? "1W" : "1D")}`;
     const winRate = sim.buyCount ? (sim.exitCount / sim.buyCount) * 45 + 35 : 0;
@@ -619,12 +831,13 @@
       <div class="opp-status-item"><span class="opp-status-label">Signals</span><strong class="opp-status-value">${sim.buyCount} BUY · ${sim.exitCount} EXIT</strong></div>
       <div class="opp-status-item"><span class="opp-status-label">Win Rate</span><strong class="opp-status-value">${fmtNum(winRate, 0)}%</strong></div>
       <div class="opp-status-item"><span class="opp-status-label">Avg Hold</span><strong class="opp-status-value">${fmtNum(Math.max(4, chartRows.length / Math.max(1, sim.buyCount + sim.exitCount)), 0)} bars</strong></div>`;
+    await loadLiveQuote();
   }
 
   function syncChartControls() {
     document.querySelectorAll(".trading-chart-type").forEach((button) => button.classList.toggle("active", button.dataset.type === chartType));
     document.querySelectorAll(".trading-chart-frame").forEach((button) => button.classList.toggle("active", button.dataset.frame === chartFrame));
-    loadChartSymbols();
+    return loadChartSymbols();
   }
 
   function bindControls() {
@@ -638,6 +851,7 @@
     document.getElementById("tradingStockScanBtn")?.addEventListener("click", () => scanStocks().catch(console.error));
     ["tradingStockSort", "tradingStockStrategy", "tradingStockRegime"].forEach((id) => document.getElementById(id)?.addEventListener("change", () => scanStocks().catch(console.error)));
     document.getElementById("tradingStockSearch")?.addEventListener("input", () => scanStocks().catch(console.error));
+    document.getElementById("tradingBackBtn")?.addEventListener("click", () => { window.location.href = "/dashboard"; });
     document.querySelectorAll(".trading-chart-type").forEach((button) => button.addEventListener("click", async () => {
       chartType = button.dataset.type || "crypto";
       chartSymbol = chartType === "crypto" ? "BTC-USD" : (stockUniverse[0]?.symbol || "AAPL");
@@ -663,19 +877,35 @@
         debounce = window.setTimeout(() => refreshChart().catch(console.error), 300);
       });
     });
-    window.addEventListener("hashchange", () => activateTab(location.hash.slice(1) || "crypto"));
+    document.querySelectorAll(".chart-toggle").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        btn.classList.toggle("active");
+        toggleOverlay(btn.dataset.overlay, btn.classList.contains("active"));
+      });
+    });
+    window.addEventListener("hashchange", () => activateTab(currentTabFromHash()));
   }
 
   async function init() {
     bindControls();
-    activateTab(location.hash.slice(1) || "crypto");
+    activateTab(currentTabFromHash());
     await loadStocksUniverse();
     await loadCrypto();
+    const initialSymbol = parseInitialChartSymbol();
+    if (initialSymbol) {
+      chartType = initialSymbol.includes("-USD") ? "crypto" : "stock";
+      chartSymbol = initialSymbol;
+      activateTab("charts");
+    }
     await loadChartSymbols();
     await refreshChart();
     chartRefreshTimer = window.setInterval(() => {
-      if ((location.hash.slice(1) || "crypto") === "stocks") scanStocks().catch(console.error);
+      if (currentTabFromHash() === "stocks") scanStocks().catch(console.error);
     }, 60 * 60 * 1000);
+    window.clearInterval(quoteRefreshTimer);
+    quoteRefreshTimer = window.setInterval(() => {
+      if (currentTabFromHash() === "charts") loadLiveQuote().catch(console.error);
+    }, 10000);
   }
 
   init().catch((error) => {

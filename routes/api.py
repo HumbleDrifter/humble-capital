@@ -15,6 +15,8 @@ load_runtime_env(override=True)
 
 from execution import (
     clear_product_cache,
+    get_best_bid_ask,
+    get_client,
     get_valid_product_ids,
     get_valid_products,
 )
@@ -1477,11 +1479,15 @@ def _build_portfolio_history():
             return list(points or [])
 
         def _val(p):
-            return _safe_float(p.get("total_value_usd", p.get("equity_usd", 0.0))) if isinstance(p, dict) else 0.0
+            if not isinstance(p, dict):
+                return 0.0
+            return _safe_float(
+                p.get("total_value_usd", p.get("total_value", p.get("equity_usd", 0.0)))
+            )
 
         smoothed = [dict(point or {}) for point in points]
 
-        # Pass 1: detect and fix single-point spikes.
+        # Pass 1: detect and fix single-point spikes (existing logic).
         for i in range(1, len(smoothed) - 1):
             prev_val = _val(smoothed[i - 1])
             curr_val = _val(smoothed[i])
@@ -1492,12 +1498,12 @@ def _build_portfolio_history():
                 recovery = (next_val - curr_val) / curr_val
                 if drop < -max_drop_pct and recovery > 0.03:
                     interp = (prev_val + next_val) / 2.0
-                    if "total_value_usd" in smoothed[i]:
-                        smoothed[i]["total_value_usd"] = interp
-                    if "equity_usd" in smoothed[i]:
-                        smoothed[i]["equity_usd"] = interp
+                    for key in ("total_value_usd", "total_value", "equity_usd"):
+                        if key in smoothed[i]:
+                            smoothed[i][key] = interp
 
-        # Pass 2: detect multi-point valleys (2-5 intervals).
+        # Pass 2: detect multi-point valleys (order holds lasting 2-5 intervals)
+        # Look for: normal value -> sudden drop -> stays low for N points -> sudden recovery.
         i = 1
         while i < len(smoothed) - 2:
             prev_val = _val(smoothed[i - 1])
@@ -1522,10 +1528,9 @@ def _build_portfolio_history():
                         for k in range(i, recovery_idx):
                             frac = (k - (i - 1)) / span
                             interp = start_val + (end_val - start_val) * frac
-                            if "total_value_usd" in smoothed[k]:
-                                smoothed[k]["total_value_usd"] = interp
-                            if "equity_usd" in smoothed[k]:
-                                smoothed[k]["equity_usd"] = interp
+                            for key in ("total_value_usd", "total_value", "equity_usd"):
+                                if key in smoothed[k]:
+                                    smoothed[k][key] = interp
                         i = recovery_idx + 1
                         continue
             i += 1
@@ -2780,6 +2785,47 @@ def api_candles():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+@api_bp.route("/api/ticker", methods=["GET"])
+@require_api_auth
+def api_ticker():
+    try:
+        product_id = str(request.args.get("product_id") or "").upper().strip()
+        if not product_id:
+            return jsonify({"ok": False, "error": "missing_product_id"}), 400
+
+        client = get_client()
+        product = client.get_product(product_id)
+        data = product.to_dict() if hasattr(product, "to_dict") else dict(product or {})
+
+        bid = _safe_float(data.get("bid_price"), 0.0) or _safe_float(data.get("bid"), 0.0)
+        ask = _safe_float(data.get("ask_price"), 0.0) or _safe_float(data.get("ask"), 0.0)
+        if bid <= 0 or ask <= 0:
+            try:
+                best_bid, best_ask = get_best_bid_ask(product_id)
+                bid = _safe_float(best_bid, bid)
+                ask = _safe_float(best_ask, ask)
+            except Exception:
+                pass
+
+        price = _safe_float(data.get("price"), 0.0)
+        if price <= 0 and bid > 0 and ask > 0:
+            price = (bid + ask) / 2.0
+
+        return jsonify({
+            "ok": True,
+            "product_id": product_id,
+            "price": price,
+            "bid": bid,
+            "ask": ask,
+            "volume_24h": _safe_float(data.get("volume_24h"), 0.0),
+            "high_24h": _safe_float(data.get("high_24h"), 0.0),
+            "low_24h": _safe_float(data.get("low_24h"), 0.0),
+            "price_change_24h": _safe_float(data.get("price_percentage_change_24h"), 0.0),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @api_bp.route("/api/signals/log", methods=["GET"])
 @require_api_auth
 def api_signals_log():
@@ -2932,14 +2978,24 @@ def api_stocks_quote():
         price = _safe_float(info.get("currentPrice") or info.get("regularMarketPrice"), 0.0)
         prev_close = _safe_float(info.get("regularMarketPreviousClose") or info.get("previousClose"), 0.0)
         change_pct = ((price - prev_close) / prev_close * 100.0) if prev_close > 0 else 0.0
+        bid = _safe_float(info.get("bid"), 0.0)
+        ask = _safe_float(info.get("ask"), 0.0)
+        if bid <= 0 and price > 0:
+            bid = price
+        if ask <= 0 and price > 0:
+            ask = price
         return jsonify({
             "ok": True,
             "symbol": symbol,
             "price": price,
+            "bid": bid,
+            "ask": ask,
             "previous_close": prev_close,
             "change_pct": round(change_pct, 2),
             "volume": int(_safe_float(info.get("volume"), 0.0)),
             "market_cap": _safe_float(info.get("marketCap"), 0.0),
+            "high_24h": _safe_float(info.get("dayHigh") or info.get("regularMarketDayHigh"), 0.0),
+            "low_24h": _safe_float(info.get("dayLow") or info.get("regularMarketDayLow"), 0.0),
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

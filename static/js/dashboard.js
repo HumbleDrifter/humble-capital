@@ -315,6 +315,7 @@
         : "P&L unavailable";
       const pnlClass = unrealizedPnl === null ? "" : (positive ? "positive" : "negative");
       return `
+        <a class="holding-card-link" href="/trading?symbol=${encodeURIComponent(productId)}#charts">
         <div class="hc-pos-card">
           <div class="hc-pos-icon ${isCore ? "core" : "satellite"}">${escapeHtml(symbol.slice(0, 2))}</div>
           <div class="hc-pos-info">
@@ -327,6 +328,7 @@
             <div class="hc-pos-change ${pnlClass}">${escapeHtml(pnlDisplay)}</div>
           </div>
         </div>
+        </a>
       `;
     }).join("");
   }

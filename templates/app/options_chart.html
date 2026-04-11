@@ -175,6 +175,27 @@
     </div>
   </section>
 
+  <section class="optc-card optc-chart-card">
+    <div class="chart-price-header">
+      <div class="chart-price-symbol">
+        <span class="chart-symbol-name" id="optcChartSymbolName">AAPL</span>
+        <span class="chart-symbol-type" id="optcChartSymbolType">Stock</span>
+      </div>
+      <div class="chart-price-main">
+        <span class="chart-price-value" id="optcChartPrice">$0.00</span>
+        <span class="chart-price-change positive" id="optcChartChange">+$0.00 (+0.00%)</span>
+      </div>
+      <div class="chart-price-detail">
+        <div class="chart-bid-ask"><span class="chart-label">Bid</span><span class="chart-bid" id="optcChartBid">$0.00</span></div>
+        <div class="chart-bid-ask"><span class="chart-label">Ask</span><span class="chart-ask" id="optcChartAsk">$0.00</span></div>
+        <div class="chart-bid-ask"><span class="chart-label">Spread</span><span class="chart-spread" id="optcChartSpread">$0.00</span></div>
+        <div class="chart-bid-ask"><span class="chart-label">24h Vol</span><span id="optcChartVolume">$0</span></div>
+        <div class="chart-bid-ask"><span class="chart-label">24h High</span><span id="optcChartHigh">$0.00</span></div>
+        <div class="chart-bid-ask"><span class="chart-label">24h Low</span><span id="optcChartLow">$0.00</span></div>
+      </div>
+    </div>
+  </section>
+
   <div class="optc-layout">
     <section class="optc-chart-stack">
       <div class="optc-card optc-chart-card">
@@ -252,6 +273,7 @@
   let bars = [];
   let viewDays = 30;
   let refreshTimer = null;
+  let quoteRefreshTimer = null;
   let currentSim = null;
   let mainChart, ivChart, candleSeries, emaSeries, bbUpperSeries, bbLowerSeries, ivSeries, ivRankSeries, ivThresholdSeries, assignmentSeries;
   let positionLines = [];
@@ -265,6 +287,8 @@
     return data;
   }
   function fmtUsd(v){ return Number(v||0).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:2}); }
+  function fmtPct(v, digits = 2){ const n = Number(v || 0); return `${n >= 0 ? "+" : ""}${n.toFixed(digits)}%`; }
+  function fmtCompact(v){ return Number(v||0).toLocaleString(undefined,{notation:"compact",maximumFractionDigits:1}); }
   function esc(v){ return String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;"); }
   function debounce(fn, wait){ let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); }; }
   function defaultParams(){ return { delta:Number(document.getElementById("optcDelta").value), dte:Number(document.getElementById("optcDte").value), profitTargetPct:Number(document.getElementById("optcProfit").value)/100, spreadWidth:Number(document.getElementById("optcWidth").value) }; }
@@ -330,6 +354,36 @@
         <div class="optc-value">${esc(data.recommendation || "No recommendation available.")}</div>
       </div>
     `;
+  }
+
+  function updatePriceHeader(data){
+    const price = Number(data.price || 0);
+    const bid = Number(data.bid || price || 0);
+    const ask = Number(data.ask || price || 0);
+    const previous = Number(data.previous_close || 0);
+    const changePct = Number(data.change_pct || 0);
+    const changeValue = previous > 0 ? price - previous : 0;
+    document.getElementById("optcChartSymbolName").textContent = symbol();
+    document.getElementById("optcChartPrice").textContent = fmtUsd(price);
+    document.getElementById("optcChartBid").textContent = fmtUsd(bid);
+    document.getElementById("optcChartAsk").textContent = fmtUsd(ask);
+    document.getElementById("optcChartSpread").textContent = fmtUsd(Math.max(0, ask - bid));
+    document.getElementById("optcChartVolume").textContent = fmtCompact(data.volume || 0);
+    document.getElementById("optcChartHigh").textContent = fmtUsd(data.high_24h || 0);
+    document.getElementById("optcChartLow").textContent = fmtUsd(data.low_24h || 0);
+    const changeEl = document.getElementById("optcChartChange");
+    changeEl.textContent = `${changeValue >= 0 ? "+" : "-"}${fmtUsd(Math.abs(changeValue))} (${fmtPct(changePct)})`;
+    changeEl.classList.toggle("positive", changeValue >= 0);
+    changeEl.classList.toggle("negative", changeValue < 0);
+  }
+
+  async function loadQuote(){
+    try {
+      const data = await fetchJson(`/api/stocks/quote?symbol=${encodeURIComponent(symbol())}`);
+      updatePriceHeader(data);
+    } catch (e) {
+      console.warn("quote load failed:", e);
+    }
   }
 
   async function loadSentiment(){
@@ -752,6 +806,7 @@
     }));
     setStatus("Bars loaded.");
     renderCharts();
+    loadQuote();
   }
 
   function populateSymbolDropdown(symbols) {
@@ -837,6 +892,8 @@
     await loadBars();
     clearInterval(refreshTimer);
     refreshTimer = setInterval(() => { loadBars().catch((err) => setStatus(err.message || "Refresh failed")); }, 60000);
+    clearInterval(quoteRefreshTimer);
+    quoteRefreshTimer = setInterval(() => { loadQuote().catch(() => {}); }, 10000);
   }
 
   init().catch((err) => setStatus(err.message || "Failed to load options chart"));

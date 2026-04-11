@@ -1,3 +1,4 @@
+import os
 import traceback
 import time
 
@@ -29,13 +30,15 @@ def process_trade_job(job):
             started_at = time.time()
             print(
                 f"[options_execution] route_start proposal_id={proposal_id or 'n/a'} "
-                f"broker={broker or 'ibkr'} underlying={str(job.get('underlying') or '').upper()}"
+                f"broker={broker or 'ibkr'} underlying={str(job.get('underlying') or '').upper()} "
+                f"pid={os.getpid()}"
             )
             result = route_order(job)
             print(
                 f"[options_execution] route_end proposal_id={proposal_id or 'n/a'} "
                 f"ok={result.get('ok')} status={result.get('status', '')} "
-                f"reason={result.get('reason', '')} elapsed_sec={time.time() - started_at:.2f}"
+                f"reason={result.get('reason', '')} elapsed_sec={time.time() - started_at:.2f} "
+                f"pid={os.getpid()}"
             )
 
             if result.get("ok") and proposal_id:

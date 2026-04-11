@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import queue
 import threading
 import traceback
@@ -14,11 +15,12 @@ def submit_job(job):
     start_execution_worker()
     _trade_queue.put_nowait(job)
     logger.info(
-        "[execution_queue] submitted proposal_id=%s broker=%s asset_class=%s queue_size=%s",
+        "[execution_queue] submitted proposal_id=%s broker=%s asset_class=%s queue_size=%s worker_pid=%s",
         str((job or {}).get("proposal_id") or "").strip(),
         str((job or {}).get("broker") or "").strip(),
         str((job or {}).get("asset_class") or "").strip(),
         _trade_queue.qsize(),
+        os.getpid(),
     )
 
 
@@ -33,7 +35,7 @@ def _worker_loop():
     except Exception:
         logger.exception("[execution_queue] failed creating event loop")
         raise
-    logger.info("[execution_queue] worker thread started")
+    logger.info("[execution_queue] worker thread started worker_pid=%s", os.getpid())
     try:
         from services.execution_service import process_trade_job
     except Exception:
@@ -46,18 +48,20 @@ def _worker_loop():
         try:
             job = _trade_queue.get()
             logger.info(
-                "[execution_queue] dequeued proposal_id=%s broker=%s asset_class=%s queue_size=%s",
+                "[execution_queue] dequeued proposal_id=%s broker=%s asset_class=%s queue_size=%s worker_pid=%s",
                 str((job or {}).get("proposal_id") or "").strip(),
                 str((job or {}).get("broker") or "").strip(),
                 str((job or {}).get("asset_class") or "").strip(),
                 _trade_queue.qsize(),
+                os.getpid(),
             )
             process_trade_job(job)
             logger.info(
-                "[execution_queue] processed proposal_id=%s broker=%s asset_class=%s",
+                "[execution_queue] processed proposal_id=%s broker=%s asset_class=%s worker_pid=%s",
                 str((job or {}).get("proposal_id") or "").strip(),
                 str((job or {}).get("broker") or "").strip(),
                 str((job or {}).get("asset_class") or "").strip(),
+                os.getpid(),
             )
         except Exception:
             logger.exception(
@@ -70,9 +74,10 @@ def _worker_loop():
             if job is not None:
                 _trade_queue.task_done()
                 logger.info(
-                    "[execution_queue] task_done proposal_id=%s queue_size=%s",
+                    "[execution_queue] task_done proposal_id=%s queue_size=%s worker_pid=%s",
                     str((job or {}).get("proposal_id") or "").strip(),
                     _trade_queue.qsize(),
+                    os.getpid(),
                 )
 
 
@@ -91,4 +96,4 @@ def start_execution_worker():
         t.start()
 
         _worker_started = True
-        logger.info("[execution_queue] worker startup complete")
+        logger.info("[execution_queue] worker startup complete worker_pid=%s", os.getpid())

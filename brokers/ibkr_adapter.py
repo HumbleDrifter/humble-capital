@@ -58,30 +58,13 @@ def _utcnow_iso():
 def _log_ibkr_event(event, payload=None):
     envelope = {
         "ts": int(time.time()),
+        "pid": os.getpid(),
+        "thread": threading.current_thread().name,
         "component": "ibkr_adapter",
         "event": str(event or "").strip() or "unknown",
         "payload": payload if isinstance(payload, dict) else {},
     }
     print(json.dumps(envelope, sort_keys=True, ensure_ascii=False))
-
-
-def _run_with_timeout(func, timeout_sec, *args, **kwargs):
-    result = {"value": None, "error": None}
-
-    def _runner():
-        try:
-            result["value"] = func(*args, **kwargs)
-        except Exception as exc:
-            result["error"] = exc
-
-    thread = threading.Thread(target=_runner, daemon=True)
-    thread.start()
-    thread.join(max(0.0, float(timeout_sec)))
-    if thread.is_alive():
-        raise TimeoutError(f"operation timed out after {float(timeout_sec):.1f}s")
-    if result["error"] is not None:
-        raise result["error"]
-    return result["value"]
 
 
 def get_ibkr_runtime_config():
@@ -391,7 +374,31 @@ class IBKRAdapter(BrokerAdapter):
             currency=str(leg.get("currency") or self.runtime_config.get("currency") or "USD").strip(),
             multiplier="100",
         )
-        qualified = _run_with_timeout(ib.qualifyContracts, _IBKR_QUALIFY_TIMEOUT_SEC, contract)
+        previous_timeout = getattr(ib, "RequestTimeout", None)
+        try:
+            ib.RequestTimeout = _IBKR_QUALIFY_TIMEOUT_SEC
+        except Exception:
+            previous_timeout = None
+        try:
+            qualified = ib.qualifyContracts(contract)
+        except Exception as exc:
+            _log_ibkr_event(
+                "contract_qualify_failed",
+                {
+                    "underlying": str(order.get("underlying", "")).strip().upper(),
+                    "expiry": str(leg.get("expiry", "")).strip(),
+                    "strike": _safe_float(leg.get("strike")),
+                    "right_code": str(leg.get("right_code", leg.get("right", ""))).strip().upper(),
+                    "reason": str(exc),
+                },
+            )
+            raise
+        finally:
+            if previous_timeout is not None:
+                try:
+                    ib.RequestTimeout = previous_timeout
+                except Exception:
+                    pass
         qualified_contract = qualified[0] if qualified else contract
         if not getattr(qualified_contract, "conId", None):
             _log_ibkr_event(

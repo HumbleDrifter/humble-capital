@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, request, session
@@ -75,6 +76,15 @@ def _default_test_strike_for_underlying(underlying):
     return _round_test_strike(reference_prices.get(str(underlying or "").strip().upper(), 50.0))
 
 
+def _reference_price_for_test_options(overrides, underlying):
+    overrides = overrides if isinstance(overrides, dict) else {}
+    for key in ("reference_price", "underlying_price", "mark_price", "last_price"):
+        value = float(overrides.get(key, 0.0) or 0.0)
+        if value > 0:
+            return value
+    return _default_test_strike_for_underlying(underlying)
+
+
 def _build_test_options_payload(overrides=None):
     overrides = overrides if isinstance(overrides, dict) else {}
     risk = get_options_risk_config()
@@ -82,9 +92,10 @@ def _build_test_options_payload(overrides=None):
     underlying = str(overrides.get("underlying") or (underlyings[0] if underlyings else "SPY")).strip().upper() or "SPY"
     expiry = str(overrides.get("expiry") or "").strip() or _choose_test_expiry(risk)
     right = str(overrides.get("right") or "CALL").strip().upper() or "CALL"
+    reference_price = _reference_price_for_test_options(overrides, underlying)
     strike = float(overrides.get("strike", 0.0) or 0.0)
     if strike <= 0:
-        strike = _default_test_strike_for_underlying(underlying)
+        strike = _round_test_strike(reference_price)
     quantity = max(1, _safe_int(overrides.get("quantity", 1), 1))
     limit_price = float(overrides.get("limit_price", 1.0) or 1.0)
 
@@ -276,6 +287,10 @@ def api_options_proposals_execute(proposal_id):
                 },
                 "legs": list(order.get("legs") or []),
             }
+        )
+        print(
+            f"[options_execute_route] queued proposal_id={str(proposal_id or '').strip()} "
+            f"pid={os.getpid()} broker=ibkr underlying={str(order.get('underlying') or '').strip().upper()}"
         )
 
         return jsonify(

@@ -1,157 +1,81 @@
 {
     "core_assets": {
-        "BTC-USD": {
-            "target_weight": 0.25,
-            "rebalance_band": 0.04
-        },
-        "ETH-USD": {
-            "target_weight": 0.12,
-            "rebalance_band": 0.03
-        },
-        "SOL-USD": {
-            "target_weight": 0.13,
-            "rebalance_band": 0.03
-        },
-        "XRP-USD": {
-            "target_weight": 0.05,
-            "rebalance_band": 0.02
-        }
+        "BTC-USD": {"target_weight": 0.30, "rebalance_band": 0.04},
+        "ETH-USD": {"target_weight": 0.15, "rebalance_band": 0.03},
+        "SOL-USD": {"target_weight": 0.13, "rebalance_band": 0.03},
+        "XRP-USD": {"target_weight": 0.05, "rebalance_band": 0.02}
     },
     "core_buy_fraction_of_shortfall": 0.50,
     "drawdown_controls": {
-        "warn_level": 0.12,
-        "reduce_level": 0.18,
-        "freeze_level": 0.25
+        "warn_level": 0.10,
+        "reduce_level": 0.15,
+        "freeze_level": 0.22
     },
     "dust_min_value_usd": 2.0,
     "trade_min_value_usd": 5.0,
     "max_quote_per_trade_usd": 75.0,
-    "min_cash_reserve": 0.04,
+    "min_cash_reserve": 0.08,
     "satellite_mode": "rotation",
-    "satellite_total_target": 0.45,
-    "satellite_total_max": 0.50,
-    "satellite_defaults": {
-        "max_weight": 0.12
-    },
+    "satellite_total_target": 0.20,
+    "satellite_total_max": 0.25,
+    "satellite_defaults": {"max_weight": 0.05},
     "satellite_blocked": [],
-    "satellite_allowed": [
-        "DOGE-USD",
-        "SHIB-USD",
-        "PEPE-USD",
-        "BONK-USD",
-        "SUI-USD",
-        "RENDER-USD",
-        "JASMY-USD",
-        "HYPE-USD",
-        "TAO-USD",
-        "ICP-USD",
-        "WIF-USD",
-        "PENGU-USD"
-    ],
+    "satellite_allowed": [],
     "satellite_volatility_map": {},
     "volatility_buckets": {
-        "very_high": {
-            "max_weight": 0.06
-        },
-        "high": {
-            "max_weight": 0.09
-        },
-        "medium": {
-            "max_weight": 0.12
-        }
+        "very_high": {"max_weight": 0.04},
+        "high": {"max_weight": 0.05},
+        "medium": {"max_weight": 0.06}
     },
     "regime_satellite_caps": {
-        "bull": 0.50,
-        "neutral": 0.35,
-        "caution": 0.20,
-        "risk_off": 0.10
+        "bull": 0.25,
+        "neutral": 0.10,
+        "caution": 0.0,
+        "risk_off": 0.0
     },
     "meme_rotation": {
         "enabled": true,
-        "min_score": 55,
-        "entry_score": 55,
-        "hold_score": 25,
-        "max_active": 6,
-        "excluded_products": [
-            "BTC-USD",
-            "ETH-USD",
-            "SOL-USD",
-            "XRP-USD",
-            "PAXG-USD"
-        ],
+        "min_score": 65,
+        "entry_score": 65,
+        "hold_score": 35,
+        "max_active": 4,
+        "excluded_products": ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "PAXG-USD"],
         "update_source": "auto_scanner"
     },
     "sniper_mode": {
         "enabled": true,
-        "min_score": 78,
-        "buy_scale": 0.50,
-        "allow_in_regimes": [
-            "bull",
-            "neutral",
-            "caution"
-        ],
+        "min_score": 80,
+        "buy_scale": 0.40,
+        "allow_in_regimes": ["bull"],
         "require_sniper_eligible": true,
         "block_pump_protected": true
     },
     "profit_harvest": {
         "enabled": true,
         "satellite_only": true,
-        "cooldown_hours": 8,
+        "cooldown_hours": 12,
         "min_harvest_usd": 8,
         "tiers": [
-            {
-                "gain_pct": 0.40,
-                "trim_pct": 0.30
-            },
-            {
-                "gain_pct": 0.20,
-                "trim_pct": 0.20
-            },
-            {
-                "gain_pct": 0.10,
-                "trim_pct": 0.10
-            }
+            {"gain_pct": 0.30, "trim_pct": 0.35},
+            {"gain_pct": 0.15, "trim_pct": 0.25},
+            {"gain_pct": 0.08, "trim_pct": 0.15}
         ],
         "routes": {
-            "BTC-USD": 0.35,
+            "BTC-USD": 0.45,
             "ETH-USD": 0.25,
-            "SOL-USD": 0.20,
-            "CASH": 0.20
+            "SOL-USD": 0.15,
+            "CASH": 0.15
         }
     },
     "sell_policy_defaults": {
-        "core": {
-            "min_meaningful_sell_usd": 5,
-            "allow_full_exit_on_small_remainder": false,
-            "preserve_tradable_remainder": true
-        },
-        "satellite_active": {
-            "min_meaningful_sell_usd": 5,
-            "allow_full_exit_on_small_remainder": false,
-            "preserve_tradable_remainder": true
-        },
-        "satellite_blocked": {
-            "min_meaningful_sell_usd": 5,
-            "allow_full_exit_on_small_remainder": true,
-            "preserve_tradable_remainder": false
-        },
-        "dust": {
-            "min_meaningful_sell_usd": 0,
-            "allow_full_exit_on_small_remainder": true,
-            "preserve_tradable_remainder": false
-        },
-        "nontradable": {
-            "min_meaningful_sell_usd": 0,
-            "allow_full_exit_on_small_remainder": true,
-            "preserve_tradable_remainder": false
-        },
-        "unknown": {
-            "min_meaningful_sell_usd": 5,
-            "allow_full_exit_on_small_remainder": true,
-            "preserve_tradable_remainder": false
-        }
+        "core": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": false, "preserve_tradable_remainder": true},
+        "satellite_active": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": false, "preserve_tradable_remainder": true},
+        "satellite_blocked": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false},
+        "dust": {"min_meaningful_sell_usd": 0, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false},
+        "nontradable": {"min_meaningful_sell_usd": 0, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false},
+        "unknown": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false}
     },
     "sell_policy_overrides": {},
-    "max_active_satellites": 6,
-    "min_meme_score": 55.0
+    "max_active_satellites": 4,
+    "min_meme_score": 65.0
 }

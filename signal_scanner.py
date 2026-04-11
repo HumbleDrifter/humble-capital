@@ -11,6 +11,7 @@ _CORE_ASSETS = {"BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"}
 _SCANNER_STATE = {}
 _SIGNAL_LOG = []
 _DIP_COOLDOWNS = {}
+_SCORING_ENGINE = None
 
 PARAMS_4H_SATELLITE = {
     "bb_period": 20,
@@ -71,6 +72,15 @@ def _normalize_product_id(product_id):
 
 def _default_params_for_product(product_id):
     return dict(PARAMS_4H_CORE if _normalize_product_id(product_id) in _CORE_ASSETS else PARAMS_4H_SATELLITE)
+
+
+def _get_scoring_engine():
+    global _SCORING_ENGINE
+    if _SCORING_ENGINE is None:
+        from scoring_engine import ScoringEngine
+
+        _SCORING_ENGINE = ScoringEngine()
+    return _SCORING_ENGINE
 
 
 def sma(values, period):
@@ -563,8 +573,14 @@ class SignalScanner:
         core_assets = set((config.get("core_assets") or {}).keys())
         blocked = set(config.get("satellite_blocked") or [])
         manual_holds = set(get_manual_holds(snapshot))
+        held_positions = {
+            _normalize_product_id(product_id): (position or {})
+            for product_id, position in (snapshot.get("positions") or {}).items()
+            if _safe_float((position or {}).get("value_total_usd"), 0.0) > 1.0
+        }
         universe = get_all_usd_products()
         targets = sorted(universe - core_assets - blocked)
+        engine = _get_scoring_engine()
 
         dispatched = []
         for product_id in targets:
@@ -572,12 +588,42 @@ class SignalScanner:
                 _log(f"scan skipped for {product_id} — manual hold active")
                 continue
             try:
-                self.params = _default_params_for_product(product_id)
                 candles = self.fetch_candles(product_id)
                 if len(candles) < 60:
                     continue
-                candles = self.compute_indicators(candles)
-                result = self.evaluate_product(product_id, candles)
+
+                entry = engine.score_for_entry(product_id, candles, regime)
+                if entry["enter"]:
+                    result = {
+                        "signal": "buy",
+                        "conviction": entry["conviction"],
+                        "reason": entry["reason"],
+                    }
+                else:
+                    if product_id in held_positions:
+                        pos = held_positions[product_id]
+                        exit_check = engine.score_for_exit(
+                            product_id,
+                            candles,
+                            regime,
+                            entry_price=(
+                                pos.get("avg_entry")
+                                or pos.get("avg_entry_price")
+                                or pos.get("entry_price")
+                                or 0
+                            ),
+                            bars_held=72,
+                        )
+                        if exit_check["exit"]:
+                            result = {
+                                "signal": "exit",
+                                "conviction": 0.5,
+                                "reason": exit_check["reason"],
+                            }
+                        else:
+                            continue
+                    else:
+                        continue
 
                 if result["signal"]:
                     action_map = {"buy": "BUY", "exit": "EXIT"}
@@ -587,7 +633,7 @@ class SignalScanner:
                         action=action_map[result["signal"]],
                         signal_type=signal_map[result["signal"]],
                         timeframe="4h",
-                        strategy="server_scanner_bb_breakout",
+                        strategy="server_scanner_scoring_engine",
                         conviction_score=result["conviction"],
                     )
                     dispatched.append({**result, "dispatch": dispatch_result})

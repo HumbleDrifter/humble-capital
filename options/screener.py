@@ -16,6 +16,22 @@ DEFAULT_WATCHLIST = [
     "PLTR", "SOFI", "NIO", "RIVN", "F", "GM", "T", "VZ", "KO", "PEP",
 ]
 
+MEME_STOCKS = {
+    "GME", "AMC", "BBAI", "NIO", "BYND", "OPEN", "MARA", "RIOT",
+    "SOFI", "PLTR", "RIVN", "HOOD", "CLOV", "WISH", "SPCE", "WKHS",
+    "BIOR", "MULN", "BBBY", "FFIE", "NKLA", "XELA", "ATER", "PROG",
+    "ASST", "CXAI", "SNDL", "EXPR", "KOSS", "NAKD",
+}
+
+SQUEEZE_MENTION_THRESHOLD = 50    # min social mentions to qualify
+SQUEEZE_IV_MIN = 40.0             # min IV rank for squeeze confirmation
+SQUEEZE_SENTIMENT_MIN = 10.0      # min composite sentiment score
+SQUEEZE_MAX_CAPITAL_PCT = 1.0     # allow up to 100% of available capital
+SQUEEZE_CALL_DELTA_MIN = 0.25     # slightly OTM calls
+SQUEEZE_CALL_DELTA_MAX = 0.55     # not too deep ITM
+SQUEEZE_DTE_MIN = 7               # short dated for max leverage
+SQUEEZE_DTE_MAX = 30              # but not weeklies
+
 WHEEL_PARAMS = {
     "delta_min": 0.18,
     "delta_max": 0.35,
@@ -98,6 +114,45 @@ def _annualized_yield(premium_received, capital_at_risk, dte):
     if premium_received <= 0 or capital_at_risk <= 0:
         return 0.0
     return (premium_received / capital_at_risk) * (365.0 / dte) * 100.0
+
+
+def is_meme_squeeze(symbol, sentiment, iv_rank):
+    """
+    Returns True if this symbol meets meme squeeze criteria:
+    - In the known meme stock universe
+    - Social sentiment is bullish and trending
+    - Mentions above threshold
+    - IV rank elevated (unusual options activity)
+    """
+    symbol = _normalize_symbol(symbol)
+    if symbol not in MEME_STOCKS:
+        return False
+    mentions = _safe_int((sentiment or {}).get("total_mentions"), 0)
+    composite = _safe_float((sentiment or {}).get("composite_score"), 0.0)
+    trending = _safe_int((sentiment or {}).get("trending_sources"), 0) > 0
+    iv = _safe_float(iv_rank, 0.0)
+    return (
+        mentions >= SQUEEZE_MENTION_THRESHOLD
+        and composite >= SQUEEZE_SENTIMENT_MIN
+        and trending
+        and iv >= SQUEEZE_IV_MIN
+    )
+
+
+def allocate_meme_squeeze_capital(conviction_score):
+    """
+    For confirmed meme squeeze plays, bypass normal strategy caps.
+    conviction_score: 0.0-1.0 from sentiment/scoring engine.
+    Returns allocation fraction (0.0-1.0) of available options buying power.
+    """
+    conviction_score = max(0.0, min(1.0, _safe_float(conviction_score, 0.5)))
+    if conviction_score >= 0.85:
+        return SQUEEZE_MAX_CAPITAL_PCT        # 100% — maximum aggression
+    if conviction_score >= 0.70:
+        return 0.75
+    if conviction_score >= 0.55:
+        return 0.60
+    return 0.40                               # minimum for a confirmed squeeze
 
 
 def _prob_from_delta(delta):
@@ -214,6 +269,78 @@ class OptionsScreener:
         except Exception:
             pass
         return 0.0
+
+    def scan_meme_calls(self, symbol) -> list:
+        """
+        Scan for long call opportunities on meme/squeeze candidates.
+        Uses wider delta range and shorter DTE than income strategies.
+        Returns opportunities tagged with is_meme_squeeze=True.
+        """
+        symbol = _normalize_symbol(symbol)
+        opportunities = []
+        try:
+            quote = self.chain_fetcher.get_quote(symbol)
+            current_price = _safe_float((quote or {}).get("price"), 0.0)
+            if current_price <= 0:
+                return []
+
+            chain = self.chain_fetcher.get_chain(symbol)
+            calls = [
+                leg for exp in (chain or {}).get("expirations", [])
+                for leg in exp.get("calls", [])
+                if SQUEEZE_DTE_MIN <= _safe_int(leg.get("dte"), 0) <= SQUEEZE_DTE_MAX
+            ]
+
+            for call in calls:
+                delta = abs(_safe_float(call.get("delta"), 0.0))
+                if not (SQUEEZE_CALL_DELTA_MIN <= delta <= SQUEEZE_CALL_DELTA_MAX):
+                    continue
+                strike = _safe_float(call.get("strike"), 0.0)
+                if strike <= 0:
+                    continue
+                ask = _safe_float(call.get("ask"), 0.0)
+                bid = _safe_float(call.get("bid"), 0.0)
+                last = _safe_float(call.get("last"), 0.0)
+                mid = (bid + ask) / 2.0 if bid > 0 and ask > 0 else last
+                if mid <= 0:
+                    continue
+                oi = _safe_int(call.get("open_interest"), 0)
+                vol = _safe_int(call.get("volume"), 0)
+                dte = _safe_int(call.get("dte"), 0)
+                iv_raw = _safe_float(call.get("iv"), 0.0)
+
+                # Cost per contract (100 shares)
+                cost_per_contract = mid * 100.0
+                # Potential gain: price needs to reach strike + premium
+                breakeven = strike + mid
+                upside_pct = ((breakeven / current_price) - 1.0) * 100.0
+
+                opportunities.append({
+                    "symbol": symbol,
+                    "strategy": "meme_call",
+                    "is_meme_squeeze": True,
+                    "strike": round(strike, 2),
+                    "expiration": str(call.get("expiration") or ""),
+                    "dte": dte,
+                    "delta": round(delta, 3),
+                    "iv": round(iv_raw * 100.0, 1) if iv_raw < 5 else round(iv_raw, 1),
+                    "bid": round(bid, 2),
+                    "ask": round(ask, 2),
+                    "mid": round(mid, 2),
+                    "cost_per_contract": round(cost_per_contract, 2),
+                    "breakeven": round(breakeven, 2),
+                    "upside_needed_pct": round(upside_pct, 2),
+                    "open_interest": oi,
+                    "volume": vol,
+                    "liquidity_score": float(oi * max(1, vol)),
+                    "current_price": round(current_price, 2),
+                    "prob_profit": round(delta, 3),
+                    "risk_reward_ratio": 0.0,
+                    "annualized_yield": 0.0,
+                })
+        except Exception as exc:
+            _log(f"scan_meme_calls failed symbol={symbol} error={exc}")
+        return opportunities
 
     def scan_covered_calls(self, symbol, shares_held=100) -> list:
         symbol = _normalize_symbol(symbol)
@@ -611,6 +738,7 @@ class OptionsScreener:
             "iron_condors",
             "wheel",
             "earnings_strangles",
+            "meme_calls",
         ]
         strategies = [str(item).strip().lower() for item in (strategies or default_strategies)]
         sentiment_filter = str(sentiment_filter or "").strip().lower()
@@ -647,13 +775,25 @@ class OptionsScreener:
                     symbol_opps.extend(self.scan_iron_condors(symbol))
                 if "wheel" in strategies:
                     symbol_opps.extend(self.scan_wheel_opportunities(symbol))
+                if "meme_calls" in strategies and is_meme_squeeze(symbol, sentiment, iv_rank):
+                    meme_opps = self.scan_meme_calls(symbol)
+                    squeeze_conviction = min(1.0, _safe_float(sentiment.get("composite_score"), 0.0) / 100.0 + 0.5)
+                    for opp in meme_opps:
+                        opp["squeeze_capital_pct"] = allocate_meme_squeeze_capital(squeeze_conviction)
+                        opp["squeeze_conviction"] = round(squeeze_conviction, 3)
+                    symbol_opps.extend(meme_opps)
 
+                squeeze_active = is_meme_squeeze(symbol, sentiment, iv_rank)
                 for opp in symbol_opps:
                     opp["iv_rank"] = round(_safe_float(opp.get("iv_rank"), iv_rank), 2)
                     opp["social_sentiment"] = round(composite_score, 1)
                     opp["social_mentions"] = _safe_int(sentiment.get("total_mentions"), 0)
                     opp["social_trending"] = _safe_int(sentiment.get("trending_sources"), 0) > 0
                     opp["social_label"] = str(sentiment.get("composite_label") or "Neutral")
+                    if "is_meme_squeeze" not in opp:
+                        opp["is_meme_squeeze"] = False
+                    if squeeze_active and not opp.get("is_meme_squeeze"):
+                        opp["is_meme_squeeze"] = False  # only meme_call strategy gets True
                     opp["score"] = self.score_opportunity_v2(opp)
                 opportunities.extend(symbol_opps)
             except Exception as exc:

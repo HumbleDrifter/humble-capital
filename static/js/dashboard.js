@@ -170,7 +170,6 @@
       `);
     }
 
-      if (tooltip) tooltip.style.display = "none";
       container.innerHTML = `
       <svg viewBox="0 0 800 280" width="100%" role="img" aria-label="Portfolio equity curve">
         <defs>

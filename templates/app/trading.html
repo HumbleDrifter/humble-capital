@@ -95,11 +95,11 @@
     <section class="opp-panel">
       <div class="opp-panel-head"><div><h3 class="opp-section-title">Unified Charts</h3><p class="opp-section-subtitle" id="tradingChartMeta">Load any crypto pair or stock and replay signals client-side.</p></div><div class="opp-panel-actions"><button class="btn btn-secondary" id="tradingBackBtn" type="button">← Back to Dashboard</button></div></div>
       <div class="opp-panel-actions" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:12px;">
-        <div class="form-card"><label>Asset Type</label><div><button class="btn btn-secondary trading-chart-type active" data-type="crypto" type="button">Crypto</button> <button class="btn btn-secondary trading-chart-type" data-type="stock" type="button">Stock</button></div></div>
+        <div class="form-card"><label>Asset Type</label><div><button class="btn btn-secondary trading-chart-type asset-type-toggle active" data-type="crypto" type="button">Crypto</button> <button class="btn btn-secondary trading-chart-type asset-type-toggle" data-type="stock" type="button">Stock</button></div></div>
         <div class="form-card">
           <label for="tradingChartSymbolInput">Symbol</label>
-          <input type="text" id="tradingChartSymbolInput" list="tradingChartSymbolDatalist" class="form-input" placeholder="Type or select symbol..." value="BTC-USD">
-          <datalist id="tradingChartSymbolDatalist"></datalist>
+          <input type="text" id="tradingChartSymbolInput" list="symbolDatalist" class="form-input" placeholder="Type or select symbol..." value="BTC-USD">
+          <datalist id="symbolDatalist"></datalist>
         </div>
         <div class="form-card"><label>Timeframe</label><div><button class="btn btn-secondary trading-chart-frame active" data-frame="1h" type="button">1H</button> <button class="btn btn-secondary trading-chart-frame" data-frame="4h" type="button">4H</button> <button class="btn btn-secondary trading-chart-frame" data-frame="1d" type="button">1D</button> <button class="btn btn-secondary trading-chart-frame" data-frame="1w" type="button">1W</button></div></div>
         <div class="form-card"><label>Signal Controls</label><details open><summary>Adjust Parameters</summary><div style="display:grid; gap:8px; margin-top:10px;"><label>RSI Min <input id="tradingParamRsiMin" type="range" min="20" max="60" step="1" value="40"><span id="tradingParamRsiMinValue">40</span></label><label>RSI Max <input id="tradingParamRsiMax" type="range" min="50" max="85" step="1" value="70"><span id="tradingParamRsiMaxValue">70</span></label><label>EMA Trend <input id="tradingParamTrend" type="range" min="50" max="250" step="5" value="200"><span id="tradingParamTrendValue">200</span></label><label>ADX Min <input id="tradingParamAdx" type="range" min="10" max="40" step="1" value="20"><span id="tradingParamAdxValue">20</span></label><label>Extension % <input id="tradingParamExt" type="range" min="2" max="25" step="0.5" value="10"><span id="tradingParamExtValue">10</span></label></div></details></div>
@@ -480,6 +480,26 @@
     document.getElementById("tradingStockMeta").textContent = `Scanning ${Math.min(stockUniverse.length, 98)} Tier 1 + ${Math.max(stockUniverse.length - 98, 0)} Tier 2 stocks | Last updated ${new Date().toLocaleTimeString()}`;
   }
 
+  async function loadSymbolList(assetType) {
+    const datalist = document.getElementById("symbolDatalist");
+    if (!datalist) return [];
+    try {
+      const data = await fetchJson(`/api/symbols?type=${encodeURIComponent(assetType)}`);
+      if (data.ok && Array.isArray(data.symbols)) {
+        datalist.innerHTML = data.symbols.map((symbol) => `<option value="${escapeHtml(symbol)}">${escapeHtml(symbol)}</option>`).join("");
+        console.log(`Loaded ${data.symbols.length} ${assetType} symbols`);
+        return data.symbols;
+      }
+    } catch (err) {
+      console.error("Failed to load symbols:", err);
+    }
+    const fallback = assetType === "crypto"
+      ? ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"]
+      : DEFAULT_STOCKS;
+    datalist.innerHTML = fallback.map((symbol) => `<option value="${escapeHtml(symbol)}">${escapeHtml(symbol)}</option>`).join("");
+    return fallback;
+  }
+
   function filteredUniverse() {
     const search = String(document.getElementById("tradingStockSearch")?.value || "").trim().toUpperCase();
     let rows = stockUniverse.slice();
@@ -587,29 +607,13 @@
 
   async function loadChartSymbols() {
     const input = document.getElementById("tradingChartSymbolInput");
-    const datalist = document.getElementById("tradingChartSymbolDatalist");
-    if (!input || !datalist) return;
+    if (!input) return;
 
-    const renderOptions = (items, valueKey, labelBuilder) => {
-      datalist.innerHTML = items.map((item) => {
-        const value = String(item?.[valueKey] || "").trim();
-        return `<option value="${escapeHtml(value)}">${escapeHtml(labelBuilder(item))}</option>`;
-      }).join("");
-    };
-
+    await loadSymbolList(chartType);
     if (chartType === "crypto") {
-      try {
-        const data = await fetchJson("/api/valid_products?quote=USD&tradable_only=true");
-        const rows = Array.isArray(data.products) ? data.products : [];
-        renderOptions(rows, "product_id", (row) => row.product_id || "");
-      } catch (error) {
-        renderOptions(["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"].map((symbol) => ({ product_id: symbol })), "product_id", (row) => row.product_id || "");
-      }
       if (!chartSymbol.includes("-USD")) chartSymbol = "BTC-USD";
-    } else {
-      const rows = stockUniverse.length ? stockUniverse : DEFAULT_STOCKS.map((symbol) => ({ symbol, name: "" }));
-      renderOptions(rows, "symbol", (row) => `${row.symbol || ""}${row.name ? ` — ${row.name}` : ""}`);
-      if (chartSymbol.includes("-USD")) chartSymbol = rows[0]?.symbol || "AAPL";
+    } else if (chartSymbol.includes("-USD")) {
+      chartSymbol = "AAPL";
     }
     input.value = chartSymbol;
   }
@@ -999,6 +1003,7 @@
     document.querySelectorAll(".trading-chart-type").forEach((button) => button.addEventListener("click", async () => {
       chartType = button.dataset.type || "crypto";
       chartSymbol = chartType === "crypto" ? "BTC-USD" : (stockUniverse[0]?.symbol || "AAPL");
+      await loadSymbolList(chartType);
       await loadChartSymbols();
       if (!chartReady) {
         activateTab("charts");
@@ -1020,6 +1025,15 @@
       if (event.key === "Enter") {
         event.preventDefault();
         commitChartSymbolInput().catch(console.error);
+      }
+    });
+    document.getElementById("tradingChartSymbolInput")?.addEventListener("click", function onSymbolClick() {
+      this._prevValue = this.value;
+      this.value = "";
+    });
+    document.getElementById("tradingChartSymbolInput")?.addEventListener("blur", function onSymbolBlur() {
+      if (this.value === "" && this._prevValue) {
+        this.value = this._prevValue;
       }
     });
     let debounce;
@@ -1051,6 +1065,7 @@
     bindControls();
     activateTab(currentTabFromHash());
     await loadStocksUniverse();
+    await loadSymbolList("crypto");
     await loadCrypto();
     const initialSymbol = parseInitialChartSymbol();
     if (initialSymbol) {

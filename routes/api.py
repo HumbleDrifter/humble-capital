@@ -98,6 +98,14 @@ FALLBACK_SYMBOLS = [
     "MARA", "META", "MSFT", "MU", "NFLX", "NIO", "NVDA", "ORCL", "PEP", "PFE", "PLTR",
     "PYPL", "QCOM", "QQQ", "RIOT", "RIVN", "SOFI", "SQ", "SPY", "T", "TSLA", "UBER", "V", "VZ", "WMT", "XOM"
 ]
+FALLBACK_STOCK_SYMBOLS = sorted(set(FALLBACK_SYMBOLS + [
+    "ADBE", "ADI", "ADP", "AEO", "AFL", "AIG", "ALB", "AMAT", "ANET", "APP", "ARM", "ASML", "AVGO", "AXP", "BABA",
+    "BIDU", "BKNG", "C", "CAT", "CELH", "CHWY", "CMCSA", "CME", "CRWD", "DASH", "DE", "DELL", "DLTR", "DKNG", "EA",
+    "EBAY", "ETSY", "EXPE", "FTNT", "GE", "GILD", "GLD", "HAL", "HON", "HOOD", "IBM", "ISRG", "LLY", "LMT", "LRCX",
+    "LULU", "MCD", "MDB", "MDT", "MELI", "MRK", "MRVL", "MS", "NKE", "NOW", "NTES", "NXPI", "OKTA", "ON", "PANW",
+    "PATH", "PDD", "PM", "PTON", "REGN", "ROKU", "SBUX", "SHOP", "SNAP", "SNOW", "TEAM", "TMUS", "TSM", "TTD", "TXN",
+    "U", "UNH", "UPST", "VRTX", "WDAY", "WFC", "XLE", "XLF", "XLK", "XLP", "XLU", "XLY", "ZM"
+]))
 
 
 def _log_api(msg):
@@ -2908,6 +2916,31 @@ def api_signals_chart():
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/symbols", methods=["GET"])
+@require_api_auth
+def api_symbols():
+    asset_type = str(request.args.get("type") or "crypto").lower().strip()
+
+    if asset_type == "crypto":
+        try:
+            from coinbase_universe import get_tradable_universe
+            symbols = sorted(set(get_tradable_universe() or []))
+        except Exception:
+            symbols = ["BTC-USD", "ETH-USD", "SOL-USD"]
+    else:
+        try:
+            symbols = sorted(set(_get_stock_universe().get_all_tradeable() or []))
+        except Exception:
+            symbols = list(FALLBACK_STOCK_SYMBOLS)
+
+    return jsonify({
+        "ok": True,
+        "type": asset_type,
+        "symbols": symbols,
+        "count": len(symbols),
+    })
 
 
 @api_bp.route("/api/stocks/universe", methods=["GET"])

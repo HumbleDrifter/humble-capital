@@ -162,6 +162,7 @@
   let lastScan = [];
   let stagedTrade = null;
   let currentChain = null;
+  let stagedContract = null;
 
   function authUrl(path) {
     if (!API_SECRET) return path;
@@ -250,6 +251,7 @@
 
   function openTradeDialog(opportunity) {
     stagedTrade = opportunity;
+    stagedContract = null;
     const summary = document.getElementById("optTradeSummary");
     if (summary) {
       summary.innerHTML = `
@@ -257,6 +259,22 @@
           <div><strong>${esc(opportunity.symbol)}</strong> · ${esc(opportunity.strategy)}</div>
           <div>Expiration: ${esc(opportunity.expiration || "—")}</div>
           <div>Details: ${esc(JSON.stringify(opportunity.details || {}))}</div>
+        </div>
+      `;
+    }
+    document.getElementById("optTradeDialog")?.showModal();
+  }
+
+  function openContractTradeDialog(contract) {
+    stagedTrade = null;
+    stagedContract = contract;
+    const summary = document.getElementById("optTradeSummary");
+    if (summary) {
+      summary.innerHTML = `
+        <div class="opt-trade-review">
+          <div><strong>${esc(contract.symbol)}</strong> · ${esc(contract.option_type.toUpperCase())} · ${esc(contract.expiration)}</div>
+          <div>Strike: ${esc(Number(contract.strike || 0).toFixed(2))} · Side: ${esc(contract.side)}</div>
+          <div>Limit: ${fmtUsd(contract.limit_price || 0)} · Qty: ${esc(contract.qty || 1)}</div>
         </div>
       `;
     }
@@ -406,25 +424,41 @@
             const put = row.put || {};
             const callClass = classifyMoneyness(Number(strike), price, "call");
             const putClass = classifyMoneyness(Number(strike), price, "put");
+            const callPremium = Number(call.ask ?? call.last ?? 0);
+            const putPremium = Number(put.ask ?? put.last ?? 0);
             return `
               <tr>
-                <td class="${callClass}">${esc(call.bid ?? "—")}</td>
-                <td class="${callClass}">${esc(call.ask ?? "—")}</td>
-                <td class="${callClass}">${Number(call.delta || 0).toFixed(2)}</td>
-                <td class="${callClass}">${Number(call.theta || 0).toFixed(3)}</td>
-                <td class="${callClass}">${esc(call.open_interest ?? "—")}</td>
+                <td class="${callClass} opt-contract-cell" data-side="BUY" data-option-type="call" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(callPremium)}">${esc(call.bid ?? "—")}</td>
+                <td class="${callClass} opt-contract-cell" data-side="BUY" data-option-type="call" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(callPremium)}">${esc(call.ask ?? "—")}</td>
+                <td class="${callClass} opt-contract-cell" data-side="BUY" data-option-type="call" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(callPremium)}">${Number(call.delta || 0).toFixed(2)}</td>
+                <td class="${callClass} opt-contract-cell" data-side="BUY" data-option-type="call" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(callPremium)}">${Number(call.theta || 0).toFixed(3)}</td>
+                <td class="${callClass} opt-contract-cell" data-side="BUY" data-option-type="call" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(callPremium)}">${esc(call.open_interest ?? "—")}</td>
                 <td class="opt-chain-strike ${Math.abs(Number(strike) - price) / Math.max(price, 1) < 0.01 ? "atm" : ""}">${Number(strike).toFixed(2)}</td>
-                <td class="${putClass}">${esc(put.bid ?? "—")}</td>
-                <td class="${putClass}">${esc(put.ask ?? "—")}</td>
-                <td class="${putClass}">${Number(put.delta || 0).toFixed(2)}</td>
-                <td class="${putClass}">${Number(put.theta || 0).toFixed(3)}</td>
-                <td class="${putClass}">${esc(put.open_interest ?? "—")}</td>
+                <td class="${putClass} opt-contract-cell" data-side="BUY" data-option-type="put" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(putPremium)}">${esc(put.bid ?? "—")}</td>
+                <td class="${putClass} opt-contract-cell" data-side="BUY" data-option-type="put" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(putPremium)}">${esc(put.ask ?? "—")}</td>
+                <td class="${putClass} opt-contract-cell" data-side="BUY" data-option-type="put" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(putPremium)}">${Number(put.delta || 0).toFixed(2)}</td>
+                <td class="${putClass} opt-contract-cell" data-side="BUY" data-option-type="put" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(putPremium)}">${Number(put.theta || 0).toFixed(3)}</td>
+                <td class="${putClass} opt-contract-cell" data-side="BUY" data-option-type="put" data-expiration="${esc(expiration)}" data-strike="${esc(strike)}" data-limit-price="${esc(putPremium)}">${esc(put.open_interest ?? "—")}</td>
               </tr>
             `;
           }).join("")}
         </tbody>
       </table>
     `;
+
+    host.querySelectorAll(".opt-contract-cell").forEach((cell) => {
+      cell.addEventListener("click", () => {
+        openContractTradeDialog({
+          symbol: document.getElementById("optChainSymbol")?.value || chain.symbol,
+          option_type: cell.dataset.optionType || "call",
+          expiration: cell.dataset.expiration || expiration,
+          strike: Number(cell.dataset.strike || 0),
+          limit_price: Number(cell.dataset.limitPrice || 0),
+          qty: 1,
+          side: cell.dataset.side || "BUY",
+        });
+      });
+    });
   }
 
   async function runScan() {
@@ -515,6 +549,19 @@
   }
 
   function buildTradePayload(opportunity) {
+    if (stagedContract) {
+      return {
+        symbol: stagedContract.symbol,
+        strategy: `${stagedContract.option_type}_single`,
+        expiration: stagedContract.expiration,
+        strike: stagedContract.strike,
+        qty: stagedContract.qty || 1,
+        side: stagedContract.side || "BUY",
+        order_type: "LMT",
+        limit_price: stagedContract.limit_price || 0,
+        option_type: stagedContract.option_type,
+      };
+    }
     const details = opportunity.details || {};
     const strategy = String(opportunity.strategy || "").toLowerCase();
     const payload = {
@@ -531,13 +578,13 @@
   }
 
   async function submitTrade() {
-    if (!stagedTrade) return;
+    if (!stagedTrade && !stagedContract) return;
     const btn = document.getElementById("optTradeConfirmBtn");
     if (btn) btn.disabled = true;
     try {
       const result = await fetchJson("/api/options/trade", {
         method: "POST",
-        body: JSON.stringify(buildTradePayload(stagedTrade)),
+        body: JSON.stringify(buildTradePayload(stagedTrade || {})),
       });
       const summary = document.getElementById("optTradeSummary");
       if (summary) summary.innerHTML = `<div class="opt-trade-review">Submitted. Order ID: ${esc(result.order_id || "pending")}</div>`;

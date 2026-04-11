@@ -367,45 +367,43 @@ class PortfolioBacktester:
             return actions
 
         available_cash = max(0.0, self.cash - (total_value * _safe_float(self.config.get("cash_reserve", 0.08), 0.08)))
-        if available_cash <= 5.0:
-            return actions
 
         rebalance_band = _safe_float(self.config.get("rebalance_band", 0.08), 0.08)
+        if available_cash > 5.0:
+            for product_id, cfg in (self.config["core_assets"] or {}).items():
+                product_id = _normalize_product_id(product_id)
+                target_weight = _safe_float((cfg or {}).get("target_weight"), 0.0)
+                current_weight = _safe_float((weights or {}).get(product_id), 0.0)
+                if abs(current_weight - target_weight) < rebalance_band:
+                    continue
+
+                if current_weight >= target_weight - rebalance_band:
+                    continue
+
+                target_value = total_value * target_weight
+                current_value = _safe_float((self.positions.get(product_id) or {}).get("value"), 0.0)
+                shortfall_value = max(0.0, target_value - current_value)
+                buy_amount = min(shortfall_value * 0.5, available_cash)
+                if buy_amount <= 5.0:
+                    continue
+
+                actions.append(
+                    {
+                        "product_id": product_id,
+                        "action": "buy",
+                        "target_value": target_value,
+                        "current_value": current_value,
+                        "adjustment": buy_amount,
+                    }
+                )
+                available_cash = max(0.0, available_cash - buy_amount)
+                if available_cash <= 5.0:
+                    break
+
         for product_id, cfg in (self.config["core_assets"] or {}).items():
             product_id = _normalize_product_id(product_id)
             target_weight = _safe_float((cfg or {}).get("target_weight"), 0.0)
             current_weight = _safe_float((weights or {}).get(product_id), 0.0)
-            if abs(current_weight - target_weight) < rebalance_band:
-                continue
-
-            if current_weight >= target_weight - rebalance_band:
-                continue
-
-            target_value = total_value * target_weight
-            current_value = _safe_float((self.positions.get(product_id) or {}).get("value"), 0.0)
-            shortfall_value = max(0.0, target_value - current_value)
-            buy_amount = min(shortfall_value * 0.5, available_cash)
-            if buy_amount <= 5.0:
-                continue
-
-            actions.append(
-                {
-                    "product_id": product_id,
-                    "action": "buy",
-                    "target_value": target_value,
-                    "current_value": current_value,
-                    "adjustment": buy_amount,
-                }
-            )
-            available_cash = max(0.0, available_cash - buy_amount)
-            if available_cash <= 5.0:
-                break
-
-        for product_id, cfg in (self.config["core_assets"] or {}).items():
-            product_id = _normalize_product_id(product_id)
-            target_weight = _safe_float((cfg or {}).get("target_weight"), 0.0)
-            current_weight = _safe_float((weights or {}).get(product_id), 0.0)
-
             if current_weight > target_weight + rebalance_band:
                 current_value = _safe_float((self.positions.get(product_id) or {}).get("value"), 0.0)
                 target_value = total_value * target_weight
@@ -421,10 +419,11 @@ class PortfolioBacktester:
                             "adjustment": sell_amount,
                         }
                     )
+
         return actions
 
     def execute_dca(self, all_candles, bar_ref, regime) -> list:
-        allowed_dca_regimes = ["bull", "neutral"]
+        allowed_dca_regimes = ["bull", "neutral", "caution"]
         if regime not in allowed_dca_regimes:
             return []
 
@@ -676,14 +675,9 @@ class PortfolioBacktester:
                     if price <= 0:
                         continue
                     amount = abs(_safe_float(action.get("adjustment"), 0.0))
-                    if action["action"] == "buy":
-                        reserve_floor = _safe_float(snapshot.get("total_value"), 0.0) * _safe_float(self.config["cash_reserve"], 0.08)
-                        amount = min(amount, max(0.0, self.cash - reserve_floor))
-                        res = self.execute_trade(product_id, "buy", amount, price, "rebalance_buy", ts) if amount > 1.0 else None
-                    else:
-                        current_value = _safe_float((self.positions.get(product_id) or {}).get("value"), 0.0)
-                        amount = min(amount, current_value)
-                        res = self.execute_trade(product_id, "sell", amount, price, "rebalance_sell", ts) if amount > 1.0 else None
+                    reserve_floor = _safe_float(snapshot.get("total_value"), 0.0) * _safe_float(self.config["cash_reserve"], 0.08)
+                    amount = min(amount, max(0.0, self.cash - reserve_floor))
+                    res = self.execute_trade(product_id, "buy", amount, price, "rebalance_buy", ts) if amount > 1.0 else None
                     if res:
                         executed.append({"product_id": product_id, "action": action["action"], "amount": amount})
                 if executed:

@@ -116,7 +116,7 @@ class PortfolioBacktester:
             "satellite_per_asset_max": _safe_float(config.get("satellite_per_asset_max", 0.05), 0.05),
             "max_active_satellites": _safe_int(config.get("max_active_satellites", 4), 4),
             "cash_reserve": _safe_float(config.get("cash_reserve", 0.08), 0.08),
-            "rebalance_band": _safe_float(config.get("rebalance_band", 0.03), 0.03),
+            "rebalance_band": _safe_float(config.get("rebalance_band", 0.08), 0.08),
             "rebalance_frequency_bars": _safe_int(config.get("rebalance_frequency_bars", 42), 42),
             "dca_frequency_bars": _safe_int(config.get("dca_frequency_bars", 42), 42),
             "dca_amount_pct": _safe_float(config.get("dca_amount_pct", 0.02), 0.02),
@@ -334,6 +334,31 @@ class PortfolioBacktester:
             "weights": weights,
         }
 
+    def _get_core_return(self, product_id, ts, lookback_bars=180):
+        product_id = _normalize_product_id(product_id)
+        current_ts = _safe_int(ts, self._current_ts)
+        current_bar = (self._candle_by_ts.get(product_id) or {}).get(current_ts)
+        if not isinstance(current_bar, dict):
+            return 0.0
+
+        target_ts = current_ts - (max(1, _safe_int(lookback_bars, 180)) * self.bar_seconds)
+        candle_map = self._candle_by_ts.get(product_id) or {}
+        past_bar = None
+        for check_ts in range(target_ts - self.bar_seconds, target_ts + self.bar_seconds + 1, self.bar_seconds):
+            past_bar = candle_map.get(check_ts)
+            if isinstance(past_bar, dict):
+                break
+
+        if not isinstance(past_bar, dict):
+            return 0.0
+
+        current_close = _safe_float(current_bar.get("close"), 0.0)
+        past_close = _safe_float(past_bar.get("close"), 0.0)
+        if current_close <= 0 or past_close <= 0:
+            return 0.0
+
+        return (current_close - past_close) / past_close
+
     def check_rebalance(self, weights, bar_ref) -> list:
         actions = []
         snapshot = self.get_portfolio_value(self._all_candles, bar_ref)
@@ -341,30 +366,66 @@ class PortfolioBacktester:
         if total_value <= 0:
             return actions
 
+        available_cash = max(0.0, self.cash - (total_value * _safe_float(self.config.get("cash_reserve", 0.08), 0.08)))
+        if available_cash <= 5.0:
+            return actions
+
+        rebalance_band = _safe_float(self.config.get("rebalance_band", 0.08), 0.08)
         for product_id, cfg in (self.config["core_assets"] or {}).items():
             product_id = _normalize_product_id(product_id)
             target_weight = _safe_float((cfg or {}).get("target_weight"), 0.0)
             current_weight = _safe_float((weights or {}).get(product_id), 0.0)
-            if abs(current_weight - target_weight) < _safe_float(self.config["rebalance_band"], 0.03):
+            if abs(current_weight - target_weight) < rebalance_band:
                 continue
+
+            if current_weight >= target_weight - rebalance_band:
+                continue
+
             target_value = total_value * target_weight
             current_value = _safe_float((self.positions.get(product_id) or {}).get("value"), 0.0)
-            adjustment = target_value - current_value
-            if abs(adjustment) <= 1.0:
+            shortfall_value = max(0.0, target_value - current_value)
+            buy_amount = min(shortfall_value * 0.5, available_cash)
+            if buy_amount <= 5.0:
                 continue
+
             actions.append(
                 {
                     "product_id": product_id,
-                    "action": "buy" if adjustment > 0 else "sell",
+                    "action": "buy",
                     "target_value": target_value,
                     "current_value": current_value,
-                    "adjustment": adjustment,
+                    "adjustment": buy_amount,
                 }
             )
+            available_cash = max(0.0, available_cash - buy_amount)
+            if available_cash <= 5.0:
+                break
+
+        for product_id, cfg in (self.config["core_assets"] or {}).items():
+            product_id = _normalize_product_id(product_id)
+            target_weight = _safe_float((cfg or {}).get("target_weight"), 0.0)
+            current_weight = _safe_float((weights or {}).get(product_id), 0.0)
+
+            if current_weight > target_weight + rebalance_band:
+                current_value = _safe_float((self.positions.get(product_id) or {}).get("value"), 0.0)
+                target_value = total_value * target_weight
+                excess = current_value - target_value
+                sell_amount = excess * 0.5
+                if sell_amount > 5.0:
+                    actions.append(
+                        {
+                            "product_id": product_id,
+                            "action": "sell",
+                            "target_value": target_value,
+                            "current_value": current_value,
+                            "adjustment": sell_amount,
+                        }
+                    )
         return actions
 
     def execute_dca(self, all_candles, bar_ref, regime) -> list:
-        if regime not in {"bull", "neutral"}:
+        allowed_dca_regimes = ["bull", "neutral"]
+        if regime not in allowed_dca_regimes:
             return []
 
         snapshot = self.get_portfolio_value(all_candles, bar_ref)
@@ -377,31 +438,28 @@ class PortfolioBacktester:
             return []
 
         underweights = []
-        total_shortfall = 0.0
         for product_id, cfg in (self.config["core_assets"] or {}).items():
             product_id = _normalize_product_id(product_id)
             target_weight = _safe_float((cfg or {}).get("target_weight"), 0.0)
             current_weight = _safe_float((snapshot.get("weights") or {}).get(product_id), 0.0)
             if current_weight < target_weight:
-                shortfall = target_weight - current_weight
-                underweights.append((product_id, shortfall))
-                total_shortfall += shortfall
+                underweights.append(product_id)
 
         actions = []
-        if total_shortfall <= 0:
+        if not underweights:
             return actions
 
-        for product_id, shortfall in underweights:
-            alloc = dca_budget * (shortfall / total_shortfall)
+        per_asset = dca_budget / len(underweights)
+        for product_id in underweights:
             candle = (self._candle_by_ts.get(product_id) or {}).get(_safe_int(bar_ref, self._current_ts))
             if not isinstance(candle, dict):
                 continue
             price = _safe_float(candle.get("close"), 0.0)
-            if price <= 0 or alloc <= 1.0:
+            if price <= 0 or per_asset <= 1.0:
                 continue
-            res = self.execute_trade(product_id, "buy", alloc, price, "dca", _safe_int(candle.get("ts"), 0))
+            res = self.execute_trade(product_id, "buy", per_asset, price, "dca", _safe_int(candle.get("ts"), 0))
             if res:
-                self.dca_total_invested += alloc
+                self.dca_total_invested += per_asset
                 actions.append(res)
         return actions
 
@@ -567,6 +625,25 @@ class PortfolioBacktester:
 
         self._timeline = [_safe_int(row.get("ts"), 0) for row in btc_candles if _safe_int(row.get("ts"), 0) > 0]
         regime_counts = {"bull": 0, "neutral": 0, "caution": 0, "risk_off": 0}
+
+        first_ts = self._timeline[0] if self._timeline else 0
+        for product_id, cfg in self.config["core_assets"].items():
+            product_id_norm = _normalize_product_id(product_id)
+            target_weight = _safe_float(cfg.get("target_weight"), 0.0)
+            buy_value = self.cash * target_weight / max(0.01, 1.0 - _safe_float(self.config.get("cash_reserve"), 0.08))
+            buy_value = min(
+                buy_value,
+                self.cash - (
+                    _safe_float(self.config.get("starting_capital", 1000), 1000)
+                    * _safe_float(self.config.get("cash_reserve"), 0.08)
+                ),
+            )
+            if buy_value > 1.0:
+                candle = (self._candle_by_ts.get(product_id_norm) or {}).get(first_ts)
+                if isinstance(candle, dict):
+                    price = _safe_float(candle.get("close"), 0.0)
+                    if price > 0:
+                        self.execute_trade(product_id_norm, "buy", buy_value, price, "initial_allocation", first_ts)
 
         for bar_index, ts in enumerate(self._timeline):
             self._current_bar = bar_index

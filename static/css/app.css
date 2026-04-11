@@ -11458,7 +11458,7 @@ tbody tr:last-child td {
 }
 
 .hero-grid::before {
-  opacity: 0;
+  opacity: 1;
 }
 
 .hc-public-hero-inner,
@@ -11467,67 +11467,11 @@ tbody tr:last-child td {
   z-index: 2;
 }
 
-.hero-orbs {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.hero-orb {
-  --orb-parallax: 0px;
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.15;
-  animation: orbFloat 20s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-.hero-orb-1 {
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, #38bdf8, transparent 70%);
-  top: -200px;
-  left: -100px;
-  animation-duration: 25s;
-}
-
-.hero-orb-2 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, #818cf8, transparent 70%);
-  bottom: -100px;
-  right: -50px;
-  animation-duration: 18s;
-  animation-delay: -5s;
-}
-
-.hero-orb-3 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, #34d399, transparent 70%);
-  top: 40%;
-  left: 60%;
-  animation-duration: 22s;
-  animation-delay: -10s;
-}
-
-@keyframes orbFloat {
-  0%,
-  100% {
-    transform: translate3d(0, calc(var(--orb-parallax, 0px) + 0px), 0) scale(1);
-  }
-  25% {
-    transform: translate3d(40px, calc(var(--orb-parallax, 0px) - 60px), 0) scale(1.1);
-  }
-  50% {
-    transform: translate3d(-30px, calc(var(--orb-parallax, 0px) + 40px), 0) scale(0.95);
-  }
-  75% {
-    transform: translate3d(50px, calc(var(--orb-parallax, 0px) + 20px), 0) scale(1.05);
-  }
+.hc-public-hero-inner {
+  background: none;
+  border: 0;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .hero-gradient-text {
@@ -11560,29 +11504,59 @@ tbody tr:last-child td {
 
 .pillar-card {
   opacity: 0;
-  transform: perspective(1000px) rotateY(15deg) translateX(30px);
+  position: relative;
   transition: opacity 0.8s ease, transform 0.8s ease;
   will-change: transform, opacity;
 }
 
-.hc-reveal.visible .pillar-card {
-  opacity: 1;
-  transform: perspective(1000px) rotateY(0deg) translateX(0);
+.pillar-card:nth-child(1) {
+  transform: translateX(-60px) rotate(-3deg);
 }
 
-.hc-reveal.visible .pillar-card:nth-child(2) {
+.pillar-card:nth-child(2) {
+  transform: translateY(80px) scale(0.95);
   transition-delay: 200ms;
 }
 
-.hc-reveal.visible .pillar-card:nth-child(3) {
+.pillar-card:nth-child(3) {
+  transform: translateX(60px) rotate(3deg);
   transition-delay: 400ms;
 }
 
+.pillar-card.visible {
+  opacity: 1;
+  transform: translateX(0) translateY(0) rotate(0deg) scale(1);
+}
+
+.pillar-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent);
+  transform: scaleX(0);
+  transition: transform 1s ease 0.4s;
+}
+
+.pillar-card.visible::after {
+  transform: scaleX(1);
+}
+
 .console-frame {
-  transform: perspective(1200px) rotateX(8deg) rotateY(-3deg);
-  transition: transform 0.6s ease, box-shadow 0.6s ease;
+  opacity: 0;
+  filter: brightness(0.3);
+  transform: perspective(1200px) rotateX(10deg) scale(0.95);
+  transition: opacity 0.8s ease, filter 1.2s ease, transform 1s ease, box-shadow 0.6s ease;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(56, 189, 248, 0.08);
-  will-change: transform;
+  will-change: transform, opacity, filter;
+}
+
+.console-frame.visible {
+  opacity: 1;
+  filter: brightness(1);
+  transform: perspective(1200px) rotateX(4deg) scale(1);
 }
 
 .console-frame:hover {
@@ -11598,11 +11572,38 @@ tbody tr:last-child td {
   background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, #38bdf8, transparent);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 1.5s ease;
+  transition: transform 2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .workflow-connector.visible {
   transform: scaleX(1);
+}
+
+.workflow-card {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.workflow-card:nth-child(2) {
+  transition-delay: 0.5s;
+}
+
+.workflow-card:nth-child(3) {
+  transition-delay: 1s;
+}
+
+.workflow-card:nth-child(4) {
+  transition-delay: 1.5s;
+}
+
+.workflow-card:nth-child(5) {
+  transition-delay: 2s;
+}
+
+.workflow-card.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .workflow-step {
@@ -11632,23 +11633,22 @@ tbody tr:last-child td {
   }
 }
 
-.feature-card:nth-child(odd) {
-  animation: cardFloat 6s ease-in-out infinite;
+.feature-card {
+  opacity: 0;
+  transform: translateY(30px) scale(0.9);
+  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.feature-card:nth-child(even) {
-  animation: cardFloat 6s ease-in-out infinite reverse;
-  animation-delay: -3s;
-}
+.feature-card:nth-child(1) { transition-delay: 0ms; }
+.feature-card:nth-child(2) { transition-delay: 100ms; }
+.feature-card:nth-child(3) { transition-delay: 200ms; }
+.feature-card:nth-child(4) { transition-delay: 300ms; }
+.feature-card:nth-child(5) { transition-delay: 400ms; }
+.feature-card:nth-child(6) { transition-delay: 500ms; }
 
-@keyframes cardFloat {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
+.feature-card.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .scroll-indicator {
@@ -11668,33 +11668,39 @@ tbody tr:last-child td {
   }
 }
 
+@keyframes ctaPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+  }
+}
+
+.hc-public-cta-primary {
+  animation: ctaPulse 3s ease-in-out infinite;
+}
+
 @media (max-width: 960px) {
-  .hero-orb-1 {
-    width: 360px;
-    height: 360px;
-    top: -110px;
-    left: -80px;
-  }
-
-  .hero-orb-2 {
-    width: 280px;
-    height: 280px;
-  }
-
-  .hero-orb-3 {
-    width: 220px;
-    height: 220px;
-    left: 50%;
-  }
-
   .hero-stat-card:hover,
   .console-frame,
   .console-frame:hover {
     transform: none;
   }
 
-  .feature-card:nth-child(odd),
-  .feature-card:nth-child(even) {
-    animation-duration: 8s;
+  .workflow-card:nth-child(2),
+  .workflow-card:nth-child(3),
+  .workflow-card:nth-child(4),
+  .workflow-card:nth-child(5),
+  .feature-card:nth-child(1),
+  .feature-card:nth-child(2),
+  .feature-card:nth-child(3),
+  .feature-card:nth-child(4),
+  .feature-card:nth-child(5),
+  .feature-card:nth-child(6),
+  .pillar-card:nth-child(2),
+  .pillar-card:nth-child(3) {
+    transition-delay: 0ms;
   }
 }

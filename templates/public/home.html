@@ -2,11 +2,6 @@
 
 {% block content %}
 <section class="hc-public-hero hero-grid hc-reveal" id="top">
-  <div class="hero-orbs" aria-hidden="true">
-    <div class="hero-orb hero-orb-1"></div>
-    <div class="hero-orb hero-orb-2"></div>
-    <div class="hero-orb hero-orb-3"></div>
-  </div>
   <div class="hc-public-hero-inner">
     <div class="hero-badge hc-public-badge">Multi-Asset Trading Platform</div>
     <h1 class="hc-public-hero-title">Trade Smarter with <span class="hc-public-gradient hero-gradient-text">AI-Powered</span> Market Intelligence</h1>
@@ -181,21 +176,16 @@
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
         entry.target.classList.add('visible');
+        entry.target.querySelectorAll('.hc-reveal-child, .pillar-card, .workflow-card, .feature-card, .console-frame').forEach((child) => {
+          child.classList.add('visible');
+        });
         const connector = entry.target.querySelector('.workflow-connector');
         if (connector) connector.classList.add('visible');
       }
     });
-  }, { threshold: 0.18 });
+  }, { threshold: 0.15 });
 
   document.querySelectorAll('.hc-reveal').forEach((node) => observer.observe(node));
-
-  window.addEventListener('scroll', () => {
-    const scrollY = window.scrollY;
-    document.querySelectorAll('.hero-orb').forEach((orb, i) => {
-      const speed = 0.03 + (i * 0.015);
-      orb.style.setProperty('--orb-parallax', `${scrollY * speed}px`);
-    });
-  }, { passive: true });
 })();
 </script>
 {% endblock %}

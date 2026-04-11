@@ -803,7 +803,7 @@ def run_dip_detector():
         config = snapshot.get("config", {})
         regime = str(snapshot.get("market_regime", "neutral")).lower()
 
-        if regime not in ["neutral", "caution", "bull"]:
+        if regime == "risk_off":
             return {"ok": True, "actions": [], "regime": regime, "reason": "regime_blocked"}
 
         core_assets = config.get("core_assets", {})
@@ -863,16 +863,30 @@ def run_dip_detector():
 
                 _log(f"dip check {product_id}: 24h_change={change_24h*100:.1f}% rsi={rsi_approx:.0f}")
 
-                if change_24h < -0.05 and rsi_approx < 35:
+                if change_24h < -0.03 and rsi_approx < 40:
                     normal_dca = total_value * float(config.get("dca_amount_pct", 0.02) or 0.02)
-                    dip_buy_amount = min(normal_dca * 3, available * 0.25)
+                    # Tiered multiplier: bigger dip = bigger buy
+                    if change_24h < -0.10:
+                        dip_multiplier = 6.0   # -10%+ drop: maximum aggression
+                        cash_cap = 0.50
+                    elif change_24h < -0.07:
+                        dip_multiplier = 5.0   # -7% drop
+                        cash_cap = 0.40
+                    elif change_24h < -0.05:
+                        dip_multiplier = 4.0   # -5% drop
+                        cash_cap = 0.35
+                    else:
+                        dip_multiplier = 3.0   # -3% drop: standard
+                        cash_cap = 0.25
+                    dip_buy_amount = min(normal_dca * dip_multiplier, available * cash_cap)
 
                     if dip_buy_amount < 5:
                         continue
 
                     _log(
                         f"DIP BUY triggered {product_id} drop={change_24h*100:.1f}% "
-                        f"rsi={rsi_approx:.0f} amount=${dip_buy_amount:.2f}"
+                        f"rsi={rsi_approx:.0f} multiplier={dip_multiplier:.0f}x "
+                        f"amount=${dip_buy_amount:.2f}"
                     )
 
                     result = dispatch_signal_action(

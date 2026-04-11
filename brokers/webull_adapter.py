@@ -13,19 +13,19 @@ load_runtime_env(override=True)
 try:
     from webull.core.client import ApiClient
     from webull.trade.trade_client import TradeClient
-    from webull.quotes.quotes_client import QuotesClient
+    from webull.data.data_client import DataClient
     _WEBULL_SDK_ERROR = None
 except Exception as exc:
     ApiClient = None
     TradeClient = None
-    QuotesClient = None
+    DataClient = None
     _WEBULL_SDK_ERROR = exc
 
 _REQUEST_TIMEOUT_SEC = 10
 _SESSION_TTL_SEC = 24 * 60 * 60
 _SHARED_API_CLIENT = None
 _SHARED_TRADE_CLIENT = None
-_SHARED_QUOTES_CLIENT = None
+_SHARED_DATA_CLIENT = None
 _SHARED_SESSION_TS = 0.0
 _SHARED_LOCK = threading.RLock()
 
@@ -141,17 +141,17 @@ class WebullAdapter(BrokerAdapter):
     def _ensure_ready(self):
         if not self.enabled:
             raise RuntimeError("webull_disabled")
-        if _WEBULL_SDK_ERROR is not None or ApiClient is None or TradeClient is None or QuotesClient is None:
+        if _WEBULL_SDK_ERROR is not None or ApiClient is None or TradeClient is None or DataClient is None:
             raise RuntimeError(f"webull_openapi_sdk_unavailable:{_WEBULL_SDK_ERROR}")
         if not self.app_key or not self.app_secret:
             raise RuntimeError("missing_webull_openapi_credentials")
 
     def _reset_clients(self):
-        global _SHARED_API_CLIENT, _SHARED_TRADE_CLIENT, _SHARED_QUOTES_CLIENT, _SHARED_SESSION_TS
+        global _SHARED_API_CLIENT, _SHARED_TRADE_CLIENT, _SHARED_DATA_CLIENT, _SHARED_SESSION_TS
         with _SHARED_LOCK:
             _SHARED_API_CLIENT = None
             _SHARED_TRADE_CLIENT = None
-            _SHARED_QUOTES_CLIENT = None
+            _SHARED_DATA_CLIENT = None
             _SHARED_SESSION_TS = 0.0
 
     def _build_clients(self):
@@ -165,28 +165,28 @@ class WebullAdapter(BrokerAdapter):
         except Exception:
             pass
         trade_client = TradeClient(api_client)
-        quotes_client = QuotesClient(api_client)
-        return api_client, trade_client, quotes_client
+        data_client = DataClient(api_client)
+        return api_client, trade_client, data_client
 
     def _get_clients(self, force_reset=False):
-        global _SHARED_API_CLIENT, _SHARED_TRADE_CLIENT, _SHARED_QUOTES_CLIENT, _SHARED_SESSION_TS
+        global _SHARED_API_CLIENT, _SHARED_TRADE_CLIENT, _SHARED_DATA_CLIENT, _SHARED_SESSION_TS
         self._ensure_ready()
 
         with _SHARED_LOCK:
             is_fresh = (
                 _SHARED_API_CLIENT is not None
                 and _SHARED_TRADE_CLIENT is not None
-                and _SHARED_QUOTES_CLIENT is not None
+                and _SHARED_DATA_CLIENT is not None
                 and not force_reset
                 and (time.time() - _SHARED_SESSION_TS) < _SESSION_TTL_SEC
             )
             if is_fresh:
-                return _SHARED_API_CLIENT, _SHARED_TRADE_CLIENT, _SHARED_QUOTES_CLIENT
+                return _SHARED_API_CLIENT, _SHARED_TRADE_CLIENT, _SHARED_DATA_CLIENT
 
-            api_client, trade_client, quotes_client = self._build_clients()
+            api_client, trade_client, data_client = self._build_clients()
             _SHARED_API_CLIENT = api_client
             _SHARED_TRADE_CLIENT = trade_client
-            _SHARED_QUOTES_CLIENT = quotes_client
+            _SHARED_DATA_CLIENT = data_client
             _SHARED_SESSION_TS = time.time()
             _log_webull_event(
                 "session_ready",
@@ -196,7 +196,7 @@ class WebullAdapter(BrokerAdapter):
                     "token_path": "conf/token.txt",
                 },
             )
-            return _SHARED_API_CLIENT, _SHARED_TRADE_CLIENT, _SHARED_QUOTES_CLIENT
+            return _SHARED_API_CLIENT, _SHARED_TRADE_CLIENT, _SHARED_DATA_CLIENT
 
     def _call_first(self, client, dotted_paths, call_variants=None):
         call_variants = call_variants or [({}, ())]
@@ -236,7 +236,7 @@ class WebullAdapter(BrokerAdapter):
         if self._account_id:
             return self._account_id
 
-        _api_client, trade_client, _quotes_client = self._get_clients(force_reset=False)
+        _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
         payload = self._call_first(
             trade_client,
             [
@@ -286,7 +286,7 @@ class WebullAdapter(BrokerAdapter):
 
     def get_account_info(self) -> dict:
         try:
-            _api_client, trade_client, _quotes_client = self._get_clients(force_reset=False)
+            _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
             payload = self._call_first(
                 trade_client,
@@ -376,9 +376,9 @@ class WebullAdapter(BrokerAdapter):
         if not symbol:
             return broker_result(False, broker=self.name, mode=self._mode(), error="missing_symbol", symbol=symbol)
         try:
-            _api_client, _trade_client, quotes_client = self._get_clients(force_reset=False)
+            _api_client, _trade_client, data_client = self._get_clients(force_reset=False)
             payload = self._call_first(
-                quotes_client,
+                data_client,
                 [
                     "stock.get_quote",
                     "stock.get_snapshot",
@@ -416,9 +416,9 @@ class WebullAdapter(BrokerAdapter):
         if not symbol:
             return broker_result(False, broker=self.name, mode=self._mode(), error="missing_symbol", symbol=symbol, expirations=[], chains={})
         try:
-            _api_client, _trade_client, quotes_client = self._get_clients(force_reset=False)
+            _api_client, _trade_client, data_client = self._get_clients(force_reset=False)
             payload = self._call_first(
-                quotes_client,
+                data_client,
                 [
                     "option.get_option_chain",
                     "option.get_chain",
@@ -481,7 +481,7 @@ class WebullAdapter(BrokerAdapter):
         if not symbol or side not in {"BUY", "SELL"} or qty <= 0:
             return broker_result(False, broker=self.name, mode=self._mode(), error="invalid_stock_order")
         try:
-            _api_client, trade_client, _quotes_client = self._get_clients(force_reset=False)
+            _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
             payload = self._call_first(
                 trade_client,
@@ -540,7 +540,7 @@ class WebullAdapter(BrokerAdapter):
         if not symbol or side not in {"BUY", "SELL"} or qty <= 0:
             return broker_result(False, broker=self.name, mode=self._mode(), error="invalid_options_order")
         try:
-            _api_client, trade_client, _quotes_client = self._get_clients(force_reset=False)
+            _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
             payload = self._call_first(
                 trade_client,
@@ -586,7 +586,7 @@ class WebullAdapter(BrokerAdapter):
         if not order_id:
             return broker_result(False, broker=self.name, mode=self._mode(), error="missing_order_id", order_id=order_id)
         try:
-            _api_client, trade_client, _quotes_client = self._get_clients(force_reset=False)
+            _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             payload = self._call_first(
                 trade_client,
                 [
@@ -646,9 +646,9 @@ class WebullAdapter(BrokerAdapter):
 
     def get_watchlist(self) -> list:
         try:
-            _api_client, _trade_client, quotes_client = self._get_clients(force_reset=False)
+            _api_client, _trade_client, data_client = self._get_clients(force_reset=False)
             payload = self._call_first(
-                quotes_client,
+                data_client,
                 [
                     "watchlist.get_watchlist",
                     "watchlist.list_watchlists",

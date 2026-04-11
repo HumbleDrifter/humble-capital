@@ -133,7 +133,7 @@ class WebullAdapter(BrokerAdapter):
         self.region = "us"
         self.endpoint = "api.webull.com"
         self._lock = threading.RLock()
-        self._account_id = None
+        self.account_id = None
 
     def _mode(self):
         return "paper" if self.paper_trading else "live"
@@ -233,8 +233,8 @@ class WebullAdapter(BrokerAdapter):
         return accounts
 
     def _get_account_id(self):
-        if self._account_id:
-            return self._account_id
+        if self.account_id:
+            return self.account_id
 
         _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
         payload = self._call_first(
@@ -249,9 +249,28 @@ class WebullAdapter(BrokerAdapter):
         accounts = self._extract_accounts(payload)
         if not accounts:
             raise RuntimeError("webull_account_list_empty_or_unapproved")
-        row = accounts[0]
-        self._account_id = str(row.get("accountId") or row.get("account_id") or row.get("id") or "").strip()
-        return self._account_id
+
+        preferred = None
+        for row in accounts:
+            account_class = str(row.get("account_class") or row.get("accountClass") or "").strip().upper()
+            if account_class == "INDIVIDUAL_CASH":
+                preferred = row
+                break
+        if preferred is None:
+            for row in accounts:
+                account_type = str(row.get("account_type") or row.get("accountType") or "").strip().upper()
+                if account_type == "CASH":
+                    preferred = row
+                    break
+        if preferred is None:
+            preferred = accounts[0]
+
+        self.account_id = str(
+            preferred.get("accountId") or preferred.get("account_id") or preferred.get("id") or ""
+        ).strip()
+        if not self.account_id:
+            raise RuntimeError("webull_account_id_missing")
+        return self.account_id
 
     def _extract_positions(self, payload):
         rows = _flatten_candidates(payload)

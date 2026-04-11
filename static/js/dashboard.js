@@ -673,20 +673,34 @@
       const snapshot = resp.snapshot || {};
       const summary = resp.summary || {};
       snapshot.futures = { positions: [], balance: {} };
+      // Clear any stale Webull data so holdings show loading state
+      if (snapshot.brokers) {
+        snapshot.brokers.webull = { stocks: [], options: [], balance: {} };
+      }
 
       renderDashboardSnapshot(snapshot, summary);
 
-      // --- PHASE 2: slow data — patch in Webull + futures in background ---
-      const [futuresPositionsResp, futuresBalanceResp] = await Promise.all([
+      // --- PHASE 2: slow data — Webull + futures in parallel ---
+      const [futuresPositionsResp, futuresBalanceResp, webullResp] = await Promise.all([
         fetchJson("/api/futures/positions").catch(() => ({ positions: [] })),
-        fetchJson("/api/futures/balance").catch(() => ({ balance: {} }))
+        fetchJson("/api/futures/balance").catch(() => ({ balance: {} })),
+        fetchJson("/api/webull/positions").catch(() => ({ stocks: [], options: [], balance: {} }))
       ]);
       snapshot.futures = {
         positions: Array.isArray(futuresPositionsResp?.positions) ? futuresPositionsResp.positions : [],
         balance: futuresBalanceResp?.balance || {}
       };
+      if (!snapshot.brokers) snapshot.brokers = {};
+      snapshot.brokers.webull = {
+        stocks: Array.isArray(webullResp?.stocks) ? webullResp.stocks : [],
+        options: Array.isArray(webullResp?.options) ? webullResp.options : [],
+        balance: webullResp?.balance || {}
+      };
+      // Patch webull value into snapshot totals
+      const webullValue = [...(snapshot.brokers.webull.stocks || []), ...(snapshot.brokers.webull.options || [])]
+        .reduce((sum, row) => sum + Number(row.market_value || 0), 0);
+      if (webullValue > 0) snapshot.webull_value_usd = webullValue;
 
-      // Re-render with full data now that slow calls are done
       renderDashboardSnapshot(snapshot, summary);
 
     } catch (error) {

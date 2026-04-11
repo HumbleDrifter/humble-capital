@@ -3582,6 +3582,33 @@ def api_options_recommend():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+@api_bp.route("/api/webull/positions", methods=["GET"])
+@require_api_auth
+def api_webull_positions():
+    try:
+        adapter = WebullAdapter()
+        all_positions = list(adapter.get_positions() or [])
+        stocks = [row for row in all_positions if str(row.get("asset_type") or "").lower() != "option"]
+        options = [row for row in all_positions if str(row.get("asset_type") or "").lower() == "option"]
+        balance = {}
+        try:
+            balance_getter = getattr(adapter, "get_balance", None)
+            if callable(balance_getter):
+                balance = balance_getter() or {}
+            else:
+                balance = adapter.get_account_info() or {}
+        except Exception:
+            pass
+        return jsonify({
+            "ok": True,
+            "stocks": stocks,
+            "options": options,
+            "balance": balance,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc), "stocks": [], "options": [], "balance": {}}), 500
+
+
 @api_bp.route("/api/options/positions", methods=["GET"])
 @require_api_auth
 def api_options_positions():

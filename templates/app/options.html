@@ -1,0 +1,568 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="opt-shell">
+  <section class="opt-header opt-observe">
+    <div class="opt-header-copy opt-reveal">
+      <div class="opt-kicker">Options Screener</div>
+      <h2 class="opt-title">Screen high-probability premium trades, inspect chains, and stage Webull execution from one workspace.</h2>
+      <p class="opt-subtitle" id="optMeta">Preparing options scanner...</p>
+    </div>
+  </section>
+
+  <section class="opt-controls opt-observe">
+    <div class="hc-chart-section opt-reveal">
+      <div class="opt-section-head">
+        <div>
+          <h2 class="opt-section-title">Scanner Controls</h2>
+          <p class="opt-section-subtitle">Filter for the strategies and risk posture you want to see.</p>
+        </div>
+      </div>
+      <div class="opt-controls-grid">
+        <div class="form-card">
+          <label>Strategies</label>
+          <div class="opt-check-grid">
+            <label class="opt-check"><input id="optCoveredCalls" type="checkbox" checked> Covered Calls</label>
+            <label class="opt-check"><input id="optCashSecuredPuts" type="checkbox" checked> Cash-Secured Puts</label>
+            <label class="opt-check"><input id="optCreditSpreads" type="checkbox" checked> Credit Spreads</label>
+            <label class="opt-check"><input id="optIronCondors" type="checkbox" checked> Iron Condors</label>
+          </div>
+        </div>
+        <div class="form-card">
+          <label for="optCapital">Available Capital</label>
+          <input id="optCapital" class="form-input" type="number" min="0" step="100" value="5000">
+          <div class="field-help">Used for personalized recommendations and capital-aware screening.</div>
+        </div>
+        <div class="form-card">
+          <label>Risk Tolerance</label>
+          <div class="hc-chart-range-group">
+            <button class="hc-range-btn active opt-risk-btn" data-risk="conservative" type="button">Conservative</button>
+            <button class="hc-range-btn opt-risk-btn" data-risk="moderate" type="button">Moderate</button>
+            <button class="hc-range-btn opt-risk-btn" data-risk="aggressive" type="button">Aggressive</button>
+          </div>
+          <div class="field-help">Filters which strategies show up in recommendations.</div>
+        </div>
+        <div class="form-card">
+          <label for="optSymbols">Symbol Search</label>
+          <input id="optSymbols" class="form-input" type="text" placeholder="AAPL, NVDA, MSFT">
+          <div class="field-help">Optional comma-separated symbols. Leave blank for the full watchlist.</div>
+        </div>
+      </div>
+      <div class="opt-actions">
+        <button class="btn btn-primary" id="optScanBtn" type="button">Scan Universe</button>
+        <button class="btn btn-secondary" id="optRecommendBtn" type="button">Get Recommendations</button>
+        <span class="opt-run-status" id="optRunStatus">Ready.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="opt-overview opt-observe">
+    <div class="opt-overview-grid">
+      <div class="hc-chart-section opt-reveal">
+        <div class="opt-section-head">
+          <div>
+            <h2 class="opt-section-title">Market Overview</h2>
+            <p class="opt-section-subtitle">Highest-IV names, VIX context, and the current best setup.</p>
+          </div>
+        </div>
+        <div class="opt-kpi-grid">
+          <div class="hc-context-card">
+            <div class="hc-context-label">VIX Proxy</div>
+            <div class="hc-context-value" id="optVixValue">--</div>
+            <div class="hc-context-detail" id="optVixDetail">Loading market volatility...</div>
+          </div>
+          <div class="hc-context-card">
+            <div class="hc-context-label">Best Opportunity</div>
+            <div class="hc-context-value" id="optBestSymbol">--</div>
+            <div class="hc-context-detail" id="optBestDetail">Scan to surface trade ideas</div>
+          </div>
+        </div>
+        <div class="opt-iv-list" id="optTopIvList">
+          <div class="hc-empty-card">Loading IV rank leaders...</div>
+        </div>
+      </div>
+      <div class="hc-chart-section opt-reveal">
+        <div class="opt-section-head">
+          <div>
+            <h2 class="opt-section-title">Active Positions</h2>
+            <p class="opt-section-subtitle">Live option positions and Greek exposure from Webull.</p>
+          </div>
+        </div>
+        <div class="opt-kpi-grid">
+          <div class="hc-context-card">
+            <div class="hc-context-label">Portfolio Delta</div>
+            <div class="hc-context-value" id="optPosDelta">0.00</div>
+          </div>
+          <div class="hc-context-card">
+            <div class="hc-context-label">Portfolio Theta</div>
+            <div class="hc-context-value" id="optPosTheta">0.00</div>
+          </div>
+        </div>
+        <div class="opt-position-feed" id="optPositionsHost">
+          <div class="hc-empty-card">Loading positions...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="opt-results opt-observe">
+    <div class="opt-section-head opt-reveal">
+      <div>
+        <h2 class="opt-section-title">Scan Results</h2>
+        <p class="opt-section-subtitle" id="optResultsMeta">No scan results yet.</p>
+      </div>
+    </div>
+    <div class="opt-card-grid" id="optResultsGrid">
+      <div class="hc-empty-card">Run a scan to see scored opportunities.</div>
+    </div>
+  </section>
+
+  <section class="opt-chain-section opt-observe">
+    <div class="hc-chart-section opt-reveal">
+      <div class="opt-section-head">
+        <div>
+          <h2 class="opt-section-title">Option Chain Viewer</h2>
+          <p class="opt-section-subtitle" id="optChainMeta">Choose an opportunity or symbol to inspect the chain.</p>
+        </div>
+      </div>
+      <div class="opt-chain-toolbar">
+        <input id="optChainSymbol" class="form-input" type="text" placeholder="Symbol">
+        <select id="optChainExpiration" class="select"></select>
+        <button class="btn btn-secondary" id="optLoadChainBtn" type="button">Load Chain</button>
+      </div>
+      <div class="opt-chain-table-wrap" id="optChainHost">
+        <div class="hc-empty-card">Option chain data will appear here.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<dialog id="optTradeDialog" class="opt-dialog">
+  <form method="dialog" class="opt-dialog-card">
+    <div class="opt-dialog-head">
+      <h3 class="opt-dialog-title">Trade Confirmation</h3>
+      <button class="btn btn-secondary" value="cancel">Close</button>
+    </div>
+    <div class="opt-dialog-body" id="optTradeSummary">No trade staged.</div>
+    <div class="opt-dialog-actions">
+      <button class="btn btn-primary" id="optTradeConfirmBtn" type="button">Submit Trade</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const API_SECRET = {{ api_secret|tojson }};
+  const DEFAULT_SYMBOLS = ["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","AMD","SPY","QQQ"];
+  let activeRisk = "conservative";
+  let lastScan = [];
+  let stagedTrade = null;
+  let currentChain = null;
+
+  function authUrl(path) {
+    if (!API_SECRET) return path;
+    const sep = path.includes("?") ? "&" : "?";
+    return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
+  }
+
+  async function fetchJson(path, options = {}) {
+    const response = await fetch(authUrl(path), {
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      ...options,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    return data;
+  }
+
+  function fmtUsd(value) {
+    return Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  }
+
+  function fmtPct(value) {
+    return `${Number(value || 0).toFixed(1)}%`;
+  }
+
+  function esc(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function strategiesFromUI() {
+    const map = [
+      ["optCoveredCalls", "covered_calls"],
+      ["optCashSecuredPuts", "cash_secured_puts"],
+      ["optCreditSpreads", "credit_spreads"],
+      ["optIronCondors", "iron_condors"],
+    ];
+    return map.filter(([id]) => document.getElementById(id)?.checked).map(([, value]) => value);
+  }
+
+  function symbolsFromUI() {
+    const raw = document.getElementById("optSymbols")?.value || "";
+    return raw.split(",").map((value) => value.trim().toUpperCase()).filter(Boolean);
+  }
+
+  function setRisk(value) {
+    activeRisk = value;
+    document.querySelectorAll(".opt-risk-btn").forEach((btn) => {
+      const active = btn.dataset.risk === value;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function renderTopIv(items) {
+    const host = document.getElementById("optTopIvList");
+    if (!host) return;
+    if (!items.length) {
+      host.innerHTML = `<div class="hc-empty-card">No IV rank leaders available yet.</div>`;
+      return;
+    }
+    host.innerHTML = items.map((item, index) => `
+      <article class="opt-iv-card">
+        <div class="opt-iv-rank">#${index + 1}</div>
+        <div class="opt-iv-copy">
+          <div class="opt-iv-symbol">${esc(item.symbol)}</div>
+          <div class="opt-iv-meta">IV Rank ${fmtPct(item.iv_rank)}</div>
+        </div>
+        <div class="opt-iv-score">${item.iv_rank.toFixed(1)}</div>
+      </article>
+    `).join("");
+  }
+
+  function scoreTone(score) {
+    if (score >= 80) return "high";
+    if (score >= 60) return "mid";
+    return "low";
+  }
+
+  function openTradeDialog(opportunity) {
+    stagedTrade = opportunity;
+    const summary = document.getElementById("optTradeSummary");
+    if (summary) {
+      summary.innerHTML = `
+        <div class="opt-trade-review">
+          <div><strong>${esc(opportunity.symbol)}</strong> · ${esc(opportunity.strategy)}</div>
+          <div>Expiration: ${esc(opportunity.expiration || "—")}</div>
+          <div>Details: ${esc(JSON.stringify(opportunity.details || {}))}</div>
+        </div>
+      `;
+    }
+    document.getElementById("optTradeDialog")?.showModal();
+  }
+
+  function renderResults(opportunities) {
+    const grid = document.getElementById("optResultsGrid");
+    const meta = document.getElementById("optResultsMeta");
+    if (meta) meta.textContent = opportunities.length ? `${opportunities.length} opportunity cards sorted by score.` : "No matching opportunities.";
+    if (!grid) return;
+    if (!opportunities.length) {
+      grid.innerHTML = `<div class="hc-empty-card">No opportunities matched the current filters.</div>`;
+      return;
+    }
+    grid.innerHTML = opportunities.map((opp, index) => {
+      const tone = scoreTone(opp.score || 0);
+      const details = opp.details || {};
+      return `
+        <article class="hc-pos-card opt-card opt-card-${tone}">
+          <div class="opt-card-top">
+            <div>
+              <div class="opt-card-title">${esc(opp.symbol)} <span class="opt-strategy-badge">${esc(opp.strategy)}</span></div>
+              <div class="opt-card-subtitle">${esc(opp.expiration || "No expiration")} · ${esc(details.strike || details.short_strike || "—")}</div>
+            </div>
+            <div class="opt-score-box">${Math.round(Number(opp.score || 0))}</div>
+          </div>
+          <div class="opt-score-bar"><span style="width:${Math.max(0, Math.min(100, Number(opp.score || 0)))}%"></span></div>
+          <div class="opt-metric-grid">
+            <div><span>Yield</span><strong>${fmtPct(opp.annualized_yield || 0)}</strong></div>
+            <div><span>POP</span><strong>${fmtPct((opp.prob_profit || 0) * 100)}</strong></div>
+            <div><span>IV Rank</span><strong>${fmtPct(opp.iv_rank || 0)}</strong></div>
+            <div><span>Premium</span><strong>${fmtUsd(details.premium || details.credit || 0)}</strong></div>
+          </div>
+          <div class="opt-card-actions">
+            <button class="btn btn-secondary opt-view-chain" data-symbol="${esc(opp.symbol)}" data-expiration="${esc(opp.expiration || "")}" type="button">View Chain</button>
+            <button class="btn btn-primary opt-stage-trade" data-index="${index}" type="button">Trade</button>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    grid.querySelectorAll(".opt-view-chain").forEach((btn) => {
+      btn.addEventListener("click", () => loadChain(btn.dataset.symbol, btn.dataset.expiration));
+    });
+    grid.querySelectorAll(".opt-stage-trade").forEach((btn) => {
+      btn.addEventListener("click", () => openTradeDialog(opportunities[Number(btn.dataset.index)]));
+    });
+  }
+
+  function renderPositions(rows) {
+    const host = document.getElementById("optPositionsHost");
+    const deltaEl = document.getElementById("optPosDelta");
+    const thetaEl = document.getElementById("optPosTheta");
+    if (!host) return;
+    let delta = 0;
+    let theta = 0;
+    if (!rows.length) {
+      host.innerHTML = `<div class="hc-empty-card">No live options positions detected.</div>`;
+      if (deltaEl) deltaEl.textContent = "0.00";
+      if (thetaEl) thetaEl.textContent = "0.00";
+      return;
+    }
+    host.innerHTML = rows.map((row) => {
+      const pnl = Number(row.unrealized_pnl || 0);
+      delta += Number(row.delta || 0);
+      theta += Number(row.theta || 0);
+      const dteText = row.expiration ? `${Math.max(0, Math.ceil((new Date(row.expiration) - new Date()) / 86400000))} DTE` : "Open";
+      return `
+        <article class="opt-position-card">
+          <div>
+            <div class="opt-position-title">${esc(row.symbol || "Unknown")}</div>
+            <div class="opt-position-meta">${esc(dteText)} · Qty ${esc(row.qty)}</div>
+          </div>
+          <div class="opt-position-right">
+            <div class="opt-position-value">${fmtUsd(row.market_value || 0)}</div>
+            <div class="opt-position-pnl ${pnl >= 0 ? "positive" : "negative"}">${fmtUsd(pnl)}</div>
+          </div>
+        </article>
+      `;
+    }).join("");
+    if (deltaEl) deltaEl.textContent = Number(delta).toFixed(2);
+    if (thetaEl) thetaEl.textContent = Number(theta).toFixed(2);
+  }
+
+  function classifyMoneyness(strike, price, type) {
+    if (!price || !strike) return "";
+    if (Math.abs(strike - price) / price < 0.01) return "atm";
+    if (type === "call") return strike < price ? "itm" : "otm";
+    return strike > price ? "itm" : "otm";
+  }
+
+  async function loadChain(symbol, expiration) {
+    if (!symbol) return;
+    const symbolInput = document.getElementById("optChainSymbol");
+    const expSelect = document.getElementById("optChainExpiration");
+    const meta = document.getElementById("optChainMeta");
+    if (symbolInput) symbolInput.value = symbol;
+    if (meta) meta.textContent = `Loading ${symbol} chain...`;
+
+    try {
+      const expData = await fetchJson(`/api/options/expirations?symbol=${encodeURIComponent(symbol)}`);
+      if (expSelect) {
+        expSelect.innerHTML = (expData.expirations || []).map((exp) => `<option value="${esc(exp)}">${esc(exp)}</option>`).join("");
+        if (expiration) expSelect.value = expiration;
+      }
+      const selectedExpiration = expiration || expSelect?.value || "";
+      const chain = await fetchJson(`/api/options/chain?symbol=${encodeURIComponent(symbol)}&expiration=${encodeURIComponent(selectedExpiration)}`);
+      currentChain = chain;
+      if (meta) meta.textContent = `${symbol} · ${selectedExpiration} · Underlying ${fmtUsd(chain.underlying_price || 0)}`;
+      renderChain(chain, selectedExpiration);
+    } catch (error) {
+      if (meta) meta.textContent = `Chain load failed: ${error.message}`;
+      document.getElementById("optChainHost").innerHTML = `<div class="hc-empty-card">Chain load failed.</div>`;
+    }
+  }
+
+  function renderChain(chain, expiration) {
+    const host = document.getElementById("optChainHost");
+    if (!host) return;
+    const slice = (chain.chains || {})[expiration] || {};
+    const calls = slice.calls || [];
+    const puts = slice.puts || [];
+    const byStrike = new Map();
+    calls.forEach((row) => byStrike.set(row.strike, { ...(byStrike.get(row.strike) || {}), call: row }));
+    puts.forEach((row) => byStrike.set(row.strike, { ...(byStrike.get(row.strike) || {}), put: row }));
+    const price = Number(chain.underlying_price || 0);
+    const strikes = [...byStrike.keys()].sort((a, b) => a - b);
+    host.innerHTML = `
+      <table class="opt-chain-table">
+        <thead>
+          <tr>
+            <th colspan="5">Calls</th>
+            <th>Strike</th>
+            <th colspan="5">Puts</th>
+          </tr>
+          <tr>
+            <th>Bid</th><th>Ask</th><th>Delta</th><th>Theta</th><th>OI</th>
+            <th>Strike</th>
+            <th>Bid</th><th>Ask</th><th>Delta</th><th>Theta</th><th>OI</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${strikes.map((strike) => {
+            const row = byStrike.get(strike) || {};
+            const call = row.call || {};
+            const put = row.put || {};
+            const callClass = classifyMoneyness(Number(strike), price, "call");
+            const putClass = classifyMoneyness(Number(strike), price, "put");
+            return `
+              <tr>
+                <td class="${callClass}">${esc(call.bid ?? "—")}</td>
+                <td class="${callClass}">${esc(call.ask ?? "—")}</td>
+                <td class="${callClass}">${Number(call.delta || 0).toFixed(2)}</td>
+                <td class="${callClass}">${Number(call.theta || 0).toFixed(3)}</td>
+                <td class="${callClass}">${esc(call.open_interest ?? "—")}</td>
+                <td class="opt-chain-strike ${Math.abs(Number(strike) - price) / Math.max(price, 1) < 0.01 ? "atm" : ""}">${Number(strike).toFixed(2)}</td>
+                <td class="${putClass}">${esc(put.bid ?? "—")}</td>
+                <td class="${putClass}">${esc(put.ask ?? "—")}</td>
+                <td class="${putClass}">${Number(put.delta || 0).toFixed(2)}</td>
+                <td class="${putClass}">${Number(put.theta || 0).toFixed(3)}</td>
+                <td class="${putClass}">${esc(put.open_interest ?? "—")}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  async function runScan() {
+    const status = document.getElementById("optRunStatus");
+    if (status) status.textContent = "Scanning universe...";
+    try {
+      const result = await fetchJson("/api/options/scan", {
+        method: "POST",
+        body: JSON.stringify({
+          symbols: symbolsFromUI(),
+          strategies: strategiesFromUI(),
+          min_score: 0,
+          max_results: 24,
+        }),
+      });
+      lastScan = result.opportunities || [];
+      renderResults(lastScan);
+      renderTopIv(
+        [...lastScan]
+          .sort((a, b) => Number(b.iv_rank || 0) - Number(a.iv_rank || 0))
+          .slice(0, 5)
+          .map((item) => ({ symbol: item.symbol, iv_rank: Number(item.iv_rank || 0) }))
+      );
+      const best = lastScan[0];
+      document.getElementById("optBestSymbol").textContent = best ? best.symbol : "--";
+      document.getElementById("optBestDetail").textContent = best ? `${best.strategy} · score ${Math.round(Number(best.score || 0))}` : "No opportunities found";
+      if (status) status.textContent = `${lastScan.length} opportunities found.`;
+    } catch (error) {
+      if (status) status.textContent = `Scan failed: ${error.message}`;
+      renderResults([]);
+    }
+  }
+
+  async function runRecommendation() {
+    const status = document.getElementById("optRunStatus");
+    if (status) status.textContent = "Building recommendations...";
+    try {
+      const result = await fetchJson("/api/options/recommend", {
+        method: "POST",
+        body: JSON.stringify({
+          capital: Number(document.getElementById("optCapital")?.value || 0),
+          risk_tolerance: activeRisk,
+        }),
+      });
+      lastScan = result.recommendations || [];
+      renderResults(lastScan.map((row) => ({
+        ...row,
+        details: row.order_details || {},
+        score: row.score || 0,
+      })));
+      if (status) status.textContent = `${lastScan.length} recommendations ready.`;
+    } catch (error) {
+      if (status) status.textContent = `Recommendation failed: ${error.message}`;
+    }
+  }
+
+  async function loadOverview() {
+    try {
+      const quick = await fetchJson("/api/options/scan/quick");
+      const opps = quick.opportunities || [];
+      renderTopIv(
+        [...opps]
+          .sort((a, b) => Number(b.iv_rank || 0) - Number(a.iv_rank || 0))
+          .slice(0, 5)
+          .map((item) => ({ symbol: item.symbol, iv_rank: Number(item.iv_rank || 0) }))
+      );
+      const best = opps[0];
+      document.getElementById("optBestSymbol").textContent = best ? best.symbol : "--";
+      document.getElementById("optBestDetail").textContent = best ? `${best.strategy} · ${fmtPct(best.annualized_yield || 0)} annualized` : "No quick opportunities";
+    } catch (error) {
+      document.getElementById("optBestDetail").textContent = `Overview unavailable: ${error.message}`;
+    }
+
+    try {
+      const vix = await fetchJson("/api/options/iv-rank?symbol=SPY");
+      document.getElementById("optVixValue").textContent = fmtPct(vix.iv_rank || 0);
+      document.getElementById("optVixDetail").textContent = `SPY current IV ${(vix.current_iv || 0).toFixed(2)}`;
+    } catch (error) {
+      document.getElementById("optVixDetail").textContent = "VIX proxy unavailable";
+    }
+
+    try {
+      const pos = await fetchJson("/api/options/positions");
+      renderPositions(pos.positions || []);
+    } catch (error) {
+      renderPositions([]);
+    }
+  }
+
+  function buildTradePayload(opportunity) {
+    const details = opportunity.details || {};
+    const strategy = String(opportunity.strategy || "").toLowerCase();
+    const payload = {
+      symbol: opportunity.symbol,
+      strategy,
+      expiration: opportunity.expiration,
+      qty: 1,
+      order_type: "LMT",
+      limit_price: details.premium || details.credit || 0,
+    };
+    if (details.strike) payload.strike = details.strike;
+    if (details.short_strike) payload.strike = details.short_strike;
+    return payload;
+  }
+
+  async function submitTrade() {
+    if (!stagedTrade) return;
+    const btn = document.getElementById("optTradeConfirmBtn");
+    if (btn) btn.disabled = true;
+    try {
+      const result = await fetchJson("/api/options/trade", {
+        method: "POST",
+        body: JSON.stringify(buildTradePayload(stagedTrade)),
+      });
+      const summary = document.getElementById("optTradeSummary");
+      if (summary) summary.innerHTML = `<div class="opt-trade-review">Submitted. Order ID: ${esc(result.order_id || "pending")}</div>`;
+    } catch (error) {
+      const summary = document.getElementById("optTradeSummary");
+      if (summary) summary.innerHTML = `<div class="opt-trade-review">Trade failed: ${esc(error.message)}</div>`;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function bindUI() {
+    document.querySelectorAll(".opt-risk-btn").forEach((btn) => btn.addEventListener("click", () => setRisk(btn.dataset.risk || "conservative")));
+    document.getElementById("optScanBtn")?.addEventListener("click", runScan);
+    document.getElementById("optRecommendBtn")?.addEventListener("click", runRecommendation);
+    document.getElementById("optLoadChainBtn")?.addEventListener("click", () => loadChain(
+      document.getElementById("optChainSymbol")?.value || "",
+      document.getElementById("optChainExpiration")?.value || ""
+    ));
+    document.getElementById("optTradeConfirmBtn")?.addEventListener("click", submitTrade);
+  }
+
+  bindUI();
+  setRisk("conservative");
+  loadOverview();
+})();
+</script>
+{% endblock %}

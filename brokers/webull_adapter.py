@@ -367,29 +367,58 @@ class WebullAdapter(BrokerAdapter):
             _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
             response = trade_client.account_v2.get_account_position(account_id)
-            payload = _response_json(response)
-            status_code = _response_status_code(response)
-            if status_code >= 400:
-                raise RuntimeError(f"webull_http_{status_code}:{payload}")
-            rows = self._extract_positions(payload)
+            status_code = getattr(response, "status_code", None) or _response_status_code(response)
+            if status_code != 200:
+                return []
+            raw_positions = response.json() if hasattr(response, "json") else _response_json(response)
+            if not isinstance(raw_positions, list):
+                return []
             positions = []
-            for row in rows:
+            for row in raw_positions:
+                if not isinstance(row, dict):
+                    continue
+                instrument_type = str(row.get("instrument_type", "")).upper()
+                legs = row.get("legs", [])
+                leg = legs[0] if isinstance(legs, list) and legs else {}
                 symbol = _normalize_symbol(row.get("symbol") or row.get("ticker") or row.get("underlying"))
                 if not symbol:
                     continue
-                positions.append(
-                    {
-                        "symbol": symbol,
-                        "qty": _safe_float(row.get("qty") or row.get("quantity") or row.get("position"), 0.0),
-                        "avg_cost": _safe_float(row.get("avgCost") or row.get("avg_cost") or row.get("costPrice"), 0.0),
-                        "market_value": _safe_float(row.get("marketValue") or row.get("market_value") or row.get("value"), 0.0),
-                        "unrealized_pnl": _safe_float(
-                            row.get("unrealizedPnl") or row.get("unrealizedProfitLoss") or row.get("unrealized_pnl"),
-                            0.0,
-                        ),
-                        "asset_type": _normalize_asset_type(row.get("assetType") or row.get("secType") or row.get("asset_type")),
-                    }
-                )
+                position = {
+                    "symbol": symbol,
+                    "qty": _safe_float(row.get("quantity") or row.get("qty") or row.get("position"), 0.0),
+                    "avg_cost": _safe_float(row.get("cost_price") or row.get("costPrice") or row.get("avg_cost") or row.get("avgCost"), 0.0),
+                    "market_value": _safe_float(row.get("market_value") or row.get("marketValue") or row.get("value"), 0.0),
+                    "unrealized_pnl": _safe_float(
+                        row.get("unrealized_profit_loss") or row.get("unrealizedProfitLoss") or row.get("unrealized_pnl"),
+                        0.0,
+                    ),
+                    "unrealized_pnl_pct": _safe_float(
+                        row.get("unrealized_profit_loss_rate") or row.get("unrealizedProfitLossRate") or row.get("unrealized_pnl_pct"),
+                        0.0,
+                    ) * 100.0,
+                    "day_pnl": _safe_float(row.get("day_profit_loss") or row.get("dayProfitLoss"), 0.0),
+                    "last_price": _safe_float(row.get("last_price") or row.get("lastPrice"), 0.0),
+                    "cost_basis": _safe_float(row.get("cost") or row.get("cost_basis"), 0.0),
+                    "asset_type": "option" if instrument_type == "OPTION" else "stock",
+                    "instrument_type": instrument_type,
+                }
+
+                if instrument_type == "OPTION" and isinstance(leg, dict) and leg:
+                    strike = _safe_float(leg.get("option_exercise_price") or leg.get("strike_price"), 0.0)
+                    option_type = str(leg.get("option_type", "")).upper()
+                    expiration = str(leg.get("option_expire_date") or leg.get("expiration_date") or "").strip()
+                    multiplier = int(_safe_float(leg.get("option_contract_multiplier"), 100) or 100)
+                    position.update(
+                        {
+                            "option_type": option_type,
+                            "strike": strike,
+                            "expiration": expiration,
+                            "multiplier": multiplier,
+                            "display_name": f"{symbol} ${strike:.2f} {option_type} {expiration}".strip(),
+                        }
+                    )
+
+                positions.append(position)
             return positions
         except Exception as exc:
             _log_webull_event("get_positions_failed", {"error": str(exc)})

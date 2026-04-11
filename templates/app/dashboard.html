@@ -538,34 +538,45 @@
       return "";
     }
 
-    function renderPositions(positions) {
-      const host = document.getElementById("hcOptionsPositions");
-      if (!host) return;
-      if (!positions.length) {
-        host.innerHTML = `<div class="hc-options-empty">No active option positions detected.</div>`;
-        return;
-      }
-      host.innerHTML = positions.map((position, index) => {
-        const qty = Number(position.qty || position.quantity || 0);
-        const pnl = Number(position.unrealized_pnl || position.pnl || 0);
-        const days = parseExpiryDays(position.expiration || position.expiry);
-        const optionType = detectOptionType(position);
-        const strike = Number(position.strike || position.strike_price || 0);
-        const canClose = !!(position.symbol && optionType && strike > 0 && (position.expiration || position.expiry));
-        return `
-          <div class="hc-options-item">
-            <div class="hc-options-item-main">
-              <strong>${esc(position.symbol || position.underlying || "Option Position")}</strong>
-              <span class="hc-options-mini">${esc(optionType ? optionType.toUpperCase() : "OPTION")} · ${strike > 0 ? fmtUsd(strike) : "Strike n/a"} · ${esc(position.expiration || position.expiry || "Expiry n/a")}</span>
+      function renderPositions(positions) {
+        const host = document.getElementById("hcOptionsPositions");
+        if (!host) return;
+        if (!positions.length) {
+          host.innerHTML = `<div class="hc-options-empty">No active option positions detected.</div>`;
+          return;
+        }
+        host.innerHTML = positions.map((position, index) => {
+          const qty = Number(position.qty || position.quantity || 0);
+          const pnl = Number(position.unrealized_pnl || position.pnl || 0);
+          const pnlPct = Number(position.unrealized_pnl_pct || position.pnl_pct || 0);
+          const days = parseExpiryDays(position.expiration || position.expiry);
+          const optionType = detectOptionType(position);
+          const strike = Number(position.strike || position.strike_price || 0);
+          const marketValue = Number(position.market_value || 0);
+          const costBasis = Number(position.cost_basis || 0);
+          const expirationLabel = String(position.expiration || position.expiry || "");
+          const expirationShort = /^\d{4}-\d{2}-\d{2}$/.test(expirationLabel)
+            ? expirationLabel.slice(5).replace("-", "/")
+            : expirationLabel;
+          const canClose = !!(position.symbol && optionType && strike > 0 && (position.expiration || position.expiry));
+          const headline = optionType && strike > 0 && expirationLabel
+            ? `${esc(position.symbol || position.underlying || "Option")} ${fmtUsd(strike)} ${esc(optionType.toUpperCase())} ${esc(expirationShort)}`
+            : esc(position.display_name || position.symbol || position.underlying || "Option Position");
+          return `
+            <div class="hc-options-item">
+              <div class="hc-options-item-main">
+                <strong>${headline}</strong>
+                <span class="hc-options-mini">${qty} contract${Math.abs(qty) === 1 ? "" : "s"} · Market Value ${fmtUsd(marketValue)}</span>
+                <span class="hc-options-mini">Cost: ${fmtUsd(costBasis)}</span>
+              </div>
+              <div class="hc-options-item-meta">
+                <strong class="${pnl >= 0 ? "hc-options-profit" : "hc-options-loss"}">${fmtUsd(pnl)} (${fmtPct(pnlPct)})</strong>
+                <span class="hc-options-mini">${days != null ? `${days}d left` : "Expiry n/a"}</span>
+              </div>
+              <div class="hc-options-item-actions">
+                <button type="button" class="btn btn-secondary" ${canClose ? "" : "disabled"} data-close-pos="${index}">Close</button>
+              </div>
             </div>
-            <div class="hc-options-item-meta">
-              <strong class="${pnl >= 0 ? "hc-options-profit" : "hc-options-loss"}">${fmtUsd(pnl)}</strong>
-              <span class="hc-options-mini">${qty} contract${Math.abs(qty) === 1 ? "" : "s"}${days != null ? ` · ${days}d left` : ""}</span>
-            </div>
-            <div class="hc-options-item-actions">
-              <button type="button" class="btn btn-secondary" ${canClose ? "" : "disabled"} data-close-pos="${index}">Close</button>
-            </div>
-          </div>
         `;
       }).join("");
 

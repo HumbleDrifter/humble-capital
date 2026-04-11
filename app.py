@@ -13,6 +13,7 @@ from routes.dashboard import dashboard_bp
 from rebalancer import run_trailing_exit_sweep, run_defensive_regime_check
 from signal_scanner import run_scanner_sweep, run_dip_detector
 from futures.executor import run_futures_scan_and_execute, run_futures_position_monitor
+from options.executor import run_options_scan_and_execute, run_options_position_monitor
 from workers.execution_queue import start_execution_worker
 from storage import init_db, init_user_table
 
@@ -66,6 +67,20 @@ def _trailing_exit_loop():
                         )
             except Exception as exc:
                 print(f"[futures_monitor] error: {exc}", flush=True)
+
+            # Options position monitor (profit targets / stop losses)
+            try:
+                options_monitor = run_options_position_monitor()
+                options_closes = options_monitor.get("actions", [])
+                if options_closes:
+                    for oc in options_closes:
+                        print(
+                            f"[options_monitor] CLOSE {oc['symbol']} "
+                            f"reason={oc['reason']} pnl={oc['pnl']:.2f} ({oc['pnl_pct']:.1f}%)",
+                            flush=True,
+                        )
+            except Exception as exc:
+                print(f"[options_monitor] error: {exc}", flush=True)
         except Exception as exc:
             print(f"[trailing_exit_loop] error: {exc}", flush=True)
         _time.sleep(300)  # 5 minutes
@@ -90,6 +105,50 @@ def _signal_scanner_loop():
                 _time.sleep(30)
         except Exception as exc:
             print(f"[signal_scanner_loop] error: {exc}", flush=True)
+            _time.sleep(60)
+
+
+def _options_execution_loop():
+    import time as _time
+    print("[options_execution_loop] thread started", flush=True)
+    _time.sleep(120)  # wait 2 min after startup
+    while True:
+        try:
+            now = _time.localtime()
+            # Run at :17 past each hour (offset: crypto :02, futures :32)
+            if now.tm_min == 17:
+                result = run_options_scan_and_execute()
+                reg = result.get("executed_regular", [])
+                sqz = result.get("executed_squeeze", [])
+                skipped = result.get("skipped", False)
+                if skipped:
+                    print(f"[options_execution_loop] skipped reason={result.get('reason')}", flush=True)
+                else:
+                    for trade in reg:
+                        print(
+                            f"[options_execution_loop] EXECUTED {trade['strategy'].upper()} "
+                            f"{trade['symbol']} score={trade['score']:.1f} "
+                            f"qty={trade['qty']} order_id={trade['order_id']}",
+                            flush=True,
+                        )
+                    for trade in sqz:
+                        print(
+                            f"[options_execution_loop] SQUEEZE CALL {trade['symbol']} "
+                            f"conviction={trade['squeeze_conviction']:.2f} "
+                            f"capital={trade['capital_pct']:.0%} "
+                            f"qty={trade['qty']} order_id={trade['order_id']}",
+                            flush=True,
+                        )
+                    if not reg and not sqz:
+                        print(
+                            f"[options_execution_loop] scan done executed=0 regime={result.get('regime')}",
+                            flush=True,
+                        )
+                _time.sleep(120)  # avoid re-trigger at :17
+            else:
+                _time.sleep(30)
+        except Exception as exc:
+            print(f"[options_execution_loop] error: {exc}", flush=True)
             _time.sleep(60)
 
 
@@ -147,6 +206,8 @@ def create_app():
     _scanner_thread.start()
     _futures_thread = threading.Thread(target=_futures_execution_loop, daemon=True, name="futures_execution")
     _futures_thread.start()
+    _options_thread = threading.Thread(target=_options_execution_loop, daemon=True, name="options_execution")
+    _options_thread.start()
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

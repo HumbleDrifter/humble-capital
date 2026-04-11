@@ -179,6 +179,8 @@
   let rsiLowerSeries;
   let chartRefreshTimer;
   let quoteRefreshTimer;
+  let chartReady = false;
+  let chartBooting = false;
   let currentMarkers = [];
   const chartOverlayState = { ema21: true, ema50: true, ema200: false, bb: true, vwap: false, signals: true };
 
@@ -245,6 +247,10 @@
     document.querySelectorAll(".page-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabName));
     document.querySelectorAll(".page-tab-content").forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${tabName}`));
     history.replaceState(null, "", `#${tabName}`);
+    if (tabName === "charts") {
+      console.log("Charts tab activated");
+      window.setTimeout(onChartsTabActivated, 150);
+    }
   }
   function renderScoreBreakdown(item) {
     const total = Number(item.composite_score || item.score || 0);
@@ -593,22 +599,27 @@
     });
     return buckets.map(({ key, ...rest }) => rest);
   }
-  function ensureCharts() {
+  function initializeCharts() {
     if (!window.LightweightCharts) return;
     const mainHost = document.getElementById("tradingChartMain");
     const volumeHost = document.getElementById("tradingChartVolume");
     const rsiHost = document.getElementById("tradingChartRsi");
     if (!mainChart) {
       mainChart = LightweightCharts.createChart(mainHost, {
-        layout: { background: { color: "#0a1018" }, textColor: "#dbe7ff", fontFamily: "DM Sans, sans-serif" },
-        grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
+        width: Math.max(mainHost.offsetWidth || 0, 320),
+        height: 400,
+        layout: {
+          background: { type: "solid", color: "#0f1729" },
+          textColor: "rgba(236, 243, 255, 0.6)",
+          fontFamily: "DM Sans, sans-serif"
+        },
+        grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.04)" } },
         rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
         timeScale: { borderColor: "rgba(255,255,255,0.1)", visible: false },
         crosshair: {
           vertLine: { color: "rgba(56,189,248,0.28)", labelBackgroundColor: "#0f172a" },
           horzLine: { color: "rgba(56,189,248,0.18)", labelBackgroundColor: "#0f172a" }
-        },
-        height: 400
+        }
       });
       candleSeries = mainChart.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444" });
       ema21Series = mainChart.addLineSeries({ color: "#38bdf8", lineWidth: 1 });
@@ -650,6 +661,39 @@
         }
       });
     }
+    if (mainChart && mainHost) {
+      const width = Math.max(mainHost.offsetWidth || mainHost.clientWidth || 0, 320);
+      mainChart.resize(width, 400);
+      mainChart.applyOptions({ width, height: 400 });
+    }
+    if (volumeChart && volumeHost) {
+      const width = Math.max(volumeHost.offsetWidth || volumeHost.clientWidth || 0, 320);
+      volumeChart.resize(width, 80);
+      volumeChart.applyOptions({ width, height: 80 });
+    }
+    if (rsiChart && rsiHost) {
+      const width = Math.max(rsiHost.offsetWidth || rsiHost.clientWidth || 0, 320);
+      rsiChart.resize(width, 100);
+      rsiChart.applyOptions({ width, height: 100 });
+    }
+  }
+
+  function onChartsTabActivated() {
+    if (chartReady || chartBooting) return;
+    const container = document.getElementById("tradingChartMain");
+    if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) {
+      window.setTimeout(onChartsTabActivated, 100);
+      return;
+    }
+    chartBooting = true;
+    window.setTimeout(() => {
+      initializeCharts();
+      chartReady = true;
+      chartBooting = false;
+      refreshChart()
+        .then(() => loadLiveQuote())
+        .catch(console.error);
+    }, 150);
   }
 
   function lineData(rows, field) {
@@ -761,14 +805,18 @@
   async function loadLiveQuote() {
     try {
       if (chartType === "crypto") {
+        console.log("Fetching ticker for", chartSymbol);
         const data = await fetchJson(`/api/ticker?product_id=${encodeURIComponent(chartSymbol)}`);
+        console.log("Ticker response:", data);
         updatePriceHeader(data, "crypto");
       } else {
+        console.log("Fetching ticker for", chartSymbol);
         const data = await fetchJson(`/api/stocks/quote?symbol=${encodeURIComponent(chartSymbol)}`);
+        console.log("Ticker response:", data);
         updatePriceHeader(data, "stock");
       }
     } catch (error) {
-      console.warn("quote refresh failed", error);
+      console.error("Ticker fetch failed:", error);
     }
   }
 
@@ -784,20 +832,26 @@
   }
 
   async function refreshChart() {
-    ensureCharts();
+    if (!chartReady) return;
+    initializeCharts();
     const meta = document.getElementById("tradingChartMeta");
     meta.textContent = `Loading ${chartSymbol}...`;
     let rows = [];
     if (chartType === "crypto") {
+      console.log("Fetching candles for", chartSymbol);
       const data = await fetchJson(`/api/candles?product_id=${encodeURIComponent(chartSymbol)}&timeframe=${encodeURIComponent(chartFrame)}&limit=250`);
+      console.log("Received", Array.isArray(data.candles) ? data.candles.length : 0, "candles");
       rows = Array.isArray(data.candles) ? data.candles : [];
     } else {
       const days = chartFrame === "1w" ? 730 : chartFrame === "1d" ? 365 : chartFrame === "4h" ? 180 : 90;
+      console.log("Fetching candles for", chartSymbol);
       const data = await fetchJson(`/api/options/bars?symbol=${encodeURIComponent(chartSymbol)}&timeframe=D&days=${days}`);
+      console.log("Received", Array.isArray(data.bars) ? data.bars.length : 0, "candles");
       rows = Array.isArray(data.bars) ? data.bars : [];
       if (chartFrame === "1w") rows = aggregateWeekly(rows);
     }
     chartRows = enrichRows(rows, currentParams().trendLen).map((row) => Object.assign({}, row, { adx: Number(row.adx || 25) }));
+    console.log("Setting chart data");
     const candleData = chartRows.map((row) => ({ time: Number(row.ts || 0), open: Number(row.open || row.close || 0), high: Number(row.high || row.close || 0), low: Number(row.low || row.close || 0), close: Number(row.close || 0) }));
     candleSeries.setData(candleData);
     ema21Series.setData(lineData(chartRows, "ema_fast"));
@@ -822,6 +876,24 @@
     toggleOverlay("ema200", chartOverlayState.ema200);
     toggleOverlay("bb", chartOverlayState.bb);
     toggleOverlay("vwap", chartOverlayState.vwap);
+    const mainHost = document.getElementById("tradingChartMain");
+    const volumeHost = document.getElementById("tradingChartVolume");
+    const rsiHost = document.getElementById("tradingChartRsi");
+    if (mainChart && mainHost) {
+      const width = Math.max(mainHost.offsetWidth || mainHost.clientWidth || 0, 320);
+      mainChart.resize(width, 400);
+      mainChart.applyOptions({ width, height: 400 });
+    }
+    if (volumeChart && volumeHost) {
+      const width = Math.max(volumeHost.offsetWidth || volumeHost.clientWidth || 0, 320);
+      volumeChart.resize(width, 80);
+      volumeChart.applyOptions({ width, height: 80 });
+    }
+    if (rsiChart && rsiHost) {
+      const width = Math.max(rsiHost.offsetWidth || rsiHost.clientWidth || 0, 320);
+      rsiChart.resize(width, 100);
+      rsiChart.applyOptions({ width, height: 100 });
+    }
     mainChart.timeScale().fitContent();
     volumeChart.timeScale().fitContent();
     rsiChart.timeScale().fitContent();
@@ -856,15 +928,28 @@
       chartType = button.dataset.type || "crypto";
       chartSymbol = chartType === "crypto" ? "BTC-USD" : (stockUniverse[0]?.symbol || "AAPL");
       await loadChartSymbols();
+      if (!chartReady) {
+        activateTab("charts");
+        return;
+      }
       await refreshChart();
     }));
     document.querySelectorAll(".trading-chart-frame").forEach((button) => button.addEventListener("click", async () => {
       chartFrame = button.dataset.frame || chartFrame;
       document.querySelectorAll(".trading-chart-frame").forEach((item) => item.classList.toggle("active", item === button));
+      if (!chartReady) {
+        activateTab("charts");
+        return;
+      }
       await refreshChart();
     }));
     document.getElementById("tradingChartSymbol")?.addEventListener("change", async (event) => {
       chartSymbol = event.target.value || chartSymbol;
+      await loadLiveQuote();
+      if (!chartReady) {
+        activateTab("charts");
+        return;
+      }
       await refreshChart();
     });
     let debounce;
@@ -874,7 +959,13 @@
       node?.addEventListener("input", () => {
         if (valueNode) valueNode.textContent = node.value;
         window.clearTimeout(debounce);
-        debounce = window.setTimeout(() => refreshChart().catch(console.error), 300);
+        debounce = window.setTimeout(() => {
+          if (!chartReady) {
+            activateTab("charts");
+            return;
+          }
+          refreshChart().catch(console.error);
+        }, 300);
       });
     });
     document.querySelectorAll(".chart-toggle").forEach((btn) => {
@@ -898,7 +989,7 @@
       activateTab("charts");
     }
     await loadChartSymbols();
-    await refreshChart();
+    if (currentTabFromHash() === "charts") activateTab("charts");
     chartRefreshTimer = window.setInterval(() => {
       if (currentTabFromHash() === "stocks") scanStocks().catch(console.error);
     }, 60 * 60 * 1000);

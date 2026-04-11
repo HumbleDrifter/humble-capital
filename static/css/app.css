@@ -10903,7 +10903,7 @@ tbody tr:last-child td {
   padding: 12px 24px;
   background: none;
   border: none;
-  color: rgba(236, 243, 255, 0.5);
+  color: rgba(236, 243, 255, 0.45);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -10911,18 +10911,17 @@ tbody tr:last-child td {
   font-family: "DM Sans", system-ui, -apple-system, sans-serif;
   transition:
     color 180ms ease,
-    border-color 180ms ease,
-    background 180ms ease;
+    border-color 180ms ease;
 }
 
 .page-tab:hover {
-  color: rgba(236, 243, 255, 0.78);
-  background: rgba(255, 255, 255, 0.02);
+  color: rgba(236, 243, 255, 0.8);
 }
 
 .page-tab.active {
-  color: #38bdf8;
-  border-bottom-color: #38bdf8;
+  color: #ecf3ff;
+  border-bottom: 2px solid #38bdf8;
+  background: none;
 }
 
 .page-tab-content {
@@ -11817,6 +11816,21 @@ tbody tr:last-child td {
   overflow: hidden;
   background: rgba(10, 16, 24, 0.9);
   border: 1px solid rgba(255,255,255,0.05);
+}
+
+#tradingChartMain {
+  height: 400px;
+  min-height: 400px;
+}
+
+#tradingChartVolume {
+  height: 80px;
+  min-height: 80px;
+}
+
+#tradingChartRsi {
+  height: 100px;
+  min-height: 100px;
 }
 
 .chart-tooltip {

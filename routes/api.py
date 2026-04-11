@@ -21,6 +21,8 @@ from execution import (
     get_valid_products,
 )
 from decision_trace import list_decision_traces
+from futures.futures_client import FuturesClient
+from futures.scanner import FuturesScanner
 from portfolio import (
     build_adaptive_suggestions,
     build_auto_adaptive_recommendation,
@@ -2914,6 +2916,192 @@ def api_signals_chart():
             "candles": candles,
             "signals": signals,
         })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/balance", methods=["GET"])
+@require_api_auth
+def api_futures_balance():
+    try:
+        client = FuturesClient()
+        return jsonify({
+            "ok": True,
+            "balance": client.get_balance_summary(),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/products", methods=["GET"])
+@require_api_auth
+def api_futures_products():
+    try:
+        category = str(request.args.get("category") or "").strip().lower()
+        client = FuturesClient()
+        products = list(client.get_all_products() or [])
+        if category:
+            products = [row for row in products if str(row.get("category") or "").strip().lower() == category]
+        return jsonify({
+            "ok": True,
+            "products": products,
+            "count": len(products),
+            "category": category or None,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/positions", methods=["GET"])
+@require_api_auth
+def api_futures_positions():
+    try:
+        client = FuturesClient()
+        positions = list(client.get_positions() or [])
+        return jsonify({
+            "ok": True,
+            "positions": positions,
+            "count": len(positions),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/candles", methods=["GET"])
+@require_api_auth
+def api_futures_candles():
+    try:
+        product_id = str(request.args.get("product_id") or "").strip().upper()
+        if not product_id:
+            return jsonify({"ok": False, "error": "missing_product_id"}), 400
+
+        timeframe = str(request.args.get("timeframe") or "4h").strip().lower()
+        granularity_map = {
+            "1m": "ONE_MINUTE",
+            "5m": "FIVE_MINUTE",
+            "15m": "FIFTEEN_MINUTE",
+            "30m": "THIRTY_MINUTE",
+            "1h": "ONE_HOUR",
+            "2h": "TWO_HOUR",
+            "4h": "FOUR_HOUR",
+            "6h": "SIX_HOUR",
+            "1d": "ONE_DAY",
+        }
+        granularity = granularity_map.get(timeframe, str(request.args.get("granularity") or "FOUR_HOUR").strip().upper())
+        limit = max(1, min(1000, int(request.args.get("limit") or 250)))
+
+        client = FuturesClient()
+        candles = client.get_candles(product_id=product_id, granularity=granularity, limit=limit)
+        return jsonify({
+            "ok": True,
+            "product_id": product_id,
+            "timeframe": timeframe,
+            "granularity": granularity,
+            "candles": candles,
+            "count": len(candles or []),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/order", methods=["POST"])
+@require_api_auth
+def api_futures_order():
+    try:
+        data = request.get_json(silent=True) or {}
+        product_id = str(data.get("product_id") or "").strip().upper()
+        side = str(data.get("side") or "").strip().upper()
+        size = _safe_float(data.get("size"), 0.0)
+        order_type = str(data.get("order_type") or "market").strip().lower()
+        limit_price = data.get("limit_price")
+        leverage = _safe_float(data.get("leverage"), 1.0)
+        reduce_only = bool(data.get("reduce_only", False))
+
+        if not product_id:
+            return jsonify({"ok": False, "error": "missing_product_id"}), 400
+        if side not in {"BUY", "SELL"}:
+            return jsonify({"ok": False, "error": "invalid_side"}), 400
+        if size <= 0:
+            return jsonify({"ok": False, "error": "invalid_size"}), 400
+
+        client = FuturesClient()
+        result = client.place_order(
+            product_id=product_id,
+            side=side,
+            size=size,
+            order_type=order_type,
+            limit_price=_safe_float(limit_price, 0.0) if limit_price not in (None, "") else None,
+            leverage=leverage,
+            reduce_only=reduce_only,
+        )
+        status = 200 if result.get("ok") else 400
+        return jsonify(result), status
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/close", methods=["POST"])
+@require_api_auth
+def api_futures_close():
+    try:
+        data = request.get_json(silent=True) or {}
+        product_id = str(data.get("product_id") or "").strip().upper()
+        if not product_id:
+            return jsonify({"ok": False, "error": "missing_product_id"}), 400
+
+        client = FuturesClient()
+        result = client.close_position(product_id)
+        status = 200 if result.get("ok") else 400
+        return jsonify(result), status
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/funding", methods=["GET"])
+@require_api_auth
+def api_futures_funding():
+    try:
+        product_id = str(request.args.get("product_id") or "").strip().upper()
+        if not product_id:
+            return jsonify({"ok": False, "error": "missing_product_id"}), 400
+
+        client = FuturesClient()
+        result = client.get_funding_rate(product_id)
+        return jsonify(result)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/scanner/perps", methods=["GET"])
+@require_api_auth
+def api_futures_scanner_perps():
+    try:
+        regime = str(request.args.get("regime") or "neutral").strip().lower()
+        scanner = FuturesScanner()
+        results = scanner.scan_perps(regime=regime)
+        return jsonify({"ok": True, "regime": regime, "results": results, "count": len(results)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/scanner/funding", methods=["GET"])
+@require_api_auth
+def api_futures_scanner_funding():
+    try:
+        scanner = FuturesScanner()
+        results = scanner.scan_funding_arbitrage()
+        return jsonify({"ok": True, "results": results, "count": len(results)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/scanner/basis", methods=["GET"])
+@require_api_auth
+def api_futures_scanner_basis():
+    try:
+        scanner = FuturesScanner()
+        results = scanner.scan_basis_trade()
+        return jsonify({"ok": True, "results": results, "count": len(results)})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

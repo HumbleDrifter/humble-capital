@@ -190,7 +190,10 @@
         <button class="hc-range-btn" data-range="all" type="button">ALL</button>
       </div>
     </div>
-    <div id="hcChartHost" class="hc-chart-host"></div>
+    <div style="position:relative;">
+      <div id="hcChartHost" class="hc-chart-host"></div>
+      <div id="equityTooltip" style="display:none; position:absolute; pointer-events:none; background:rgba(15,23,42,0.95); border:1px solid rgba(56,189,248,0.3); border-radius:8px; padding:8px 12px; font-size:13px; color:#ecf3ff; box-shadow:0 4px 12px rgba(0,0,0,0.3); z-index:100; white-space:nowrap;"></div>
+    </div>
   </div>
 
   <div class="hc-context-grid">

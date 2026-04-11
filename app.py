@@ -12,6 +12,7 @@ from routes.dashboard import dashboard_bp
 
 from rebalancer import run_trailing_exit_sweep, run_defensive_regime_check
 from signal_scanner import run_scanner_sweep, run_dip_detector
+from futures.executor import run_futures_scan_and_execute, run_futures_position_monitor
 from workers.execution_queue import start_execution_worker
 from storage import init_db, init_user_table
 
@@ -51,6 +52,20 @@ def _trailing_exit_loop():
                         )
             except Exception as exc:
                 print(f"[dip_detector] error: {exc}", flush=True)
+
+            # Futures position monitor (stop loss / take profit)
+            try:
+                futures_monitor = run_futures_position_monitor()
+                futures_closes = futures_monitor.get("actions", [])
+                if futures_closes:
+                    for fc in futures_closes:
+                        print(
+                            f"[futures_monitor] CLOSE {fc['side'].upper()} {fc['product_id']} "
+                            f"reason={fc['reason']} pnl={fc['pnl']:.2f}",
+                            flush=True,
+                        )
+            except Exception as exc:
+                print(f"[futures_monitor] error: {exc}", flush=True)
         except Exception as exc:
             print(f"[trailing_exit_loop] error: {exc}", flush=True)
         _time.sleep(300)  # 5 minutes
@@ -78,6 +93,41 @@ def _signal_scanner_loop():
             _time.sleep(60)
 
 
+def _futures_execution_loop():
+    import time as _time
+    print("[futures_execution_loop] thread started", flush=True)
+    _time.sleep(90)  # wait 90s after startup
+    while True:
+        try:
+            now = _time.localtime()
+            if now.tm_min == 32:
+                result = run_futures_scan_and_execute()
+                executed = result.get("executed", [])
+                skipped = result.get("skipped", False)
+                if skipped:
+                    print(f"[futures_execution_loop] skipped reason={result.get('reason')}", flush=True)
+                elif executed:
+                    for trade in executed:
+                        print(
+                            f"[futures_execution_loop] EXECUTED {trade['direction'].upper()} "
+                            f"{trade['product_id']} score={trade['score']:.1f} "
+                            f"leverage={trade['leverage']}x order_id={trade['order_id']}",
+                            flush=True,
+                        )
+                else:
+                    print(
+                        f"[futures_execution_loop] scan done opportunities={result.get('opportunities_scanned', 0)} "
+                        f"executed=0 regime={result.get('regime')}",
+                        flush=True,
+                    )
+                _time.sleep(120)
+            else:
+                _time.sleep(30)
+        except Exception as exc:
+            print(f"[futures_execution_loop] error: {exc}", flush=True)
+            _time.sleep(60)
+
+
 def create_app():
     app = Flask(__name__)
 
@@ -95,6 +145,8 @@ def create_app():
     _exit_thread.start()
     _scanner_thread = threading.Thread(target=_signal_scanner_loop, daemon=True, name="signal_scanner")
     _scanner_thread.start()
+    _futures_thread = threading.Thread(target=_futures_execution_loop, daemon=True, name="futures_execution")
+    _futures_thread.start()
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

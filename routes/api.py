@@ -23,6 +23,7 @@ from execution import (
 from decision_trace import list_decision_traces
 from futures.futures_client import FuturesClient
 from futures.scanner import FuturesScanner
+from futures.executor import run_futures_scan_and_execute, run_futures_position_monitor, get_executor_log
 from portfolio import (
     build_adaptive_suggestions,
     build_auto_adaptive_recommendation,
@@ -3102,6 +3103,36 @@ def api_futures_scanner_basis():
         scanner = FuturesScanner()
         results = scanner.scan_basis_trade()
         return jsonify({"ok": True, "results": results, "count": len(results)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/executor/run", methods=["POST"])
+@require_admin_auth
+def api_futures_executor_run():
+    try:
+        result = run_futures_scan_and_execute()
+        return jsonify(result), (200 if result.get("ok") else 500)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/executor/monitor", methods=["POST"])
+@require_admin_auth
+def api_futures_executor_monitor():
+    try:
+        result = run_futures_position_monitor()
+        return jsonify(result), (200 if result.get("ok") else 500)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/futures/executor/log", methods=["GET"])
+@require_api_auth
+def api_futures_executor_log():
+    try:
+        limit = max(1, min(200, int(request.args.get("limit") or 50)))
+        return jsonify({"ok": True, "log": get_executor_log(limit)})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

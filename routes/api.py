@@ -24,6 +24,11 @@ from decision_trace import list_decision_traces
 from futures.futures_client import FuturesClient
 from futures.scanner import FuturesScanner
 from futures.executor import run_futures_scan_and_execute, run_futures_position_monitor, get_executor_log
+from stocks.executor import (
+    run_stock_scan_and_execute,
+    run_stock_position_monitor,
+    get_executor_log as get_stock_executor_log,
+)
 from options.executor import (
     run_options_scan_and_execute,
     run_options_position_monitor,
@@ -3168,6 +3173,36 @@ def api_options_executor_log():
     try:
         limit = max(1, min(200, int(request.args.get("limit") or 50)))
         return jsonify({"ok": True, "log": get_options_executor_log(limit)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/executor/run", methods=["POST"])
+@require_admin_auth
+def api_stocks_executor_run():
+    try:
+        result = run_stock_scan_and_execute()
+        return jsonify(result), (200 if result.get("ok") else 500)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/executor/monitor", methods=["POST"])
+@require_admin_auth
+def api_stocks_executor_monitor():
+    try:
+        result = run_stock_position_monitor()
+        return jsonify(result), (200 if result.get("ok") else 500)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/executor/log", methods=["GET"])
+@require_api_auth
+def api_stocks_executor_log():
+    try:
+        limit = max(1, min(200, int(request.args.get("limit") or 50)))
+        return jsonify({"ok": True, "log": get_stock_executor_log(limit)})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

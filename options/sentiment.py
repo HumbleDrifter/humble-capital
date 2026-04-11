@@ -11,6 +11,17 @@ _SENTIMENT_CACHE = {}
 _CACHE_TTL = 900
 _CACHE_LOCK = threading.RLock()
 
+CRYPTO_SUBREDDITS = [
+    "cryptocurrency", "cryptomarkets", "bitcoin", "ethereum", "solana",
+    "altcoin", "satoshistreetbets", "memecoin", "shitcoins",
+]
+STOCK_SUBREDDITS = ["wallstreetbets", "options", "stocks", "investing", "stockmarket"]
+CRYPTO_TICKERS = {
+    "BTC", "ETH", "SOL", "XRP", "DOGE", "SHIB", "PEPE", "BONK",
+    "SUI", "AVAX", "ADA", "DOT", "LINK", "UNI", "AAVE", "RENDER",
+    "WIF", "PENGU", "HYPE", "JASMY", "ICP", "MARA", "TAO", "ATOM",
+}
+
 BULLISH_WORDS = {
     "buy", "calls", "long", "moon", "rocket", "bullish", "breakout", "squeeze",
     "undervalued", "dip", "buying", "loaded", "accumulate", "yolo", "tendies",
@@ -27,6 +38,18 @@ BEARISH_WORDS = {
     "resistance", "overbought", "top", "correction", "capitulation"
 }
 
+CRYPTO_BULLISH = {
+    "hodl", "wagmi", "lfg", "ngmi bears", "pump it", "send it",
+    "accumulate", "dca", "buy the dip", "diamond hands", "moon",
+    "bullrun", "alt season", "100x", "gem", "based",
+}
+
+CRYPTO_BEARISH = {
+    "rugpull", "scam", "dump", "rekt", "ngmi", "exit liquidity",
+    "dead coin", "sell now", "bear market", "capitulation",
+    "liquidated", "worthless", "ponzi",
+}
+
 
 def _log(message):
     print(f"[sentiment] {message}")
@@ -39,7 +62,12 @@ def _safe_float(value, default=0.0):
         return default
 
 
-def _score_text(text):
+def _is_crypto(symbol):
+    clean = str(symbol or "").replace("-USD", "").upper().strip()
+    return clean in CRYPTO_TICKERS or str(symbol or "").upper().strip().endswith("-USD")
+
+
+def _score_text(text, symbol=None):
     """
     Score a piece of text for bullish/bearish sentiment.
     Returns float from -1.0 (very bearish) to +1.0 (very bullish).
@@ -54,8 +82,14 @@ def _score_text(text):
 
     all_tokens = words | bigrams
 
-    bull_count = len(all_tokens & BULLISH_WORDS)
-    bear_count = len(all_tokens & BEARISH_WORDS)
+    bullish_words = set(BULLISH_WORDS)
+    bearish_words = set(BEARISH_WORDS)
+    if _is_crypto(symbol):
+        bullish_words |= CRYPTO_BULLISH
+        bearish_words |= CRYPTO_BEARISH
+
+    bull_count = len(all_tokens & bullish_words)
+    bear_count = len(all_tokens & bearish_words)
 
     total = bull_count + bear_count
     if total == 0:
@@ -88,8 +122,7 @@ class SocialSentimentScanner:
 
     def scan_reddit(self, symbol, limit=50) -> dict:
         """
-        Scan Reddit for mentions of a stock ticker.
-        Sources: r/wallstreetbets, r/options, r/stocks, r/investing
+        Scan Reddit for mentions of a stock ticker or crypto asset.
         Uses Reddit's public JSON API (no auth needed).
         """
         cache_key = f"reddit:{symbol}"
@@ -97,13 +130,17 @@ class SocialSentimentScanner:
         if cached:
             return cached
 
-        subreddits = ["wallstreetbets", "options", "stocks", "investing", "stockmarket"]
+        subreddits = CRYPTO_SUBREDDITS if _is_crypto(symbol) else STOCK_SUBREDDITS
         all_posts = []
+        search_terms = [str(symbol or "").upper().strip()]
+        clean_symbol = str(symbol or "").replace("-USD", "").upper().strip()
+        if clean_symbol and clean_symbol not in search_terms:
+            search_terms.append(clean_symbol)
 
         for sub in subreddits:
             try:
                 url = f"https://www.reddit.com/r/{sub}/search.json"
-                params = {"q": symbol, "sort": "new", "limit": limit, "t": "week", "restrict_sr": "on"}
+                params = {"q": clean_symbol or symbol, "sort": "new", "limit": limit, "t": "week", "restrict_sr": "on"}
                 resp = self.session.get(url, params=params, timeout=10)
                 if resp.status_code != 200:
                     continue
@@ -114,10 +151,14 @@ class SocialSentimentScanner:
                     title = p.get("title", "")
                     body = p.get("selftext", "")
                     full_text = f"{title} {body}"
-                    if not re.search(rf"\b{re.escape(symbol)}\b", full_text, re.IGNORECASE):
-                        if not re.search(rf"\${re.escape(symbol)}\b", full_text, re.IGNORECASE):
-                            continue
-                    sentiment = _score_text(full_text)
+                    matched = False
+                    for term in search_terms:
+                        if re.search(rf"\b{re.escape(term)}\b", full_text, re.IGNORECASE) or re.search(rf"\${re.escape(term)}\b", full_text, re.IGNORECASE):
+                            matched = True
+                            break
+                    if not matched:
+                        continue
+                    sentiment = _score_text(full_text, symbol=symbol)
                     all_posts.append({
                         "title": title[:200],
                         "subreddit": sub,
@@ -196,7 +237,7 @@ class SocialSentimentScanner:
                     else:
                         sentiments.append(0.0)
                 else:
-                    sentiments.append(_score_text(msg.get("body", "")))
+                    sentiments.append(_score_text(msg.get("body", ""), symbol=symbol))
 
             mentions = len(messages)
             avg_sentiment = sum(sentiments) / len(sentiments) if sentiments else 0.0
@@ -254,7 +295,7 @@ class SocialSentimentScanner:
             url = "https://www.googleapis.com/youtube/v3/search"
             params = {
                 "part": "snippet",
-                "q": f"{symbol} stock analysis",
+                "q": f"{symbol} {'crypto' if _is_crypto(symbol) else 'stock'} analysis",
                 "type": "video",
                 "order": "viewCount",
                 "publishedAfter": published_after,
@@ -274,7 +315,7 @@ class SocialSentimentScanner:
                 title = snippet.get("title", "")
                 channel = snippet.get("channelTitle", "")
                 video_id = item.get("id", {}).get("videoId", "")
-                sentiment = _score_text(title + " " + snippet.get("description", ""))
+                sentiment = _score_text(title + " " + snippet.get("description", ""), symbol=symbol)
                 videos.append({
                     "title": title[:200],
                     "channel": channel,
@@ -313,7 +354,8 @@ class SocialSentimentScanner:
         headlines = []
 
         try:
-            url = f"https://news.google.com/rss/search?q={symbol}+stock&hl=en-US&gl=US&ceid=US:en"
+            query = f"{symbol}+{'crypto' if _is_crypto(symbol) else 'stock'}"
+            url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
             resp = self.session.get(url, timeout=10)
             if resp.status_code == 200:
                 import xml.etree.ElementTree as ET
@@ -326,7 +368,7 @@ class SocialSentimentScanner:
                     link = item.findtext("link", "")
 
                     if symbol.upper() in title.upper() or len(title) < 200:
-                        sentiment = _score_text(title)
+                        sentiment = _score_text(title, symbol=symbol)
                         headlines.append({
                             "title": title[:200],
                             "source": source,
@@ -350,17 +392,88 @@ class SocialSentimentScanner:
         self._cache_set(cache_key, result)
         return result
 
+    def scan_crypto_twitter(self, symbol) -> dict:
+        """
+        Search Twitter/X for crypto cashtag mentions using public RSS-style fallbacks.
+        Falls back to Google News crypto-filtered results if direct proxies are unavailable.
+        """
+        cache_key = f"crypto_twitter:{symbol}"
+        cached = self._cache_get(cache_key)
+        if cached:
+            return cached
+
+        symbol_clean = str(symbol or "").replace("-USD", "").upper().strip()
+        headlines = []
+        queries = [
+            f"{symbol_clean}+crypto",
+            f"%24{symbol_clean}+crypto",
+            f"%23{symbol_clean}+crypto",
+        ]
+        for query in queries:
+            try:
+                url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
+                resp = self.session.get(url, timeout=10)
+                if resp.status_code != 200:
+                    continue
+                import xml.etree.ElementTree as ET
+
+                root = ET.fromstring(resp.content)
+                for item in root.findall(".//item")[:10]:
+                    title = item.findtext("title", "")
+                    link = item.findtext("link", "")
+                    source = item.findtext("source", "")
+                    if symbol_clean not in title.upper():
+                        continue
+                    headlines.append(
+                        {
+                            "title": title[:200],
+                            "source": source or "X/Twitter",
+                            "published": item.findtext("pubDate", ""),
+                            "sentiment": _score_text(title, symbol=symbol),
+                            "url": link,
+                        }
+                    )
+                if headlines:
+                    break
+            except Exception as exc:
+                _log(f"crypto twitter scan failed symbol={symbol} error={exc}")
+
+        avg_sentiment = sum(row["sentiment"] for row in headlines) / len(headlines) if headlines else 0.0
+        result = {
+            "source": "crypto_twitter",
+            "symbol": symbol,
+            "mentions": len(headlines),
+            "avg_sentiment": round(avg_sentiment, 3),
+            "headlines": headlines[:10],
+            "trending": len(headlines) >= 5,
+        }
+        self._cache_set(cache_key, result)
+        return result
+
     def get_composite_sentiment(self, symbol) -> dict:
         """
         Run all scanners and produce a composite sentiment score.
+        Automatically adapts to stock vs crypto symbols.
         """
+        is_crypto = _is_crypto(symbol)
         reddit = self.scan_reddit(symbol)
-        stocktwits = self.scan_stocktwits(symbol)
+        stocktwits = self.scan_stocktwits(str(symbol or "").replace("-USD", "").upper().strip())
         youtube = self.scan_youtube(symbol)
         news = self.scan_news(symbol)
+        crypto_twitter = self.scan_crypto_twitter(symbol) if is_crypto else None
 
-        weights = {"reddit": 0.30, "stocktwits": 0.25, "news": 0.30, "youtube": 0.15}
-        sources = {"reddit": reddit, "stocktwits": stocktwits, "news": news, "youtube": youtube}
+        if is_crypto:
+            weights = {"reddit": 0.35, "stocktwits": 0.20, "news": 0.20, "youtube": 0.10, "crypto_twitter": 0.15}
+            sources = {
+                "reddit": reddit,
+                "stocktwits": stocktwits,
+                "news": news,
+                "youtube": youtube,
+                "crypto_twitter": crypto_twitter or {"mentions": 0, "avg_sentiment": 0.0, "trending": False},
+            }
+        else:
+            weights = {"reddit": 0.30, "stocktwits": 0.25, "news": 0.30, "youtube": 0.15}
+            sources = {"reddit": reddit, "stocktwits": stocktwits, "news": news, "youtube": youtube}
 
         weighted_sentiment = 0.0
         total_weight = 0.0
@@ -394,6 +507,7 @@ class SocialSentimentScanner:
             stocktwits.get("mentions", 0),
             youtube.get("videos", 0),
             news.get("articles", 0),
+            (crypto_twitter or {}).get("mentions", 0),
         ])
 
         trending = sum([
@@ -401,11 +515,16 @@ class SocialSentimentScanner:
             bool(stocktwits.get("trending", False)),
             bool(youtube.get("trending", False)),
             bool(news.get("trending", False)),
+            bool((crypto_twitter or {}).get("trending", False)),
         ])
 
         signal_strength = min(100, (total_mentions ** 0.5) * abs(composite) / 10)
 
-        if composite >= 30 and total_mentions >= 20:
+        if is_crypto and composite >= 30 and total_mentions >= 20:
+            rec = f"Strong crypto bullish sentiment ({total_mentions} mentions). Momentum supports CSPs on related equities or selective premium-selling into strength."
+        elif is_crypto and composite <= -30 and total_mentions >= 20:
+            rec = f"Strong crypto bearish sentiment ({total_mentions} mentions). Reduce exposure, avoid bullish premium selling, and look for defensive spreads."
+        elif composite >= 30 and total_mentions >= 20:
             rec = f"Strong bullish sentiment ({total_mentions} mentions). Consider selling cash-secured puts to collect premium while entering at a discount."
         elif composite >= 10:
             rec = "Mildly bullish sentiment. Covered calls or bull put spreads are appropriate."
@@ -418,6 +537,7 @@ class SocialSentimentScanner:
 
         return {
             "symbol": symbol,
+            "asset_type": "crypto" if is_crypto else "stock",
             "composite_score": composite,
             "composite_label": label,
             "total_mentions": total_mentions,

@@ -957,6 +957,17 @@ def _build_portfolio_snapshot():
     snapshot["nontradable_value_usd"] = nontradable_value
     snapshot["nontradable_weight"] = nontradable_value / total_value
     snapshot["active_satellite_buy_universe"] = get_active_satellite_buy_universe(snapshot)
+    # Inject regime from technical engine (BTC trend + volatility + breadth)
+    try:
+        regime_detail = get_market_regime()
+        technical_regime = str(regime_detail.get("regime", "neutral")).lower()
+        drawdown = float(snapshot.get("portfolio_drawdown", 0.0) or 0.0)
+        freeze_level = float(config.get("drawdown_controls", {}).get("freeze_level", 0.22) or 0.22)
+        snapshot["market_regime"] = "risk_off" if drawdown >= freeze_level else technical_regime
+        snapshot["regime_detail"] = regime_detail
+    except Exception as _regime_exc:
+        snapshot["market_regime"] = "neutral"
+        snapshot["regime_detail"] = {"regime": "neutral", "reason": str(_regime_exc)}
     _log_portfolio(
         "built live snapshot "
         f"total={snapshot['total_value_usd']:.2f} "
@@ -964,6 +975,7 @@ def _build_portfolio_snapshot():
         f"webull={snapshot['webull_value_usd']:.2f} "
         f"cash={snapshot['usd_cash']:.2f} "
         f"positions={len(positions)} "
+        f"regime={snapshot.get('market_regime')} "
         f"config_dir={_BASE_DIR}"
     )
     return snapshot

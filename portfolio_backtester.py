@@ -121,6 +121,12 @@ class PortfolioBacktester:
             "dca_frequency_bars": _safe_int(config.get("dca_frequency_bars", 42), 42),
             "dca_amount_pct": _safe_float(config.get("dca_amount_pct", 0.02), 0.02),
             "fee_pct": _safe_float(config.get("fee_pct", 0.006), 0.006),
+            "defensive_sell_enabled": bool(config.get("defensive_sell_enabled", True)),
+            "defensive_sell_regimes": list(config.get("defensive_sell_regimes") or ["risk_off"]),
+            "defensive_sell_pct_per_bar": _safe_float(config.get("defensive_sell_pct_per_bar", 0.02), 0.02),
+            "defensive_sell_max_pct": _safe_float(config.get("defensive_sell_max_pct", 0.70), 0.70),
+            "defensive_rebuy_regimes": list(config.get("defensive_rebuy_regimes") or ["bull", "neutral"]),
+            "defensive_rebuy_pct_per_bar": _safe_float(config.get("defensive_rebuy_pct_per_bar", 0.03), 0.03),
             "satellite_strategy": str(config.get("satellite_strategy", "bb_breakout") or "bb_breakout"),
             "satellite_regime_filter": list(config.get("satellite_regime_filter") or ["bull"]),
             "satellite_params": {**SATELLITE_PARAMS, **(config.get("satellite_params") or {})},
@@ -462,6 +468,104 @@ class PortfolioBacktester:
                 actions.append(res)
         return actions
 
+    def execute_defensive_regime_action(self, all_candles, bar_ref, regime) -> list:
+        """
+        During risk_off: gradually sell core positions to cash.
+        During bull/neutral (after a defensive sell period): gradually rebuy core.
+
+        This is the key bear market edge — sell high, accumulate cash, rebuy low.
+        """
+        if not self.config.get("defensive_sell_enabled", True):
+            return []
+
+        actions = []
+        ts = _safe_int(bar_ref, self._current_ts)
+        sell_regimes = self.config.get("defensive_sell_regimes", ["risk_off"])
+        rebuy_regimes = self.config.get("defensive_rebuy_regimes", ["bull", "neutral"])
+
+        snapshot = self.get_portfolio_value(all_candles, bar_ref)
+        total_value = _safe_float(snapshot.get("total_value"), 0.0)
+        core_value = _safe_float(snapshot.get("core_value"), 0.0)
+
+        if regime in sell_regimes and core_value > 0:
+            sell_pct = _safe_float(self.config.get("defensive_sell_pct_per_bar"), 0.02)
+            max_sell_pct = _safe_float(self.config.get("defensive_sell_max_pct"), 0.70)
+
+            if not hasattr(self, "_defensive_sold_value"):
+                self._defensive_sold_value = 0.0
+            if not hasattr(self, "_initial_core_value"):
+                self._initial_core_value = core_value
+
+            max_sell_total = self._initial_core_value * max_sell_pct
+            remaining_sell_budget = max(0.0, max_sell_total - self._defensive_sold_value)
+
+            if remaining_sell_budget <= 1.0:
+                return actions
+
+            core_products = list((self.config["core_assets"] or {}).keys())
+            core_count = max(1, len(core_products))
+            for product_id in core_products:
+                product_id = _normalize_product_id(product_id)
+                pos = self.positions.get(product_id)
+                if not pos or _safe_float(pos.get("value"), 0.0) <= 1.0:
+                    continue
+
+                candle = (self._candle_by_ts.get(product_id) or {}).get(ts)
+                if not isinstance(candle, dict):
+                    continue
+                price = _safe_float(candle.get("close"), 0.0)
+                if price <= 0:
+                    continue
+
+                pos_value = _safe_float(pos.get("value"), 0.0)
+                sell_amount = min(pos_value * sell_pct, remaining_sell_budget / core_count)
+                if sell_amount > 1.0:
+                    res = self.execute_trade(product_id, "sell", sell_amount, price, "defensive_sell", ts)
+                    if res:
+                        self._defensive_sold_value += sell_amount
+                        remaining_sell_budget = max(0.0, remaining_sell_budget - sell_amount)
+                        actions.append(res)
+
+        elif regime in rebuy_regimes:
+            if not hasattr(self, "_defensive_sold_value") or self._defensive_sold_value <= 1.0:
+                return actions
+
+            rebuy_pct = _safe_float(self.config.get("defensive_rebuy_pct_per_bar"), 0.03)
+            reserve_floor = total_value * _safe_float(self.config.get("cash_reserve"), 0.08)
+            available = max(0.0, self.cash - reserve_floor)
+            rebuy_budget = min(available * rebuy_pct * 10.0, available * 0.1)
+
+            if rebuy_budget <= 1.0:
+                return actions
+
+            weights = snapshot.get("weights", {}) or {}
+            underweight = []
+            for product_id, cfg in (self.config["core_assets"] or {}).items():
+                product_id = _normalize_product_id(product_id)
+                target = _safe_float((cfg or {}).get("target_weight"), 0.0)
+                current = _safe_float(weights.get(product_id), 0.0)
+                if current < target:
+                    underweight.append(product_id)
+
+            if not underweight:
+                self._defensive_sold_value = 0.0
+                return actions
+
+            per_asset = rebuy_budget / len(underweight)
+            for product_id in underweight:
+                candle = (self._candle_by_ts.get(product_id) or {}).get(ts)
+                if not isinstance(candle, dict):
+                    continue
+                price = _safe_float(candle.get("close"), 0.0)
+                if price <= 0 or per_asset <= 1.0:
+                    continue
+                res = self.execute_trade(product_id, "buy", per_asset, price, "defensive_rebuy", ts)
+                if res:
+                    self._defensive_sold_value = max(0.0, self._defensive_sold_value - per_asset)
+                    actions.append(res)
+
+        return actions
+
     def evaluate_satellite_entry(self, product_id, candles, bar_ref, regime) -> dict:
         if regime not in set(self.config["satellite_regime_filter"] or ["bull"]):
             return {"signal": None}
@@ -683,6 +787,8 @@ class PortfolioBacktester:
                 if executed:
                     self.rebalance_log.append({"ts": ts, "actions": executed})
 
+            defensive_actions = self.execute_defensive_regime_action(self._all_candles, ts, regime)
+
             if bar_index > 0 and bar_index % max(1, _safe_int(self.config["dca_frequency_bars"], 42)) == 0:
                 self.execute_dca(self._all_candles, ts, regime)
 
@@ -814,6 +920,8 @@ class PortfolioBacktester:
         satellite_only = {product_id: value for product_id, value in by_product.items() if product_id not in core_assets}
         best_satellite = max(satellite_only.items(), key=lambda item: item[1])[0] if satellite_only else ""
         worst_satellite = min(satellite_only.items(), key=lambda item: item[1])[0] if satellite_only else ""
+        defensive_sells = len([row for row in trade_log if str(row.get("reason") or "") == "defensive_sell"])
+        defensive_rebuys = len([row for row in trade_log if str(row.get("reason") or "") == "defensive_rebuy"])
 
         return {
             "starting_capital": round(starting_capital, 2),
@@ -834,4 +942,6 @@ class PortfolioBacktester:
             "final_allocation": final_allocation,
             "best_satellite": best_satellite,
             "worst_satellite": worst_satellite,
+            "defensive_sells": defensive_sells,
+            "defensive_rebuys": defensive_rebuys,
         }

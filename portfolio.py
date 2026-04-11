@@ -958,7 +958,6 @@ def _build_portfolio_snapshot():
     snapshot["nontradable_weight"] = nontradable_value / total_value
     snapshot["active_satellite_buy_universe"] = get_active_satellite_buy_universe(snapshot)
     # Inject regime from technical engine (BTC trend + volatility + breadth)
-    # Falls back to drawdown-based regime only if technical engine fails
     try:
         regime_detail = get_market_regime()
         technical_regime = str(regime_detail.get("regime", "neutral")).lower()

@@ -96,7 +96,11 @@
       <div class="opp-panel-head"><div><h3 class="opp-section-title">Unified Charts</h3><p class="opp-section-subtitle" id="tradingChartMeta">Load any crypto pair or stock and replay signals client-side.</p></div><div class="opp-panel-actions"><button class="btn btn-secondary" id="tradingBackBtn" type="button">← Back to Dashboard</button></div></div>
       <div class="opp-panel-actions" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:12px;">
         <div class="form-card"><label>Asset Type</label><div><button class="btn btn-secondary trading-chart-type active" data-type="crypto" type="button">Crypto</button> <button class="btn btn-secondary trading-chart-type" data-type="stock" type="button">Stock</button></div></div>
-        <div class="form-card"><label for="tradingChartSymbol">Symbol</label><select id="tradingChartSymbol" class="select"></select></div>
+        <div class="form-card">
+          <label for="tradingChartSymbolInput">Symbol</label>
+          <input type="text" id="tradingChartSymbolInput" list="tradingChartSymbolDatalist" class="form-input" placeholder="Type or select symbol..." value="BTC-USD">
+          <datalist id="tradingChartSymbolDatalist"></datalist>
+        </div>
         <div class="form-card"><label>Timeframe</label><div><button class="btn btn-secondary trading-chart-frame active" data-frame="1h" type="button">1H</button> <button class="btn btn-secondary trading-chart-frame" data-frame="4h" type="button">4H</button> <button class="btn btn-secondary trading-chart-frame" data-frame="1d" type="button">1D</button> <button class="btn btn-secondary trading-chart-frame" data-frame="1w" type="button">1W</button></div></div>
         <div class="form-card"><label>Signal Controls</label><details open><summary>Adjust Parameters</summary><div style="display:grid; gap:8px; margin-top:10px;"><label>RSI Min <input id="tradingParamRsiMin" type="range" min="20" max="60" step="1" value="40"><span id="tradingParamRsiMinValue">40</span></label><label>RSI Max <input id="tradingParamRsiMax" type="range" min="50" max="85" step="1" value="70"><span id="tradingParamRsiMaxValue">70</span></label><label>EMA Trend <input id="tradingParamTrend" type="range" min="50" max="250" step="5" value="200"><span id="tradingParamTrendValue">200</span></label><label>ADX Min <input id="tradingParamAdx" type="range" min="10" max="40" step="1" value="20"><span id="tradingParamAdxValue">20</span></label><label>Extension % <input id="tradingParamExt" type="range" min="2" max="25" step="0.5" value="10"><span id="tradingParamExtValue">10</span></label></div></details></div>
       </div>
@@ -415,37 +419,48 @@
   }
 
   function enrichRows(rows, trendLen = 200) {
-    const closes = rows.map((row) => Number(row.close || 0));
-    const volumes = rows.map((row) => Number(row.volume || 0));
-    const emaFast = ema(closes, 21);
-    const emaMid = ema(closes, 50);
-    const emaSlow = ema(closes, 200);
-    const emaTrend = ema(closes, trendLen);
-    const rsiVals = rsi(closes, 14);
-    const macdVals = macdHist(closes);
-    const bb = bollinger(closes, 20, 2);
-    const vol = sma(volumes, 20);
+    if (!Array.isArray(rows) || !rows.length) return [];
+    const baseRows = rows.map((row) => Object.assign({}, row));
+    const hasIndicators = baseRows.some((row) => Number(row?.ema_fast || 0) > 0);
+    const closes = baseRows.map((row) => Number(row.close || 0));
+    const volumes = baseRows.map((row) => Number(row.volume || 0));
+    const resolvedTrendLen = Math.max(2, Math.min(Number(trendLen || 200), Math.max(2, closes.length - 1)));
+    const emaFast = hasIndicators ? baseRows.map((row) => row.ema_fast ?? null) : ema(closes, 21);
+    const emaMid = hasIndicators ? baseRows.map((row) => row.ema_mid ?? null) : ema(closes, 50);
+    const emaSlow = hasIndicators ? baseRows.map((row) => row.ema_slow ?? row.ema_mid ?? null) : ema(closes, 200);
+    const emaTrend = hasIndicators ? baseRows.map((row) => row.ema_trend ?? row.ema_slow ?? null) : ema(closes, resolvedTrendLen);
+    const rsiVals = hasIndicators ? baseRows.map((row) => row.rsi ?? null) : rsi(closes, 14);
+    const macdVals = hasIndicators ? baseRows.map((row) => row.macd_hist ?? 0) : macdHist(closes);
+    const bb = hasIndicators
+      ? {
+          upper: baseRows.map((row) => row.bb_upper ?? null),
+          middle: baseRows.map((row) => row.bb_middle ?? null),
+          lower: baseRows.map((row) => row.bb_lower ?? null)
+        }
+      : bollinger(closes, 20, 2);
+    const vol = hasIndicators ? baseRows.map((row) => row.vol_sma ?? null) : sma(volumes, 20);
     let cumulativePv = 0;
     let cumulativeVolume = 0;
-    return rows.map((row, index) => Object.assign({}, row, {
-      vwap: (() => {
-        const typical = (Number(row.high || row.close || 0) + Number(row.low || row.close || 0) + Number(row.close || 0)) / 3;
-        const volume = Number(row.volume || 0);
-        cumulativePv += typical * volume;
-        cumulativeVolume += volume;
-        return cumulativeVolume > 0 ? cumulativePv / cumulativeVolume : null;
-      })(),
-      ema_fast: emaFast[index],
-      ema_mid: emaMid[index],
-      ema_slow: emaSlow[index],
-      ema_trend: emaTrend[index],
-      rsi: rsiVals[index],
-      macd_hist: macdVals[index],
-      bb_upper: bb.upper[index],
-      bb_middle: bb.middle[index],
-      bb_lower: bb.lower[index],
-      vol_sma: vol[index]
-    }));
+    return baseRows.map((row, index) => {
+      const typical = (Number(row.high || row.close || 0) + Number(row.low || row.close || 0) + Number(row.close || 0)) / 3;
+      const volume = Number(row.volume || 0);
+      cumulativePv += typical * volume;
+      cumulativeVolume += volume;
+      return Object.assign({}, row, {
+        vwap: row.vwap ?? (cumulativeVolume > 0 ? cumulativePv / cumulativeVolume : null),
+        ema_fast: row.ema_fast ?? emaFast[index],
+        ema_mid: row.ema_mid ?? emaMid[index],
+        ema_slow: row.ema_slow ?? emaSlow[index] ?? emaMid[index],
+        ema_trend: row.ema_trend ?? emaTrend[index],
+        rsi: row.rsi ?? rsiVals[index],
+        macd_hist: row.macd_hist ?? macdVals[index] ?? 0,
+        bb_upper: row.bb_upper ?? bb.upper[index],
+        bb_middle: row.bb_middle ?? bb.middle[index],
+        bb_lower: row.bb_lower ?? bb.lower[index],
+        vol_sma: row.vol_sma ?? vol[index],
+        adx: row.adx ?? 25
+      });
+    });
   }
   async function loadStocksUniverse() {
     try {
@@ -563,22 +578,32 @@
   }
 
   async function loadChartSymbols() {
-    const select = document.getElementById("tradingChartSymbol");
+    const input = document.getElementById("tradingChartSymbolInput");
+    const datalist = document.getElementById("tradingChartSymbolDatalist");
+    if (!input || !datalist) return;
+
+    const renderOptions = (items, valueKey, labelBuilder) => {
+      datalist.innerHTML = items.map((item) => {
+        const value = String(item?.[valueKey] || "").trim();
+        return `<option value="${escapeHtml(value)}">${escapeHtml(labelBuilder(item))}</option>`;
+      }).join("");
+    };
+
     if (chartType === "crypto") {
       try {
         const data = await fetchJson("/api/valid_products?quote=USD&tradable_only=true");
         const rows = Array.isArray(data.products) ? data.products : [];
-        select.innerHTML = rows.map((row) => `<option value="${escapeHtml(row.product_id)}">${escapeHtml(row.product_id)}</option>`).join("");
+        renderOptions(rows, "product_id", (row) => row.product_id || "");
       } catch (error) {
-        select.innerHTML = ["BTC-USD","ETH-USD","SOL-USD","XRP-USD"].map((symbol) => `<option value="${symbol}">${symbol}</option>`).join("");
+        renderOptions(["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"].map((symbol) => ({ product_id: symbol })), "product_id", (row) => row.product_id || "");
       }
-      if (![...select.options].some((opt) => opt.value === chartSymbol)) chartSymbol = "BTC-USD";
+      if (!chartSymbol.includes("-USD")) chartSymbol = "BTC-USD";
     } else {
       const rows = stockUniverse.length ? stockUniverse : DEFAULT_STOCKS.map((symbol) => ({ symbol, name: "" }));
-      select.innerHTML = rows.map((row) => `<option value="${escapeHtml(row.symbol)}">${escapeHtml(row.symbol)}${row.name ? ` — ${escapeHtml(row.name)}` : ""}</option>`).join("");
-      if (![...select.options].some((opt) => opt.value === chartSymbol)) chartSymbol = rows[0]?.symbol || "AAPL";
+      renderOptions(rows, "symbol", (row) => `${row.symbol || ""}${row.name ? ` — ${row.name}` : ""}`);
+      if (chartSymbol.includes("-USD")) chartSymbol = rows[0]?.symbol || "AAPL";
     }
-    select.value = chartSymbol;
+    input.value = chartSymbol;
   }
 
   function aggregateWeekly(rows) {
@@ -853,6 +878,17 @@
     chartRows = enrichRows(rows, currentParams().trendLen).map((row) => Object.assign({}, row, { adx: Number(row.adx || 25) }));
     console.log("Setting chart data");
     const candleData = chartRows.map((row) => ({ time: Number(row.ts || 0), open: Number(row.open || row.close || 0), high: Number(row.high || row.close || 0), low: Number(row.low || row.close || 0), close: Number(row.close || 0) }));
+    candleSeries.setData([]);
+    ema21Series.setData([]);
+    ema50Series.setData([]);
+    ema200Series.setData([]);
+    bbUpperSeries.setData([]);
+    bbLowerSeries.setData([]);
+    vwapSeries.setData([]);
+    volumeSeries.setData([]);
+    rsiSeries.setData([]);
+    rsiUpperSeries.setData([]);
+    rsiLowerSeries.setData([]);
     candleSeries.setData(candleData);
     ema21Series.setData(lineData(chartRows, "ema_fast"));
     ema50Series.setData(lineData(chartRows, "ema_mid"));
@@ -894,6 +930,9 @@
       rsiChart.resize(width, 100);
       rsiChart.applyOptions({ width, height: 100 });
     }
+    mainChart.priceScale("right").applyOptions({ autoScale: true });
+    volumeChart.priceScale("right").applyOptions({ autoScale: true });
+    rsiChart.priceScale("right").applyOptions({ autoScale: true });
     mainChart.timeScale().fitContent();
     volumeChart.timeScale().fitContent();
     rsiChart.timeScale().fitContent();
@@ -910,6 +949,26 @@
     document.querySelectorAll(".trading-chart-type").forEach((button) => button.classList.toggle("active", button.dataset.type === chartType));
     document.querySelectorAll(".trading-chart-frame").forEach((button) => button.classList.toggle("active", button.dataset.frame === chartFrame));
     return loadChartSymbols();
+  }
+
+  async function commitChartSymbolInput() {
+    const input = document.getElementById("tradingChartSymbolInput");
+    const value = String(input?.value || "").trim().toUpperCase();
+    if (!value) return;
+    if (value.includes("-USD")) {
+      chartType = "crypto";
+      chartSymbol = value;
+    } else {
+      chartType = "stock";
+      chartSymbol = value;
+    }
+    await syncChartControls();
+    await loadLiveQuote();
+    if (!chartReady) {
+      activateTab("charts");
+      return;
+    }
+    await refreshChart();
   }
 
   function bindControls() {
@@ -943,14 +1002,12 @@
       }
       await refreshChart();
     }));
-    document.getElementById("tradingChartSymbol")?.addEventListener("change", async (event) => {
-      chartSymbol = event.target.value || chartSymbol;
-      await loadLiveQuote();
-      if (!chartReady) {
-        activateTab("charts");
-        return;
+    document.getElementById("tradingChartSymbolInput")?.addEventListener("change", () => commitChartSymbolInput().catch(console.error));
+    document.getElementById("tradingChartSymbolInput")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        commitChartSymbolInput().catch(console.error);
       }
-      await refreshChart();
     });
     let debounce;
     ["tradingParamRsiMin", "tradingParamRsiMax", "tradingParamTrend", "tradingParamAdx", "tradingParamExt"].forEach((id) => {

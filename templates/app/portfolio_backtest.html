@@ -1,0 +1,416 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="pbt-shell">
+  <section class="pbt-header pbt-observe">
+    <div class="pbt-header-copy pbt-reveal">
+      <div class="pbt-kicker">Portfolio Replay</div>
+      <h2 class="pbt-title">Simulate DCA, rebalancing, and satellite selection together instead of testing each part in isolation.</h2>
+      <p class="pbt-subtitle" id="pbtMeta">Configure the system rules, run the replay, and inspect where returns, fees, and drawdowns came from.</p>
+    </div>
+  </section>
+
+  <section class="pbt-panel pbt-observe">
+    <div class="hc-chart-section pbt-reveal">
+      <div class="pbt-section-head">
+        <div>
+          <h2 class="pbt-section-title">Configuration</h2>
+          <p class="pbt-section-subtitle">Capital, core mix, satellite budget, DCA rhythm, and fee assumptions.</p>
+        </div>
+      </div>
+
+      <div class="pbt-config-grid">
+        <div class="form-card pbt-form-card">
+          <label for="pbtStartingCapital">Starting Capital</label>
+          <input id="pbtStartingCapital" class="form-input" type="number" min="100" step="50" value="1000">
+        </div>
+        <div class="form-card pbt-form-card">
+          <label for="pbtStartDate">Start Date</label>
+          <input id="pbtStartDate" class="form-input" type="date">
+        </div>
+        <div class="form-card pbt-form-card">
+          <label for="pbtEndDate">End Date</label>
+          <input id="pbtEndDate" class="form-input" type="date">
+        </div>
+        <div class="form-card pbt-form-card">
+          <label for="pbtFeeRate">Fee Rate (%)</label>
+          <input id="pbtFeeRate" class="form-input" type="number" min="0" step="0.05" value="0.6">
+        </div>
+      </div>
+
+      <div class="pbt-block">
+        <div class="pbt-block-head">
+          <h3 class="pbt-block-title">Core Allocation</h3>
+          <div class="pbt-block-meta" id="pbtRemainingLabel">Available for satellites + cash: 37%</div>
+        </div>
+        <div class="pbt-core-grid">
+          <label class="pbt-weight-card">BTC <span id="pbtWeightBTCValue">30%</span><input id="pbtWeightBTC" class="pbt-range" type="range" min="0" max="60" step="1" value="30"></label>
+          <label class="pbt-weight-card">ETH <span id="pbtWeightETHValue">15%</span><input id="pbtWeightETH" class="pbt-range" type="range" min="0" max="40" step="1" value="15"></label>
+          <label class="pbt-weight-card">SOL <span id="pbtWeightSOLValue">13%</span><input id="pbtWeightSOL" class="pbt-range" type="range" min="0" max="35" step="1" value="13"></label>
+          <label class="pbt-weight-card">XRP <span id="pbtWeightXRPValue">5%</span><input id="pbtWeightXRP" class="pbt-range" type="range" min="0" max="20" step="1" value="5"></label>
+        </div>
+      </div>
+
+      <div class="pbt-config-grid">
+        <div class="form-card pbt-form-card">
+          <label for="pbtSatelliteMax">Max Satellite Allocation (%)</label>
+          <input id="pbtSatelliteMax" class="form-input" type="number" min="0" max="60" step="1" value="20">
+        </div>
+        <div class="form-card pbt-form-card">
+          <label for="pbtMaxActiveSatellites">Max Active Satellites</label>
+          <input id="pbtMaxActiveSatellites" class="form-input" type="number" min="1" max="12" step="1" value="4">
+        </div>
+        <div class="form-card pbt-form-card">
+          <label for="pbtDcaFrequency">DCA Frequency</label>
+          <select id="pbtDcaFrequency" class="select">
+            <option value="6">Daily</option>
+            <option value="12">Every 2 Days</option>
+            <option value="42" selected>Weekly</option>
+            <option value="84">Bi-weekly</option>
+          </select>
+        </div>
+        <div class="form-card pbt-form-card">
+          <label for="pbtDcaAmount">DCA Amount</label>
+          <div class="pbt-inline-field">
+            <input id="pbtDcaAmount" class="pbt-range" type="range" min="1" max="5" step="0.5" value="2">
+            <span id="pbtDcaAmountValue">2.0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pbt-block">
+        <div class="pbt-block-head">
+          <h3 class="pbt-block-title">Satellite Regime Filter</h3>
+          <div class="pbt-block-meta">Only take satellite entries in selected regimes.</div>
+        </div>
+        <div class="pbt-check-grid">
+          <label class="pbt-check-card"><input id="pbtRegimeBull" type="checkbox" checked> Bull</label>
+          <label class="pbt-check-card"><input id="pbtRegimeNeutral" type="checkbox"> Neutral</label>
+          <label class="pbt-check-card"><input id="pbtRegimeCaution" type="checkbox"> Caution</label>
+        </div>
+      </div>
+
+      <div class="pbt-actions">
+        <button id="pbtRunBtn" class="btn btn-primary" type="button">Run Portfolio Backtest</button>
+        <div class="pbt-run-status" id="pbtRunStatus">Ready to simulate.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pbt-results pbt-observe" id="pbtResultsSection" hidden>
+    <div class="pbt-kpi-grid">
+      <div class="hc-context-card pbt-reveal"><div class="hc-context-label">Total Return</div><div class="hc-context-value" id="pbtTotalReturn">0.00%</div><div class="hc-context-detail">Net of fees</div></div>
+      <div class="hc-context-card pbt-reveal"><div class="hc-context-label">Annualized</div><div class="hc-context-value" id="pbtAnnualized">0.00%</div><div class="hc-context-detail">Annual pace</div></div>
+      <div class="hc-context-card pbt-reveal"><div class="hc-context-label">Max Drawdown</div><div class="hc-context-value" id="pbtMaxDrawdown">0.00%</div><div class="hc-context-detail">Worst decline</div></div>
+      <div class="hc-context-card pbt-reveal"><div class="hc-context-label">Sharpe</div><div class="hc-context-value" id="pbtSharpe">0.00</div><div class="hc-context-detail">Risk-adjusted</div></div>
+      <div class="hc-context-card pbt-reveal"><div class="hc-context-label">Total Trades</div><div class="hc-context-value" id="pbtTotalTrades">0</div><div class="hc-context-detail">All actions</div></div>
+      <div class="hc-context-card pbt-reveal"><div class="hc-context-label">Total Fees</div><div class="hc-context-value" id="pbtTotalFees">$0.00</div><div class="hc-context-detail">Exchange drag</div></div>
+      <div class="hc-context-card pbt-reveal"><div class="hc-context-label">Core Contribution</div><div class="hc-context-value" id="pbtCoreContribution">0.00%</div><div class="hc-context-detail">Share of return</div></div>
+      <div class="hc-context-card pbt-reveal"><div class="hc-context-label">Satellite Contribution</div><div class="hc-context-value" id="pbtSatelliteContribution">0.00%</div><div class="hc-context-detail">Share of return</div></div>
+    </div>
+
+    <div class="hc-chart-section pbt-reveal">
+      <div class="pbt-section-head">
+        <div>
+          <h2 class="pbt-section-title">Portfolio Equity Curve</h2>
+          <p class="pbt-section-subtitle" id="pbtEquityMeta">Total value with core / satellite / cash stack and drawdown profile.</p>
+        </div>
+        <label class="pbt-toggle"><input id="pbtCompareBtc" type="checkbox"> <span>vs Buy &amp; Hold BTC</span></label>
+      </div>
+      <div id="pbtEquityChartHost" class="hc-chart-host"><div class="hc-chart-empty">Run a portfolio backtest to draw the curve.</div></div>
+      <div class="pbt-alpha-row" id="pbtAlphaRow" hidden><span>Alpha vs BTC Buy &amp; Hold</span><strong id="pbtAlphaValue">0.00%</strong></div>
+    </div>
+
+    <div class="pbt-grid-2">
+      <div class="hc-chart-section pbt-reveal">
+        <div class="pbt-section-head"><div><h2 class="pbt-section-title">Allocation Over Time</h2><p class="pbt-section-subtitle" id="pbtAllocationMeta">Core, satellite, and cash weights with rebalance markers.</p></div></div>
+        <div id="pbtAllocationChartHost" class="hc-chart-host"><div class="hc-chart-empty">Run a portfolio backtest to view allocations.</div></div>
+      </div>
+      <div class="hc-chart-section pbt-reveal">
+        <div class="pbt-section-head"><div><h2 class="pbt-section-title">Regime Timeline</h2><p class="pbt-section-subtitle" id="pbtRegimeMeta">BTC-led regime phases with satellite trade dots.</p></div></div>
+        <div id="pbtRegimeTimelineHost" class="hc-chart-host pbt-regime-host"><div class="hc-chart-empty">Run a portfolio backtest to build the regime timeline.</div></div>
+      </div>
+    </div>
+
+    <div class="hc-chart-section pbt-reveal">
+      <div class="pbt-section-head"><div><h2 class="pbt-section-title">Trade Log</h2><p class="pbt-section-subtitle" id="pbtTradeMeta">DCA buys, rebalance actions, and satellite trades in one feed.</p></div></div>
+      <div class="pbt-trade-feed" id="pbtTradeFeed"><div class="hc-empty-card">Trade events will appear here after the first run.</div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const API_SECRET = {{ api_secret|tojson }};
+  let revealObserver = null;
+  let lastPayload = null;
+  let lastResult = null;
+  let btcBenchmark = null;
+
+  const $ = (id) => document.getElementById(id);
+  const fmtUsd = (v) => Number(v || 0).toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  const fmtPct = (v) => `${Number(v || 0).toFixed(2)}%`;
+  const fmtSignedPct = (v) => `${Number(v || 0) >= 0 ? "+" : "-"}${Math.abs(Number(v || 0)).toFixed(2)}%`;
+  const fmtTs = (ts) => ts ? new Date(Number(ts) * 1000).toLocaleString() : "—";
+  const authUrl = (path) => !API_SECRET ? path : `${path}${path.includes("?") ? "&" : "?"}secret=${encodeURIComponent(API_SECRET)}`;
+
+  async function fetchJson(path, options) {
+    const res = await fetch(authUrl(path), Object.assign({ credentials: "same-origin" }, options || {}));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+
+  function observe() {
+    if (!revealObserver) {
+      revealObserver = new IntersectionObserver((entries) => entries.forEach((entry) => entry.isIntersecting && entry.target.classList.add("pbt-visible")), { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+    }
+    document.querySelectorAll(".pbt-observe,.pbt-trade-card").forEach((node) => {
+      if (node.dataset.pbtObserved === "true") return;
+      node.dataset.pbtObserved = "true";
+      revealObserver.observe(node);
+    });
+  }
+
+  function defaults() {
+    const end = new Date();
+    const start = new Date(end.getTime() - (180 * 86400 * 1000));
+    if (!$("pbtStartDate").value) $("pbtStartDate").value = start.toISOString().slice(0, 10);
+    if (!$("pbtEndDate").value) $("pbtEndDate").value = end.toISOString().slice(0, 10);
+    updateLabels();
+  }
+
+  function updateLabels() {
+    const ids = ["BTC", "ETH", "SOL", "XRP"];
+    const total = ids.reduce((sum, s) => {
+      const value = Number($(`pbtWeight${s}`).value || 0);
+      $(`pbtWeight${s}Value`).textContent = `${value.toFixed(0)}%`;
+      return sum + value;
+    }, 0);
+    $("pbtRemainingLabel").textContent = `Available for satellites + cash: ${Math.max(0, 100 - total).toFixed(0)}%`;
+    $("pbtDcaAmountValue").textContent = `${Number($("pbtDcaAmount").value || 0).toFixed(1)}%`;
+  }
+
+  function payload() {
+    return {
+      starting_capital: Number($("pbtStartingCapital").value || 1000),
+      start_date: $("pbtStartDate").value,
+      end_date: $("pbtEndDate").value,
+      core_assets: {
+        "BTC-USD": { target_weight: Number($("pbtWeightBTC").value || 30) / 100 },
+        "ETH-USD": { target_weight: Number($("pbtWeightETH").value || 15) / 100 },
+        "SOL-USD": { target_weight: Number($("pbtWeightSOL").value || 13) / 100 },
+        "XRP-USD": { target_weight: Number($("pbtWeightXRP").value || 5) / 100 }
+      },
+      satellite_max_weight: Number($("pbtSatelliteMax").value || 20) / 100,
+      max_active_satellites: Number($("pbtMaxActiveSatellites").value || 4),
+      dca_frequency_bars: Number($("pbtDcaFrequency").value || 42),
+      dca_amount_pct: Number($("pbtDcaAmount").value || 2) / 100,
+      fee_pct: Number($("pbtFeeRate").value || 0.6) / 100,
+      satellite_regime_filter: [$("pbtRegimeBull").checked ? "bull" : null, $("pbtRegimeNeutral").checked ? "neutral" : null, $("pbtRegimeCaution").checked ? "caution" : null].filter(Boolean),
+      timeframe: "4h"
+    };
+  }
+
+  function tone(el, value) {
+    el.classList.remove("pbt-positive", "pbt-negative");
+    el.classList.add(Number(value || 0) >= 0 ? "pbt-positive" : "pbt-negative");
+  }
+
+  function setSummary(summary, tradeCount) {
+    $("pbtTotalReturn").textContent = fmtSignedPct(summary.total_return_pct || 0); tone($("pbtTotalReturn"), summary.total_return_pct || 0);
+    $("pbtAnnualized").textContent = fmtSignedPct(summary.total_return_pct_annualized || 0); tone($("pbtAnnualized"), summary.total_return_pct_annualized || 0);
+    $("pbtMaxDrawdown").textContent = fmtPct(summary.max_drawdown_pct || 0); $("pbtMaxDrawdown").classList.add("pbt-negative");
+    $("pbtSharpe").textContent = Number(summary.sharpe_estimate || 0).toFixed(2); tone($("pbtSharpe"), summary.sharpe_estimate || 0);
+    $("pbtTotalTrades").textContent = String(tradeCount || summary.total_trades || 0);
+    $("pbtTotalFees").textContent = fmtUsd(summary.total_fees || 0);
+    $("pbtCoreContribution").textContent = fmtPct((Number(summary.core_contribution_pct || 0) * 100)); tone($("pbtCoreContribution"), summary.core_contribution_pct || 0);
+    $("pbtSatelliteContribution").textContent = fmtPct((Number(summary.satellite_contribution_pct || 0) * 100)); tone($("pbtSatelliteContribution"), summary.satellite_contribution_pct || 0);
+  }
+
+  function sample(rows, target) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (list.length <= target) return list;
+    const step = Math.max(1, Math.floor(list.length / target));
+    const out = list.filter((_, idx) => idx % step === 0);
+    if (out[out.length - 1] !== list[list.length - 1]) out.push(list[list.length - 1]);
+    return out.slice(0, target);
+  }
+
+  function renderEquity(rows, benchmark) {
+    const host = $("pbtEquityChartHost");
+    const meta = $("pbtEquityMeta");
+    const pts = sample(rows, 220).filter((r) => r && Number.isFinite(Number(r.total_value)));
+    if (!pts.length) { host.innerHTML = '<div class="hc-chart-empty">No portfolio equity curve returned.</div>'; return; }
+    const w = 900, h = 320, lp = 72, rp = 18, tp = 18, bp = 40, cw = w - lp - rp, ch = h - tp - bp;
+    const values = pts.map((r) => Number(r.total_value || 0));
+    const bmValues = (benchmark || []).map((r) => Number(r.value || 0));
+    const max = Math.max(...values, ...(bmValues.length ? bmValues : [0]));
+    const min = Math.min(...values, 0);
+    const spread = Math.max(1, max - min);
+    const coords = pts.map((r, i) => ({ x: lp + ((cw * i) / Math.max(pts.length - 1, 1)), y: tp + ((max - Number(r.total_value || 0)) / spread) * ch }));
+    let peak = 0;
+    const peaks = pts.map((r, i) => { peak = Math.max(peak, Number(r.total_value || 0)); return { x: lp + ((cw * i) / Math.max(pts.length - 1, 1)), y: tp + ((max - peak) / spread) * ch }; });
+    const line = coords.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ");
+    const area = `${line} L ${coords[coords.length - 1].x.toFixed(2)} ${h - bp} L ${coords[0].x.toFixed(2)} ${h - bp} Z`;
+    const peakLine = peaks.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(" ");
+    const stack = (key) => {
+      const upper = pts.map((r, i) => {
+        const cash = Number(r.cash || 0), sat = Number(r.satellite_value || 0), core = Number(r.core_value || 0);
+        const v = key === "cash" ? cash : key === "sat" ? cash + sat : cash + sat + core;
+        const x = lp + ((cw * i) / Math.max(pts.length - 1, 1)), y = tp + ((max - v) / spread) * ch;
+        return `${x.toFixed(2)} ${y.toFixed(2)}`;
+      });
+      const lower = pts.map((r, i) => {
+        const cash = Number(r.cash || 0), sat = Number(r.satellite_value || 0);
+        const v = key === "cash" ? 0 : key === "sat" ? cash : cash + sat;
+        const x = lp + ((cw * (pts.length - 1 - i)) / Math.max(pts.length - 1, 1)), y = tp + ((max - v) / spread) * ch;
+        return `${x.toFixed(2)} ${y.toFixed(2)}`;
+      });
+      return `M ${upper.join(" L ")} L ${lower.join(" L ")} Z`;
+    };
+    const bmPath = (benchmark || []).length ? benchmark.map((r, i) => {
+      const x = lp + ((cw * i) / Math.max(benchmark.length - 1, 1)), y = tp + ((max - Number(r.value || 0)) / spread) * ch;
+      return `${i ? "L" : "M"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }).join(" ") : "";
+    host.innerHTML = `<svg viewBox="0 0 900 320" width="100%" role="img" aria-label="Portfolio backtest equity curve">
+      <defs>
+        <linearGradient id="pbtLine" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#38bdf8"></stop><stop offset="100%" stop-color="#60a5fa"></stop></linearGradient>
+        <linearGradient id="pbtArea" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="rgba(56,189,248,0.22)"></stop><stop offset="100%" stop-color="rgba(56,189,248,0)"></stop></linearGradient>
+      </defs>
+      <path d="${stack("cash")}" fill="rgba(226,232,240,0.12)"></path>
+      <path d="${stack("sat")}" fill="rgba(129,140,248,0.18)"></path>
+      <path d="${stack("core")}" fill="rgba(96,165,250,0.22)"></path>
+      <path d="${area}" fill="url(#pbtArea)"></path>
+      ${coords.map((p, i) => peaks[i].y <= p.y ? "" : `<line x1="${p.x.toFixed(2)}" y1="${peaks[i].y.toFixed(2)}" x2="${p.x.toFixed(2)}" y2="${p.y.toFixed(2)}" stroke="rgba(251,113,133,0.16)" />`).join("")}
+      <path d="${peakLine}" fill="none" stroke="rgba(255,255,255,0.24)" stroke-width="1.5" stroke-dasharray="6 6"></path>
+      <path d="${line}" fill="none" stroke="url(#pbtLine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      ${bmPath ? `<path d="${bmPath}" fill="none" stroke="rgba(245,158,11,0.95)" stroke-width="2" stroke-dasharray="5 4"></path>` : ""}
+    </svg>`;
+    meta.textContent = `${pts.length} points • ${fmtUsd(values[0])} start • ${fmtUsd(values[values.length - 1])} finish`;
+    if (benchmark && benchmark.length) {
+      const alpha = (((values[values.length - 1] - values[0]) / Math.max(1, values[0])) * 100) - (((benchmark[benchmark.length - 1].value - benchmark[0].value) / Math.max(1, benchmark[0].value)) * 100);
+      $("pbtAlphaRow").hidden = false; $("pbtAlphaValue").textContent = fmtSignedPct(alpha); tone($("pbtAlphaValue"), alpha);
+    } else {
+      $("pbtAlphaRow").hidden = true;
+    }
+  }
+
+  function renderAllocation(rows, rebalances) {
+    const host = $("pbtAllocationChartHost");
+    const pts = sample(rows, 180).filter((r) => r && Number.isFinite(Number(r.total_value)));
+    if (!pts.length) { host.innerHTML = '<div class="hc-chart-empty">No allocation data returned.</div>'; return; }
+    const w = 900, h = 260, lp = 48, rp = 18, tp = 14, bp = 24, cw = w - lp - rp, ch = h - tp - bp;
+    const vals = pts.map((r) => {
+      const total = Math.max(1, Number(r.total_value || 0));
+      const pos = r.positions || {};
+      return { btc: Number(pos["BTC-USD"] || 0) / total, eth: Number(pos["ETH-USD"] || 0) / total, sol: Number(pos["SOL-USD"] || 0) / total, xrp: Number(pos["XRP-USD"] || 0) / total, sat: Number(r.satellite_value || 0) / total, cash: Number(r.cash || 0) / total };
+    });
+    const area = (key, lowerFn, upperFn, fill) => {
+      const top = pts.map((_, i) => { const x = lp + ((cw * i) / Math.max(pts.length - 1, 1)); const y = tp + ((1 - upperFn(vals[i])) * ch); return `${x.toFixed(2)} ${y.toFixed(2)}`; });
+      const bottom = pts.map((_, i) => { const x = lp + ((cw * (pts.length - 1 - i)) / Math.max(pts.length - 1, 1)); const y = tp + ((1 - lowerFn(vals[pts.length - 1 - i])) * ch); return `${x.toFixed(2)} ${y.toFixed(2)}`; });
+      return `<path d="M ${top.join(" L ")} L ${bottom.join(" L ")} Z" fill="${fill}"></path>`;
+    };
+    const lines = (rebalances || []).map((r) => { const idx = pts.findIndex((p) => Number(p.ts || 0) >= Number(r.ts || 0)); if (idx < 0) return ""; const x = lp + ((cw * idx) / Math.max(pts.length - 1, 1)); return `<line x1="${x.toFixed(2)}" y1="${tp}" x2="${x.toFixed(2)}" y2="${h - bp}" stroke="rgba(255,255,255,0.18)" stroke-dasharray="4 5"></line>`; }).join("");
+    host.innerHTML = `<svg viewBox="0 0 900 260" width="100%" role="img" aria-label="Allocation over time">
+      <rect x="${lp}" y="${tp}" width="${cw}" height="${ch}" fill="rgba(255,255,255,0.02)" rx="14"></rect>
+      ${area("cash", () => 0, (v) => v.cash, "rgba(226,232,240,0.12)")}
+      ${area("sat", (v) => v.cash, (v) => v.cash + v.sat, "rgba(245,158,11,0.18)")}
+      ${area("xrp", (v) => v.cash + v.sat, (v) => v.cash + v.sat + v.xrp, "rgba(192,132,252,0.16)")}
+      ${area("sol", (v) => v.cash + v.sat + v.xrp, (v) => v.cash + v.sat + v.xrp + v.sol, "rgba(129,140,248,0.18)")}
+      ${area("eth", (v) => v.cash + v.sat + v.xrp + v.sol, (v) => v.cash + v.sat + v.xrp + v.sol + v.eth, "rgba(96,165,250,0.20)")}
+      ${area("btc", (v) => v.cash + v.sat + v.xrp + v.sol + v.eth, (v) => v.cash + v.sat + v.xrp + v.sol + v.eth + v.btc, "rgba(56,189,248,0.24)")}
+      ${lines}
+    </svg>`;
+    $("pbtAllocationMeta").textContent = `${pts.length} points • dotted lines mark rebalance cycles`;
+  }
+
+  function renderRegimes(rows, trades) {
+    const host = $("pbtRegimeTimelineHost");
+    const pts = sample(rows, 180).filter((r) => r && r.regime);
+    if (!pts.length) { host.innerHTML = '<div class="hc-chart-empty">No regime history returned.</div>'; return; }
+    const colors = { bull: "#22c55e", neutral: "#60a5fa", caution: "#f59e0b", risk_off: "#ef4444" };
+    const segments = []; let current = null;
+    pts.forEach((r, i) => { const regime = String(r.regime || "neutral"); if (!current || current.regime !== regime) { if (current) segments.push(current); current = { regime, start: i, end: i }; } else { current.end = i; } });
+    if (current) segments.push(current);
+    const w = 900, h = 120, lp = 16, rp = 16, top = 18, cw = w - lp - rp, barH = 24;
+    const dots = (trades || []).filter((t) => String(t.reason || "").startsWith("satellite")).map((t) => {
+      const idx = pts.findIndex((p) => Number(p.ts || 0) >= Number(t.ts || 0)); if (idx < 0) return "";
+      const x = lp + ((cw * idx) / Math.max(pts.length - 1, 1)); const fill = String(t.action || "").toUpperCase() === "BUY" ? "#38bdf8" : "#fb7185";
+      return `<circle cx="${x.toFixed(2)}" cy="${(top + barH + 28).toFixed(2)}" r="5" fill="${fill}"></circle>`;
+    }).join("");
+    host.innerHTML = `<svg viewBox="0 0 900 120" width="100%" role="img" aria-label="Regime timeline">
+      ${segments.map((s) => { const x = lp + ((cw * s.start) / Math.max(pts.length - 1, 1)); const nx = lp + ((cw * (s.end + 1)) / Math.max(pts.length, 1)); return `<rect x="${x.toFixed(2)}" y="${top}" width="${Math.max(6, nx - x).toFixed(2)}" height="${barH}" rx="10" fill="${colors[s.regime] || "#60a5fa"}" opacity="0.9"></rect>`; }).join("")}
+      <text x="${lp}" y="${(top + barH + 26).toFixed(2)}" fill="rgba(255,255,255,0.55)" font-size="12" font-family="DM Sans, system-ui, sans-serif">Satellite trades</text>
+      ${dots}
+    </svg>`;
+    $("pbtRegimeMeta").textContent = `${segments.length} regime phases • dots mark satellite actions`;
+  }
+
+  function renderTrades(trades) {
+    const host = $("pbtTradeFeed");
+    const rows = Array.isArray(trades) ? trades.slice().sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0)) : [];
+    $("pbtTradeMeta").textContent = rows.length ? `${rows.length} trade actions recorded across DCA, rebalances, and satellites.` : "Trade events will appear here after the first run.";
+    if (!rows.length) { host.innerHTML = '<div class="hc-empty-card">No trade actions were returned for this run.</div>'; return; }
+    const kind = (row) => {
+      const reason = String(row.reason || "").toLowerCase(), action = String(row.action || "").toUpperCase();
+      if (reason === "dca") return ["DCA", "dca"];
+      if (reason.startsWith("rebalance")) return ["REBAL", "rebalance"];
+      if (reason === "satellite_entry") return ["SAT BUY", "sat-buy"];
+      if (reason.startsWith("satellite") || action === "SELL") return ["SAT EXIT", "sat-exit"];
+      return [action || "TRADE", "rebalance"];
+    };
+    host.innerHTML = rows.map((row) => {
+      const [label, cls] = kind(row);
+      return `<article class="pbt-trade-card hc-trade-card">
+        <div class="pbt-trade-main"><span class="pbt-trade-badge ${cls}">${label}</span><div><div class="pbt-trade-title">${row.product_id || "Unknown"} · ${String(row.action || "").toUpperCase()}</div><div class="pbt-trade-subtitle">${fmtTs(row.ts)} · ${row.reason || "system"}</div></div></div>
+        <div class="pbt-trade-right"><div class="pbt-trade-value">${fmtUsd(row.value || 0)}</div><div class="pbt-trade-meta">${fmtUsd(row.price || 0)} · fee ${fmtUsd(row.fee || 0)}</div></div>
+      </article>`;
+    }).join("");
+    observe();
+  }
+
+  async function benchmark() {
+    if (!lastPayload || !lastResult) return null;
+    try {
+      const start = new Date(lastPayload.start_date), end = new Date(lastPayload.end_date);
+      const days = Math.max(7, Math.round(Math.max(86400000, end - start) / 86400000));
+      const limit = Math.max(60, Math.min(400, Math.ceil(days * 6.5)));
+      const response = await fetchJson(`/api/candles?product_id=BTC-USD&timeframe=4h&limit=${limit}`);
+      const candles = (response.candles || []).filter((row) => { const ts = Number(row.ts || 0) * 1000; return ts >= start.getTime() && ts <= end.getTime(); });
+      if (!candles.length) return null;
+      const first = Number(candles[0].close || 0), capital = Number(lastPayload.starting_capital || 1000); if (first <= 0) return null;
+      const qty = capital / first; return candles.map((row) => ({ ts: Number(row.ts || 0), value: qty * Number(row.close || 0) }));
+    } catch { return null; }
+  }
+
+  async function redrawCompare() {
+    btcBenchmark = $("pbtCompareBtc").checked ? await benchmark() : null;
+    if (lastResult) renderEquity(lastResult.equity_curve || [], btcBenchmark);
+  }
+
+  async function run() {
+    const body = payload(); lastPayload = body; $("pbtRunBtn").disabled = true; $("pbtRunBtn").textContent = "Running..."; $("pbtRunStatus").textContent = "Simulating portfolio decisions, DCA, and rebalance events...";
+    try {
+      const result = await fetchJson("/api/backtest/portfolio", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      lastResult = result; $("pbtResultsSection").hidden = false; $("pbtRunStatus").textContent = `Completed portfolio replay with ${result.trade_count || 0} trade actions and ${result.rebalance_count || 0} rebalance cycles.`; $("pbtMeta").textContent = `${body.start_date} to ${body.end_date} · ${(result.summary || {}).ending_capital ? fmtUsd((result.summary || {}).ending_capital) + " ending value" : "Portfolio replay complete"}`;
+      setSummary(result.summary || {}, result.trade_count || 0); renderTrades(result.trade_log || []); renderAllocation(result.equity_curve || [], result.rebalance_log || []); renderRegimes(result.equity_curve || [], result.trade_log || []); await redrawCompare(); observe();
+    } catch (error) {
+      $("pbtRunStatus").textContent = `Portfolio backtest failed: ${error.message}`;
+    } finally {
+      $("pbtRunBtn").disabled = false; $("pbtRunBtn").textContent = "Run Portfolio Backtest";
+    }
+  }
+
+  ["BTC", "ETH", "SOL", "XRP"].forEach((s) => $(`pbtWeight${s}`).addEventListener("input", updateLabels));
+  $("pbtDcaAmount").addEventListener("input", updateLabels);
+  $("pbtRunBtn").addEventListener("click", run);
+  $("pbtCompareBtc").addEventListener("change", redrawCompare);
+  defaults(); observe();
+})();
+</script>
+{% endblock %}

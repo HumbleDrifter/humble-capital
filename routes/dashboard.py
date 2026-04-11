@@ -77,6 +77,12 @@ def backtest_page():
     return render_template("app/backtest.html", **_page_context("Backtesting"))
 
 
+@dashboard_bp.route("/portfolio-backtest", methods=["GET"])
+@require_dashboard_auth
+def portfolio_backtest_page():
+    return render_template("app/portfolio_backtest.html", **_page_context("Portfolio Backtest"))
+
+
 @dashboard_bp.route("/charts", methods=["GET"])
 @require_dashboard_auth
 def charts_page():

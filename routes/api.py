@@ -2588,6 +2588,8 @@ def api_backtest_portfolio():
             "ok": True,
             "summary": result.get("summary", {}),
             "equity_curve": sampled_equity_curve,
+            "trade_log": result.get("trade_log", []),
+            "rebalance_log": result.get("rebalance_log", []),
             "trade_count": len(result.get("trade_log", [])),
             "rebalance_count": len(result.get("rebalance_log", [])),
         })

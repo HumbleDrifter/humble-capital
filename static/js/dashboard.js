@@ -659,9 +659,15 @@
       if (futuresDetail) {
         if (futuresBalance > 0) {
           futuresDetail.style.display = "block";
+          const futuresUtilization = futuresBalance > 0 ? Math.min(100, (futuresMarginUsed / futuresBalance) * 100) : 0;
           document.getElementById("allocFuturesBalance").textContent = fmtUsd(futuresBalance);
           document.getElementById("allocFuturesBuyingPower").textContent = fmtUsd(futuresBuyingPower);
           document.getElementById("allocFuturesMarginUsed").textContent = fmtUsd(futuresMarginUsed);
+          const utilizationEl = document.getElementById("allocFuturesUtilization");
+          if (utilizationEl) {
+            utilizationEl.textContent = `${futuresUtilization.toFixed(1)}%`;
+            utilizationEl.style.color = futuresUtilization >= 75 ? "#ef4444" : futuresUtilization >= 50 ? "#f59e0b" : "#22c55e";
+          }
         } else {
           futuresDetail.style.display = "none";
         }

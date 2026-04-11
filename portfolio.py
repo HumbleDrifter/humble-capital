@@ -75,6 +75,7 @@ def _default_asset_config():
         "satellite_volatility_map": {},
         "satellite_allowed": [],
         "satellite_blocked": [],
+        "manual_holds": [],
         "satellite_total_target": 0.50,
         "satellite_total_max": 0.50,
         "regime_satellite_caps": {
@@ -172,6 +173,50 @@ def save_asset_config(config):
     Path(CONFIG_PATH).parent.mkdir(parents=True, exist_ok=True)
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, sort_keys=False)
+
+
+def get_manual_holds(snapshot=None):
+    config = load_asset_config() if snapshot is None else (snapshot.get("config") or {})
+    return {
+        str(product_id or "").upper().strip()
+        for product_id in (config.get("manual_holds") or [])
+        if str(product_id or "").strip()
+    }
+
+
+def add_manual_hold(product_id):
+    product_id = str(product_id or "").upper().strip()
+    if not product_id:
+        return False
+    config = load_asset_config() or {}
+    manual_holds = [
+        str(item or "").upper().strip()
+        for item in (config.get("manual_holds") or [])
+        if str(item or "").strip()
+    ]
+    if product_id in manual_holds:
+        return False
+    manual_holds.append(product_id)
+    config["manual_holds"] = manual_holds
+    save_asset_config(config)
+    return True
+
+
+def release_manual_hold(product_id):
+    product_id = str(product_id or "").upper().strip()
+    if not product_id:
+        return False
+    config = load_asset_config() or {}
+    manual_holds = [
+        str(item or "").upper().strip()
+        for item in (config.get("manual_holds") or [])
+        if str(item or "").strip() and str(item or "").upper().strip() != product_id
+    ]
+    changed = len(manual_holds) != len(config.get("manual_holds") or [])
+    config["manual_holds"] = manual_holds
+    if changed:
+        save_asset_config(config)
+    return changed
 
 
 def default_meme_rotation():

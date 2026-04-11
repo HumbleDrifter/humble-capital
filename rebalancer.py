@@ -17,6 +17,7 @@ from trailing_exit import evaluate_all_exits, clear_tracking
 from positions import compute_sell_base, compute_full_liquid_base
 
 from portfolio import (
+    add_manual_hold,
     get_portfolio_snapshot,
     portfolio_summary,
     allowed_satellite_buy_usd,
@@ -113,6 +114,42 @@ def _extract_fill(result_wrapper):
     filled_base = float(final_result.get("filled_base", 0.0) or 0.0)
     avg_fill_price = float(final_result.get("avg_fill_price", 0.0) or 0.0)
     return filled_base, avg_fill_price
+
+
+def _should_mark_manual_hold(signal_type, strategy, timeframe):
+    signal_type = str(signal_type or "").upper().strip()
+    strategy = str(strategy or "").lower().strip()
+    timeframe = str(timeframe or "").lower().strip()
+    automated_signal_types = {
+        "CORE_BUY_WINDOW",
+        "SATELLITE_BUY_EARLY",
+        "SATELLITE_BUY",
+        "SATELLITE_BUY_HEAVY",
+        "SNIPER_BUY",
+        "APPROVED_REBALANCE_BUY",
+        "HARVEST_ROUTE",
+        "DIP_BUY",
+        "DEFENSIVE_REGIME_REBUY",
+    }
+    manual_strategies = {
+        "manual",
+        "dashboard",
+        "dashboard_manual",
+        "manual_trade",
+        "manual_buy",
+        "operator",
+        "ui",
+        "api_manual",
+    }
+    manual_timeframes = {"manual", "dashboard", "ui", "operator", "api"}
+
+    if strategy in manual_strategies or timeframe in manual_timeframes:
+        return True
+    if signal_type in {"MANUAL_BUY", "MANUAL_ENTRY"}:
+        return True
+    if not signal_type:
+        return True
+    return signal_type not in automated_signal_types
 
 
 def _common_buy_context(product_id, signal_type, snapshot):
@@ -858,12 +895,34 @@ def dispatch_signal_action(
                 "asset_class": asset_class,
             },
         )
-        return execute_buy(
+        buy_result = execute_buy(
             product_id=product_id,
             buy_usd=buy_usd,
             signal_type=signal_type,
             external_order_id=order_id,
         )
+        if buy_result.get("ok") and _should_mark_manual_hold(signal_type, strategy, timeframe):
+            try:
+                added = add_manual_hold(product_id)
+                if added:
+                    _log_rebalancer_event(
+                        "manual_hold_added",
+                        {
+                            "product_id": product_id,
+                            "signal_type": signal_type,
+                            "strategy": strategy,
+                            "timeframe": timeframe,
+                        },
+                    )
+            except Exception as exc:
+                _log_rebalancer_event(
+                    "manual_hold_add_failed",
+                    {
+                        "product_id": product_id,
+                        "error": str(exc),
+                    },
+                )
+        return buy_result
 
     if action in {"TRIM", "EXIT"}:
         position_value = float(

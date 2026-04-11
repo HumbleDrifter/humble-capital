@@ -4,7 +4,7 @@ import time
 from execution import get_client
 from coinbase_universe import get_all_usd_products
 from rebalancer import dispatch_signal_action
-from portfolio import get_portfolio_snapshot
+from portfolio import get_manual_holds, get_portfolio_snapshot
 
 
 _CORE_ASSETS = {"BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"}
@@ -562,11 +562,15 @@ class SignalScanner:
             return []
         core_assets = set((config.get("core_assets") or {}).keys())
         blocked = set(config.get("satellite_blocked") or [])
+        manual_holds = set(get_manual_holds(snapshot))
         universe = get_all_usd_products()
         targets = sorted(universe - core_assets - blocked)
 
         dispatched = []
         for product_id in targets:
+            if product_id in manual_holds:
+                _log(f"scan skipped for {product_id} — manual hold active")
+                continue
             try:
                 self.params = _default_params_for_product(product_id)
                 candles = self.fetch_candles(product_id)

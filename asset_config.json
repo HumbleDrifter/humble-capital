@@ -22,6 +22,7 @@
     "satellite_defaults": {"max_weight": 0.05},
     "satellite_blocked": [],
     "satellite_allowed": [],
+    "manual_holds": [],
     "satellite_volatility_map": {},
     "volatility_buckets": {
         "very_high": {"max_weight": 0.04},

@@ -44,6 +44,7 @@ from brokers.webull_adapter import WebullAdapter
 from options.backtester import OptionsBacktester
 from options.chain_fetcher import OptionChainFetcher
 from options.earnings import EarningsCalendar
+from options.performance import OptionsPerformance
 from options.screener import OptionsScreener
 from portfolio_backtester import PortfolioBacktester
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
@@ -2829,6 +2830,28 @@ def api_options_earnings_history():
                 "earnings_history": history,
             }
         )
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/performance", methods=["GET"])
+@require_api_auth
+def api_options_performance():
+    try:
+        period = str(request.args.get("period") or "all").strip().lower()
+        service = OptionsPerformance()
+        summary = service.get_performance_summary(period=period)
+        return jsonify({"ok": True, "period": period, **summary})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/performance/risk", methods=["GET"])
+@require_api_auth
+def api_options_performance_risk():
+    try:
+        service = OptionsPerformance()
+        return jsonify({"ok": True, "risk": service.get_open_positions_risk()})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

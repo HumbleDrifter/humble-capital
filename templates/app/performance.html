@@ -105,6 +105,63 @@
   <section class="perf-section perf-observe">
     <div class="perf-section-head perf-reveal">
       <div>
+        <h2 class="perf-section-title">Options Performance</h2>
+        <p class="perf-section-subtitle" id="perfOptionsMeta">Monthly options P&amp;L, strategy mix, and win rate by strategy.</p>
+      </div>
+    </div>
+    <div class="perf-equity-grid">
+      <div class="hc-chart-section perf-reveal">
+        <div class="hc-chart-header">
+          <div>
+            <span class="hc-chart-title">Monthly Options P&amp;L</span>
+            <div class="perf-chart-meta" id="perfOptionsMonthlyMeta">Loading options trade history...</div>
+          </div>
+        </div>
+        <div id="perfOptionsMonthlyChartHost" class="hc-chart-host"></div>
+      </div>
+      <div class="perf-side-stack">
+        <div class="hc-context-card perf-reveal">
+          <div class="hc-context-label">Options Net P&amp;L</div>
+          <div class="hc-context-value" id="perfOptionsTotalPnl">$0.00</div>
+          <div class="hc-context-detail" id="perfOptionsPremiumCollected">Premium collected $0.00</div>
+        </div>
+        <div class="hc-context-card perf-reveal">
+          <div class="hc-context-label">Options Win Rate</div>
+          <div class="hc-context-value" id="perfOptionsWinRate">0%</div>
+          <div class="hc-context-detail" id="perfOptionsTradeCount">0 trades tracked</div>
+        </div>
+        <div class="hc-context-card perf-reveal">
+          <div class="hc-context-label">Risk Snapshot</div>
+          <div class="hc-context-value" id="perfOptionsRiskValue">$0.00</div>
+          <div class="hc-context-detail" id="perfOptionsRiskDetail">Checking open options exposure...</div>
+        </div>
+      </div>
+    </div>
+    <div class="perf-equity-grid">
+      <div class="hc-chart-section perf-reveal">
+        <div class="hc-chart-header">
+          <div>
+            <span class="hc-chart-title">Strategy Breakdown</span>
+            <div class="perf-chart-meta" id="perfOptionsPieMeta">PnL mix by options strategy</div>
+          </div>
+        </div>
+        <div id="perfOptionsStrategyPieHost" class="hc-chart-host"></div>
+      </div>
+      <div class="hc-chart-section perf-reveal">
+        <div class="hc-chart-header">
+          <div>
+            <span class="hc-chart-title">Win Rate By Strategy</span>
+            <div class="perf-chart-meta" id="perfOptionsTableMeta">Strategy-level trade quality</div>
+          </div>
+        </div>
+        <div id="perfOptionsStrategyTableHost" class="hc-chart-host"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="perf-section perf-observe">
+    <div class="perf-section-head perf-reveal">
+      <div>
         <h2 class="perf-section-title">Recent Round Trips</h2>
         <p class="perf-section-subtitle" id="perfTripsMeta">Most recent closed trades</p>
       </div>

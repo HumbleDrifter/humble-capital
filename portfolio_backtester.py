@@ -43,7 +43,6 @@ DEFAULT_SATELLITES = [
     "AAVE-USD",
     "AVAX-USD",
     "DOT-USD",
-    "MATIC-USD",
     "ADA-USD",
     "ATOM-USD",
 ]
@@ -145,12 +144,67 @@ class PortfolioBacktester:
     def _to_dict(self, x):
         return x.to_dict() if hasattr(x, "to_dict") else x
 
+    def fetch_candles(self, product_id, start_ts, end_ts):
+        """Fetch ALL candles between start_ts and end_ts by paginating in chunks."""
+        client = get_client()
+        granularity = self.config.get("timeframe_granularity", "FOUR_HOUR" if self.config["timeframe"] == "4h" else "ONE_HOUR")
+        seconds_per_bar = 14400 if "FOUR" in str(granularity).upper() else 3600
+        max_candles_per_request = 300
+        chunk_seconds = max_candles_per_request * seconds_per_bar
+
+        all_candles = []
+        current_start = int(start_ts)
+        end_ts = int(end_ts)
+        product_id = _normalize_product_id(product_id)
+
+        while current_start < end_ts:
+            current_end = min(current_start + chunk_seconds, end_ts)
+            try:
+                response = self._to_dict(
+                    client.get_candles(
+                        product_id=product_id,
+                        start=str(current_start),
+                        end=str(current_end),
+                        granularity=granularity,
+                    )
+                )
+                candles = response.get("candles", []) if isinstance(response, dict) else []
+                for candle in candles:
+                    try:
+                        all_candles.append(
+                            {
+                                "ts": _safe_int(candle.get("start"), 0),
+                                "open": _safe_float(candle.get("open"), 0.0),
+                                "high": _safe_float(candle.get("high"), 0.0),
+                                "low": _safe_float(candle.get("low"), 0.0),
+                                "close": _safe_float(candle.get("close"), 0.0),
+                                "volume": _safe_float(candle.get("volume"), 0.0),
+                            }
+                        )
+                    except Exception:
+                        continue
+            except Exception as exc:
+                _log(f"fetch chunk failed product_id={product_id} start={current_start} error={exc}")
+
+            current_start = current_end
+            time.sleep(0.1)
+
+        seen = set()
+        unique = []
+        for candle in all_candles:
+            ts = _safe_int(candle.get("ts"), 0)
+            if ts > 0 and ts not in seen:
+                seen.add(ts)
+                unique.append(candle)
+        unique.sort(key=lambda candle: candle["ts"])
+
+        _log(f"fetched {len(unique)} candles for {product_id} from {start_ts} to {end_ts}")
+        return unique
+
     def fetch_all_candles(self) -> dict:
         all_assets = set(_normalize_product_id(pid) for pid in (self.config["core_assets"] or {}).keys())
         all_assets.update(DEFAULT_SATELLITES)
         out = {}
-        client = get_client()
-        granularity = "FOUR_HOUR" if self.config["timeframe"] == "4h" else "ONE_HOUR"
 
         for product_id in sorted(all_assets):
             cache_key = (product_id, self.config["timeframe"], self.start_ts, self.end_ts)
@@ -158,45 +212,11 @@ class PortfolioBacktester:
                 out[product_id] = [dict(row) for row in _CANDLE_CACHE[cache_key]]
                 continue
 
-            candles = []
-            cursor_start = self.start_ts
-            max_span = self.bar_seconds * 300
             try:
-                while cursor_start < self.end_ts:
-                    cursor_end = min(self.end_ts, cursor_start + max_span)
-                    response = self._to_dict(
-                        client.get_candles(
-                            product_id=product_id,
-                            start=str(cursor_start),
-                            end=str(cursor_end),
-                            granularity=granularity,
-                        )
-                    )
-                    chunk = (response or {}).get("candles") or []
-                    for candle in chunk:
-                        try:
-                            candles.append(
-                                {
-                                    "ts": _safe_int(candle.get("start"), 0),
-                                    "open": _safe_float(candle.get("open"), 0.0),
-                                    "high": _safe_float(candle.get("high"), 0.0),
-                                    "low": _safe_float(candle.get("low"), 0.0),
-                                    "close": _safe_float(candle.get("close"), 0.0),
-                                    "volume": _safe_float(candle.get("volume"), 0.0),
-                                }
-                            )
-                        except Exception:
-                            continue
-                    cursor_start = cursor_end + self.bar_seconds
-
-                deduped = {}
-                for row in candles:
-                    if row["ts"] > 0:
-                        deduped[row["ts"]] = row
-                ordered = [deduped[key] for key in sorted(deduped.keys())]
-                _CANDLE_CACHE[cache_key] = [dict(row) for row in ordered]
-                if ordered:
-                    out[product_id] = ordered
+                candles = self.fetch_candles(product_id, self.start_ts, self.end_ts)
+                _CANDLE_CACHE[cache_key] = [dict(row) for row in candles]
+                if candles:
+                    out[product_id] = candles
             except Exception as exc:
                 _log(f"fetch failed product_id={product_id} error={exc}")
                 continue

@@ -125,7 +125,7 @@ class PortfolioBacktester:
             "defensive_sell_regimes": list(config.get("defensive_sell_regimes") or ["risk_off", "caution"]),
             "defensive_sell_pct_per_bar": _safe_float(config.get("defensive_sell_pct_per_bar", 0.02), 0.02),
             "defensive_sell_max_pct": _safe_float(config.get("defensive_sell_max_pct", 0.70), 0.70),
-            "defensive_rebuy_regimes": list(config.get("defensive_rebuy_regimes") or ["bull", "neutral"]),
+            "defensive_rebuy_regimes": list(config.get("defensive_rebuy_regimes") or ["bull"]),
             "defensive_rebuy_pct_per_bar": _safe_float(config.get("defensive_rebuy_pct_per_bar", 0.03), 0.03),
             "satellite_strategy": str(config.get("satellite_strategy", "bb_breakout") or "bb_breakout"),
             "satellite_regime_filter": list(config.get("satellite_regime_filter") or ["bull"]),
@@ -429,6 +429,9 @@ class PortfolioBacktester:
         return actions
 
     def execute_dca(self, all_candles, bar_ref, regime) -> list:
+        if hasattr(self, "_defensive_sold_value") and self._defensive_sold_value > 10.0:
+            return []
+
         allowed_dca_regimes = ["bull", "neutral", "caution"]
         if regime not in allowed_dca_regimes:
             return []

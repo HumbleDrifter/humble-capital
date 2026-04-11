@@ -873,6 +873,19 @@ def _build_portfolio_snapshot():
     coinbase_total = asset_total + usd_cash
     webull_info = _get_webull_account_value()
     webull_value = float(webull_info.get("value", 0.0) or 0.0)
+    webull_stocks = []
+    webull_options = []
+    webull_positions = []
+    if _webull_enabled():
+        try:
+            from brokers.webull_adapter import WebullAdapter
+            wb = WebullAdapter()
+            if wb.connect().get("ok"):
+                webull_positions = wb.get_positions()
+                webull_stocks = [p for p in webull_positions if str(p.get("asset_type","")).lower() == "stock"]
+                webull_options = [p for p in webull_positions if str(p.get("asset_type","")).lower() == "option"]
+        except Exception as exc:
+            _log_portfolio(f"webull positions fetch failed: {exc}")
     total_value = coinbase_total + webull_value
     if total_value <= 0:
         total_value = 1e-9
@@ -892,7 +905,7 @@ def _build_portfolio_snapshot():
         "active_satellite_buy_universe": [],
         "brokers": {
             "coinbase": {"value": coinbase_total, "connected": True},
-            "webull": {"value": webull_value, "connected": bool(webull_info.get("connected", False))},
+            "webull": {"value": webull_value, "connected": bool(webull_info.get("connected", False)), "stocks": webull_stocks, "options": webull_options},
         },
     }
 

@@ -65,6 +65,17 @@
   .optc-timeline-legend { display:flex; flex-wrap:wrap; gap:10px 14px; color:rgba(255,255,255,.68); font-size:12px; line-height:1.4; }
   .optc-timeline-legend span { display:inline-flex; align-items:center; gap:6px; }
   .optc-dot { width:10px; height:10px; border-radius:999px; display:inline-block; }
+  .optc-chart-legend { display:flex; flex-wrap:wrap; gap:10px 14px; margin-top:12px; color:rgba(255,255,255,.68); font-size:12px; }
+  .optc-chart-legend span { display:inline-flex; align-items:center; gap:6px; }
+  .optc-positions-panel { margin-top:16px; display:grid; gap:10px; }
+  .optc-section-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.52); }
+  .optc-position-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:12px; margin-bottom:8px; }
+  .optc-position-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+  .optc-position-details { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .optc-metric-label { display:block; color:rgba(255,255,255,.52); font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+  .badge { padding:6px 10px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+  .badge.call { background:rgba(56,189,248,.2); color:#38bdf8; }
+  .badge.put { background:rgba(251,146,60,.2); color:#fb923c; }
   .optc-empty { padding:18px; border-radius:14px; background:rgba(255,255,255,.025); border:1px dashed rgba(255,255,255,.1); color:rgba(255,255,255,.6); }
   @media (max-width: 1100px) { .optc-layout,.optc-grid { grid-template-columns:1fr; } .optc-kpis { grid-template-columns:1fr 1fr; } }
 </style>
@@ -84,8 +95,59 @@
     <div class="optc-grid">
       <div>
         <label class="optc-label" for="optcSymbol">Symbol</label>
-        <input id="optcSymbol" class="optc-input" type="text" list="optcSymbolList" value="AAPL" placeholder="Search symbol">
-        <datalist id="optcSymbolList"></datalist>
+        <select id="optcSymbol" class="optc-select">
+          <option value="AAPL">AAPL</option>
+          <option value="AMD">AMD</option>
+          <option value="AMZN">AMZN</option>
+          <option value="ABNB">ABNB</option>
+          <option value="AVAX">AVAX</option>
+          <option value="BA">BA</option>
+          <option value="BAC">BAC</option>
+          <option value="COIN">COIN</option>
+          <option value="COST">COST</option>
+          <option value="CRM">CRM</option>
+          <option value="CVX">CVX</option>
+          <option value="DIS">DIS</option>
+          <option value="F">F</option>
+          <option value="GM">GM</option>
+          <option value="GME">GME</option>
+          <option value="GOOGL">GOOGL</option>
+          <option value="GS">GS</option>
+          <option value="HD">HD</option>
+          <option value="INTC">INTC</option>
+          <option value="IWM">IWM</option>
+          <option value="JNJ">JNJ</option>
+          <option value="JPM">JPM</option>
+          <option value="KO">KO</option>
+          <option value="LOW">LOW</option>
+          <option value="MA">MA</option>
+          <option value="MARA">MARA</option>
+          <option value="META">META</option>
+          <option value="MSFT">MSFT</option>
+          <option value="MU">MU</option>
+          <option value="NFLX">NFLX</option>
+          <option value="NIO">NIO</option>
+          <option value="NVDA">NVDA</option>
+          <option value="ORCL">ORCL</option>
+          <option value="PEP">PEP</option>
+          <option value="PFE">PFE</option>
+          <option value="PLTR">PLTR</option>
+          <option value="PYPL">PYPL</option>
+          <option value="QCOM">QCOM</option>
+          <option value="QQQ">QQQ</option>
+          <option value="RIOT">RIOT</option>
+          <option value="RIVN">RIVN</option>
+          <option value="SOFI">SOFI</option>
+          <option value="SQ">SQ</option>
+          <option value="SPY">SPY</option>
+          <option value="T">T</option>
+          <option value="TSLA">TSLA</option>
+          <option value="UBER">UBER</option>
+          <option value="V">V</option>
+          <option value="VZ">VZ</option>
+          <option value="WMT">WMT</option>
+          <option value="XOM">XOM</option>
+        </select>
       </div>
       <div>
         <label class="optc-label" for="optcStrategy">Strategy</label>
@@ -172,6 +234,12 @@
           <div id="optcMainChart" class="optc-main-chart"></div>
           <div id="optcEventOverlay" class="optc-overlay"></div>
         </div>
+        <div class="optc-chart-legend">
+          <span><i class="optc-dot" style="background:#22c55e"></i>Bull</span>
+          <span><i class="optc-dot" style="background:#64748b"></i>Neutral</span>
+          <span><i class="optc-dot" style="background:#f59e0b"></i>Caution</span>
+          <span><i class="optc-dot" style="background:#ef4444"></i>Risk Off</span>
+        </div>
       </div>
 
       <div class="optc-card optc-chart-card">
@@ -201,13 +269,9 @@
         <div id="optcState" class="optc-state"></div>
       </div>
       <div>
-        <div class="optc-label">Regime Timeline</div>
-        <div id="optcTimeline" class="optc-timeline"></div>
-        <div class="optc-timeline-legend">
-          <span><i class="optc-dot" style="background:#34d399"></i>Bull (safe to sell premium)</span>
-          <span><i class="optc-dot" style="background:#38bdf8"></i>Neutral</span>
-          <span><i class="optc-dot" style="background:#f59e0b"></i>Caution (reduce exposure)</span>
-          <span><i class="optc-dot" style="background:#ef4444"></i>Risk Off (no new trades)</span>
+        <div id="optcPositions" class="optc-positions-panel" style="display:none;">
+          <div class="optc-section-title">Your Positions</div>
+          <div id="optcPositionsList"></div>
         </div>
       </div>
       <div>
@@ -228,6 +292,7 @@
   let refreshTimer = null;
   let currentSim = null;
   let mainChart, ivChart, candleSeries, emaSeries, bbUpperSeries, bbLowerSeries, ivSeries, ivRankSeries, ivThresholdSeries, assignmentSeries;
+  let positionLines = [];
 
   function authUrl(path) { const sep = path.includes("?") ? "&" : "?"; return API_SECRET ? `${path}${sep}secret=${encodeURIComponent(API_SECRET)}` : path; }
   async function fetchJson(path, options={}) {
@@ -465,20 +530,149 @@
     document.getElementById("optcWinStreak").textContent = String(sim.winStreak || 0);
     document.getElementById("optcLossStreak").textContent = String(sim.lossStreak || 0);
     document.getElementById("optcState").innerHTML = `<span class="optc-pill ${sim.state.includes("csp") ? "csp" : sim.state.includes("cc") ? "cc" : "flat"}">${esc(sim.state.replaceAll("_"," "))}</span>`;
-    const regimes = rangeWindowData(bars).map((bar) => regimeForBar(bar));
-    const counts = regimes.reduce((acc, regime) => { acc[regime] = (acc[regime] || 0) + 1; return acc; }, { bull:0, neutral:0, caution:0, risk_off:0 });
-    const total = Math.max(1, regimes.length);
-    const order = ["bull","neutral","caution","risk_off"];
-    const labels = { bull: "Bull", neutral: "Neutral", caution: "Caution", risk_off: "Risk Off" };
-    document.getElementById("optcTimeline").innerHTML = `
-      <div class="optc-timeline-bar">
-        ${order.filter((regime) => counts[regime] > 0).map((regime) => {
-          const pct = (counts[regime] / total) * 100;
-          return `<span class="optc-seg ${regime}" title="${labels[regime]} ${pct.toFixed(0)}%" style="flex:${Math.max(1, counts[regime])} 1 0;">${labels[regime]} ${pct.toFixed(0)}%</span>`;
-        }).join("")}
-      </div>
-    `;
     renderTradeFeed(sim.trades);
+  }
+
+  function parseDaysToExpiry(value){
+    try {
+      const text = String(value || "").trim();
+      if (!text) return 0;
+      const expiry = new Date(text);
+      if (Number.isNaN(expiry.getTime())) return 0;
+      return Math.max(0, Math.ceil((expiry.getTime() - Date.now()) / 86400000));
+    } catch {
+      return 0;
+    }
+  }
+
+  function detectOptionType(position){
+    const explicit = String(position.option_type || position.type || "").toLowerCase();
+    if (explicit.includes("call")) return "call";
+    if (explicit.includes("put")) return "put";
+    const symbolText = String(position.symbol || position.contract_symbol || "").toUpperCase();
+    if (symbolText.includes("CALL") || /C\d/.test(symbolText)) return "call";
+    if (symbolText.includes("PUT") || /P\d/.test(symbolText)) return "put";
+    return "";
+  }
+
+  function drawPositionLines(positions, visibleBars){
+    if (!mainChart) return;
+    if (positionLines.length) {
+      positionLines.forEach((line) => {
+        try { mainChart.removeSeries(line); } catch {}
+      });
+    }
+    positionLines = [];
+    positions.forEach((pos) => {
+      const strike = parseFloat(pos.strike || pos.strike_price || 0);
+      if (!strike) return;
+      const type = detectOptionType(pos);
+      const isCall = type === "call";
+      const currentClose = Number(visibleBars?.[visibleBars.length - 1]?.close || 0);
+      const nearStrike = currentClose > 0 && Math.abs(currentClose - strike) / currentClose <= 0.05;
+      const line = mainChart.addLineSeries({
+        color: isCall ? (nearStrike ? "rgba(56,189,248,0.9)" : "rgba(56,189,248,0.6)") : (nearStrike ? "rgba(251,146,60,0.9)" : "rgba(251,146,60,0.6)"),
+        lineWidth: nearStrike ? 2 : 1,
+        lineStyle: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        title: `${isCall ? "CALL" : "PUT"} $${strike} exp ${pos.expiration || pos.expiry || ""}`,
+      });
+      line.setData((visibleBars || []).map((bar) => ({ time: bar.time, value: strike })));
+      positionLines.push(line);
+    });
+  }
+
+  async function loadPositions(visibleBars){
+    try {
+      const data = await fetchJson("/api/options/positions");
+      const sym = symbol();
+      const matching = (data.positions || []).filter((p) =>
+        String(p.symbol || "").toUpperCase().includes(sym) ||
+        String(p.underlying || "").toUpperCase() === sym
+      );
+      const panel = document.getElementById("optcPositions");
+      const list = document.getElementById("optcPositionsList");
+      if (!panel || !list) return;
+      if (!matching.length) {
+        panel.style.display = "none";
+        drawPositionLines([], visibleBars);
+        return;
+      }
+
+      panel.style.display = "grid";
+      list.innerHTML = matching.map((pos) => {
+        const type = detectOptionType(pos);
+        const isCall = type === "call";
+        const pnl = parseFloat(pos.unrealized_pnl || pos.pnl || 0);
+        const dte = parseInt(pos.days_to_expiry || parseDaysToExpiry(pos.expiration || pos.expiry), 10) || 0;
+        const dteColor = dte > 14 ? "#22c55e" : dte > 7 ? "#f59e0b" : "#ef4444";
+        const avgCost = Number(pos.avg_cost || pos.entry_price || 0);
+        const currentPrice = Number(pos.market_price || pos.last_price || pos.mark || 0);
+        return `
+          <div class="optc-position-card">
+            <div class="optc-position-header">
+              <span class="badge ${isCall ? "call" : "put"}">${isCall ? "CALL" : "PUT"}</span>
+              <span>${strikeLabel(pos)}</span>
+              <span class="optc-value">exp ${esc(pos.expiration || pos.expiry || "?")}</span>
+            </div>
+            <div class="optc-position-details">
+              <div>
+                <span class="optc-metric-label">Qty</span>
+                <strong>${esc(pos.qty || pos.quantity || 1)}</strong>
+              </div>
+              <div>
+                <span class="optc-metric-label">P&amp;L</span>
+                <strong style="color:${pnl >= 0 ? "#22c55e" : "#ef4444"}">${pnl >= 0 ? "+" : ""}${fmtUsd(pnl)}</strong>
+              </div>
+              <div>
+                <span class="optc-metric-label">DTE</span>
+                <strong style="color:${dteColor}">${dte}d</strong>
+              </div>
+              <div>
+                <span class="optc-metric-label">Entry</span>
+                <strong>${fmtUsd(avgCost)}</strong>
+              </div>
+              <div>
+                <span class="optc-metric-label">Current</span>
+                <strong>${fmtUsd(currentPrice)}</strong>
+              </div>
+              <div>
+                <span class="optc-metric-label">Underlying</span>
+                <strong>${esc(String(pos.underlying || sym).toUpperCase())}</strong>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+      drawPositionLines(matching, visibleBars);
+    } catch (e) {
+      console.warn("positions load failed:", e);
+    }
+  }
+
+  function strikeLabel(pos){
+    const strike = Number(pos.strike || pos.strike_price || 0);
+    return strike ? `$${strike}` : "Strike ?";
+  }
+
+  function buildRegimeMarkers(visibleBars){
+    const markers = [];
+    let lastRegime = null;
+    visibleBars.forEach((bar) => {
+      const regime = regimeForBar(bar);
+      if (regime !== lastRegime) {
+        markers.push({
+          time: bar.time,
+          position: "aboveBar",
+          color: regime === "bull" ? "#22c55e" : regime === "caution" ? "#f59e0b" : regime === "risk_off" ? "#ef4444" : "#64748b",
+          shape: "square",
+          text: regime.toUpperCase(),
+        });
+        lastRegime = regime;
+      }
+    });
+    return markers;
   }
 
   function renderCharts(){
@@ -489,7 +683,7 @@
     bbUpperSeries.setData(visibleBars.filter((bar) => bar.bb_upper != null).map((bar) => ({ time: bar.time, value: bar.bb_upper })));
     bbLowerSeries.setData(visibleBars.filter((bar) => bar.bb_lower != null).map((bar) => ({ time: bar.time, value: bar.bb_lower })));
     currentSim = simulate(visibleBars, defaultParams());
-    candleSeries.setMarkers(currentSim.markers);
+    candleSeries.setMarkers([...(currentSim.markers || []), ...buildRegimeMarkers(visibleBars)]);
     assignmentSeries.setData(currentSim.assignmentLine.filter((row) => row.value != null));
     renderEventOverlay(currentSim.earnings);
     renderPanel(currentSim);
@@ -499,6 +693,7 @@
     mainChart.timeScale().fitContent();
     ivChart.timeScale().fitContent();
     document.getElementById("optcMeta").textContent = `${symbol()} · ${visibleBars.length} bars loaded`;
+    loadPositions(visibleBars);
   }
 
   async function loadBars(){
@@ -521,10 +716,6 @@
 
   const rerender = debounce(() => { if (bars.length) renderCharts(); }, 500);
   function bindControls(){
-    const symbolList = document.getElementById("optcSymbolList");
-    if (symbolList) {
-      symbolList.innerHTML = FALLBACK_SYMBOLS.map((ticker) => `<option value="${ticker}"></option>`).join("");
-    }
     [["optcDelta","optcDeltaValue",(v)=>Number(v).toFixed(2)],["optcDte","optcDteValue",(v)=>`${v} days`],["optcProfit","optcProfitValue",(v)=>`${v}%`],["optcWidth","optcWidthValue",(v)=>`$${v}`]].forEach(([id, out, fmt]) => {
       const input = document.getElementById(id), label = document.getElementById(out);
       const sync = () => { label.textContent = fmt(input.value); rerender(); };
@@ -532,10 +723,6 @@
     });
     document.getElementById("optcStrategy").addEventListener("change", rerender);
     document.getElementById("optcSymbol").addEventListener("change", loadBars);
-    document.getElementById("optcSymbol").addEventListener("blur", () => {
-      const normalized = symbol();
-      if (normalized) document.getElementById("optcSymbol").value = normalized;
-    });
     document.getElementById("optcRefreshBtn").addEventListener("click", loadBars);
     document.querySelectorAll(".optc-range").forEach((btn) => {
       btn.addEventListener("click", () => {

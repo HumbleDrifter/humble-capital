@@ -40,6 +40,9 @@ from performance import (
     get_round_trips,
 )
 from backtester import Backtester
+from brokers.webull_adapter import WebullAdapter
+from options.chain_fetcher import OptionChainFetcher
+from options.screener import OptionsScreener
 from portfolio_backtester import PortfolioBacktester
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
 from signal_scanner import (
@@ -2724,6 +2727,198 @@ def api_signals_chart():
             "candles": candles,
             "signals": signals,
         })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/chain", methods=["GET"])
+@require_api_auth
+def api_options_chain():
+    try:
+        symbol = (request.args.get("symbol") or "").upper().strip()
+        expiration = (request.args.get("expiration") or "").strip() or None
+        if not symbol:
+            return jsonify({"ok": False, "error": "missing_symbol"}), 400
+        fetcher = OptionChainFetcher(broker="webull")
+        result = fetcher.get_chain(symbol, expiration=expiration)
+        return jsonify(result), (200 if result.get("ok") else 500)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/expirations", methods=["GET"])
+@require_api_auth
+def api_options_expirations():
+    try:
+        symbol = (request.args.get("symbol") or "").upper().strip()
+        if not symbol:
+            return jsonify({"ok": False, "error": "missing_symbol"}), 400
+        fetcher = OptionChainFetcher(broker="webull")
+        return jsonify({
+            "ok": True,
+            "symbol": symbol,
+            "expirations": fetcher.get_expirations(symbol),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/iv-rank", methods=["GET"])
+@require_api_auth
+def api_options_iv_rank():
+    try:
+        symbol = (request.args.get("symbol") or "").upper().strip()
+        if not symbol:
+            return jsonify({"ok": False, "error": "missing_symbol"}), 400
+        fetcher = OptionChainFetcher(broker="webull")
+        chain = fetcher.get_chain(symbol)
+        current_iv_values = []
+        if chain.get("ok"):
+            for expiry_data in (chain.get("chains") or {}).values():
+                for side in ("calls", "puts"):
+                    for row in (expiry_data.get(side) or []):
+                        iv = _safe_float(row.get("iv"), 0.0)
+                        if iv > 0:
+                            current_iv_values.append(iv)
+        current_iv = (sum(current_iv_values) / len(current_iv_values)) if current_iv_values else 0.0
+        return jsonify({
+            "ok": True,
+            "symbol": symbol,
+            "iv_rank": fetcher.get_iv_rank(symbol),
+            "current_iv": round(current_iv, 4),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/scan", methods=["POST"])
+@require_api_auth
+def api_options_scan():
+    try:
+        data = request.get_json(silent=True) or {}
+        symbols = data.get("symbols")
+        strategies = data.get("strategies")
+        min_score = _safe_float(data.get("min_score"), 0.0)
+        max_results = max(1, int(data.get("max_results") or 20))
+        screener = OptionsScreener(watchlist=symbols, broker="webull")
+        result = screener.scan_universe(strategies=strategies)
+        opportunities = [
+            opp for opp in (result.get("opportunities") or [])
+            if _safe_float(opp.get("score"), 0.0) >= min_score
+        ][:max_results]
+        result["opportunities"] = opportunities
+        result["summary"] = {
+            **(result.get("summary") or {}),
+            "opportunities_found": len(opportunities),
+            "best_opportunity": opportunities[0] if opportunities else None,
+        }
+        return jsonify({"ok": True, **result})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/scan/quick", methods=["GET"])
+@require_api_auth
+def api_options_scan_quick():
+    try:
+        screener = OptionsScreener(watchlist=OptionsScreener().watchlist[:10], broker="webull")
+        result = screener.scan_universe()
+        opportunities = sorted(result.get("opportunities") or [], key=lambda row: _safe_float(row.get("score"), 0.0), reverse=True)[:10]
+        return jsonify({
+            "ok": True,
+            "scan_time": result.get("scan_time"),
+            "opportunities": opportunities,
+            "summary": {
+                **(result.get("summary") or {}),
+                "opportunities_found": len(opportunities),
+                "best_opportunity": opportunities[0] if opportunities else None,
+            },
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/recommend", methods=["POST"])
+@require_api_auth
+def api_options_recommend():
+    try:
+        data = request.get_json(silent=True) or {}
+        capital = _safe_float(data.get("capital"), 0.0)
+        risk_tolerance = str(data.get("risk_tolerance") or "moderate").strip().lower()
+        screener = OptionsScreener(broker="webull")
+        recommendations = screener.get_recommendation(capital_available=capital, risk_tolerance=risk_tolerance)
+        return jsonify({
+            "ok": True,
+            "capital": capital,
+            "risk_tolerance": risk_tolerance,
+            "recommendations": recommendations,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/positions", methods=["GET"])
+@require_api_auth
+def api_options_positions():
+    try:
+        adapter = WebullAdapter()
+        positions = [
+            row for row in (adapter.get_positions() or [])
+            if str(row.get("asset_type") or "").lower() == "option"
+        ]
+        return jsonify({
+            "ok": True,
+            "positions": positions,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/trade", methods=["POST"])
+@require_api_auth
+def api_options_trade():
+    try:
+        data = request.get_json(silent=True) or {}
+        strategy = str(data.get("strategy") or "").strip().lower()
+        adapter = WebullAdapter()
+
+        single_leg_map = {
+            "covered_call": {"option_type": "call", "side": "sell"},
+            "cash_secured_put": {"option_type": "put", "side": "sell"},
+            "long_call": {"option_type": "call", "side": "buy"},
+            "long_put": {"option_type": "put", "side": "buy"},
+        }
+
+        if strategy in single_leg_map:
+            mapped = single_leg_map[strategy]
+            order = {
+                "underlying": str(data.get("symbol") or "").upper().strip(),
+                "expiration": str(data.get("expiration") or "").strip(),
+                "strike": _safe_float(data.get("strike"), 0.0),
+                "option_type": mapped["option_type"],
+                "side": mapped["side"],
+                "qty": int(data.get("qty") or 1),
+                "order_type": str(data.get("order_type") or "MKT").upper().strip(),
+                "limit_price": data.get("limit_price"),
+            }
+            result = adapter.place_options_order(order)
+            return jsonify(result), (200 if result.get("ok") else 500)
+
+        explicit_order = {
+            "underlying": str(data.get("symbol") or data.get("underlying") or "").upper().strip(),
+            "expiration": str(data.get("expiration") or "").strip(),
+            "strike": _safe_float(data.get("strike"), 0.0),
+            "option_type": str(data.get("option_type") or "").strip().lower(),
+            "side": str(data.get("side") or "").strip().lower(),
+            "qty": int(data.get("qty") or 1),
+            "order_type": str(data.get("order_type") or "MKT").upper().strip(),
+            "limit_price": data.get("limit_price"),
+        }
+        if not explicit_order["underlying"] or explicit_order["option_type"] not in {"call", "put"} or explicit_order["side"] not in {"buy", "sell"}:
+            return jsonify({"ok": False, "error": "unsupported_or_invalid_strategy"}), 400
+
+        result = adapter.place_options_order(explicit_order)
+        return jsonify(result), (200 if result.get("ok") else 500)
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

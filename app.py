@@ -15,6 +15,11 @@ from signal_scanner import run_scanner_sweep, run_dip_detector
 from futures.executor import run_futures_scan_and_execute, run_futures_position_monitor
 from options.executor import run_options_scan_and_execute, run_options_position_monitor
 from stocks.executor import run_stock_scan_and_execute, run_stock_position_monitor
+from services.config_proposal_service import (
+    evaluate_auto_draft_review_proposals,
+    approve_config_proposal,
+)
+from storage import list_pending_config_proposals
 from workers.execution_queue import start_execution_worker
 from storage import init_db, init_user_table
 
@@ -121,6 +126,67 @@ def _signal_scanner_loop():
         except Exception as exc:
             print(f"[signal_scanner_loop] error: {exc}", flush=True)
             _time.sleep(60)
+
+
+def _config_proposal_loop():
+    import time as _time
+    print("[config_proposal_loop] thread started", flush=True)
+    _time.sleep(300)  # wait 5 min after startup
+    while True:
+        try:
+            # Generate new proposals if auto mode is enabled
+            result = evaluate_auto_draft_review_proposals()
+            status = result.get("status", "")
+            if status == "manual_mode":
+                # Auto mode not enabled — check again in 1 hour
+                _time.sleep(3600)
+                continue
+            if status == "drafted":
+                print(f"[config_proposal_loop] new proposal drafted", flush=True)
+
+            # Auto-approve pending high-confidence proposals
+            pending = list_pending_config_proposals(limit=10) or []
+            for proposal in pending:
+                proposal_id = str(proposal.get("proposal_id") or "").strip()
+                confidence = str(
+                    (proposal.get("proposal") or {}).get("source", {}).get("confidence")
+                    or proposal.get("confidence")
+                    or ""
+                ).strip().lower()
+                proposal_type = str(proposal.get("proposal_type") or "").strip()
+
+                # Only auto-approve config_guardrail proposals with high confidence
+                if proposal_type != "config_guardrail":
+                    continue
+                if confidence not in {"high"}:
+                    continue
+                if not proposal_id:
+                    continue
+
+                approve_result = approve_config_proposal(
+                    proposal_id=proposal_id,
+                    actor="auto_loop",
+                )
+                if approve_result.get("ok"):
+                    auto_applied = approve_result.get("auto_apply_ok", False)
+                    print(
+                        f"[config_proposal_loop] approved proposal={proposal_id} "
+                        f"auto_applied={auto_applied} "
+                        f"config_changed={approve_result.get('config_changed', False)}",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"[config_proposal_loop] approve failed proposal={proposal_id} "
+                        f"reason={approve_result.get('reason')}",
+                        flush=True,
+                    )
+
+        except Exception as exc:
+            print(f"[config_proposal_loop] error: {exc}", flush=True)
+
+        # Run every 6 hours
+        _time.sleep(21600)
 
 
 def _stocks_execution_loop():
@@ -261,6 +327,8 @@ def create_app():
     _options_thread.start()
     _stocks_thread = threading.Thread(target=_stocks_execution_loop, daemon=True, name="stocks_execution")
     _stocks_thread.start()
+    _proposal_thread = threading.Thread(target=_config_proposal_loop, daemon=True, name="config_proposal")
+    _proposal_thread.start()
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

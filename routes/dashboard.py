@@ -75,18 +75,22 @@ def dashboard():
 @dashboard_bp.route("/portfolio", methods=["GET"])
 @require_dashboard_auth
 def portfolio_page():
-    return render_template("app/analytics.html", **_page_context("Portfolio"))
+    return render_template("app/portfolio.html", **_page_context("Portfolio"))
 
 
 @dashboard_bp.route("/analytics", methods=["GET"])
 @require_dashboard_auth
 def analytics():
+    if request.args.get("embed") == "1":
+        return render_template("app/analytics.html", embed_mode=True, **_page_context("Portfolio Holdings"))
     return _redirect_with_secret("/portfolio")
 
 
 @dashboard_bp.route("/performance", methods=["GET"])
 @require_dashboard_auth
 def performance_page():
+    if request.args.get("embed") == "1":
+        return render_template("app/performance.html", embed_mode=True, **_page_context("Portfolio Performance"))
     return _redirect_with_secret("/portfolio", "performance")
 
 

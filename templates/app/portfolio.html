@@ -1,0 +1,64 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="pa-shell">
+  <section class="pa-header pa-observe">
+    <div class="pa-header-copy pa-reveal">
+      <div class="pa-kicker">Portfolio Hub</div>
+      <h2 class="pa-title">Holdings and performance in one place, with quick tab switching between live exposure and trading outcomes.</h2>
+      <p class="pa-subtitle">Use Holdings for allocation and live positions. Switch to Performance for equity, drawdowns, and trade stats.</p>
+    </div>
+  </section>
+
+  <div class="page-tabs">
+    <button class="page-tab active" data-tab="holdings" type="button">Holdings</button>
+    <button class="page-tab" data-tab="performance" type="button">Performance</button>
+  </div>
+
+  <div class="page-tab-content active" id="tab-holdings">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Portfolio Holdings"
+        src="{{ '/analytics?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/analytics?embed=1' }}"
+        style="width:100%; min-height:2300px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <div class="page-tab-content" id="tab-performance">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Portfolio Performance"
+        src="{{ '/performance?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/performance?embed=1' }}"
+        style="width:100%; min-height:2400px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const tabs = Array.from(document.querySelectorAll(".page-tab"));
+  const panels = Array.from(document.querySelectorAll(".page-tab-content"));
+
+  function showTab(name) {
+    tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
+    panels.forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${name}`));
+    history.replaceState(null, "", `#${name}`);
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => showTab(tab.dataset.tab || "holdings"));
+  });
+
+  const hash = location.hash.slice(1);
+  if (hash && tabs.some((tab) => tab.dataset.tab === hash)) {
+    showTab(hash);
+  }
+})();
+</script>
+{% endblock %}

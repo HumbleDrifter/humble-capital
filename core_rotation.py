@@ -1,11 +1,15 @@
+import json
 import os
 import time
+from pathlib import Path
 
 from regime import get_daily_closes
 
+
 _RS_CACHE_TTL_SEC = 1800
 _RS_CACHE = {}
-ASSET_CONFIG_PATH = os.getenv("ASSET_CONFIG_PATH", "/root/tradingbot/asset_config.json")
+_BASE_DIR = Path(os.getenv("BASE_PATH", Path(__file__).resolve().parent)).resolve()
+ASSET_CONFIG_PATH = Path(os.getenv("ASSET_CONFIG_PATH", str(_BASE_DIR / "asset_config.json"))).resolve()
 
 
 def _log(message):
@@ -47,8 +51,6 @@ def _cache_set(product_id, lookback_days, value):
 
 
 def _load_core_assets_from_config():
-    import json
-
     try:
         with open(ASSET_CONFIG_PATH, "r", encoding="utf-8") as handle:
             config = json.load(handle) or {}
@@ -107,7 +109,10 @@ def rank_core_assets(core_assets: dict, lookback_days: int = 14) -> list:
                 }
             )
 
-        ranked.sort(key=lambda row: (_safe_float(row["rs_return"]), _safe_float(row["base_weight"])), reverse=True)
+        ranked.sort(
+            key=lambda row: (_safe_float(row.get("rs_return"), 0.0), _safe_float(row.get("base_weight"), 0.0)),
+            reverse=True,
+        )
         for index, row in enumerate(ranked, start=1):
             row["rs_rank"] = index
 
@@ -125,12 +130,10 @@ def compute_adjusted_weights(core_assets: dict, lookback_days: int = 14, max_til
 
         max_tilt_pct = max(0.0, _safe_float(max_tilt_pct, 0.30))
         count = len(ranked)
-        original_total = sum(_safe_float(row["base_weight"], 0.0) for row in ranked)
-
+        original_total = sum(_safe_float(row.get("base_weight"), 0.0) for row in ranked)
         if original_total <= 0:
             return {}
 
-        adjustments = {}
         if count == 1:
             multipliers = [1.0]
         else:
@@ -139,14 +142,14 @@ def compute_adjusted_weights(core_assets: dict, lookback_days: int = 14, max_til
 
         prelim = []
         for row, multiplier in zip(ranked, multipliers):
-            base_weight = _safe_float(row["base_weight"], 0.0)
+            base_weight = _safe_float(row.get("base_weight"), 0.0)
             prelim_weight = max(0.03, base_weight * multiplier)
             prelim.append(
                 {
                     "product_id": row["product_id"],
                     "base_weight": base_weight,
                     "adjusted_weight": prelim_weight,
-                    "rs_return": _safe_float(row["rs_return"], 0.0),
+                    "rs_return": _safe_float(row.get("rs_return"), 0.0),
                 }
             )
 
@@ -155,25 +158,23 @@ def compute_adjusted_weights(core_assets: dict, lookback_days: int = 14, max_til
             return {}
 
         normalization = original_total / prelim_total
+        adjustments = {}
         for item in prelim:
-            normalized = item["adjusted_weight"] * normalization
-            normalized = max(0.03, normalized)
-            tilt = normalized - item["base_weight"]
+            normalized_weight = max(0.03, item["adjusted_weight"] * normalization)
             adjustments[item["product_id"]] = {
                 "base_weight": round(item["base_weight"], 6),
-                "adjusted_weight": round(normalized, 6),
+                "adjusted_weight": round(normalized_weight, 6),
                 "rs_return": round(item["rs_return"], 6),
-                "tilt": round(tilt, 6),
+                "tilt": round(normalized_weight - item["base_weight"], 6),
             }
 
-        adjusted_total = sum(v["adjusted_weight"] for v in adjustments.values())
+        adjusted_total = sum(row["adjusted_weight"] for row in adjustments.values())
         if adjusted_total > 0:
-            final_norm = original_total / adjusted_total
-            for product_id in list(adjustments.keys()):
-                row = adjustments[product_id]
-                adjusted_weight = max(0.03, _safe_float(row["adjusted_weight"], 0.0) * final_norm)
-                row["adjusted_weight"] = round(adjusted_weight, 6)
-                row["tilt"] = round(adjusted_weight - _safe_float(row["base_weight"], 0.0), 6)
+            final_normalization = original_total / adjusted_total
+            for product_id, row in adjustments.items():
+                final_weight = max(0.03, _safe_float(row["adjusted_weight"], 0.0) * final_normalization)
+                row["adjusted_weight"] = round(final_weight, 6)
+                row["tilt"] = round(final_weight - _safe_float(row["base_weight"], 0.0), 6)
 
         return adjustments
     except Exception as exc:
@@ -201,7 +202,9 @@ def get_rotation_recommendation() -> dict:
                 f"Strongest core momentum: {strongest['product_id']} ({strongest['rs_return']:.2%}); "
                 f"weakest: {weakest['product_id']} ({weakest['rs_return']:.2%})."
             )
-            reasoning.append("Suggested weights tilt modestly toward stronger recent momentum while keeping total core exposure unchanged.")
+            reasoning.append(
+                "Suggested weights tilt modestly toward stronger recent momentum while keeping total core exposure unchanged."
+            )
 
         return {
             "ok": True,

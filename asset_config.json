@@ -84,6 +84,21 @@
     "defensive_sell_max_pct": 0.90,
     "defensive_rebuy_regimes": ["bull", "neutral"],
     "defensive_rebuy_pct_per_cycle": 0.10,
+    "auto_trading": {
+        "enabled": false,
+        "mode": "semi",
+        "min_entry_score": 65,
+        "min_exit_score": 35,
+        "max_satellites": 4,
+        "position_size_method": "score_weighted",
+        "sentiment_weight": 0.25,
+        "technical_weight": 0.40,
+        "momentum_weight": 0.20,
+        "regime_weight": 0.15,
+        "rebalance_on_score_change": true,
+        "notify_on_entry": true,
+        "notify_on_exit": true
+    },
     "max_active_satellites": 4,
     "min_meme_score": 65.0
 }

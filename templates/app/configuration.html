@@ -214,6 +214,145 @@
       </div>
     </div>
 
+    <div class="cfg-control-stack">
+      <div class="cfg-subsection-head">
+        <div>
+          <h3>Auto-Trading Mode</h3>
+          <p class="section-subtitle">Control how much autonomy the scoring engine has, how selective entries and exits are, and how the composite score weights are blended.</p>
+        </div>
+      </div>
+
+      <div class="risk-form-grid configuration-advanced-grid cfg-risk-grid">
+        <div class="form-card cfg-focus-card" style="grid-column: 1 / -1;">
+          <label>Mode</label>
+          <div class="configuration-inline-actions" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+            <label class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:8px;">
+              <input type="radio" name="auto_trading_mode" value="off" checked onchange="handleAutoTradingModeChange(this.value)">
+              <span>Off</span>
+            </label>
+            <label class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:8px;">
+              <input type="radio" name="auto_trading_mode" value="semi" onchange="handleAutoTradingModeChange(this.value)">
+              <span>Semi-Auto</span>
+            </label>
+            <label class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:8px;">
+              <input type="radio" name="auto_trading_mode" value="full" onchange="handleAutoTradingModeChange(this.value)">
+              <span>Full Auto</span>
+            </label>
+          </div>
+          <input id="auto_trading_enabled" type="hidden" value="false">
+          <input id="auto_trading_mode" type="hidden" value="semi">
+          <div class="field-help">Off disables automated score-based trade management. Semi-Auto surfaces signals only. Full Auto lets the bot execute entries and exits without waiting for an operator.</div>
+          <div class="field-help" id="autoTradingModeSummary">Current posture: Semi-Auto, so the bot will surface scored opportunities without executing them automatically.</div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label for="auto_trading_min_entry_score">Entry Minimum Score</label>
+          <input id="auto_trading_min_entry_score" type="range" min="50" max="80" step="1" value="65" oninput="updateAutoTradingUi()">
+          <div class="field-help">Assets must score at or above this composite score before the auto-trading engine will consider entering.</div>
+          <div class="tiny">Current value: <strong id="autoTradingEntryValue">65</strong></div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label for="auto_trading_min_exit_score">Exit Minimum Score</label>
+          <input id="auto_trading_min_exit_score" type="range" min="20" max="50" step="1" value="35" oninput="updateAutoTradingUi()">
+          <div class="field-help">If a held asset’s score deteriorates below this level, the system treats it as an exit candidate.</div>
+          <div class="tiny">Current value: <strong id="autoTradingExitValue">35</strong></div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label for="auto_trading_max_satellites">Max Satellites</label>
+          <input id="auto_trading_max_satellites" type="range" min="1" max="8" step="1" value="4" oninput="updateAutoTradingUi()">
+          <div class="field-help">Caps how many active satellite positions the score-based rotation engine may hold at once.</div>
+          <div class="tiny">Current value: <strong id="autoTradingMaxSatellitesValue">4</strong></div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label for="auto_trading_position_size_method">Position Sizing</label>
+          <select id="auto_trading_position_size_method">
+            <option value="score_weighted" selected>Score-Weighted</option>
+            <option value="equal">Equal</option>
+          </select>
+          <div class="field-help">Score-Weighted gives larger allocations to stronger composite setups. Equal keeps each auto-traded satellite the same size.</div>
+        </div>
+      </div>
+
+      <div class="cfg-subsection-head">
+        <div>
+          <h3>Composite Score Weights</h3>
+          <p class="section-subtitle">These sliders control how much technicals, sentiment, momentum, and regime fit contribute to the final score.</p>
+        </div>
+      </div>
+
+      <div class="risk-form-grid configuration-advanced-grid cfg-risk-grid">
+        <div class="form-card cfg-focus-card">
+          <label for="auto_trading_technical_weight">Technical Weight</label>
+          <input id="auto_trading_technical_weight" type="range" min="0" max="100" step="1" value="40" oninput="updateAutoTradingUi()">
+          <div class="field-help">Higher values make chart structure, trend alignment, and momentum indicators matter more.</div>
+          <div class="tiny">Current value: <strong id="autoTradingTechnicalValue">40%</strong></div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label for="auto_trading_sentiment_weight">Sentiment Weight</label>
+          <input id="auto_trading_sentiment_weight" type="range" min="0" max="100" step="1" value="25" oninput="updateAutoTradingUi()">
+          <div class="field-help">Higher values make Reddit, StockTwits, news, and other social signals matter more.</div>
+          <div class="tiny">Current value: <strong id="autoTradingSentimentValue">25%</strong></div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label for="auto_trading_momentum_weight">Momentum Weight</label>
+          <input id="auto_trading_momentum_weight" type="range" min="0" max="100" step="1" value="20" oninput="updateAutoTradingUi()">
+          <div class="field-help">Higher values reward assets with stronger recent performance and volume acceleration.</div>
+          <div class="tiny">Current value: <strong id="autoTradingMomentumValue">20%</strong></div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label for="auto_trading_regime_weight">Regime Weight</label>
+          <input id="auto_trading_regime_weight" type="range" min="0" max="100" step="1" value="15" oninput="updateAutoTradingUi()">
+          <div class="field-help">Higher values make market regime compatibility more influential in the final score.</div>
+          <div class="tiny">Current value: <strong id="autoTradingRegimeValue">15%</strong></div>
+        </div>
+
+        <div class="form-card cfg-focus-card" style="grid-column: 1 / -1;">
+          <label>Weight Balance</label>
+          <div class="field-help">Target sum: 100%. This keeps the composite score intuitive and comparable across sweeps.</div>
+          <div class="tiny">Current sum: <strong id="autoTradingWeightTotal">100%</strong> <span id="autoTradingWeightHint">Balanced for the default composite formula.</span></div>
+        </div>
+      </div>
+
+      <div class="cfg-subsection-head">
+        <div>
+          <h3>Automation Actions</h3>
+          <p class="section-subtitle">Choose whether score changes trigger portfolio reshuffles and whether the bot should notify operators when it acts.</p>
+        </div>
+      </div>
+
+      <div class="risk-form-grid configuration-advanced-grid cfg-risk-grid">
+        <div class="form-card cfg-focus-card">
+          <label class="configuration-inline-actions" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <span>Re-rank On Score Change</span>
+            <input id="auto_trading_rebalance_on_score_change" type="checkbox" checked>
+          </label>
+          <div class="field-help">When enabled, every scanner sweep can re-rank and rotate the active satellite set if better opportunities appear.</div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label class="configuration-inline-actions" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <span>Notify On Entry</span>
+            <input id="auto_trading_notify_on_entry" type="checkbox" checked>
+          </label>
+          <div class="field-help">Sends an operator notification whenever the engine enters a new score-qualified position.</div>
+        </div>
+
+        <div class="form-card cfg-focus-card">
+          <label class="configuration-inline-actions" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <span>Notify On Exit</span>
+            <input id="auto_trading_notify_on_exit" type="checkbox" checked>
+          </label>
+          <div class="field-help">Sends an operator notification whenever the engine exits or rotates out of a position.</div>
+        </div>
+      </div>
+    </div>
+
     <div class="configuration-action-row cfg-primary-actions">
       <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Configuration</button>
       <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Reload Current Values</button>
@@ -797,4 +936,79 @@
   };
 </script>
 <script src="{{ url_for('static', filename='js/configuration.js') }}"></script>
+<script>
+  function updateAutoTradingUi() {
+    const entry = Number(document.getElementById("auto_trading_min_entry_score")?.value || 65);
+    const exit = Number(document.getElementById("auto_trading_min_exit_score")?.value || 35);
+    const maxSatellites = Number(document.getElementById("auto_trading_max_satellites")?.value || 4);
+    const technical = Number(document.getElementById("auto_trading_technical_weight")?.value || 40);
+    const sentiment = Number(document.getElementById("auto_trading_sentiment_weight")?.value || 25);
+    const momentum = Number(document.getElementById("auto_trading_momentum_weight")?.value || 20);
+    const regime = Number(document.getElementById("auto_trading_regime_weight")?.value || 15);
+    const total = technical + sentiment + momentum + regime;
+
+    const pairs = [
+      ["autoTradingEntryValue", `${entry}`],
+      ["autoTradingExitValue", `${exit}`],
+      ["autoTradingMaxSatellitesValue", `${maxSatellites}`],
+      ["autoTradingTechnicalValue", `${technical}%`],
+      ["autoTradingSentimentValue", `${sentiment}%`],
+      ["autoTradingMomentumValue", `${momentum}%`],
+      ["autoTradingRegimeValue", `${regime}%`],
+      ["autoTradingWeightTotal", `${total}%`]
+    ];
+
+    pairs.forEach(([id, value]) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    });
+
+    const hint = document.getElementById("autoTradingWeightHint");
+    if (hint) {
+      hint.textContent = total === 100
+        ? "Balanced for the default composite formula."
+        : total > 100
+          ? "Weights are overweight. Reduce one or more sliders to get back to 100%."
+          : "Weights are underweight. Increase one or more sliders to reach 100%.";
+      hint.style.color = total === 100 ? "" : (total > 100 ? "#fb923c" : "#fbbf24");
+    }
+  }
+
+  function handleAutoTradingModeChange(value) {
+    const mode = String(value || "off").trim().toLowerCase();
+    const enabledInput = document.getElementById("auto_trading_enabled");
+    const modeInput = document.getElementById("auto_trading_mode");
+    const summary = document.getElementById("autoTradingModeSummary");
+    const radios = Array.from(document.querySelectorAll('input[name="auto_trading_mode"]'));
+
+    if (mode === "full") {
+      const confirmed = window.confirm("Full auto mode will execute trades without confirmation. Are you sure?");
+      if (!confirmed) {
+        const fallback = radios.find((radio) => radio.value === "semi") || radios.find((radio) => radio.value === "off");
+        if (fallback) fallback.checked = true;
+        if (enabledInput) enabledInput.value = "false";
+        if (modeInput) modeInput.value = "semi";
+        if (summary) {
+          summary.textContent = "Current posture: Semi-Auto, so the bot will surface scored opportunities without executing them automatically.";
+        }
+        return;
+      }
+    }
+
+    if (enabledInput) enabledInput.value = mode === "off" ? "false" : "true";
+    if (modeInput) modeInput.value = mode === "off" ? "semi" : mode;
+
+    if (summary) {
+      if (mode === "full") {
+        summary.textContent = "Current posture: Full Auto, so the bot may execute score-qualified trades without waiting for manual approval.";
+      } else if (mode === "semi") {
+        summary.textContent = "Current posture: Semi-Auto, so the bot will surface scored opportunities without executing them automatically.";
+      } else {
+        summary.textContent = "Current posture: Off, so the bot will not use composite scores to automate entries or exits.";
+      }
+    }
+  }
+
+  updateAutoTradingUi();
+</script>
 {% endblock %}

@@ -276,6 +276,8 @@
     <button class="page-tab active" data-tab="crypto" type="button">Crypto Scanner</button>
     <button class="page-tab" data-tab="stocks" type="button">Stock Scanner</button>
     <button class="page-tab" data-tab="futures" type="button">Futures</button>
+    <button class="page-tab" data-tab="social" type="button">Social</button>
+    <button class="page-tab" data-tab="squeeze" type="button">Squeeze</button>
     <button class="page-tab" data-tab="charts" type="button">Charts</button>
   </div>
 
@@ -443,6 +445,41 @@
         </div>
       </div>
       <div id="futuresBasisGrid" class="futures-grid"><div class="hc-empty-card">Loading basis trade data...</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-social">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Social Stock Scanner</h3>
+          <p class="opp-section-subtitle" id="socialScanMeta">Top stocks by social momentum across Reddit, StockTwits, YouTube and News.</p>
+        </div>
+        <button class="btn btn-secondary" id="socialScanRefresh" type="button">Refresh</button>
+      </div>
+      <div id="socialScanGrid" class="futures-grid"><div class="hc-empty-card">Loading social scan...</div></div>
+    </section>
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Meme Stock Trending</h3>
+          <p class="opp-section-subtitle">High-momentum meme stocks with active social chatter right now.</p>
+        </div>
+      </div>
+      <div id="memeTrendingGrid" class="futures-grid"><div class="hc-empty-card">Loading meme trending...</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-squeeze">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Squeeze Scanner</h3>
+          <p class="opp-section-subtitle" id="squeezeScanMeta">Meme stocks with elevated volume, social momentum, and technical breakout conditions.</p>
+        </div>
+        <button class="btn btn-secondary" id="squeezeScanRefresh" type="button">Refresh</button>
+      </div>
+      <div id="squeezeGrid" class="futures-grid"><div class="hc-empty-card">Loading squeeze candidates...</div></div>
     </section>
   </div>
 
@@ -679,6 +716,8 @@
     if (tabName === "futures") {
       loadFutures().catch(console.error);
     }
+    if (tabName === "social") loadSocialScan().catch(console.error);
+    if (tabName === "squeeze") loadSqueezeScan().catch(console.error);
   }
   function renderScoreBreakdown(item) {
     const total = Number(item.composite_score || item.score || 0);
@@ -1042,6 +1081,91 @@
     const fundCount = Array.isArray(fundingData.results) ? fundingData.results.length : 0;
     const basisCount = Array.isArray(basisData.results) ? basisData.results.length : 0;
     document.getElementById("futuresSummaryMeta").textContent = `${futuresPositions.length} open positions · ${futuresProducts.length} products · ${oppCount} setups · ${fundCount} funding arb · ${basisCount} basis trades`;
+  }
+
+  function renderSocialCard(row) {
+    const score = Number(row.composite_score || 0);
+    const mentions = Number(row.total_mentions || 0);
+    const trending = Number(row.trending_sources || 0);
+    const label = escapeHtml(row.composite_label || "Neutral");
+    const symbol = escapeHtml(row.symbol || "");
+    return `
+      <article class="futures-card">
+        <div class="futures-card-head">
+          <div>
+            <div class="futures-card-title">${symbol}</div>
+            <div class="futures-card-subtitle">${label} · ${mentions} mentions</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(Math.abs(score))}">${score > 0 ? "+" : ""}${fmtNum(score, 0)}</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">Signal</span><strong>${fmtNum(row.signal_strength || 0, 1)}</strong></div>
+          <div><span class="futures-metric-label">Sources</span><strong>${trending} trending</strong></div>
+        </div>
+        <div class="futures-card-subtitle" style="margin-top:6px;">${escapeHtml((row.recommendation || "").slice(0, 100))}</div>
+      </article>`;
+  }
+
+  function renderSqueezeCard(row) {
+    const confirmed = row.is_confirmed_squeeze;
+    const score = Number(row.squeeze_score || 0);
+    return `
+      <article class="futures-card" style="${confirmed ? "border-color:#f59e0b;" : ""}">
+        <div class="futures-card-head">
+          <div>
+            <div class="futures-card-title">${escapeHtml(row.symbol || "")}${confirmed ? " 🔥" : ""}</div>
+            <div class="futures-card-subtitle">${escapeHtml(row.social_label || "Neutral")} · ${row.social_mentions || 0} mentions</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(score)}">${fmtNum(score, 0)}</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">Price</span><strong>${fmtUsd(row.price || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Change</span><strong style="color:${Number(row.change_pct || 0) >= 0 ? "#22c55e" : "#ef4444"}">${fmtPct(row.change_pct || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Vol Ratio</span><strong>${fmtNum(row.vol_ratio || 0, 1)}x</strong></div>
+          <div><span class="futures-metric-label">RSI</span><strong>${fmtNum(row.rsi || 0, 0)}</strong></div>
+        </div>
+        <div class="futures-card-metrics" style="margin-top:4px;">
+          <div><span class="futures-metric-label">MACD</span><strong style="color:${row.macd_rising ? "#22c55e" : "#ef4444"}">${row.macd_rising ? "Rising" : "Falling"}</strong></div>
+          <div><span class="futures-metric-label">BB</span><strong style="color:${row.bb_breakout ? "#f59e0b" : "rgba(255,255,255,0.4)"}">${row.bb_breakout ? "Breakout" : "Below"}</strong></div>
+          <div><span class="futures-metric-label">Social</span><strong>${fmtNum(row.social_score || 0, 0)}</strong></div>
+        </div>
+      </article>`;
+  }
+
+  async function loadSocialScan() {
+    try {
+      document.getElementById("socialScanGrid").innerHTML = '<div class="hc-empty-card">Scanning social sources...</div>';
+      const [socialData, memeData] = await Promise.all([
+        fetchJson("/api/social/stocks/scan?limit=20"),
+        fetchJson("/api/social/stocks/trending")
+      ]);
+      const social = Array.isArray(socialData.results) ? socialData.results : [];
+      const meme = Array.isArray(memeData.results) ? memeData.results : [];
+      document.getElementById("socialScanMeta").textContent = `${social.length} stocks ranked by social momentum · ${socialData.scanned || 0} scanned`;
+      document.getElementById("socialScanGrid").innerHTML = social.length
+        ? social.map(renderSocialCard).join("")
+        : '<div class="hc-empty-card">No social signals right now.</div>';
+      document.getElementById("memeTrendingGrid").innerHTML = meme.length
+        ? meme.map(renderSocialCard).join("")
+        : '<div class="hc-empty-card">No meme stocks trending right now.</div>';
+    } catch (err) {
+      document.getElementById("socialScanGrid").innerHTML = '<div class="hc-empty-card">Social scan unavailable.</div>';
+    }
+  }
+
+  async function loadSqueezeScan() {
+    try {
+      document.getElementById("squeezeGrid").innerHTML = '<div class="hc-empty-card">Scanning for squeeze setups...</div>';
+      const data = await fetchJson("/api/stocks/squeeze?limit=15");
+      const results = Array.isArray(data.results) ? data.results : [];
+      document.getElementById("squeezeScanMeta").textContent =
+        `${results.length} candidates · ${data.confirmed_squeeze_count || 0} confirmed squeeze`;
+      document.getElementById("squeezeGrid").innerHTML = results.length
+        ? results.map(renderSqueezeCard).join("")
+        : '<div class="hc-empty-card">No squeeze setups detected right now.</div>';
+    } catch (err) {
+      document.getElementById("squeezeGrid").innerHTML = '<div class="hc-empty-card">Squeeze scan unavailable.</div>';
+    }
   }
 
   function sma(values, period) {
@@ -1786,6 +1910,8 @@
   function bindControls() {
     document.querySelectorAll(".page-tab").forEach((tab) => tab.addEventListener("click", () => activateTab(tab.dataset.tab || "crypto")));
     document.getElementById("tradingCryptoRefreshBtn")?.addEventListener("click", () => loadCrypto().catch(console.error));
+    document.getElementById("socialScanRefresh")?.addEventListener("click", () => loadSocialScan().catch(console.error));
+    document.getElementById("squeezeScanRefresh")?.addEventListener("click", () => loadSqueezeScan().catch(console.error));
     document.querySelectorAll(".futures-category-pill").forEach((button) => button.addEventListener("click", () => {
       futuresCategory = button.dataset.category || "all";
       document.querySelectorAll(".futures-category-pill").forEach((item) => item.classList.toggle("active", item === button));

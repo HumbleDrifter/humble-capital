@@ -3201,6 +3201,108 @@ def api_stocks_scan_quick():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+@api_bp.route("/api/social/stocks/scan", methods=["GET"])
+@require_api_auth
+def api_social_stocks_scan():
+    try:
+        limit = max(1, min(50, int(request.args.get("limit") or 20)))
+        watchlist_param = request.args.get("watchlist", "").strip()
+        if watchlist_param:
+            symbols = [s.strip().upper() for s in watchlist_param.split(",") if s.strip()]
+        else:
+            from options.screener import DEFAULT_WATCHLIST, MEME_STOCKS
+            symbols = list(set(DEFAULT_WATCHLIST) | MEME_STOCKS)
+        scanner = SocialSentimentScanner()
+        results = scanner.scan_watchlist(symbols, top_n=limit)
+        return jsonify({"ok": True, "results": results, "count": len(results), "scanned": len(symbols)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/social/stocks/trending", methods=["GET"])
+@require_api_auth
+def api_social_stocks_trending():
+    try:
+        from options.screener import MEME_STOCKS
+        scanner = SocialSentimentScanner()
+        meme_list = list(MEME_STOCKS)
+        results = scanner.scan_watchlist(meme_list, top_n=20)
+        trending = [r for r in results if r.get("trending_sources", 0) >= 2 or r.get("total_mentions", 0) >= 30]
+        return jsonify({"ok": True, "results": trending, "count": len(trending)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/squeeze", methods=["GET"])
+@require_api_auth
+def api_stocks_squeeze():
+    try:
+        from options.screener import MEME_STOCKS, is_meme_squeeze
+        limit = max(1, min(30, int(request.args.get("limit") or 15)))
+        scanner_inst = _get_stock_scanner()
+        sentiment_scanner = SocialSentimentScanner()
+        squeeze_candidates = []
+        symbols = list(MEME_STOCKS)
+        for symbol in symbols:
+            try:
+                bars = scanner_inst.compute_indicators(scanner_inst.fetch_stock_bars(symbol, 60))
+                if len(bars) < 20:
+                    continue
+                latest = bars[-1]
+                prev = bars[-2] if len(bars) >= 2 else latest
+                close = float(latest.get("close") or 0)
+                vol = float(latest.get("volume") or 0)
+                vol_sma = float(latest.get("vol_sma") or 1)
+                rsi_val = float(latest.get("rsi") or 50)
+                macd_hist = float(latest.get("macd_hist") or 0)
+                bb_upper = float(latest.get("bb_upper") or 0)
+                prev_macd = float(prev.get("macd_hist") or 0)
+                vol_ratio = vol / max(vol_sma, 1)
+                change_pct = ((close - float(prev.get("close") or close)) / max(float(prev.get("close") or close), 0.01)) * 100
+
+                sentiment = sentiment_scanner.get_composite_sentiment(symbol)
+                iv_rank_val = 50.0  # default — no live IV without NBBO sub
+                squeeze = is_meme_squeeze(symbol, sentiment, iv_rank_val)
+
+                squeeze_score = (
+                    min(100, vol_ratio * 20) * 0.30
+                    + min(100, max(0, rsi_val - 40) * 2) * 0.20
+                    + (100 if macd_hist > prev_macd else 0) * 0.15
+                    + (100 if bb_upper > 0 and close >= bb_upper * 0.97 else 0) * 0.15
+                    + min(100, float(sentiment.get("total_mentions") or 0) * 2) * 0.10
+                    + min(100, max(0, float(sentiment.get("composite_score") or 0))) * 0.10
+                )
+
+                squeeze_candidates.append({
+                    "symbol": symbol,
+                    "price": round(close, 2),
+                    "change_pct": round(change_pct, 2),
+                    "volume": vol,
+                    "vol_ratio": round(vol_ratio, 2),
+                    "rsi": round(rsi_val, 1),
+                    "macd_rising": macd_hist > prev_macd,
+                    "bb_breakout": bb_upper > 0 and close >= bb_upper * 0.97,
+                    "social_score": float(sentiment.get("composite_score") or 0),
+                    "social_mentions": int(sentiment.get("total_mentions") or 0),
+                    "social_trending": bool(int(sentiment.get("trending_sources") or 0) >= 2),
+                    "social_label": str(sentiment.get("composite_label") or "Neutral"),
+                    "is_confirmed_squeeze": squeeze,
+                    "squeeze_score": round(squeeze_score, 1),
+                })
+            except Exception:
+                continue
+
+        squeeze_candidates.sort(key=lambda r: r.get("squeeze_score", 0), reverse=True)
+        return jsonify({
+            "ok": True,
+            "results": squeeze_candidates[:limit],
+            "count": len(squeeze_candidates),
+            "confirmed_squeeze_count": sum(1 for r in squeeze_candidates if r.get("is_confirmed_squeeze")),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @api_bp.route("/api/stocks/bars", methods=["GET"])
 @require_api_auth
 def api_stocks_bars():

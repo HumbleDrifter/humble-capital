@@ -9,6 +9,7 @@ PARAMS_4H_CORE = {
     "ema_fast": 21,
     "ema_mid": 50,
     "ema_slow": 200,
+    "ema_trend": 200,
     "rsi_buy_min": 35,
     "rsi_buy_max": 70,
     "rsi_trim_thresh": 80,
@@ -17,12 +18,17 @@ PARAMS_4H_CORE = {
     "trim_cooldown": 8,
     "ext_pct": 8.0,
     "position_size_pct": 0.10,
+    "adx_min": 20,
+    "atr_stop_mult": 1.5,
+    "min_hold_bars": 8,
+    "require_aligned_bars": 2,
 }
 
 PARAMS_1H_SATELLITE = {
     "ema_fast": 9,
     "ema_mid": 21,
     "ema_slow": 50,
+    "ema_trend": 200,
     "rsi_buy_min": 45,
     "rsi_buy_max": 75,
     "rsi_trim_thresh": 82,
@@ -31,6 +37,10 @@ PARAMS_1H_SATELLITE = {
     "trim_cooldown": 4,
     "ext_pct": 10.0,
     "position_size_pct": 0.10,
+    "adx_min": 20,
+    "atr_stop_mult": 1.5,
+    "min_hold_bars": 8,
+    "require_aligned_bars": 2,
 }
 
 _CANDLE_CACHE = {}
@@ -168,6 +178,106 @@ def macd(closes: list, fast: int = 12, slow: int = 26, signal: int = 9) -> tuple
     return macd_line, signal_line, histogram
 
 
+def adx(highs, lows, closes, period=14):
+    """
+    Compute ADX (trend strength). Returns list same length as input, None for insufficient data.
+    ADX > 25 = trending market, ADX < 20 = choppy market.
+    """
+    n = len(closes)
+    result = [None] * n
+    period = max(1, int(period or 14))
+    if n < period * 2 + 1:
+        return result
+
+    highs = [_safe_float(value, 0.0) for value in highs]
+    lows = [_safe_float(value, 0.0) for value in lows]
+    closes = [_safe_float(value, 0.0) for value in closes]
+
+    plus_dm = [0.0] * n
+    minus_dm = [0.0] * n
+    tr = [0.0] * n
+
+    for i in range(1, n):
+        high_diff = highs[i] - highs[i - 1]
+        low_diff = lows[i - 1] - lows[i]
+        plus_dm[i] = max(high_diff, 0.0) if high_diff > low_diff else 0.0
+        minus_dm[i] = max(low_diff, 0.0) if low_diff > high_diff else 0.0
+        tr[i] = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1]),
+        )
+
+    smoothed_plus = sum(plus_dm[1 : period + 1])
+    smoothed_minus = sum(minus_dm[1 : period + 1])
+    smoothed_tr = sum(tr[1 : period + 1])
+    dx_values = []
+
+    for i in range(period, n):
+        if i == period:
+            smoothed_plus = sum(plus_dm[1 : period + 1])
+            smoothed_minus = sum(minus_dm[1 : period + 1])
+            smoothed_tr = sum(tr[1 : period + 1])
+        else:
+            smoothed_plus = smoothed_plus - (smoothed_plus / period) + plus_dm[i]
+            smoothed_minus = smoothed_minus - (smoothed_minus / period) + minus_dm[i]
+            smoothed_tr = smoothed_tr - (smoothed_tr / period) + tr[i]
+
+        if smoothed_tr > 0:
+            plus_di = 100.0 * smoothed_plus / smoothed_tr
+            minus_di = 100.0 * smoothed_minus / smoothed_tr
+        else:
+            plus_di = 0.0
+            minus_di = 0.0
+
+        di_sum = plus_di + minus_di
+        dx = 100.0 * abs(plus_di - minus_di) / di_sum if di_sum > 0 else 0.0
+        dx_values.append(dx)
+
+    if len(dx_values) >= period:
+        adx_val = sum(dx_values[:period]) / period
+        result[period * 2 - 1] = adx_val
+        for j in range(period, len(dx_values)):
+            adx_val = (adx_val * (period - 1) + dx_values[j]) / period
+            idx = j + period
+            if idx < n:
+                result[idx] = adx_val
+
+    return result
+
+
+def atr(highs, lows, closes, period=14):
+    """
+    Compute ATR for volatility-based stops. Returns list same length as input.
+    """
+    n = len(closes)
+    result = [None] * n
+    period = max(1, int(period or 14))
+    if n < period + 1:
+        return result
+
+    highs = [_safe_float(value, 0.0) for value in highs]
+    lows = [_safe_float(value, 0.0) for value in lows]
+    closes = [_safe_float(value, 0.0) for value in closes]
+    tr_values = [0.0] * n
+
+    for i in range(1, n):
+        tr_values[i] = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1]),
+        )
+
+    atr_val = sum(tr_values[1 : period + 1]) / period
+    result[period] = atr_val
+
+    for i in range(period + 1, n):
+        atr_val = (atr_val * (period - 1) + tr_values[i]) / period
+        result[i] = atr_val
+
+    return result
+
+
 class Backtester:
     def __init__(self, product_id: str, timeframe: str = "1h", start_date: str = None, end_date: str = None):
         self.product_id = str(product_id or "").upper().strip()
@@ -241,11 +351,16 @@ class Backtester:
         try:
             params = PARAMS_4H_CORE if self.timeframe == "4h" else PARAMS_1H_SATELLITE
             closes = [_safe_float(candle.get("close"), 0.0) for candle in candles]
+            highs = [_safe_float(candle.get("high"), 0.0) for candle in candles]
+            lows = [_safe_float(candle.get("low"), 0.0) for candle in candles]
             ema_fast = ema(closes, params["ema_fast"])
             ema_mid = ema(closes, params["ema_mid"])
             ema_slow = ema(closes, params["ema_slow"])
+            ema_trend = ema(closes, params["ema_trend"])
             rsi_values = rsi(closes, 14)
             macd_line, signal_line, histogram = macd(closes, 12, 26, 9)
+            adx_values = adx(highs, lows, closes, 14)
+            atr_values = atr(highs, lows, closes, 14)
 
             enriched = []
             for idx, candle in enumerate(candles):
@@ -253,10 +368,13 @@ class Backtester:
                 row["ema_fast"] = ema_fast[idx]
                 row["ema_mid"] = ema_mid[idx]
                 row["ema_slow"] = ema_slow[idx]
+                row["ema_trend"] = ema_trend[idx]
                 row["rsi"] = rsi_values[idx]
                 row["macd_line"] = macd_line[idx]
                 row["macd_signal"] = signal_line[idx]
                 row["macd_hist"] = histogram[idx]
+                row["adx"] = adx_values[idx]
+                row["atr"] = atr_values[idx]
                 enriched.append(row)
             return enriched
         except Exception as exc:
@@ -304,23 +422,44 @@ class Backtester:
             ema_fast_value = bar.get("ema_fast")
             ema_mid_value = bar.get("ema_mid")
             ema_slow_value = bar.get("ema_slow")
+            ema_trend_value = bar.get("ema_trend")
             rsi_value = bar.get("rsi")
             hist_value = bar.get("macd_hist")
+            adx_value = bar.get("adx")
+            atr_value = bar.get("atr")
             prev_hist = prev_bar.get("macd_hist") if prev_bar else None
 
             equity_curve.append({"ts": bar["ts"], "equity": round(current_equity(close), 2), "close": close})
 
-            if None in (ema_fast_value, ema_mid_value, ema_slow_value, rsi_value, hist_value):
+            if None in (ema_fast_value, ema_mid_value, ema_slow_value, ema_trend_value, rsi_value, hist_value):
                 continue
 
-            ema_aligned = close > ema_fast_value > ema_mid_value > ema_slow_value
+            ema_aligned = ema_fast_value > ema_mid_value > ema_slow_value
+            price_above_fast = close > ema_fast_value
+            above_trend = close > ema_trend_value
             macd_rising = prev_hist is not None and hist_value > 0 and hist_value > prev_hist
             not_overextended = ((close - ema_fast_value) / ema_fast_value) * 100.0 <= _safe_float(params_base["ext_pct"], 10.0)
             cooldown_ok = (idx - last_buy_bar) >= int(params_base["cooldown_bars"])
             trim_cooldown_ok = (idx - last_trim_bar) >= int(params_base["trim_cooldown"])
             conviction_score = conviction_for_bar(bar, prev_bar)
+            adx_ok = adx_value is not None and _safe_float(adx_value, 0.0) >= _safe_float(params_base.get("adx_min", 20), 20.0)
 
-            if state == 0 and cooldown_ok and ema_aligned and macd_rising and not_overextended:
+            required_aligned = max(1, int(params_base.get("require_aligned_bars", 2)))
+            aligned_count = 0
+            for lookback in range(required_aligned):
+                lb_idx = idx - lookback
+                if lb_idx < 0:
+                    break
+                lb = candles[lb_idx]
+                lb_ef = lb.get("ema_fast")
+                lb_em = lb.get("ema_mid")
+                lb_es = lb.get("ema_slow")
+                lb_close = _safe_float(lb.get("close"), 0.0)
+                if lb_ef is not None and lb_em is not None and lb_es is not None and lb_ef > lb_em > lb_es and lb_close > lb_ef:
+                    aligned_count += 1
+            consecutive_aligned = aligned_count >= required_aligned
+
+            if state == 0 and cooldown_ok and ema_aligned and price_above_fast and above_trend and macd_rising and not_overextended and adx_ok and consecutive_aligned:
                 if _safe_float(params_base["rsi_buy_min"], 0.0) <= rsi_value <= _safe_float(params_base["rsi_buy_max"], 100.0):
                     size_usd = current_equity(close) * _safe_float(params_base["position_size_pct"], 0.10)
                     qty = size_usd / close if close > 0 else 0.0
@@ -371,8 +510,16 @@ class Backtester:
                     )
 
             if state in {1, 2} and base_qty > 0:
-                exit_signal = close < ema_mid_value or hist_value < 0 or rsi_value < _safe_float(params_base["rsi_exit_thresh"], 38.0)
-                if exit_signal:
+                min_hold_bars = max(0, int(params_base.get("min_hold_bars", 8)))
+                hold_bars = 0 if entry_bar is None else idx - entry_bar
+                atr_stop_mult = _safe_float(params_base.get("atr_stop_mult", 1.5), 1.5)
+                atr_stop_hit = False
+                if avg_entry > 0 and _safe_float(atr_value, 0.0) > 0:
+                    stop_price = avg_entry - (_safe_float(atr_value, 0.0) * atr_stop_mult)
+                    atr_stop_hit = close < stop_price
+
+                exit_signal = close < ema_mid_value or hist_value < 0 or rsi_value < _safe_float(params_base["rsi_exit_thresh"], 38.0) or atr_stop_hit
+                if hold_bars >= min_hold_bars and exit_signal:
                     sell_qty = base_qty
                     proceeds = sell_qty * close
                     pnl_usd = (close - avg_entry) * sell_qty

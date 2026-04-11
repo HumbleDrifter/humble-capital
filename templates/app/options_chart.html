@@ -13,6 +13,11 @@
   .optc-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   .optc-select,.optc-input { width:100%; min-height:46px; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(11,16,24,.78); color:var(--hc-text,#ecf3ff); padding:0 14px; }
   .optc-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.56); margin-bottom:8px; display:block; }
+  .optc-label-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .optc-info-wrap { position:relative; display:inline-flex; align-items:center; }
+  .optc-info-btn { width:18px; height:18px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.04); color:rgba(255,255,255,.76); font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+  .optc-tooltip { position:absolute; top:calc(100% + 8px); left:0; width:260px; padding:10px 12px; border-radius:12px; background:rgba(8,12,18,.98); border:1px solid rgba(255,255,255,.12); box-shadow:0 16px 36px rgba(0,0,0,.34); color:rgba(255,255,255,.82); font-size:12px; line-height:1.45; text-transform:none; letter-spacing:0; z-index:30; opacity:0; visibility:hidden; transform:translateY(-4px); transition:opacity .16s ease, transform .16s ease, visibility .16s ease; pointer-events:none; }
+  .optc-info-wrap:hover .optc-tooltip, .optc-info-wrap:focus-within .optc-tooltip, .optc-info-wrap[data-open="true"] .optc-tooltip { opacity:1; visibility:visible; transform:translateY(0); }
   .optc-slider-card { padding:14px; border-radius:14px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); }
   .optc-slider { width:100%; accent-color:#38bdf8; }
   .optc-value { font-size:13px; color:rgba(255,255,255,.68); }
@@ -50,12 +55,16 @@
   .optc-badge.away { background:rgba(239,68,68,.14); color:#f87171; }
   .optc-badge.spread { background:rgba(168,85,247,.14); color:#c084fc; }
   .optc-badge.exit { background:rgba(251,113,133,.14); color:#fb7185; }
-  .optc-timeline { display:flex; flex-wrap:wrap; gap:2px; align-items:center; }
-  .optc-seg { flex:1 1 0; min-width:20px; height:18px; border-radius:999px; opacity:.8; }
+  .optc-timeline { display:grid; gap:12px; }
+  .optc-timeline-bar { display:flex; width:100%; min-height:28px; border-radius:14px; overflow:hidden; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); }
+  .optc-seg { display:flex; align-items:center; justify-content:center; min-width:36px; padding:0 8px; font-size:11px; font-weight:800; letter-spacing:.02em; color:#061018; }
   .optc-seg.bull { background:#34d399; }
   .optc-seg.neutral { background:#38bdf8; }
   .optc-seg.caution { background:#f59e0b; }
   .optc-seg.risk_off { background:#ef4444; }
+  .optc-timeline-legend { display:flex; flex-wrap:wrap; gap:10px 14px; color:rgba(255,255,255,.68); font-size:12px; line-height:1.4; }
+  .optc-timeline-legend span { display:inline-flex; align-items:center; gap:6px; }
+  .optc-dot { width:10px; height:10px; border-radius:999px; display:inline-block; }
   .optc-empty { padding:18px; border-radius:14px; background:rgba(255,255,255,.025); border:1px dashed rgba(255,255,255,.1); color:rgba(255,255,255,.6); }
   @media (max-width: 1100px) { .optc-layout,.optc-grid { grid-template-columns:1fr; } .optc-kpis { grid-template-columns:1fr 1fr; } }
 </style>
@@ -75,7 +84,8 @@
     <div class="optc-grid">
       <div>
         <label class="optc-label" for="optcSymbol">Symbol</label>
-        <input id="optcSymbol" class="optc-input" type="text" value="AAPL" placeholder="AAPL">
+        <input id="optcSymbol" class="optc-input" type="text" list="optcSymbolList" value="AAPL" placeholder="Search symbol">
+        <datalist id="optcSymbolList"></datalist>
       </div>
       <div>
         <label class="optc-label" for="optcStrategy">Strategy</label>
@@ -102,22 +112,46 @@
 
     <div class="optc-grid">
       <div class="optc-slider-card">
-        <label class="optc-label" for="optcDelta">Delta</label>
+        <div class="optc-label-row">
+          <label class="optc-label" for="optcDelta" style="margin-bottom:0;">Delta</label>
+          <span class="optc-info-wrap">
+            <button class="optc-info-btn" type="button" aria-label="What is delta?">i</button>
+            <span class="optc-tooltip">Delta measures the probability an option expires in-the-money. A delta of 0.25 means about a 75% chance of keeping the full premium. Lower delta means safer but less premium. Higher delta means more premium but more assignment risk.</span>
+          </span>
+        </div>
         <input id="optcDelta" class="optc-slider" type="range" min="0.10" max="0.40" step="0.01" value="0.25">
         <div class="optc-value" id="optcDeltaValue">0.25</div>
       </div>
       <div class="optc-slider-card">
-        <label class="optc-label" for="optcDte">DTE</label>
+        <div class="optc-label-row">
+          <label class="optc-label" for="optcDte" style="margin-bottom:0;">DTE</label>
+          <span class="optc-info-wrap">
+            <button class="optc-info-btn" type="button" aria-label="What is DTE?">i</button>
+            <span class="optc-tooltip">Days to Expiration. 21 to 45 days is the sweet spot for selling premium because theta decay accelerates. Shorter means faster decay but more gamma risk. Longer means slower decay but safer positioning.</span>
+          </span>
+        </div>
         <input id="optcDte" class="optc-slider" type="range" min="7" max="60" step="1" value="30">
         <div class="optc-value" id="optcDteValue">30 days</div>
       </div>
       <div class="optc-slider-card">
-        <label class="optc-label" for="optcProfit">Profit Target</label>
+        <div class="optc-label-row">
+          <label class="optc-label" for="optcProfit" style="margin-bottom:0;">Profit Target</label>
+          <span class="optc-info-wrap">
+            <button class="optc-info-btn" type="button" aria-label="What is profit target?">i</button>
+            <span class="optc-tooltip">Close the position when it reaches this percentage of max profit. Fifty percent is typically optimal. Studies suggest closing at 50% and redeploying capital can outperform holding to expiration by roughly 20 to 30 percent annually.</span>
+          </span>
+        </div>
         <input id="optcProfit" class="optc-slider" type="range" min="25" max="75" step="1" value="50">
         <div class="optc-value" id="optcProfitValue">50%</div>
       </div>
       <div class="optc-slider-card">
-        <label class="optc-label" for="optcWidth">Spread Width</label>
+        <div class="optc-label-row">
+          <label class="optc-label" for="optcWidth" style="margin-bottom:0;">Spread Width</label>
+          <span class="optc-info-wrap">
+            <button class="optc-info-btn" type="button" aria-label="What is spread width?">i</button>
+            <span class="optc-tooltip">The distance between the short and long strikes in a credit spread. Wider spreads collect more premium but carry more risk. Five dollars wide is a common starting point for liquid stocks.</span>
+          </span>
+        </div>
         <input id="optcWidth" class="optc-slider" type="range" min="1" max="10" step="1" value="5">
         <div class="optc-value" id="optcWidthValue">$5</div>
       </div>
@@ -169,6 +203,12 @@
       <div>
         <div class="optc-label">Regime Timeline</div>
         <div id="optcTimeline" class="optc-timeline"></div>
+        <div class="optc-timeline-legend">
+          <span><i class="optc-dot" style="background:#34d399"></i>Bull (safe to sell premium)</span>
+          <span><i class="optc-dot" style="background:#38bdf8"></i>Neutral</span>
+          <span><i class="optc-dot" style="background:#f59e0b"></i>Caution (reduce exposure)</span>
+          <span><i class="optc-dot" style="background:#ef4444"></i>Risk Off (no new trades)</span>
+        </div>
       </div>
       <div>
         <div class="optc-label">Trade Feed</div>
@@ -182,7 +222,7 @@
 <script>
 (() => {
   const API_SECRET = {{ api_secret|tojson }};
-  const FALLBACK_SYMBOLS = ["AAPL","MSFT","NVDA","AMZN","META","TSLA","AMD","SPY","QQQ"];
+  const FALLBACK_SYMBOLS = ["AAPL","AMD","AMZN","ABNB","AVAX","BA","BAC","COIN","COST","CRM","CVX","DIS","F","GM","GME","GOOGL","GS","HD","INTC","IWM","JNJ","JPM","KO","LOW","MA","MARA","META","MSFT","MU","NFLX","NIO","NVDA","ORCL","PEP","PFE","PLTR","PYPL","QCOM","QQQ","RIOT","RIVN","SOFI","SQ","SPY","T","TSLA","UBER","V","VZ","WMT","XOM"];
   let bars = [];
   let viewDays = 30;
   let refreshTimer = null;
@@ -426,7 +466,18 @@
     document.getElementById("optcLossStreak").textContent = String(sim.lossStreak || 0);
     document.getElementById("optcState").innerHTML = `<span class="optc-pill ${sim.state.includes("csp") ? "csp" : sim.state.includes("cc") ? "cc" : "flat"}">${esc(sim.state.replaceAll("_"," "))}</span>`;
     const regimes = rangeWindowData(bars).map((bar) => regimeForBar(bar));
-    document.getElementById("optcTimeline").innerHTML = regimes.map((regime) => `<span class="optc-seg ${regime}" title="${regime}"></span>`).join("");
+    const counts = regimes.reduce((acc, regime) => { acc[regime] = (acc[regime] || 0) + 1; return acc; }, { bull:0, neutral:0, caution:0, risk_off:0 });
+    const total = Math.max(1, regimes.length);
+    const order = ["bull","neutral","caution","risk_off"];
+    const labels = { bull: "Bull", neutral: "Neutral", caution: "Caution", risk_off: "Risk Off" };
+    document.getElementById("optcTimeline").innerHTML = `
+      <div class="optc-timeline-bar">
+        ${order.filter((regime) => counts[regime] > 0).map((regime) => {
+          const pct = (counts[regime] / total) * 100;
+          return `<span class="optc-seg ${regime}" title="${labels[regime]} ${pct.toFixed(0)}%" style="flex:${Math.max(1, counts[regime])} 1 0;">${labels[regime]} ${pct.toFixed(0)}%</span>`;
+        }).join("")}
+      </div>
+    `;
     renderTradeFeed(sim.trades);
   }
 
@@ -445,6 +496,8 @@
     ivSeries.setData(visibleBars.filter((bar) => bar.iv_estimate != null).map((bar) => ({ time: bar.time, value: bar.iv_estimate })));
     ivRankSeries.setData(visibleBars.filter((bar) => bar.iv_rank != null).map((bar) => ({ time: bar.time, value: bar.iv_rank, color: Number(bar.iv_rank) >= 50 ? "rgba(52,211,153,0.68)" : "rgba(148,163,184,0.6)" })));
     ivThresholdSeries.setData(visibleBars.map((bar) => ({ time: bar.time, value: 50 })));
+    mainChart.timeScale().fitContent();
+    ivChart.timeScale().fitContent();
     document.getElementById("optcMeta").textContent = `${symbol()} · ${visibleBars.length} bars loaded`;
   }
 
@@ -468,6 +521,10 @@
 
   const rerender = debounce(() => { if (bars.length) renderCharts(); }, 500);
   function bindControls(){
+    const symbolList = document.getElementById("optcSymbolList");
+    if (symbolList) {
+      symbolList.innerHTML = FALLBACK_SYMBOLS.map((ticker) => `<option value="${ticker}"></option>`).join("");
+    }
     [["optcDelta","optcDeltaValue",(v)=>Number(v).toFixed(2)],["optcDte","optcDteValue",(v)=>`${v} days`],["optcProfit","optcProfitValue",(v)=>`${v}%`],["optcWidth","optcWidthValue",(v)=>`$${v}`]].forEach(([id, out, fmt]) => {
       const input = document.getElementById(id), label = document.getElementById(out);
       const sync = () => { label.textContent = fmt(input.value); rerender(); };
@@ -475,6 +532,10 @@
     });
     document.getElementById("optcStrategy").addEventListener("change", rerender);
     document.getElementById("optcSymbol").addEventListener("change", loadBars);
+    document.getElementById("optcSymbol").addEventListener("blur", () => {
+      const normalized = symbol();
+      if (normalized) document.getElementById("optcSymbol").value = normalized;
+    });
     document.getElementById("optcRefreshBtn").addEventListener("click", loadBars);
     document.querySelectorAll(".optc-range").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -483,6 +544,19 @@
         viewDays = Number(btn.dataset.days || 365);
         rerender();
       });
+    });
+    document.querySelectorAll(".optc-info-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const wrap = button.parentElement;
+        const isOpen = wrap?.getAttribute("data-open") === "true";
+        document.querySelectorAll(".optc-info-wrap[data-open='true']").forEach((node) => node.setAttribute("data-open", "false"));
+        if (wrap) wrap.setAttribute("data-open", isOpen ? "false" : "true");
+      });
+    });
+    document.addEventListener("click", (event) => {
+      if (!(event.target instanceof Element)) return;
+      if (event.target.closest(".optc-info-wrap")) return;
+      document.querySelectorAll(".optc-info-wrap[data-open='true']").forEach((node) => node.setAttribute("data-open", "false"));
     });
   }
 

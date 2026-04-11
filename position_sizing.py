@@ -70,11 +70,9 @@ def _cache_set(product_id, value):
 def _get_win_rate_scalar(product_id: str) -> float:
     """
     Returns a multiplier based on the asset's historical win rate.
-    - Win rate >= 60%: return 1.20 (boost winners)
-    - Win rate 50-60%: return 1.05 (slight boost)
-    - Win rate 40-50%: return 0.95 (slight reduction)
-    - Win rate < 40%: return 0.75 (significant reduction)
-    - No data (< 3 trades): return 1.0 (neutral)
+    - Win rate >= 60%: return 1.25
+    - Win rate >= 50%: return 1.10
+    - Everything else: return 1.0 (neutral, never penalize)
 
     Cache the product breakdown for 10 minutes to avoid recalculating on every buy.
     """
@@ -105,12 +103,10 @@ def _get_win_rate_scalar(product_id: str) -> float:
 
         win_rate = _safe_float(row.get("win_rate"), 0.0)
         if win_rate >= 0.60:
-            return 1.20
+            return 1.25
         if win_rate >= 0.50:
-            return 1.05
-        if win_rate >= 0.40:
-            return 0.95
-        return 0.75
+            return 1.10
+        return 1.0
     except Exception as exc:
         _log(f"win rate scalar lookup failed product_id={product_id} error={exc}")
         return 1.0
@@ -267,20 +263,12 @@ def compute_risk_adjusted_size(
         "caution": 0.7,
         "risk_off": 0.4,
     }
-    signal_scalars = {
-        "CORE_BUY_WINDOW": 1.0,
-        "SATELLITE_BUY": 0.8,
-        "SNIPER_BUY": 0.5,
-        "SATELLITE_BUY_HEAVY": 1.0,
-    }
-
     vol_scalar = vol_scalars.get(bucket, 0.85)
     regime_scalar = regime_scalars.get(regime, 1.0)
     conviction_scalar = min(1.5, max(0.5, _safe_float(conviction_score, 1.0)))
-    signal_scalar = signal_scalars.get(signal_type, 1.0)
     win_rate_scalar = 1.0 if signal_type == "CORE_BUY_WINDOW" else _get_win_rate_scalar(product_id)
 
-    raw_size = base_size_usd * vol_scalar * regime_scalar * conviction_scalar * signal_scalar * win_rate_scalar
+    raw_size = base_size_usd * vol_scalar * regime_scalar * conviction_scalar * win_rate_scalar
     thresholds = _get_config_thresholds()
     trade_min_value_usd = max(0.0, _safe_float(thresholds["trade_min_value_usd"], 5.0))
     max_quote_per_trade_usd = max(0.0, _safe_float(thresholds["max_quote_per_trade_usd"], 50.0))
@@ -300,7 +288,6 @@ def compute_risk_adjusted_size(
             "volatility": vol_scalar,
             "regime": regime_scalar,
             "conviction": conviction_scalar,
-            "signal_type": signal_scalar,
             "win_rate": win_rate_scalar,
             "trade_min_value_usd": trade_min_value_usd,
             "max_quote_per_trade_usd": max_quote_per_trade_usd,

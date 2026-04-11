@@ -170,7 +170,8 @@
       `);
     }
 
-    container.innerHTML = `
+      if (tooltip) tooltip.style.display = "none";
+      container.innerHTML = `
       <svg viewBox="0 0 800 280" width="100%" role="img" aria-label="Portfolio equity curve">
         <defs>
           <linearGradient id="hcChartStroke" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -202,8 +203,9 @@
     const tooltipHost = container.parentElement || container;
     tooltipHost.style.position = "relative";
     const tooltip = document.getElementById("equityTooltip");
-    const svg = container.querySelector("svg");
-    if (!svg || !tooltip) return;
+      if (tooltip) { tooltip.style.display = "none"; }
+      const svg = container.querySelector("svg");
+      if (!svg || !tooltip) return;
 
     const ensureCrosshair = (id, tagName) => {
       let node = svg.querySelector(`#${id}`);
@@ -242,7 +244,8 @@
     };
 
     const showTooltip = (event) => {
-      const rect = svg.getBoundingClientRect();
+      if (!svg.isConnected) return;
+        const rect = svg.getBoundingClientRect();
       const localX = event.clientX - rect.left;
       const clampedX = Math.max(leftPad, Math.min(width - rightPad, (localX / rect.width) * width));
       const ratio = (clampedX - leftPad) / Math.max(chartWidth, 1);

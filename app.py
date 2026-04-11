@@ -11,7 +11,7 @@ from routes.api_options import api_options_bp
 from routes.dashboard import dashboard_bp
 
 from rebalancer import run_trailing_exit_sweep, run_defensive_regime_check
-from signal_scanner import run_scanner_sweep
+from signal_scanner import run_scanner_sweep, run_dip_detector
 from workers.execution_queue import start_execution_worker
 from storage import init_db, init_user_table
 
@@ -37,6 +37,20 @@ def _trailing_exit_loop():
                     print(f"[defensive_regime] {len(defensive_actions)} actions regime={defensive_result.get('regime')}", flush=True)
             except Exception as exc:
                 print(f"[defensive_regime] error: {exc}", flush=True)
+
+            # Dip buy detector
+            try:
+                dip_result = run_dip_detector()
+                dip_actions = dip_result.get("actions", [])
+                if dip_actions:
+                    for da in dip_actions:
+                        print(
+                            f"[dip_detector] BUY {da['product_id']} drop={da['change_24h']}% "
+                            f"rsi={da['rsi']} amount=${da['amount']:.2f}",
+                            flush=True,
+                        )
+            except Exception as exc:
+                print(f"[dip_detector] error: {exc}", flush=True)
         except Exception as exc:
             print(f"[trailing_exit_loop] error: {exc}", flush=True)
         _time.sleep(300)  # 5 minutes

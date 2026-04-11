@@ -1,6 +1,13 @@
 import math
+import os
 import time
 from threading import RLock
+
+
+MIN_MARKET_CAP_USD = float(os.getenv("STOCK_MIN_MARKET_CAP", "500000000"))
+MIN_AVG_VOLUME = int(float(os.getenv("STOCK_MIN_AVG_VOLUME", "1000000")))
+MIN_PRICE = float(os.getenv("STOCK_MIN_PRICE", "5.0"))
+MAX_PRICE = float(os.getenv("STOCK_MAX_PRICE", "500.0"))
 
 
 _DEFAULT_SEED_UNIVERSE = [
@@ -85,7 +92,7 @@ class StockUniverse:
                 has_options = len(ticker.options or []) > 0
             except Exception:
                 has_options = False
-            tradeable = avg_vol >= 1_000_000 and market_cap >= 1_000_000_000 and 5 <= price <= 500 and has_options
+            tradeable = avg_vol >= MIN_AVG_VOLUME and market_cap >= MIN_MARKET_CAP_USD and MIN_PRICE <= price <= MAX_PRICE and has_options
             return {
                 "tradeable": tradeable,
                 "avg_volume": avg_vol,

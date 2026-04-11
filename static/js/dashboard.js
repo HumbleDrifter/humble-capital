@@ -564,21 +564,8 @@
     }).join("");
   }
 
-  async function loadDashboard() {
-    try {
-      const [resp, futuresPositionsResp, futuresBalanceResp] = await Promise.all([
-        fetchJson("/api/portfolio"),
-        fetchJson("/api/futures/positions").catch(() => ({ positions: [] })),
-        fetchJson("/api/futures/balance").catch(() => ({ balance: {} }))
-      ]);
-      const snapshot = resp.snapshot || {};
-      const summary = resp.summary || {};
-      snapshot.futures = {
-        positions: Array.isArray(futuresPositionsResp?.positions) ? futuresPositionsResp.positions : [],
-        balance: futuresBalanceResp?.balance || {}
-      };
-      const futuresBalanceRaw = Number(futuresBalanceResp?.balance?.futures_balance || 0);
-      const futuresBalanceFull = futuresBalanceResp?.balance || {};
+  function renderDashboardSnapshot(snapshot, summary) {
+      const futuresBalanceRaw = Number(snapshot?.futures?.balance?.futures_balance || 0);
       const coinbaseValueRaw = Number(snapshot.coinbase_value_usd || 0);
       const futuresAlreadyInCoinbase = coinbaseValueRaw > 0 && futuresBalanceRaw > 0 &&
         Math.abs(coinbaseValueRaw - futuresBalanceRaw) > futuresBalanceRaw * 0.5;
@@ -677,6 +664,31 @@
 
       updateRegimeBadge(regime);
       renderHoldings(snapshot);
+  }
+
+  async function loadDashboard() {
+    try {
+      // --- PHASE 1: fast data — render portfolio immediately ---
+      const resp = await fetchJson("/api/portfolio");
+      const snapshot = resp.snapshot || {};
+      const summary = resp.summary || {};
+      snapshot.futures = { positions: [], balance: {} };
+
+      renderDashboardSnapshot(snapshot, summary);
+
+      // --- PHASE 2: slow data — patch in Webull + futures in background ---
+      const [futuresPositionsResp, futuresBalanceResp] = await Promise.all([
+        fetchJson("/api/futures/positions").catch(() => ({ positions: [] })),
+        fetchJson("/api/futures/balance").catch(() => ({ balance: {} }))
+      ]);
+      snapshot.futures = {
+        positions: Array.isArray(futuresPositionsResp?.positions) ? futuresPositionsResp.positions : [],
+        balance: futuresBalanceResp?.balance || {}
+      };
+
+      // Re-render with full data now that slow calls are done
+      renderDashboardSnapshot(snapshot, summary);
+
     } catch (error) {
       console.warn("Dashboard snapshot load failed:", error);
       const host = document.getElementById("hcHoldingsGrid");

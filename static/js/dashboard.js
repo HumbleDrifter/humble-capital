@@ -128,6 +128,8 @@
     return "Start";
   }
 
+  let _chartGeneration = 0;
+
   function buildEquityChart(container, dataPoints, range) {
     if (!container) return;
     const points = Array.isArray(dataPoints) ? dataPoints.filter((row) => row && Number.isFinite(Number(row.equity_usd ?? row.total_value_usd))) : [];
@@ -201,6 +203,8 @@
 
     const tooltipHost = container.parentElement || container;
     tooltipHost.style.position = "relative";
+    _chartGeneration += 1;
+    const myGeneration = _chartGeneration;
     const tooltip = document.getElementById("equityTooltip");
       if (tooltip) { tooltip.style.display = "none"; }
       const svg = container.querySelector("svg");
@@ -243,7 +247,7 @@
     };
 
     const showTooltip = (event) => {
-      if (!svg.isConnected) return;
+      if (!svg.isConnected || myGeneration !== _chartGeneration) return;
         const rect = svg.getBoundingClientRect();
       const localX = event.clientX - rect.left;
       const clampedX = Math.max(leftPad, Math.min(width - rightPad, (localX / rect.width) * width));

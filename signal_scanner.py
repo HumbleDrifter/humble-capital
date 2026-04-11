@@ -550,6 +550,15 @@ class SignalScanner:
     def scan_universe(self):
         snapshot = get_portfolio_snapshot()
         config = snapshot.get("config", {})
+        regime = str(
+            snapshot.get("market_regime")
+            or snapshot.get("config", {}).get("market_regime")
+            or "neutral"
+        ).lower()
+        allowed_regimes = ["bull"]
+        if regime not in allowed_regimes:
+            _log(f"satellite scan skipped — regime={regime} not in {allowed_regimes}")
+            return []
         core_assets = set((config.get("core_assets") or {}).keys())
         blocked = set(config.get("satellite_blocked") or [])
         universe = get_all_usd_products()
@@ -621,6 +630,13 @@ class SignalScanner:
 
 def run_scanner_sweep():
     try:
+        snapshot = get_portfolio_snapshot()
+        regime = str(
+            snapshot.get("market_regime")
+            or snapshot.get("config", {}).get("market_regime")
+            or "neutral"
+        ).lower()
+        _log(f"sweep starting regime={regime}")
         scanner = SignalScanner(timeframe="4h")
         core_signals = scanner.scan_core()
         satellite_signals = scanner.scan_universe()

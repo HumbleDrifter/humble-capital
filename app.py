@@ -10,7 +10,7 @@ from routes.api import api_bp
 from routes.api_options import api_options_bp
 from routes.dashboard import dashboard_bp
 
-from rebalancer import run_trailing_exit_sweep
+from rebalancer import run_trailing_exit_sweep, run_defensive_regime_check
 from signal_scanner import run_scanner_sweep
 from workers.execution_queue import start_execution_worker
 from storage import init_db, init_user_table
@@ -27,6 +27,15 @@ def _trailing_exit_loop():
             exits = result.get("exits", [])
             if exits:
                 print(f"[trailing_exit_loop] sweep completed exits={len(exits)}")
+
+            # Defensive regime selling/rebuying
+            try:
+                defensive_result = run_defensive_regime_check()
+                defensive_actions = defensive_result.get("actions", [])
+                if defensive_actions:
+                    print(f"[defensive_regime] {len(defensive_actions)} actions regime={defensive_result.get('regime')}")
+            except Exception as exc:
+                print(f"[defensive_regime] error: {exc}")
         except Exception as exc:
             print(f"[trailing_exit_loop] error: {exc}")
         _time.sleep(300)  # 5 minutes

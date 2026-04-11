@@ -77,6 +77,23 @@ def _to_dict(value):
     return value.to_dict() if hasattr(value, "to_dict") else value
 
 
+def _response_json(value):
+    if hasattr(value, "json") and callable(getattr(value, "json")):
+        try:
+            return value.json()
+        except Exception:
+            pass
+    return _to_dict(value)
+
+
+def _response_status_code(value, default=200):
+    try:
+        code = getattr(value, "status_code", default)
+        return int(code)
+    except Exception:
+        return int(default)
+
+
 def _flatten_candidates(value):
     if isinstance(value, list):
         return value
@@ -133,7 +150,7 @@ class WebullAdapter(BrokerAdapter):
         self.region = "us"
         self.endpoint = "api.webull.com"
         self._lock = threading.RLock()
-        self.account_id = None
+        self.account_id = os.getenv("WEBULL_ACCOUNT_ID", "").strip() or None
 
     def _mode(self):
         return "paper" if self.paper_trading else "live"
@@ -208,7 +225,7 @@ class WebullAdapter(BrokerAdapter):
             for kwargs, args in call_variants:
                 try:
                     response = method(*args, **kwargs)
-                    return _to_dict(response)
+                    return _response_json(response)
                 except Exception as exc:
                     last_error = exc
                     continue
@@ -307,30 +324,26 @@ class WebullAdapter(BrokerAdapter):
         try:
             _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
-            payload = self._call_first(
-                trade_client,
-                [
-                    "account_v2.get_account_detail",
-                    "account_v2.get_account_info",
-                    "account.get_account_detail",
-                    "account.get_account_info",
-                ],
-                call_variants=[
-                    ({"account_id": account_id}, ()),
-                    ({"accountId": account_id}, ()),
-                    ({}, (account_id,)),
-                ],
-            )
+            response = trade_client.account_v2.get_account_balance(account_id)
+            payload = _response_json(response)
+            status_code = _response_status_code(response)
+            if status_code >= 400:
+                raise RuntimeError(f"webull_http_{status_code}:{payload}")
             row = _first_dict(payload)
             balance = _safe_float(
-                row.get("netLiquidation")
+                row.get("total_net_liquidation_value")
+                or row.get("netLiquidation")
                 or row.get("netAssetValue")
                 or row.get("balance")
                 or row.get("totalAsset")
                 or 0.0
             )
+            currency_assets = row.get("account_currency_assets") or []
+            currency_row = currency_assets[0] if isinstance(currency_assets, list) and currency_assets else {}
             buying_power = _safe_float(
-                row.get("buyingPower")
+                currency_row.get("buying_power")
+                or row.get("total_cash_balance")
+                or row.get("buyingPower")
                 or row.get("buying_power")
                 or row.get("cashBalance")
                 or row.get("cash")
@@ -351,21 +364,13 @@ class WebullAdapter(BrokerAdapter):
 
     def get_positions(self) -> list:
         try:
-            _api_client, trade_client, _quotes_client = self._get_clients(force_reset=False)
+            _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
-            payload = self._call_first(
-                trade_client,
-                [
-                    "account_v2.get_positions",
-                    "account.get_positions",
-                    "position.get_positions",
-                ],
-                call_variants=[
-                    ({"account_id": account_id}, ()),
-                    ({"accountId": account_id}, ()),
-                    ({}, (account_id,)),
-                ],
-            )
+            response = trade_client.account_v2.get_account_position(account_id)
+            payload = _response_json(response)
+            status_code = _response_status_code(response)
+            if status_code >= 400:
+                raise RuntimeError(f"webull_http_{status_code}:{payload}")
             rows = self._extract_positions(payload)
             positions = []
             for row in rows:
@@ -502,38 +507,18 @@ class WebullAdapter(BrokerAdapter):
         try:
             _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
-            payload = self._call_first(
-                trade_client,
-                [
-                    "order.place_order",
-                    "stock_order.place_order",
-                    "trade_order.place_order",
-                ],
-                call_variants=[
-                    (
-                        {
-                            "account_id": account_id,
-                            "symbol": symbol,
-                            "side": side,
-                            "qty": qty,
-                            "order_type": order_type,
-                            "limit_price": limit_price,
-                        },
-                        (),
-                    ),
-                    (
-                        {},
-                        (
-                            account_id,
-                            symbol,
-                            side,
-                            qty,
-                            order_type,
-                            limit_price,
-                        ),
-                    ),
-                ],
+            response = trade_client.order.place_order(
+                account_id=account_id,
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                order_type=order_type,
+                limit_price=limit_price,
             )
+            payload = _response_json(response)
+            status_code = _response_status_code(response)
+            if status_code >= 400:
+                raise RuntimeError(f"webull_http_{status_code}:{payload}")
             row = _first_dict(payload)
             order_id = str(row.get("orderId") or row.get("order_id") or row.get("id") or "").strip()
             return broker_result(
@@ -561,30 +546,21 @@ class WebullAdapter(BrokerAdapter):
         try:
             _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
-            payload = self._call_first(
-                trade_client,
-                [
-                    "order.place_order",
-                    "option_order.place_order",
-                    "trade_order.place_order",
-                ],
-                call_variants=[
-                    (
-                        {
-                            "account_id": account_id,
-                            "underlying": symbol,
-                            "expiration": order.get("expiration"),
-                            "strike": order.get("strike"),
-                            "option_type": order.get("option_type"),
-                            "side": side,
-                            "qty": qty,
-                            "order_type": order_type,
-                            "limit_price": order.get("limit_price"),
-                        },
-                        (),
-                    ),
-                ],
+            response = trade_client.order.place_option(
+                account_id=account_id,
+                underlying=symbol,
+                expiration=order.get("expiration"),
+                strike=order.get("strike"),
+                option_type=order.get("option_type"),
+                side=side,
+                qty=qty,
+                order_type=order_type,
+                limit_price=order.get("limit_price"),
             )
+            payload = _response_json(response)
+            status_code = _response_status_code(response)
+            if status_code >= 400:
+                raise RuntimeError(f"webull_http_{status_code}:{payload}")
             row = _first_dict(payload)
             return broker_result(
                 True,
@@ -606,17 +582,11 @@ class WebullAdapter(BrokerAdapter):
             return broker_result(False, broker=self.name, mode=self._mode(), error="missing_order_id", order_id=order_id)
         try:
             _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
-            payload = self._call_first(
-                trade_client,
-                [
-                    "order.cancel_order",
-                    "order.cancel",
-                ],
-                call_variants=[
-                    ({"order_id": order_id}, ()),
-                    ({}, (order_id,)),
-                ],
-            )
+            response = trade_client.order.cancel_order(order_id)
+            payload = _response_json(response)
+            status_code = _response_status_code(response)
+            if status_code >= 400:
+                raise RuntimeError(f"webull_http_{status_code}:{payload}")
             row = _first_dict(payload)
             return broker_result(
                 True,
@@ -635,19 +605,12 @@ class WebullAdapter(BrokerAdapter):
         if not order_id:
             return broker_result(False, broker=self.name, mode=self._mode(), error="missing_order_id", order_id=order_id)
         try:
-            _api_client, trade_client, _quotes_client = self._get_clients(force_reset=False)
-            payload = self._call_first(
-                trade_client,
-                [
-                    "order.get_order_detail",
-                    "order.get_order",
-                    "order.get_order_status",
-                ],
-                call_variants=[
-                    ({"order_id": order_id}, ()),
-                    ({}, (order_id,)),
-                ],
-            )
+            _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
+            response = trade_client.order.query_order_detail(order_id)
+            payload = _response_json(response)
+            status_code = _response_status_code(response)
+            if status_code >= 400:
+                raise RuntimeError(f"webull_http_{status_code}:{payload}")
             row = _first_dict(payload)
             return broker_result(
                 True,

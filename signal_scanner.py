@@ -27,6 +27,10 @@ PARAMS_1H_SATELLITE = {
     "macd_sig": 9,
     "vol_sma_len": 20,
     "vol_mult": 1.0,
+    "adx_min": 20,
+    "atr_stop_mult": 1.5,
+    "min_hold_bars": 8,
+    "use_mtf": True,
 }
 
 PARAMS_4H_CORE = {
@@ -47,6 +51,10 @@ PARAMS_4H_CORE = {
     "macd_sig": 9,
     "vol_sma_len": 20,
     "vol_mult": 1.0,
+    "adx_min": 20,
+    "atr_stop_mult": 1.5,
+    "min_hold_bars": 8,
+    "use_mtf": False,
 }
 
 
@@ -161,6 +169,104 @@ def macd_histogram(closes, fast=12, slow=26, signal=9):
     return histogram
 
 
+def adx(highs, lows, closes, period=14):
+    """
+    Compute ADX (trend strength). Returns list same length as input, None for insufficient data.
+    """
+    n = len(closes)
+    result = [None] * n
+    period = max(1, int(period or 14))
+    if n < period * 2 + 1:
+        return result
+
+    highs = [_safe_float(value, 0.0) for value in highs]
+    lows = [_safe_float(value, 0.0) for value in lows]
+    closes = [_safe_float(value, 0.0) for value in closes]
+    plus_dm = [0.0] * n
+    minus_dm = [0.0] * n
+    tr = [0.0] * n
+
+    for i in range(1, n):
+        high_diff = highs[i] - highs[i - 1]
+        low_diff = lows[i - 1] - lows[i]
+        plus_dm[i] = max(high_diff, 0.0) if high_diff > low_diff else 0.0
+        minus_dm[i] = max(low_diff, 0.0) if low_diff > high_diff else 0.0
+        tr[i] = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1]),
+        )
+
+    smoothed_plus = sum(plus_dm[1 : period + 1])
+    smoothed_minus = sum(minus_dm[1 : period + 1])
+    smoothed_tr = sum(tr[1 : period + 1])
+    dx_values = []
+
+    for i in range(period, n):
+        if i == period:
+            smoothed_plus = sum(plus_dm[1 : period + 1])
+            smoothed_minus = sum(minus_dm[1 : period + 1])
+            smoothed_tr = sum(tr[1 : period + 1])
+        else:
+            smoothed_plus = smoothed_plus - (smoothed_plus / period) + plus_dm[i]
+            smoothed_minus = smoothed_minus - (smoothed_minus / period) + minus_dm[i]
+            smoothed_tr = smoothed_tr - (smoothed_tr / period) + tr[i]
+
+        if smoothed_tr > 0:
+            plus_di = 100.0 * smoothed_plus / smoothed_tr
+            minus_di = 100.0 * smoothed_minus / smoothed_tr
+        else:
+            plus_di = 0.0
+            minus_di = 0.0
+
+        di_sum = plus_di + minus_di
+        dx = 100.0 * abs(plus_di - minus_di) / di_sum if di_sum > 0 else 0.0
+        dx_values.append(dx)
+
+    if len(dx_values) >= period:
+        adx_val = sum(dx_values[:period]) / period
+        result[period * 2 - 1] = adx_val
+        for j in range(period, len(dx_values)):
+            adx_val = (adx_val * (period - 1) + dx_values[j]) / period
+            idx = j + period
+            if idx < n:
+                result[idx] = adx_val
+
+    return result
+
+
+def atr(highs, lows, closes, period=14):
+    """
+    Compute ATR for volatility-based stops. Returns list same length as input.
+    """
+    n = len(closes)
+    result = [None] * n
+    period = max(1, int(period or 14))
+    if n < period + 1:
+        return result
+
+    highs = [_safe_float(value, 0.0) for value in highs]
+    lows = [_safe_float(value, 0.0) for value in lows]
+    closes = [_safe_float(value, 0.0) for value in closes]
+    tr_values = [0.0] * n
+
+    for i in range(1, n):
+        tr_values[i] = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1]),
+        )
+
+    atr_val = sum(tr_values[1 : period + 1]) / period
+    result[period] = atr_val
+
+    for i in range(period + 1, n):
+        atr_val = (atr_val * (period - 1) + tr_values[i]) / period
+        result[i] = atr_val
+
+    return result
+
+
 def sma(values, period):
     values = [_safe_float(value, None) if value is not None else None for value in values]
     period = max(1, int(period or 1))
@@ -219,9 +325,38 @@ class SignalScanner:
             _log(f"fetch_candles failed product_id={product_id} error={exc}")
             return []
 
+    def fetch_candles_4h(self, product_id, limit=250):
+        original_timeframe = self.timeframe
+        original_granularity = self.granularity
+        try:
+            self.timeframe = "4h"
+            self.granularity = "FOUR_HOUR"
+            return self.fetch_candles(product_id, limit=limit)
+        finally:
+            self.timeframe = original_timeframe
+            self.granularity = original_granularity
+
+    def _compute_htf_trend(self, candles_4h):
+        if not candles_4h:
+            return False
+
+        closes_4h = [_safe_float(candle.get("close"), 0.0) for candle in candles_4h]
+        ema21_4h = ema(closes_4h, 21)
+        ema50_4h = ema(closes_4h, 50)
+        rsi_4h = rsi(closes_4h, 14)
+        idx = len(candles_4h) - 2 if len(candles_4h) >= 2 else len(candles_4h) - 1
+        if idx < 0:
+            return False
+        if ema21_4h[idx] is None or ema50_4h[idx] is None or rsi_4h[idx] is None:
+            return False
+        close_4h = _safe_float(candles_4h[idx].get("close"), 0.0)
+        return close_4h > ema50_4h[idx] and ema21_4h[idx] > ema50_4h[idx] and rsi_4h[idx] > 45
+
     def compute_indicators(self, candles):
         p = self.params
         closes = [c["close"] for c in candles]
+        highs = [c["high"] for c in candles]
+        lows = [c["low"] for c in candles]
         volumes = [c["volume"] for c in candles]
 
         ema_fast_vals = ema(closes, p["ema_fast"])
@@ -230,6 +365,8 @@ class SignalScanner:
         ema_trend_vals = ema(closes, p["ema_trend"])
         rsi_vals = rsi(closes, p["rsi_len"])
         hist_vals = macd_histogram(closes, p["macd_fast"], p["macd_slow"], p["macd_sig"])
+        adx_vals = adx(highs, lows, closes, 14)
+        atr_vals = atr(highs, lows, closes, 14)
         vol_sma_vals = sma(volumes, p["vol_sma_len"])
 
         for i, candle in enumerate(candles):
@@ -239,10 +376,12 @@ class SignalScanner:
             candle["ema_trend"] = ema_trend_vals[i]
             candle["rsi"] = rsi_vals[i]
             candle["macd_hist"] = hist_vals[i]
+            candle["adx"] = adx_vals[i]
+            candle["atr"] = atr_vals[i]
             candle["vol_sma"] = vol_sma_vals[i]
         return candles
 
-    def evaluate_product(self, product_id, candles):
+    def evaluate_product(self, product_id, candles, **kwargs):
         product_id = _normalize_product_id(product_id)
         if len(candles) < 3:
             return {"signal": None, "product_id": product_id}
@@ -255,7 +394,16 @@ class SignalScanner:
         if any(bar.get(key) is None for key in required):
             return {"signal": None, "product_id": product_id}
 
-        state = _SCANNER_STATE.setdefault(product_id, {"state": 0, "bars_since_exit": 999, "bars_since_trim": 999})
+        state = _SCANNER_STATE.setdefault(
+            product_id,
+            {
+                "state": 0,
+                "bars_since_exit": 999,
+                "bars_since_trim": 999,
+                "entry_price": 0.0,
+                "entry_bar_count": 0,
+            },
+        )
 
         close = _safe_float(bar["close"], 0.0)
         ef = _safe_float(bar["ema_fast"], 0.0)
@@ -264,6 +412,8 @@ class SignalScanner:
         et = _safe_float(bar["ema_trend"], 0.0)
         r = _safe_float(bar["rsi"], 50.0)
         hist = _safe_float(bar["macd_hist"], 0.0)
+        adx_value = bar.get("adx")
+        atr_val = _safe_float(bar.get("atr"), 0.0)
         prev_hist = _safe_float(prev.get("macd_hist"), 0.0)
         prev_rsi = _safe_float(prev.get("rsi"), 50.0)
         vol = _safe_float(bar.get("volume"), 0.0)
@@ -278,6 +428,7 @@ class SignalScanner:
         not_overextended = 0 <= ext < _safe_float(p["ext_pct"], 10.0)
         volume_ok = vol >= (vs * _safe_float(p["vol_mult"], 1.0))
         rsi_ok = _safe_float(p["rsi_buy_min"], 0.0) <= r <= _safe_float(p["rsi_buy_max"], 100.0)
+        adx_ok = adx_value is not None and _safe_float(adx_value, 0.0) >= _safe_float(p.get("adx_min", 20), 20.0)
         momentum_broken = close < em and hist < 0 and r < _safe_float(p["rsi_exit_thresh"], 38.0)
         trend_lost = close < et and close < es and r < 45
 
@@ -285,6 +436,7 @@ class SignalScanner:
         rsi_cooling = r < prev_rsi
         macd_fading = hist < prev_hist
         trim_condition = price_above and rsi_was_hot and (rsi_cooling or macd_fading)
+        htf_ok = bool(kwargs.get("htf_bullish", True))
 
         rsi_mid = (_safe_float(p["rsi_buy_min"], 45.0) + _safe_float(p["rsi_buy_max"], 75.0)) / 2.0
         rsi_range = (_safe_float(p["rsi_buy_max"], 75.0) - _safe_float(p["rsi_buy_min"], 45.0)) / 2.0
@@ -311,11 +463,25 @@ class SignalScanner:
         state["bars_since_exit"] = min(999, int(state.get("bars_since_exit", 999)) + 1)
         state["bars_since_trim"] = min(999, int(state.get("bars_since_trim", 999)) + 1)
         current_state = int(state.get("state", 0))
+        entry_price = _safe_float(state.get("entry_price"), 0.0)
+        entry_bar_count = int(state.get("entry_bar_count", 0))
+        if current_state in (1, 2):
+            state["entry_bar_count"] = entry_bar_count + 1
 
-        if current_state in (1, 2) and (momentum_broken or trend_lost):
+        min_hold = int(p.get("min_hold_bars", 8))
+        can_exit_by_time = entry_bar_count >= min_hold
+        atr_stop_hit = False
+        if entry_price > 0 and atr_val > 0:
+            stop_price = entry_price - (atr_val * _safe_float(p.get("atr_stop_mult", 1.5), 1.5))
+            atr_stop_hit = close < stop_price
+        htf_bearish_exit = current_state in (1, 2) and (not htf_ok) and close < em
+
+        if current_state in (1, 2) and can_exit_by_time and (momentum_broken or trend_lost or atr_stop_hit or htf_bearish_exit):
             signal = "exit"
             state["state"] = 0
             state["bars_since_exit"] = 0
+            state["entry_price"] = 0.0
+            state["entry_bar_count"] = 0
         elif current_state == 1 and int(state.get("bars_since_trim", 999)) >= int(p["trim_cooldown"]) and trim_condition:
             signal = "trim"
             state["state"] = 2
@@ -331,9 +497,13 @@ class SignalScanner:
             and not_overextended
             and above_trend
             and volume_ok
+            and adx_ok
+            and htf_ok
         ):
             signal = "buy"
             state["state"] = 1
+            state["entry_price"] = close
+            state["entry_bar_count"] = 0
 
         result = {
             "signal": signal,
@@ -349,6 +519,9 @@ class SignalScanner:
                 "ema_trend": round(et, 4),
                 "extension_pct": round(ext, 2),
                 "volume_ratio": round(vol_ratio, 2),
+                "adx": round(_safe_float(adx_value, 0.0), 4) if adx_value is not None else None,
+                "atr": round(atr_val, 6) if atr_val > 0 else None,
+                "htf_bullish": htf_ok,
             },
             "state": state["state"],
         }
@@ -384,8 +557,10 @@ class SignalScanner:
                 candles = self.fetch_candles(product_id)
                 if len(candles) < 50:
                     continue
+                candles_4h = self.fetch_candles_4h(product_id)
+                htf_bullish = self._compute_htf_trend(candles_4h)
                 candles = self.compute_indicators(candles)
-                result = self.evaluate_product(product_id, candles)
+                result = self.evaluate_product(product_id, candles, htf_bullish=htf_bullish)
 
                 if result["signal"]:
                     action_map = {"buy": "BUY", "trim": "TRIM", "exit": "EXIT"}

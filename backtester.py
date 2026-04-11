@@ -22,6 +22,7 @@ PARAMS_4H_CORE = {
     "atr_stop_mult": 1.5,
     "min_hold_bars": 8,
     "require_aligned_bars": 2,
+    "use_mtf": False,
 }
 
 PARAMS_1H_SATELLITE = {
@@ -41,6 +42,7 @@ PARAMS_1H_SATELLITE = {
     "atr_stop_mult": 1.5,
     "min_hold_bars": 8,
     "require_aligned_bars": 2,
+    "use_mtf": True,
 }
 
 _CANDLE_CACHE = {}
@@ -297,6 +299,67 @@ class Backtester:
         self.position_state = {"state": 0, "base_qty": 0.0, "avg_entry": 0.0, "entry_bar": None, "entry_ts": None}
         self.equity_curve = []
 
+    def _load_candles_for_timeframe(self, timeframe: str) -> list:
+        original_timeframe = self.timeframe
+        original_granularity = self.granularity
+        original_bar_seconds = self.bar_seconds
+        try:
+            self.timeframe = str(timeframe or "1h").lower().strip()
+            self.granularity, self.bar_seconds = _granularity_for_timeframe(self.timeframe)
+            return self.load_candles()
+        finally:
+            self.timeframe = original_timeframe
+            self.granularity = original_granularity
+            self.bar_seconds = original_bar_seconds
+
+    def load_mtf_candles(self):
+        """Load both 1H and 4H candles for multi-timeframe analysis."""
+        candles_1h = self._load_candles_for_timeframe("1h")
+        candles_4h = self._load_candles_for_timeframe("4h")
+        return candles_1h, candles_4h
+
+    def map_htf_trend(self, candles_1h, candles_4h):
+        """
+        For each 1H candle, determine if the 4H chart is bullish.
+        A 4H bar is bullish when:
+          - 4H close > 4H EMA 50
+          - 4H EMA 21 > 4H EMA 50
+          - 4H RSI > 45
+
+        Map each 1H bar to the most recent completed 4H bar.
+        Add 'htf_bullish' boolean to each 1H candle.
+        """
+        if not candles_1h:
+            return candles_1h
+
+        closes_4h = [_safe_float(candle.get("close"), 0.0) for candle in candles_4h]
+        ema21_4h = ema(closes_4h, 21)
+        ema50_4h = ema(closes_4h, 50)
+        rsi_4h = rsi(closes_4h, 14)
+
+        htf_states = []
+        for i, candle in enumerate(candles_4h):
+            if ema21_4h[i] is None or ema50_4h[i] is None or rsi_4h[i] is None:
+                htf_states.append({"ts": _safe_int(candle.get("ts"), 0), "bullish": False})
+            else:
+                close_4h = _safe_float(candle.get("close"), 0.0)
+                bullish = close_4h > ema50_4h[i] and ema21_4h[i] > ema50_4h[i] and rsi_4h[i] > 45
+                htf_states.append({"ts": _safe_int(candle.get("ts"), 0), "bullish": bullish})
+
+        if not htf_states:
+            for candle in candles_1h:
+                candle["htf_bullish"] = False
+            return candles_1h
+
+        htf_idx = 0
+        for candle in candles_1h:
+            ts = _safe_int(candle.get("ts"), 0)
+            while htf_idx < len(htf_states) - 1 and _safe_int(htf_states[htf_idx + 1]["ts"], 0) <= ts:
+                htf_idx += 1
+            candle["htf_bullish"] = bool(htf_states[htf_idx]["bullish"]) if htf_idx < len(htf_states) else False
+
+        return candles_1h
+
     def load_candles(self) -> list:
         cache_key = (self.product_id, self.timeframe, self.start_ts, self.end_ts)
         if cache_key in _CANDLE_CACHE:
@@ -384,6 +447,17 @@ class Backtester:
     def run_strategy(self, candles: list, params: dict = None) -> dict:
         params_base = dict(PARAMS_4H_CORE if self.timeframe == "4h" else PARAMS_1H_SATELLITE)
         params_base.update(params or {})
+        if self.timeframe == "1h" and params_base.get("use_mtf", True) and candles and "htf_bullish" not in candles[0]:
+            try:
+                mtf_1h, mtf_4h = self.load_mtf_candles()
+                if mtf_1h and mtf_4h:
+                    self.map_htf_trend(mtf_1h, mtf_4h)
+                    htf_lookup = {int(row.get("ts", 0)): bool(row.get("htf_bullish", False)) for row in mtf_1h}
+                    for candle in candles:
+                        candle["htf_bullish"] = htf_lookup.get(_safe_int(candle.get("ts"), 0), True)
+            except Exception as exc:
+                _log(f"mtf mapping failed product_id={self.product_id} error={exc}")
+
         trade_log = []
         equity_curve = []
         cash_usd = 1000.0
@@ -443,6 +517,7 @@ class Backtester:
             trim_cooldown_ok = (idx - last_trim_bar) >= int(params_base["trim_cooldown"])
             conviction_score = conviction_for_bar(bar, prev_bar)
             adx_ok = adx_value is not None and _safe_float(adx_value, 0.0) >= _safe_float(params_base.get("adx_min", 20), 20.0)
+            htf_ok = bool(bar.get("htf_bullish", True))
 
             required_aligned = max(1, int(params_base.get("require_aligned_bars", 2)))
             aligned_count = 0
@@ -459,9 +534,14 @@ class Backtester:
                     aligned_count += 1
             consecutive_aligned = aligned_count >= required_aligned
 
-            if state == 0 and cooldown_ok and ema_aligned and price_above_fast and above_trend and macd_rising and not_overextended and adx_ok and consecutive_aligned:
+            if state == 0 and cooldown_ok and ema_aligned and price_above_fast and above_trend and macd_rising and not_overextended and adx_ok and consecutive_aligned and htf_ok:
                 if _safe_float(params_base["rsi_buy_min"], 0.0) <= rsi_value <= _safe_float(params_base["rsi_buy_max"], 100.0):
-                    size_usd = current_equity(close) * _safe_float(params_base["position_size_pct"], 0.10)
+                    base_pct = _safe_float(params_base.get("position_size_pct"), 0.10)
+                    if conviction_score > 0.8 and _safe_float(bar.get("adx"), 0.0) > 30 and bool(bar.get("htf_bullish", False)):
+                        position_pct = base_pct * 1.5
+                    else:
+                        position_pct = base_pct
+                    size_usd = current_equity(close) * position_pct
                     qty = size_usd / close if close > 0 else 0.0
                     if qty > 0 and cash_usd >= size_usd:
                         cash_usd -= size_usd
@@ -478,6 +558,8 @@ class Backtester:
                                 "ts": bar["ts"],
                                 "bar_index": idx,
                                 "conviction_score": conviction_score,
+                                "position_pct": round(position_pct, 4),
+                                "htf_bullish": bool(bar.get("htf_bullish", False)),
                             }
                         )
 
@@ -512,14 +594,18 @@ class Backtester:
             if state in {1, 2} and base_qty > 0:
                 min_hold_bars = max(0, int(params_base.get("min_hold_bars", 8)))
                 hold_bars = 0 if entry_bar is None else idx - entry_bar
+                can_exit_by_time = hold_bars >= min_hold_bars
                 atr_stop_mult = _safe_float(params_base.get("atr_stop_mult", 1.5), 1.5)
                 atr_stop_hit = False
                 if avg_entry > 0 and _safe_float(atr_value, 0.0) > 0:
                     stop_price = avg_entry - (_safe_float(atr_value, 0.0) * atr_stop_mult)
                     atr_stop_hit = close < stop_price
 
-                exit_signal = close < ema_mid_value or hist_value < 0 or rsi_value < _safe_float(params_base["rsi_exit_thresh"], 38.0) or atr_stop_hit
-                if hold_bars >= min_hold_bars and exit_signal:
+                momentum_broken = close < ema_mid_value and hist_value < 0 and rsi_value < _safe_float(params_base["rsi_exit_thresh"], 38.0)
+                trend_lost = close < ema_trend_value and close < ema_slow_value and rsi_value < 45
+                htf_bearish_exit = state in (1, 2) and (not bool(bar.get("htf_bullish", True))) and close < _safe_float(bar.get("ema_mid"), 0.0)
+                sig_exit = can_exit_by_time and (momentum_broken or trend_lost or atr_stop_hit or htf_bearish_exit)
+                if sig_exit:
                     sell_qty = base_qty
                     proceeds = sell_qty * close
                     pnl_usd = (close - avg_entry) * sell_qty
@@ -538,6 +624,7 @@ class Backtester:
                             "hold_bars": 0 if entry_bar is None else idx - entry_bar,
                             "opened_at": entry_ts,
                             "closed_at": bar["ts"],
+                            "htf_bullish": bool(bar.get("htf_bullish", False)),
                         }
                     )
                     avg_entry = 0.0

@@ -255,13 +255,10 @@
 
     async function loadProductUniverse() {
       try {
-        const data = await fetchJson("/api/portfolio");
-        const config = (data.snapshot || {}).config || {};
-        const products = [
-          ...Object.keys(config.core_assets || {}),
-          ...(config.satellite_allowed || [])
-        ];
-        setProducts(products.length ? products : FALLBACK_PRODUCTS);
+        const data = await fetchJson("/api/symbols?type=crypto");
+        const cryptoSymbols = Array.isArray(data.symbols) ? data.symbols : [];
+        const products = cryptoSymbols.length ? cryptoSymbols : FALLBACK_PRODUCTS;
+        setProducts(products);
       } catch (error) {
         setProducts(FALLBACK_PRODUCTS);
       }

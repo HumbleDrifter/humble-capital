@@ -2,6 +2,7 @@ import math
 import time
 
 from options.chain_fetcher import OptionChainFetcher
+from options.sentiment import SocialSentimentScanner
 
 _SCAN_CACHE = {}
 _SCAN_CACHE_TTL = 900
@@ -150,9 +151,10 @@ class OptionsScreener:
         self.broker = str(broker or "webull").strip().lower()
         self.chain_fetcher = OptionChainFetcher(broker=self.broker)
 
-    def _cache_key(self, strategies):
+    def _cache_key(self, strategies, sentiment_filter=None):
         strategies = tuple(sorted(str(item).strip().lower() for item in (strategies or [])))
-        return (self.broker, tuple(self.watchlist), strategies)
+        sentiment_filter = str(sentiment_filter or "").strip().lower()
+        return (self.broker, tuple(self.watchlist), strategies, sentiment_filter)
 
     def _cache_get(self, key):
         row = _SCAN_CACHE.get(key)
@@ -587,16 +589,21 @@ class OptionsScreener:
         liquidity_raw = max(1.0, _safe_float(opp.get("liquidity_score"), 0.0))
         liquidity = min(100.0, math.log10(liquidity_raw + 1.0) * 20.0)
         rr = min(100.0, max(0.0, _safe_float(opp.get("risk_reward_ratio"), 0.0) * 20.0))
+        social_sentiment = max(-100.0, min(100.0, _safe_float(opp.get("social_sentiment"), 0.0)))
+        sentiment_score = (social_sentiment + 100.0) / 2.0
+        if bool(opp.get("social_trending")):
+            sentiment_score = min(100.0, sentiment_score * 1.2)
         score = (
-            annualized * 0.30
-            + pop * 0.25
+            annualized * 0.25
+            + pop * 0.20
             + iv_rank * 0.20
-            + liquidity * 0.15
+            + liquidity * 0.10
             + rr * 0.10
+            + sentiment_score * 0.15
         )
         return round(max(0.0, min(100.0, score)), 2)
 
-    def scan_universe(self, strategies=None) -> dict:
+    def scan_universe(self, strategies=None, sentiment_filter=None) -> dict:
         default_strategies = [
             "covered_calls",
             "cash_secured_puts",
@@ -606,16 +613,27 @@ class OptionsScreener:
             "earnings_strangles",
         ]
         strategies = [str(item).strip().lower() for item in (strategies or default_strategies)]
-        cache_key = self._cache_key(strategies)
+        sentiment_filter = str(sentiment_filter or "").strip().lower()
+        cache_key = self._cache_key(strategies, sentiment_filter=sentiment_filter)
         cached = self._cache_get(cache_key)
         if cached is not None:
             return cached
 
         opportunities = []
         scanned = 0
+        sentiment_scanner = SocialSentimentScanner()
+        sentiment_by_symbol = {}
         for symbol in self.watchlist:
             scanned += 1
             try:
+                sentiment = sentiment_scanner.get_composite_sentiment(symbol)
+                sentiment_by_symbol[symbol] = sentiment
+                composite_score = _safe_float(sentiment.get("composite_score"), 0.0)
+                if sentiment_filter == "bullish_only" and composite_score < 0:
+                    continue
+                if sentiment_filter == "bearish_only" and composite_score > 0:
+                    continue
+
                 iv_rank = self.chain_fetcher.get_iv_rank(symbol)
                 symbol_opps = []
                 if "covered_calls" in strategies and iv_rank >= 50:
@@ -632,6 +650,10 @@ class OptionsScreener:
 
                 for opp in symbol_opps:
                     opp["iv_rank"] = round(_safe_float(opp.get("iv_rank"), iv_rank), 2)
+                    opp["social_sentiment"] = round(composite_score, 1)
+                    opp["social_mentions"] = _safe_int(sentiment.get("total_mentions"), 0)
+                    opp["social_trending"] = _safe_int(sentiment.get("trending_sources"), 0) > 0
+                    opp["social_label"] = str(sentiment.get("composite_label") or "Neutral")
                     opp["score"] = self.score_opportunity_v2(opp)
                 opportunities.extend(symbol_opps)
             except Exception as exc:
@@ -640,7 +662,24 @@ class OptionsScreener:
 
         if "earnings_strangles" in strategies:
             try:
-                opportunities.extend(self.scan_earnings_strangles())
+                earnings_opps = self.scan_earnings_strangles()
+                for opp in earnings_opps:
+                    symbol = _normalize_symbol(opp.get("symbol"))
+                    sentiment = sentiment_by_symbol.get(symbol)
+                    if sentiment is None:
+                        sentiment = sentiment_scanner.get_composite_sentiment(symbol)
+                        sentiment_by_symbol[symbol] = sentiment
+                    composite_score = _safe_float(sentiment.get("composite_score"), 0.0)
+                    if sentiment_filter == "bullish_only" and composite_score < 0:
+                        continue
+                    if sentiment_filter == "bearish_only" and composite_score > 0:
+                        continue
+                    opp["social_sentiment"] = round(composite_score, 1)
+                    opp["social_mentions"] = _safe_int(sentiment.get("total_mentions"), 0)
+                    opp["social_trending"] = _safe_int(sentiment.get("trending_sources"), 0) > 0
+                    opp["social_label"] = str(sentiment.get("composite_label") or "Neutral")
+                    opp["score"] = self.score_opportunity_v2(opp)
+                    opportunities.append(opp)
             except Exception as exc:
                 _log(f"earnings strangle scan failed error={exc}")
 

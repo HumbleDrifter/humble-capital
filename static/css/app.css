@@ -11452,3 +11452,249 @@ tbody tr:last-child td {
     display: none;
   }
 }
+
+.hc-public-hero {
+  overflow: hidden;
+}
+
+.hero-grid::before {
+  opacity: 0;
+}
+
+.hc-public-hero-inner,
+.hc-public-scroll {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-orbs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-orb {
+  --orb-parallax: 0px;
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  animation: orbFloat 20s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.hero-orb-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, #38bdf8, transparent 70%);
+  top: -200px;
+  left: -100px;
+  animation-duration: 25s;
+}
+
+.hero-orb-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #818cf8, transparent 70%);
+  bottom: -100px;
+  right: -50px;
+  animation-duration: 18s;
+  animation-delay: -5s;
+}
+
+.hero-orb-3 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #34d399, transparent 70%);
+  top: 40%;
+  left: 60%;
+  animation-duration: 22s;
+  animation-delay: -10s;
+}
+
+@keyframes orbFloat {
+  0%,
+  100% {
+    transform: translate3d(0, calc(var(--orb-parallax, 0px) + 0px), 0) scale(1);
+  }
+  25% {
+    transform: translate3d(40px, calc(var(--orb-parallax, 0px) - 60px), 0) scale(1.1);
+  }
+  50% {
+    transform: translate3d(-30px, calc(var(--orb-parallax, 0px) + 40px), 0) scale(0.95);
+  }
+  75% {
+    transform: translate3d(50px, calc(var(--orb-parallax, 0px) + 20px), 0) scale(1.05);
+  }
+}
+
+.hero-gradient-text {
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #818cf8, #38bdf8);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 300% center;
+  }
+}
+
+.hero-stat-card {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.hero-stat-card:hover {
+  transform: perspective(800px) rotateY(-5deg) rotateX(5deg) translateY(-8px);
+  box-shadow: 0 20px 40px rgba(56, 189, 248, 0.15);
+}
+
+.pillar-card {
+  opacity: 0;
+  transform: perspective(1000px) rotateY(15deg) translateX(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+  will-change: transform, opacity;
+}
+
+.hc-reveal.visible .pillar-card {
+  opacity: 1;
+  transform: perspective(1000px) rotateY(0deg) translateX(0);
+}
+
+.hc-reveal.visible .pillar-card:nth-child(2) {
+  transition-delay: 200ms;
+}
+
+.hc-reveal.visible .pillar-card:nth-child(3) {
+  transition-delay: 400ms;
+}
+
+.console-frame {
+  transform: perspective(1200px) rotateX(8deg) rotateY(-3deg);
+  transition: transform 0.6s ease, box-shadow 0.6s ease;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(56, 189, 248, 0.08);
+  will-change: transform;
+}
+
+.console-frame:hover {
+  transform: perspective(1200px) rotateX(2deg) rotateY(-1deg) scale(1.02);
+}
+
+.workflow-connector {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, #38bdf8, transparent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 1.5s ease;
+}
+
+.workflow-connector.visible {
+  transform: scaleX(1);
+}
+
+.workflow-step {
+  position: relative;
+  isolation: isolate;
+}
+
+.workflow-step::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.2), transparent 70%);
+  animation: stepPulse 3s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes stepPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.6;
+  }
+}
+
+.feature-card:nth-child(odd) {
+  animation: cardFloat 6s ease-in-out infinite;
+}
+
+.feature-card:nth-child(even) {
+  animation: cardFloat 6s ease-in-out infinite reverse;
+  animation-delay: -3s;
+}
+
+@keyframes cardFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.scroll-indicator {
+  animation: scrollBounce 2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes scrollBounce {
+  0%,
+  100% {
+    transform: translateY(0) rotateX(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(12px) rotateX(15deg);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 960px) {
+  .hero-orb-1 {
+    width: 360px;
+    height: 360px;
+    top: -110px;
+    left: -80px;
+  }
+
+  .hero-orb-2 {
+    width: 280px;
+    height: 280px;
+  }
+
+  .hero-orb-3 {
+    width: 220px;
+    height: 220px;
+    left: 50%;
+  }
+
+  .hero-stat-card:hover,
+  .console-frame,
+  .console-frame:hover {
+    transform: none;
+  }
+
+  .feature-card:nth-child(odd),
+  .feature-card:nth-child(even) {
+    animation-duration: 8s;
+  }
+}

@@ -2,9 +2,14 @@
 
 {% block content %}
 <section class="hc-public-hero hero-grid hc-reveal" id="top">
+  <div class="hero-orbs" aria-hidden="true">
+    <div class="hero-orb hero-orb-1"></div>
+    <div class="hero-orb hero-orb-2"></div>
+    <div class="hero-orb hero-orb-3"></div>
+  </div>
   <div class="hc-public-hero-inner">
     <div class="hero-badge hc-public-badge">Multi-Asset Trading Platform</div>
-    <h1 class="hc-public-hero-title">Trade Smarter with <span class="hc-public-gradient">AI-Powered</span> Market Intelligence</h1>
+    <h1 class="hc-public-hero-title">Trade Smarter with <span class="hc-public-gradient hero-gradient-text">AI-Powered</span> Market Intelligence</h1>
     <p class="hero-subtitle hc-public-hero-subtitle">
       Humble Capital scans 200+ assets across crypto, stocks, and options using technical analysis,
       social sentiment from Reddit and StockTwits, and regime-aware automation to find the
@@ -32,7 +37,7 @@
     </div>
   </div>
 
-  <a class="hc-public-scroll" href="#pillars" aria-label="Scroll to features">
+  <a class="hc-public-scroll scroll-indicator" href="#pillars" aria-label="Scroll to features">
     <span class="hc-public-scroll-arrow"></span>
   </a>
 </section>
@@ -43,7 +48,7 @@
     <h2>One platform. Three markets. Total coverage.</h2>
   </div>
   <div class="hc-public-pillar-grid">
-    <article class="hc-public-glass hc-public-pillar hc-reveal-child">
+    <article class="hc-public-glass hc-public-pillar hc-reveal-child pillar-card">
       <div class="hc-public-pillar-icon" aria-hidden="true">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20"/><path d="M7 5.5c0-1.7 2.2-3 5-3s5 1.3 5 3-2.2 3-5 3-5 1.3-5 3 2.2 3 5 3 5 1.3 5 3-2.2 3-5 3-5-1.3-5-3"/></svg>
       </div>
@@ -57,7 +62,7 @@
       </ul>
     </article>
 
-    <article class="hc-public-glass hc-public-pillar hc-reveal-child">
+    <article class="hc-public-glass hc-public-pillar hc-reveal-child pillar-card">
       <div class="hc-public-pillar-icon" aria-hidden="true">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       </div>
@@ -71,7 +76,7 @@
       </ul>
     </article>
 
-    <article class="hc-public-glass hc-public-pillar hc-reveal-child">
+    <article class="hc-public-glass hc-public-pillar hc-reveal-child pillar-card">
       <div class="hc-public-pillar-icon" aria-hidden="true">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
       </div>
@@ -93,11 +98,11 @@
     <h2>Four layers of intelligence working together</h2>
   </div>
   <div class="hc-public-timeline">
-    <div class="hc-public-timeline-line"></div>
-    <article class="hc-public-glass hc-public-step hc-reveal-child"><div class="hc-public-step-no">01</div><h3>Scan</h3><p>Every hour the engine scans multi-asset markets, sentiment channels, and broker data for fresh opportunity sets.</p></article>
-    <article class="hc-public-glass hc-public-step hc-reveal-child"><div class="hc-public-step-no">02</div><h3>Score</h3><p>Each asset gets a composite score from technicals, social sentiment, momentum, and regime fit before it surfaces.</p></article>
-    <article class="hc-public-glass hc-public-step hc-reveal-child"><div class="hc-public-step-no">03</div><h3>Execute</h3><p>Use semi-auto review flows or full-auto execution with pre-set sizing, filters, and broker integration.</p></article>
-    <article class="hc-public-glass hc-public-step hc-reveal-child"><div class="hc-public-step-no">04</div><h3>Protect</h3><p>Regime-aware defense, trailing exits, defensive selling, and risk controls work together when markets deteriorate.</p></article>
+    <div class="hc-public-timeline-line workflow-connector"></div>
+    <article class="hc-public-glass hc-public-step hc-reveal-child workflow-card"><div class="hc-public-step-no workflow-step">01</div><h3>Scan</h3><p>Every hour the engine scans multi-asset markets, sentiment channels, and broker data for fresh opportunity sets.</p></article>
+    <article class="hc-public-glass hc-public-step hc-reveal-child workflow-card"><div class="hc-public-step-no workflow-step">02</div><h3>Score</h3><p>Each asset gets a composite score from technicals, social sentiment, momentum, and regime fit before it surfaces.</p></article>
+    <article class="hc-public-glass hc-public-step hc-reveal-child workflow-card"><div class="hc-public-step-no workflow-step">03</div><h3>Execute</h3><p>Use semi-auto review flows or full-auto execution with pre-set sizing, filters, and broker integration.</p></article>
+    <article class="hc-public-glass hc-public-step hc-reveal-child workflow-card"><div class="hc-public-step-no workflow-step">04</div><h3>Protect</h3><p>Regime-aware defense, trailing exits, defensive selling, and risk controls work together when markets deteriorate.</p></article>
   </div>
 </section>
 
@@ -106,7 +111,7 @@
     <div class="hero-badge hc-public-badge">See it in action</div>
     <h2>Console preview</h2>
   </div>
-  <div class="hc-public-glass hc-public-console hc-reveal-child">
+  <div class="hc-public-glass hc-public-console hc-reveal-child console-frame">
     <div class="hc-public-console-bar">
       <span></span><span></span><span></span>
       <strong>Humble Capital Console</strong>
@@ -151,12 +156,12 @@
     <h2>Built for serious traders</h2>
   </div>
   <div class="hc-public-feature-grid">
-    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Backtesting</div><h3>Test before you trade</h3><p>Run full strategy validation across single assets or entire portfolios before capital goes live.</p></article>
-    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Signal Charts</div><h3>Interactive signal visualization</h3><p>Inspect trades on chart with indicators, overlays, and client-side parameter tuning.</p></article>
-    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Regime Engine</div><h3>Market-aware automation</h3><p>Automation changes its behavior as conditions move from bull to caution to risk-off.</p></article>
-    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Options Screener</div><h3>Premium selling opportunities</h3><p>IV rank, earnings avoidance, chain analysis, and strategy scoring in one workflow.</p></article>
-    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Multi-Broker</div><h3>Coinbase + Webull</h3><p>Crypto, stocks, and options managed in one console instead of siloed broker tabs.</p></article>
-    <article class="hc-public-glass hc-public-feature hc-reveal-child"><div class="feature-kicker">Risk Controls</div><h3>Professional-grade guardrails</h3><p>Volatility-aware sizing, correlation limits, reserves, and defensive selling are built in.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child feature-card"><div class="feature-kicker">Backtesting</div><h3>Test before you trade</h3><p>Run full strategy validation across single assets or entire portfolios before capital goes live.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child feature-card"><div class="feature-kicker">Signal Charts</div><h3>Interactive signal visualization</h3><p>Inspect trades on chart with indicators, overlays, and client-side parameter tuning.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child feature-card"><div class="feature-kicker">Regime Engine</div><h3>Market-aware automation</h3><p>Automation changes its behavior as conditions move from bull to caution to risk-off.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child feature-card"><div class="feature-kicker">Options Screener</div><h3>Premium selling opportunities</h3><p>IV rank, earnings avoidance, chain analysis, and strategy scoring in one workflow.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child feature-card"><div class="feature-kicker">Multi-Broker</div><h3>Coinbase + Webull</h3><p>Crypto, stocks, and options managed in one console instead of siloed broker tabs.</p></article>
+    <article class="hc-public-glass hc-public-feature hc-reveal-child feature-card"><div class="feature-kicker">Risk Controls</div><h3>Professional-grade guardrails</h3><p>Volatility-aware sizing, correlation limits, reserves, and defensive selling are built in.</p></article>
   </div>
 </section>
 
@@ -174,11 +179,23 @@
 (() => {
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
-      if (entry.isIntersecting) entry.target.classList.add('visible');
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        const connector = entry.target.querySelector('.workflow-connector');
+        if (connector) connector.classList.add('visible');
+      }
     });
   }, { threshold: 0.18 });
 
   document.querySelectorAll('.hc-reveal').forEach((node) => observer.observe(node));
+
+  window.addEventListener('scroll', () => {
+    const scrollY = window.scrollY;
+    document.querySelectorAll('.hero-orb').forEach((orb, i) => {
+      const speed = 0.03 + (i * 0.015);
+      orb.style.setProperty('--orb-parallax', `${scrollY * speed}px`);
+    });
+  }, { passive: true });
 })();
 </script>
 {% endblock %}

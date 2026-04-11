@@ -229,6 +229,12 @@
           <div id="optcPositionsList"></div>
         </div>
       </div>
+      <div class="optc-positions-panel" id="optcSentimentPanel">
+        <div class="optc-section-title">Social Sentiment</div>
+        <div id="optcSentimentBody">
+          <div class="optc-empty">Loading sentiment...</div>
+        </div>
+      </div>
       <div>
         <div class="optc-label">Trade Feed</div>
         <div id="optcTradeFeed" class="optc-feed"></div>
@@ -249,6 +255,7 @@
   let currentSim = null;
   let mainChart, ivChart, candleSeries, emaSeries, bbUpperSeries, bbLowerSeries, ivSeries, ivRankSeries, ivThresholdSeries, assignmentSeries;
   let positionLines = [];
+  const sentimentCache = new Map();
 
   function authUrl(path) { const sep = path.includes("?") ? "&" : "?"; return API_SECRET ? `${path}${sep}secret=${encodeURIComponent(API_SECRET)}` : path; }
   async function fetchJson(path, options={}) {
@@ -265,6 +272,82 @@
   function strategy(){ return document.getElementById("optcStrategy").value; }
   function rangeWindowData(data){ if (viewDays >= 365) return data; return data.slice(-viewDays); }
   function setStatus(text){ document.getElementById("optcStatus").textContent = text; }
+  function sentimentTone(score){
+    const n = Number(score || 0);
+    if (n >= 30) return { text: "#22c55e", fill: "rgba(34,197,94,0.7)" };
+    if (n >= 10) return { text: "#86efac", fill: "rgba(134,239,172,0.7)" };
+    if (n <= -30) return { text: "#ef4444", fill: "rgba(239,68,68,0.72)" };
+    if (n <= -10) return { text: "#f59e0b", fill: "rgba(245,158,11,0.72)" };
+    return { text: "rgba(236,243,255,0.82)", fill: "rgba(148,163,184,0.6)" };
+  }
+
+  function renderSentiment(data){
+    const host = document.getElementById("optcSentimentBody");
+    if (!host) return;
+    if (data === "__loading__") {
+      host.innerHTML = `<div class="optc-empty">Loading sentiment...</div>`;
+      return;
+    }
+    if (!data || data.ok === false) {
+      host.innerHTML = `<div class="optc-empty">Sentiment unavailable for this symbol.</div>`;
+      return;
+    }
+    const score = Number(data.composite_score || 0);
+    const normalized = Math.max(0, Math.min(100, ((score + 100) / 200) * 100));
+    const tone = sentimentTone(score);
+    const mentions = Number(data.total_mentions || 0);
+    const trendingSources = Number(data.trending_sources || 0);
+    const redditPosts = (data.sources?.reddit?.top_posts || []).slice(0, 3);
+    const headlines = (data.sources?.news?.headlines || []).slice(0, 3);
+    host.innerHTML = `
+      <div class="optc-position-card" style="margin-bottom:10px;">
+        <div class="optc-position-header" style="justify-content:space-between;">
+          <strong style="font-size:16px; color:${tone.text};">${score > 0 ? "+" : ""}${score.toFixed(1)}</strong>
+          <span class="badge" style="background:${tone.fill.replace("0.7", "0.16").replace("0.72", "0.16").replace("0.6", "0.16")}; color:${tone.text};">${esc(data.composite_label || "Neutral")}</span>
+        </div>
+        <div class="opt-score-bar" style="margin:6px 0 10px;">
+          <span style="width:${normalized}%; background:${tone.fill};"></span>
+        </div>
+        <div class="optc-value" style="margin-bottom:8px;">${mentions} mentions across ${Math.max(0, trendingSources)} trending source${trendingSources === 1 ? "" : "s"}</div>
+        ${trendingSources > 0 ? `<div class="optc-pill flat" style="margin-bottom:8px;">🔥 Trending</div>` : ""}
+        <div class="optc-metric-label" style="margin-bottom:6px;">Top Reddit Posts</div>
+        <div style="display:grid; gap:6px; margin-bottom:10px;">
+          ${redditPosts.length ? redditPosts.map((post) => `
+            <a href="${esc(post.url || "#")}" target="_blank" rel="noopener noreferrer" class="optc-value" style="text-decoration:none; color:rgba(236,243,255,0.82);">
+              ${esc(post.title || "Untitled")} <span style="color:rgba(255,255,255,0.48);">↑${Number(post.upvotes || 0)}</span>
+            </a>
+          `).join("") : `<div class="optc-empty">No recent Reddit posts.</div>`}
+        </div>
+        <div class="optc-metric-label" style="margin-bottom:6px;">Top News Headlines</div>
+        <div style="display:grid; gap:6px; margin-bottom:10px;">
+          ${headlines.length ? headlines.map((item) => `
+            <a href="${esc(item.url || "#")}" target="_blank" rel="noopener noreferrer" class="optc-value" style="text-decoration:none; color:rgba(236,243,255,0.82);">
+              ${esc(item.title || "Untitled")} <span style="color:rgba(255,255,255,0.48);">${esc(item.source || "")}</span>
+            </a>
+          `).join("") : `<div class="optc-empty">No recent news headlines.</div>`}
+        </div>
+        <div class="optc-metric-label" style="margin-bottom:4px;">Recommendation</div>
+        <div class="optc-value">${esc(data.recommendation || "No recommendation available.")}</div>
+      </div>
+    `;
+  }
+
+  async function loadSentiment(){
+    const sym = symbol();
+    if (!sym) return;
+    if (sentimentCache.has(sym)) {
+      renderSentiment(sentimentCache.get(sym));
+      return;
+    }
+    renderSentiment("__loading__");
+    try {
+      const data = await fetchJson(`/api/options/sentiment?symbol=${encodeURIComponent(sym)}`);
+      sentimentCache.set(sym, data);
+      renderSentiment(data);
+    } catch (error) {
+      renderSentiment({ ok:false, error:error.message });
+    }
+  }
 
   function createChart(node, height){
     return LightweightCharts.createChart(node, {
@@ -650,6 +733,7 @@
     ivChart.timeScale().fitContent();
     document.getElementById("optcMeta").textContent = `${symbol()} · ${visibleBars.length} bars loaded`;
     loadPositions(visibleBars);
+    loadSentiment();
   }
 
   async function loadBars(){

@@ -16,6 +16,11 @@ from storage import (
 )
 from execution import get_best_bid_ask, get_client
 from regime import get_market_regime
+try:
+    from coinbase_universe import get_satellite_universe
+    _HAS_DYNAMIC_UNIVERSE = True
+except ImportError:
+    _HAS_DYNAMIC_UNIVERSE = False
 
 _RUNTIME_ENV_PATH = load_runtime_env()
 
@@ -367,6 +372,7 @@ def get_rotation_products(snapshot=None):
 def get_active_satellite_buy_universe(snapshot):
     config = snapshot["config"]
     mode = str(config.get("satellite_mode", "dynamic")).lower()
+    allowed_products = _get_allowed_satellite_products(snapshot)
 
     if mode == "dynamic":
         held = []
@@ -377,13 +383,13 @@ def get_active_satellite_buy_universe(snapshot):
                 continue
             if float(pos.get("value_liquid_usd", 0.0) or 0.0) >= float(config["trade_min_value_usd"]):
                 held.append(product_id)
-        return sorted(set(held + list(config.get("satellite_allowed", []))))
+        return sorted(set(held + list(allowed_products)))
 
     if mode == "rotation":
         rotation_ids = [x["product_id"] for x in get_rotation_products(snapshot)]
-        return sorted(set(rotation_ids + list(config.get("satellite_allowed", []))))
+        return sorted(set(rotation_ids + list(allowed_products)))
 
-    return sorted(set(config.get("satellite_allowed", [])))
+    return sorted(set(allowed_products))
 
 
 def classify_asset(product_id, snapshot):
@@ -423,6 +429,27 @@ def is_satellite_buy_eligible(product_id, snapshot):
         return False
 
     return product_id in set(get_active_satellite_buy_universe(snapshot))
+def _get_allowed_satellite_products(snapshot):
+    config = snapshot["config"]
+    blocked_products = {
+        str(product_id or "").upper().strip()
+        for product_id in config.get("satellite_blocked", [])
+        if str(product_id or "").strip()
+    }
+
+    if _HAS_DYNAMIC_UNIVERSE:
+        try:
+            return set(get_satellite_universe(snapshot))
+        except Exception as exc:
+            _log_portfolio(f"dynamic satellite universe unavailable; using static allowlist error={exc}")
+
+    static_allowed = {
+        str(product_id or "").upper().strip()
+        for product_id in config.get("satellite_allowed", [])
+        if str(product_id or "").strip()
+    }
+    return static_allowed - blocked_products
+
 def get_rotation_candidate_map():
     rotation = load_meme_rotation()
     out = {}

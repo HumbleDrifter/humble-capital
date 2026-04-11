@@ -3232,6 +3232,46 @@ def api_symbols():
     })
 
 
+@api_bp.route("/api/system/stock_universe_config", methods=["GET"])
+@require_api_auth
+def api_stock_universe_config_get():
+    try:
+        config = load_asset_config()
+        stock_cfg = config.get("stock_universe", {})
+        return jsonify({
+            "ok": True,
+            "config": {
+                "min_market_cap": stock_cfg.get("min_market_cap", 500_000_000),
+                "min_avg_volume": stock_cfg.get("min_avg_volume", 1_000_000),
+                "min_price": stock_cfg.get("min_price", 5.0),
+                "max_price": stock_cfg.get("max_price", 500.0),
+            }
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/system/stock_universe_config", methods=["POST"])
+@require_admin_auth
+def api_stock_universe_config_post():
+    try:
+        data = request.get_json(silent=True) or {}
+        config = load_asset_config()
+        stock_cfg = config.setdefault("stock_universe", {})
+        if "min_market_cap" in data:
+            stock_cfg["min_market_cap"] = max(0, float(data["min_market_cap"]))
+        if "min_avg_volume" in data:
+            stock_cfg["min_avg_volume"] = max(0, int(float(data["min_avg_volume"])))
+        if "min_price" in data:
+            stock_cfg["min_price"] = max(0, float(data["min_price"]))
+        if "max_price" in data:
+            stock_cfg["max_price"] = max(0, float(data["max_price"]))
+        save_asset_config(config)
+        return jsonify({"ok": True, "config": stock_cfg})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @api_bp.route("/api/stocks/universe", methods=["GET"])
 @require_api_auth
 def api_stocks_universe():

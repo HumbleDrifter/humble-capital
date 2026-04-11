@@ -4,10 +4,23 @@ import time
 from threading import RLock
 
 
-MIN_MARKET_CAP_USD = float(os.getenv("STOCK_MIN_MARKET_CAP", "500000000"))
-MIN_AVG_VOLUME = int(float(os.getenv("STOCK_MIN_AVG_VOLUME", "1000000")))
-MIN_PRICE = float(os.getenv("STOCK_MIN_PRICE", "5.0"))
-MAX_PRICE = float(os.getenv("STOCK_MAX_PRICE", "500.0"))
+def _load_universe_thresholds():
+    try:
+        import json
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asset_config.json")
+        with open(config_path) as f:
+            cfg = json.load(f).get("stock_universe", {})
+        return (
+            float(cfg.get("min_market_cap", os.getenv("STOCK_MIN_MARKET_CAP", "500000000"))),
+            int(float(cfg.get("min_avg_volume", os.getenv("STOCK_MIN_AVG_VOLUME", "1000000")))),
+            float(cfg.get("min_price", os.getenv("STOCK_MIN_PRICE", "5.0"))),
+            float(cfg.get("max_price", os.getenv("STOCK_MAX_PRICE", "500.0"))),
+        )
+    except Exception:
+        return (500_000_000.0, 1_000_000, 5.0, 500.0)
+
+
+MIN_MARKET_CAP_USD, MIN_AVG_VOLUME, MIN_PRICE, MAX_PRICE = _load_universe_thresholds()
 
 
 _DEFAULT_SEED_UNIVERSE = [

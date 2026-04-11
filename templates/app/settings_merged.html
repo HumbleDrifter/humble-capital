@@ -1,0 +1,73 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="set-shell">
+  <section class="set-hero">
+    <div class="set-kicker">Unified Settings</div>
+    <h2 class="set-title">Accounts, automation, and system health now live in one operator workspace.</h2>
+    <p class="set-subtitle">Switch tabs to review connected brokers, adjust trading controls, or inspect runtime health without leaving the Settings area.</p>
+  </section>
+
+  <div class="page-tabs">
+    <button class="page-tab active" data-tab="accounts" type="button">Accounts</button>
+    <button class="page-tab" data-tab="automation" type="button">Automation</button>
+    <button class="page-tab" data-tab="system" type="button">System</button>
+  </div>
+
+  <div class="page-tab-content active" id="tab-accounts">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Accounts"
+        src="{{ '/accounts?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/accounts?embed=1' }}"
+        style="width:100%; min-height:1500px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <div class="page-tab-content" id="tab-automation">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Automation"
+        src="{{ '/configuration?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/configuration?embed=1' }}"
+        style="width:100%; min-height:4200px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <div class="page-tab-content" id="tab-system">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="System"
+        src="{{ '/system-status?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/system-status?embed=1' }}"
+        style="width:100%; min-height:2800px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const tabs = Array.from(document.querySelectorAll(".page-tab"));
+  const panels = Array.from(document.querySelectorAll(".page-tab-content"));
+
+  function showTab(name) {
+    tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
+    panels.forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${name}`));
+    history.replaceState(null, "", `#${name}`);
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => showTab(tab.dataset.tab || "accounts"));
+  });
+
+  const hash = location.hash.slice(1);
+  if (hash && tabs.some((tab) => tab.dataset.tab === hash)) {
+    showTab(hash);
+  }
+})();
+</script>
+{% endblock %}

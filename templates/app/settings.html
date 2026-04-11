@@ -1,4 +1,4 @@
-{% extends "base_app.html" %}
+{% extends "base_embed.html" if embed_mode else "base_app.html" %}
 
 {% block topbar_actions %}{% endblock %}
 

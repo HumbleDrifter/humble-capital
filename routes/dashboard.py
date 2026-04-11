@@ -155,7 +155,7 @@ def activity_page():
 @dashboard_bp.route("/settings", methods=["GET"])
 @require_dashboard_auth
 def settings():
-    return render_template("app/configuration.html", **_page_context("Settings"))
+    return render_template("app/settings_merged.html", **_page_context("Settings"))
 
 
 @dashboard_bp.route("/trade-history", methods=["GET"])
@@ -167,18 +167,24 @@ def trade_history():
 @dashboard_bp.route("/configuration", methods=["GET"])
 @require_dashboard_auth
 def configuration():
+    if request.args.get("embed") == "1":
+        return render_template("app/configuration.html", embed_mode=True, **_page_context("Automation"))
     return _redirect_with_secret("/settings", "automation")
 
 
 @dashboard_bp.route("/accounts", methods=["GET"])
 @require_dashboard_auth
 def accounts():
+    if request.args.get("embed") == "1":
+        return render_template("app/settings.html", embed_mode=True, **_page_context("Accounts"))
     return _redirect_with_secret("/settings", "accounts")
 
 
 @dashboard_bp.route("/system-status", methods=["GET"])
 @require_dashboard_auth
 def system_status():
+    if request.args.get("embed") == "1":
+        return render_template("app/system_status.html", embed_mode=True, **_page_context("System"))
     return _redirect_with_secret("/settings", "system")
 
 

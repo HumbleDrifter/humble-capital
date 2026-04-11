@@ -1,6 +1,7 @@
 import math
 import time
 
+from scoring_engine import ScoringEngine
 from execution import get_client
 from coinbase_universe import get_all_usd_products
 from rebalancer import dispatch_signal_action
@@ -77,8 +78,6 @@ def _default_params_for_product(product_id):
 def _get_scoring_engine():
     global _SCORING_ENGINE
     if _SCORING_ENGINE is None:
-        from scoring_engine import ScoringEngine
-
         _SCORING_ENGINE = ScoringEngine()
     return _SCORING_ENGINE
 
@@ -572,74 +571,152 @@ class SignalScanner:
             return []
         core_assets = set((config.get("core_assets") or {}).keys())
         blocked = set(config.get("satellite_blocked") or [])
+        allowed_list = {
+            _normalize_product_id(product_id)
+            for product_id in (config.get("satellite_allowed") or [])
+            if _normalize_product_id(product_id)
+        }
         manual_holds = set(get_manual_holds(snapshot))
         held_positions = {
             _normalize_product_id(product_id): (position or {})
             for product_id, position in (snapshot.get("positions") or {}).items()
-            if _safe_float((position or {}).get("value_total_usd"), 0.0) > 1.0
+            if _normalize_product_id(product_id) not in core_assets
+            and _safe_float((position or {}).get("value_total_usd"), 0.0) > 1.0
         }
-        universe = get_all_usd_products()
+        held_satellites = sorted(held_positions.keys())
+        universe = set(get_all_usd_products()) | allowed_list | set(held_satellites)
         targets = sorted(universe - core_assets - blocked)
         engine = _get_scoring_engine()
+        max_satellites = int(config.get("max_active_satellites", 4) or 4)
+        all_candles = {}
+        ranked = []
+        ranked_by_id = {}
 
         dispatched = []
         for product_id in targets:
-            if product_id in manual_holds:
-                _log(f"scan skipped for {product_id} — manual hold active")
-                continue
             try:
                 candles = self.fetch_candles(product_id)
                 if len(candles) < 60:
                     continue
-
-                entry = engine.score_for_entry(product_id, candles, regime)
-                if entry["enter"]:
-                    result = {
-                        "signal": "buy",
-                        "conviction": entry["conviction"],
-                        "reason": entry["reason"],
-                    }
-                else:
-                    if product_id in held_positions:
-                        pos = held_positions[product_id]
-                        exit_check = engine.score_for_exit(
-                            product_id,
-                            candles,
-                            regime,
-                            entry_price=(
-                                pos.get("avg_entry")
-                                or pos.get("avg_entry_price")
-                                or pos.get("entry_price")
-                                or 0
-                            ),
-                            bars_held=72,
-                        )
-                        if exit_check["exit"]:
-                            result = {
-                                "signal": "exit",
-                                "conviction": 0.5,
-                                "reason": exit_check["reason"],
-                            }
-                        else:
-                            continue
-                    else:
-                        continue
-
-                if result["signal"]:
-                    action_map = {"buy": "BUY", "exit": "EXIT"}
-                    signal_map = {"buy": "SATELLITE_BUY", "exit": "SATELLITE_EXIT"}
-                    dispatch_result = dispatch_signal_action(
-                        product_id=product_id,
-                        action=action_map[result["signal"]],
-                        signal_type=signal_map[result["signal"]],
-                        timeframe="4h",
-                        strategy="server_scanner_scoring_engine",
-                        conviction_score=result["conviction"],
-                    )
-                    dispatched.append({**result, "dispatch": dispatch_result})
+                all_candles[product_id] = candles
             except Exception as exc:
-                _log(f"scan failed for {product_id}: {exc}")
+                _log(f"scan preload failed for {product_id}: {exc}")
             time.sleep(0.15)
+
+        try:
+            ranked = engine.rank_universe(all_candles, regime, snapshot)
+            ranked_by_id = {row.get("product_id"): row for row in ranked if row.get("product_id")}
+        except Exception as exc:
+            _log(f"universe ranking failed: {exc}")
+            ranked = []
+            ranked_by_id = {}
+
+        def _append_signal_log(product_id, signal, conviction, score_payload, reason):
+            candle_rows = all_candles.get(product_id) or []
+            last_price = _safe_float((candle_rows[-1] if candle_rows else {}).get("close"), 0.0)
+            _SIGNAL_LOG.append(
+                {
+                    "ts": int(time.time()),
+                    "product_id": product_id,
+                    "signal": signal,
+                    "price": last_price,
+                    "conviction": conviction,
+                    "indicators": {
+                        "technical_score": _safe_float((score_payload or {}).get("technical_score"), 0.0),
+                        "sentiment_score": _safe_float((score_payload or {}).get("sentiment_score"), 0.0),
+                        "momentum_score": _safe_float((score_payload or {}).get("momentum_score"), 0.0),
+                        "regime_score": _safe_float((score_payload or {}).get("regime_score"), 0.0),
+                        "composite_score": _safe_float((score_payload or {}).get("composite_score"), 0.0),
+                        "reason": reason,
+                    },
+                }
+            )
+            if len(_SIGNAL_LOG) > 500:
+                _SIGNAL_LOG[:] = _SIGNAL_LOG[-500:]
+
+        def fire_exit_signal(product_id, reason, score_payload=None):
+            dispatch_result = dispatch_signal_action(
+                product_id=product_id,
+                action="EXIT",
+                signal_type="SATELLITE_EXIT",
+                timeframe="4h",
+                strategy="server_scanner_scoring_engine",
+                conviction_score=0.5,
+            )
+            result = {
+                "product_id": product_id,
+                "signal": "exit",
+                "conviction": 0.5,
+                "reason": reason,
+                "score": score_payload or {},
+                "dispatch": dispatch_result,
+            }
+            _append_signal_log(product_id, "exit", 0.5, score_payload, reason)
+            dispatched.append(result)
+            return result
+
+        def fire_buy_signal(product_id, entry_payload, score_payload):
+            dispatch_result = dispatch_signal_action(
+                product_id=product_id,
+                action="BUY",
+                signal_type="SATELLITE_BUY",
+                timeframe="4h",
+                strategy="server_scanner_scoring_engine",
+                conviction_score=_safe_float(entry_payload.get("conviction"), 0.5),
+            )
+            result = {
+                "product_id": product_id,
+                "signal": "buy",
+                "conviction": _safe_float(entry_payload.get("conviction"), 0.5),
+                "reason": entry_payload.get("reason"),
+                "score": score_payload or {},
+                "dispatch": dispatch_result,
+            }
+            _append_signal_log(product_id, "buy", _safe_float(entry_payload.get("conviction"), 0.5), score_payload, entry_payload.get("reason"))
+            dispatched.append(result)
+            return result
+
+        active_satellites = {pid for pid in held_satellites if pid not in manual_holds}
+        for held_pid in held_satellites:
+            if held_pid in manual_holds:
+                _log(f"held satellite {held_pid} remains operator-controlled")
+                continue
+            score = ranked_by_id.get(held_pid)
+            candles = all_candles.get(held_pid)
+            if not candles:
+                continue
+            if not score or _safe_float(score.get("composite_score"), 0.0) < 35.0:
+                pos = held_positions.get(held_pid, {})
+                exit_check = engine.score_for_exit(
+                    held_pid,
+                    candles,
+                    regime,
+                    entry_price=(pos.get("avg_entry") or pos.get("avg_entry_price") or pos.get("entry_price") or 0),
+                    bars_held=72,
+                )
+                if exit_check.get("exit") or not score:
+                    fire_exit_signal(held_pid, exit_check.get("reason") or "score_degraded", score)
+                    active_satellites.discard(held_pid)
+
+        active_count = len(active_satellites)
+        for candidate in ranked:
+            product_id = _normalize_product_id(candidate.get("product_id"))
+            if active_count >= max_satellites:
+                break
+            if not product_id or product_id in held_satellites or product_id in core_assets or product_id in manual_holds:
+                continue
+
+            candles = all_candles.get(product_id)
+            if not candles:
+                continue
+
+            if product_id not in allowed_list and _safe_float(candidate.get("composite_score"), 0.0) < 65.0:
+                continue
+
+            entry = engine.score_for_entry(product_id, candles, regime)
+            if entry.get("enter"):
+                fire_buy_signal(product_id, entry, candidate)
+                active_count += 1
 
         _log(f"satellite sweep done scanned={len(targets)} signals={len(dispatched)}")
         return dispatched

@@ -67,6 +67,8 @@ from services.config_proposal_service import (
 )
 from services.satellite_decision_engine import build_satellite_decisions
 from shadow_rotation_report import build_shadow_rotation_report
+from stock_scanner import StockScanner
+from stock_universe import StockUniverse
 from storage import get_portfolio_history_since
 from storage import get_latest_config_proposal_any_status, list_recent_config_proposals
 
@@ -84,6 +86,8 @@ _SHADOW_ROTATION_LOG_LOCK = threading.Lock()
 _LAST_SHADOW_ROTATION_LOG_KEY = None
 _SYMBOLS_CACHE = []
 _SYMBOLS_CACHE_TS = 0.0
+_STOCK_UNIVERSE = None
+_STOCK_SCANNER = None
 
 FALLBACK_SYMBOLS = [
     "AAPL", "AMD", "AMZN", "ABNB", "BA", "BAC", "COIN", "COST", "CRM", "CVX", "DIS",
@@ -96,6 +100,20 @@ FALLBACK_SYMBOLS = [
 def _log_api(msg):
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [api] {msg}")
+
+
+def _get_stock_universe():
+    global _STOCK_UNIVERSE
+    if _STOCK_UNIVERSE is None:
+        _STOCK_UNIVERSE = StockUniverse()
+    return _STOCK_UNIVERSE
+
+
+def _get_stock_scanner():
+    global _STOCK_SCANNER
+    if _STOCK_SCANNER is None:
+        _STOCK_SCANNER = StockScanner()
+    return _STOCK_SCANNER
 
 
 def get_api_secrets():
@@ -2774,6 +2792,87 @@ def api_signals_chart():
             "ok": True,
             "candles": candles,
             "signals": signals,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/universe", methods=["GET"])
+@require_api_auth
+def api_stocks_universe():
+    try:
+        universe = _get_stock_universe()
+        stats = universe.get_universe_stats()
+        return jsonify({"ok": True, "universe": stats, "tier1": stats.get("tier1", []), "tier2": stats.get("tier2", []), "tier3": stats.get("tier3", [])})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/scan", methods=["GET"])
+@require_api_auth
+def api_stocks_scan():
+    try:
+        regime = str(request.args.get("regime") or "neutral").strip().lower()
+        include_tier2 = str(request.args.get("include_tier2") or "false").strip().lower() in {"1", "true", "yes", "on"}
+        scanner = _get_stock_scanner()
+        return jsonify({"ok": True, **scanner.scan_universe(regime=regime, include_tier2=include_tier2)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/scan/quick", methods=["GET"])
+@require_api_auth
+def api_stocks_scan_quick():
+    try:
+        raw_symbols = str(request.args.get("symbols") or "").strip()
+        symbols = [str(part or "").upper().strip() for part in raw_symbols.split(",") if str(part or "").strip()]
+        if not symbols:
+            symbols = FALLBACK_SYMBOLS[:10]
+        scanner = StockScanner(watchlist=symbols)
+        regime = str(request.args.get("regime") or "neutral").strip().lower()
+        result = scanner.scan_universe(regime=regime, include_tier2=False)
+        return jsonify({"ok": True, **result})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/bars", methods=["GET"])
+@require_api_auth
+def api_stocks_bars():
+    try:
+        symbol = str(request.args.get("symbol") or "AAPL").upper().strip()
+        days = max(30, min(730, int(request.args.get("days") or 200)))
+        scanner = _get_stock_scanner()
+        bars = scanner.fetch_stock_bars(symbol, days=days)
+        enriched = scanner.compute_indicators(bars)
+        return jsonify({"ok": True, "symbol": symbol, "bars": enriched, "count": len(enriched)})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/stocks/quote", methods=["GET"])
+@require_api_auth
+def api_stocks_quote():
+    try:
+        symbol = str(request.args.get("symbol") or "AAPL").upper().strip()
+        try:
+            import yfinance as yf
+
+            info = yf.Ticker(symbol).info or {}
+        except Exception:
+            info = {}
+
+        price = _safe_float(info.get("currentPrice") or info.get("regularMarketPrice"), 0.0)
+        prev_close = _safe_float(info.get("regularMarketPreviousClose") or info.get("previousClose"), 0.0)
+        change_pct = ((price - prev_close) / prev_close * 100.0) if prev_close > 0 else 0.0
+        return jsonify({
+            "ok": True,
+            "symbol": symbol,
+            "price": price,
+            "previous_close": prev_close,
+            "change_pct": round(change_pct, 2),
+            "volume": int(_safe_float(info.get("volume"), 0.0)),
+            "market_cap": _safe_float(info.get("marketCap"), 0.0),
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

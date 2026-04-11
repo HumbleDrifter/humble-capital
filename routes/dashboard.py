@@ -177,10 +177,14 @@ def system_status():
 @dashboard_bp.route("/options-chart", methods=["GET"])
 @require_dashboard_auth
 def options_chart_page():
+    if request.args.get("embed") == "1":
+        return render_template("app/options_chart.html", embed_mode=True, **_page_context("Options Chart"))
     return _redirect_with_secret("/options", "charts")
 
 
 @dashboard_bp.route("/options-strategy", methods=["GET"])
 @require_dashboard_auth
 def options_strategy_page():
+    if request.args.get("embed") == "1":
+        return render_template("app/options_strategy.html", embed_mode=True, **_page_context("Options Strategy"))
     return _redirect_with_secret("/options", "strategy")

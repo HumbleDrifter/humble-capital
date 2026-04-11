@@ -6,6 +6,13 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 
 <div class="opt-shell">
+  <div class="page-tabs">
+    <button class="page-tab active" data-tab="scanner" type="button">Scanner</button>
+    <button class="page-tab" data-tab="charts" type="button">Charts</button>
+    <button class="page-tab" data-tab="strategy" type="button">Strategy</button>
+  </div>
+
+  <div class="page-tab-content active" id="tab-scanner">
   <section class="opt-header opt-observe">
     <div class="opt-header-copy opt-reveal">
       <div class="opt-kicker">Options Screener</div>
@@ -157,6 +164,27 @@
       </div>
     </div>
   </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-charts">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Options Charts"
+        src="{{ '/options-chart?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/options-chart?embed=1' }}"
+        style="width:100%; min-height:2200px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <div class="page-tab-content" id="tab-strategy">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Options Strategy Builder"
+        src="{{ '/options-strategy?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/options-strategy?embed=1' }}"
+        style="width:100%; min-height:1800px; border:0; background:#0a1018; display:block;"
+        loading="lazy"></iframe>
+    </div>
+  </div>
 </div>
 
 <dialog id="optTradeDialog" class="opt-dialog">
@@ -774,6 +802,27 @@
   bindUI();
   setRisk("conservative");
   loadOverview();
+})();
+</script>
+<script>
+(() => {
+  const tabs = Array.from(document.querySelectorAll(".page-tab"));
+  const panels = Array.from(document.querySelectorAll(".page-tab-content"));
+
+  function showTab(name) {
+    tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === name));
+    panels.forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${name}`));
+    history.replaceState(null, "", `#${name}`);
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => showTab(tab.dataset.tab || "scanner"));
+  });
+
+  const hash = location.hash.slice(1);
+  if (hash && tabs.some((tab) => tab.dataset.tab === hash)) {
+    showTab(hash);
+  }
 })();
 </script>
 {% endblock %}

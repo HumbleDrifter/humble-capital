@@ -4,6 +4,7 @@ import os
 import sqlite3
 import threading
 import time
+from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import Blueprint, jsonify, request, session
@@ -38,6 +39,7 @@ from performance import (
     get_product_breakdown,
     get_round_trips,
 )
+from backtester import Backtester
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
 from services.config_proposal_service import (
     apply_config_proposal,
@@ -2473,6 +2475,76 @@ def api_performance():
             "daily_pnl": daily,
             "product_breakdown": products,
             "recent_round_trips": recent,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/backtest", methods=["POST"])
+@require_admin_auth
+def api_backtest():
+    try:
+        data = request.get_json(silent=True) or {}
+        product_id = str(data.get("product_id") or "BTC-USD").upper().strip()
+        timeframe = str(data.get("timeframe") or "4h").lower().strip()
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        params = data.get("params")
+
+        bt = Backtester(
+            product_id=product_id,
+            timeframe=timeframe,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        candles = bt.load_candles()
+        candles = bt.compute_indicators(candles)
+        result = bt.run_strategy(candles, params=params)
+        summary = bt.get_summary(result)
+
+        return jsonify({
+            "ok": True,
+            "product_id": product_id,
+            "timeframe": timeframe,
+            "candle_count": len(candles),
+            "trades": result.get("trades", []),
+            "equity_curve": result.get("equity_curve", []),
+            "summary": summary,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/backtest/quick", methods=["GET"])
+@require_api_auth
+def api_backtest_quick():
+    try:
+        product_id = (request.args.get("product_id") or "BTC-USD").upper().strip()
+        timeframe = (request.args.get("timeframe") or "4h").lower().strip()
+        days = int(request.args.get("days") or 90)
+
+        end = datetime.utcnow()
+        start = end - timedelta(days=days)
+
+        bt = Backtester(
+            product_id=product_id,
+            timeframe=timeframe,
+            start_date=start.strftime("%Y-%m-%d"),
+            end_date=end.strftime("%Y-%m-%d"),
+        )
+        candles = bt.load_candles()
+        candles = bt.compute_indicators(candles)
+        result = bt.run_strategy(candles)
+        summary = bt.get_summary(result)
+
+        return jsonify({
+            "ok": True,
+            "product_id": product_id,
+            "timeframe": timeframe,
+            "days": days,
+            "candle_count": len(candles),
+            "summary": summary,
+            "trade_count": len(result.get("trades", [])),
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

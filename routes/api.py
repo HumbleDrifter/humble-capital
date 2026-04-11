@@ -41,6 +41,7 @@ from performance import (
 )
 from backtester import Backtester
 from brokers.webull_adapter import WebullAdapter
+from options.backtester import OptionsBacktester
 from options.chain_fetcher import OptionChainFetcher
 from options.screener import OptionsScreener
 from portfolio_backtester import PortfolioBacktester
@@ -2919,6 +2920,79 @@ def api_options_trade():
 
         result = adapter.place_options_order(explicit_order)
         return jsonify(result), (200 if result.get("ok") else 500)
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/backtest", methods=["POST"])
+@require_api_auth
+def api_options_backtest():
+    try:
+        data = request.get_json(silent=True) or {}
+        symbol = str(data.get("symbol") or "AAPL").upper().strip()
+        strategy = str(data.get("strategy") or "wheel").strip().lower()
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+        starting_capital = _safe_float(data.get("starting_capital"), 5000.0)
+        params = data.get("params") or {}
+
+        bt = OptionsBacktester(
+            config={
+                "symbol": symbol,
+                "strategy": strategy,
+                "start_date": start_date,
+                "end_date": end_date,
+                "starting_capital": starting_capital,
+                "params": params,
+            }
+        )
+        result = bt.run()
+
+        return jsonify(
+            {
+                "ok": True,
+                "symbol": symbol,
+                "strategy": strategy,
+                "summary": result.get("summary", {}),
+                "equity_curve": result.get("equity_curve", []),
+                "trade_log": result.get("trade_log", []),
+            }
+        )
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/backtest/quick", methods=["GET"])
+@require_api_auth
+def api_options_backtest_quick():
+    try:
+        symbol = str(request.args.get("symbol") or "AAPL").upper().strip()
+        strategy = str(request.args.get("strategy") or "wheel").strip().lower()
+        days = int(request.args.get("days") or 365)
+
+        end = datetime.utcnow()
+        start = end - timedelta(days=days)
+
+        bt = OptionsBacktester(
+            config={
+                "symbol": symbol,
+                "strategy": strategy,
+                "start_date": start.strftime("%Y-%m-%d"),
+                "end_date": end.strftime("%Y-%m-%d"),
+            }
+        )
+        result = bt.run()
+
+        return jsonify(
+            {
+                "ok": True,
+                "symbol": symbol,
+                "strategy": strategy,
+                "days": days,
+                "summary": result.get("summary", {}),
+                "trade_count": len(result.get("trade_log", [])),
+            }
+        )
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

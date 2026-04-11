@@ -18,6 +18,7 @@ PARAMS_4H_CORE = {
     "trim_cooldown": 8,
     "ext_pct": 8.0,
     "position_size_pct": 0.10,
+    "fee_pct": 0.006,
     "adx_min": 20,
     "atr_stop_mult": 1.5,
     "min_hold_bars": 8,
@@ -37,12 +38,13 @@ PARAMS_1H_SATELLITE = {
     "cooldown_bars": 3,
     "trim_cooldown": 4,
     "ext_pct": 10.0,
-    "position_size_pct": 0.10,
+    "position_size_pct": 0.15,
+    "fee_pct": 0.006,
     "adx_min": 20,
     "atr_stop_mult": 1.5,
     "min_hold_bars": 8,
     "require_aligned_bars": 2,
-    "use_mtf": True,
+    "use_mtf": False,
 }
 
 _CANDLE_CACHE = {}
@@ -469,6 +471,7 @@ class Backtester:
         last_buy_bar = -10_000
         last_trim_bar = -10_000
         realized_pnl = 0.0
+        total_fees_paid = 0.0
 
         def current_equity(last_price):
             return cash_usd + (base_qty * _safe_float(last_price, 0.0))
@@ -517,7 +520,9 @@ class Backtester:
             trim_cooldown_ok = (idx - last_trim_bar) >= int(params_base["trim_cooldown"])
             conviction_score = conviction_for_bar(bar, prev_bar)
             adx_ok = adx_value is not None and _safe_float(adx_value, 0.0) >= _safe_float(params_base.get("adx_min", 20), 20.0)
-            htf_ok = bool(bar.get("htf_bullish", True))
+            htf_ok = True
+            if params_base.get("use_mtf", False):
+                htf_ok = bool(bar.get("htf_bullish", True))
 
             required_aligned = max(1, int(params_base.get("require_aligned_bars", 2)))
             aligned_count = 0
@@ -537,14 +542,17 @@ class Backtester:
             if state == 0 and cooldown_ok and ema_aligned and price_above_fast and above_trend and macd_rising and not_overextended and adx_ok and consecutive_aligned and htf_ok:
                 if _safe_float(params_base["rsi_buy_min"], 0.0) <= rsi_value <= _safe_float(params_base["rsi_buy_max"], 100.0):
                     base_pct = _safe_float(params_base.get("position_size_pct"), 0.10)
-                    if conviction_score > 0.8 and _safe_float(bar.get("adx"), 0.0) > 30 and bool(bar.get("htf_bullish", False)):
+                    if conviction_score > 0.8 and _safe_float(bar.get("adx"), 0.0) > 30:
                         position_pct = base_pct * 1.5
                     else:
                         position_pct = base_pct
                     size_usd = current_equity(close) * position_pct
-                    qty = size_usd / close if close > 0 else 0.0
+                    buy_fee = size_usd * _safe_float(params_base.get("fee_pct", 0.006), 0.006) * 0.5
+                    actual_buy = size_usd - buy_fee
+                    qty = actual_buy / close if close > 0 else 0.0
                     if qty > 0 and cash_usd >= size_usd:
                         cash_usd -= size_usd
+                        total_fees_paid += buy_fee
                         base_qty += qty
                         avg_entry = close if base_qty <= qty else (((base_qty - qty) * avg_entry) + (qty * close)) / base_qty
                         state = 1
@@ -559,6 +567,7 @@ class Backtester:
                                 "bar_index": idx,
                                 "conviction_score": conviction_score,
                                 "position_pct": round(position_pct, 4),
+                                "fee_usd": round(buy_fee, 2),
                                 "htf_bullish": bool(bar.get("htf_bullish", False)),
                             }
                         )
@@ -573,9 +582,12 @@ class Backtester:
                 if trim_signal and base_qty > 0:
                     sell_qty = base_qty * 0.5
                     proceeds = sell_qty * close
-                    pnl_usd = (close - avg_entry) * sell_qty
+                    gross_pnl = (close - avg_entry) * sell_qty
+                    fee = proceeds * _safe_float(params_base.get("fee_pct", 0.006), 0.006)
+                    pnl_usd = gross_pnl - fee
                     realized_pnl += pnl_usd
-                    cash_usd += proceeds
+                    total_fees_paid += fee
+                    cash_usd += (proceeds - fee)
                     base_qty -= sell_qty
                     last_trim_bar = idx
                     state = 2 if base_qty > 0 else 0
@@ -587,6 +599,7 @@ class Backtester:
                             "bar_index": idx,
                             "conviction_score": conviction_score,
                             "pnl_usd": round(pnl_usd, 2),
+                            "fee_usd": round(fee, 2),
                             "hold_bars": 0 if entry_bar is None else idx - entry_bar,
                         }
                     )
@@ -608,9 +621,12 @@ class Backtester:
                 if sig_exit:
                     sell_qty = base_qty
                     proceeds = sell_qty * close
-                    pnl_usd = (close - avg_entry) * sell_qty
+                    gross_pnl = (close - avg_entry) * sell_qty
+                    fee = proceeds * _safe_float(params_base.get("fee_pct", 0.006), 0.006)
+                    pnl_usd = gross_pnl - fee
                     realized_pnl += pnl_usd
-                    cash_usd += proceeds
+                    total_fees_paid += fee
+                    cash_usd += (proceeds - fee)
                     base_qty = 0.0
                     state = 0
                     trade_log.append(
@@ -621,6 +637,7 @@ class Backtester:
                             "bar_index": idx,
                             "conviction_score": conviction_score,
                             "pnl_usd": round(pnl_usd, 2),
+                            "fee_usd": round(fee, 2),
                             "hold_bars": 0 if entry_bar is None else idx - entry_bar,
                             "opened_at": entry_ts,
                             "closed_at": bar["ts"],
@@ -648,6 +665,7 @@ class Backtester:
                     "equity_curve": equity_curve,
                     "final_equity": final_equity,
                     "realized_pnl": realized_pnl,
+                    "total_fees_paid": total_fees_paid,
                 }
             ),
         }
@@ -666,6 +684,8 @@ class Backtester:
         trades = list((result or {}).get("trades") or [])
         equity_curve = list((result or {}).get("equity_curve") or [])
         final_equity = _safe_float((result or {}).get("final_equity"), 1000.0)
+        total_fees_paid = _safe_float((result or {}).get("total_fees_paid"), 0.0)
+        gross_final_equity = final_equity + total_fees_paid
         realized_segments = [trade for trade in trades if trade.get("action") in {"TRIM", "EXIT"}]
         pnl_values = [_safe_float(trade.get("pnl_usd"), 0.0) for trade in realized_segments]
         wins = [value for value in pnl_values if value > 0]
@@ -699,6 +719,9 @@ class Backtester:
             "total_trades": len(realized_segments),
             "win_rate": round((len(wins) / len(realized_segments)) if realized_segments else 0.0, 4),
             "total_pnl_pct": round(((final_equity - 1000.0) / 1000.0) * 100.0, 4),
+            "gross_return_pct": round(((gross_final_equity - 1000.0) / 1000.0) * 100.0, 4),
+            "net_return_pct": round(((final_equity - 1000.0) / 1000.0) * 100.0, 4),
+            "total_fees": round(total_fees_paid, 2),
             "max_drawdown_pct": round(max_drawdown_pct, 4),
             "profit_factor": round(gross_wins / abs(gross_losses), 4) if gross_losses < 0 else 0.0,
             "avg_hold_bars": round(sum(hold_bars) / len(hold_bars), 2) if hold_bars else 0.0,

@@ -1,104 +1,176 @@
 {
-    "core_assets": {
-        "BTC-USD": {"target_weight": 0.30, "rebalance_band": 0.04},
-        "ETH-USD": {"target_weight": 0.15, "rebalance_band": 0.03},
-        "SOL-USD": {"target_weight": 0.13, "rebalance_band": 0.03},
-        "XRP-USD": {"target_weight": 0.05, "rebalance_band": 0.02}
+  "core_assets": {
+    "BTC-USD": {
+      "target_weight": 0.3,
+      "rebalance_band": 0.04
     },
-    "core_buy_fraction_of_shortfall": 0.50,
-    "drawdown_controls": {
-        "warn_level": 0.10,
-        "reduce_level": 0.15,
-        "freeze_level": 0.22
+    "ETH-USD": {
+      "target_weight": 0.15,
+      "rebalance_band": 0.03
     },
-    "dust_min_value_usd": 2.0,
-    "trade_min_value_usd": 5.0,
-    "max_quote_per_trade_usd": 75.0,
-    "use_limit_orders": true,
-    "min_cash_reserve": 0.08,
-    "satellite_mode": "rotation",
-    "satellite_total_target": 0.20,
-    "satellite_total_max": 0.25,
-    "satellite_defaults": {"max_weight": 0.05},
-    "satellite_blocked": [],
-    "satellite_allowed": [],
-    "manual_holds": [],
-    "satellite_volatility_map": {},
-    "volatility_buckets": {
-        "very_high": {"max_weight": 0.04},
-        "high": {"max_weight": 0.05},
-        "medium": {"max_weight": 0.06}
+    "SOL-USD": {
+      "target_weight": 0.13,
+      "rebalance_band": 0.03
     },
-    "regime_satellite_caps": {
-        "bull": 0.25,
-        "neutral": 0.10,
-        "caution": 0.0,
-        "risk_off": 0.0
+    "XRP-USD": {
+      "target_weight": 0.05,
+      "rebalance_band": 0.02
+    }
+  },
+  "core_buy_fraction_of_shortfall": 0.65,
+  "drawdown_controls": {
+    "warn_level": 0.1,
+    "reduce_level": 0.15,
+    "freeze_level": 0.22
+  },
+  "dust_min_value_usd": 2.0,
+  "trade_min_value_usd": 5.0,
+  "max_quote_per_trade_usd": 150.0,
+  "use_limit_orders": true,
+  "min_cash_reserve": 0.08,
+  "satellite_mode": "rotation",
+  "satellite_total_target": 0.2,
+  "satellite_total_max": 0.25,
+  "satellite_defaults": {
+    "max_weight": 0.05
+  },
+  "satellite_blocked": [],
+  "satellite_allowed": [],
+  "manual_holds": [],
+  "satellite_volatility_map": {},
+  "volatility_buckets": {
+    "very_high": {
+      "max_weight": 0.04
     },
-    "meme_rotation": {
-        "enabled": true,
-        "min_score": 65,
-        "entry_score": 65,
-        "hold_score": 35,
-        "max_active": 4,
-        "excluded_products": ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "PAXG-USD"],
-        "update_source": "auto_scanner"
+    "high": {
+      "max_weight": 0.05
     },
-    "sniper_mode": {
-        "enabled": true,
-        "min_score": 80,
-        "buy_scale": 0.40,
-        "allow_in_regimes": ["bull"],
-        "require_sniper_eligible": true,
-        "block_pump_protected": true
+    "medium": {
+      "max_weight": 0.06
+    }
+  },
+  "regime_satellite_caps": {
+    "bull": 0.25,
+    "neutral": 0.15,
+    "caution": 0.0,
+    "risk_off": 0.0
+  },
+  "meme_rotation": {
+    "enabled": true,
+    "min_score": 65,
+    "entry_score": 65,
+    "hold_score": 35,
+    "max_active": 4,
+    "excluded_products": [
+      "BTC-USD",
+      "ETH-USD",
+      "SOL-USD",
+      "XRP-USD",
+      "PAXG-USD"
+    ],
+    "update_source": "auto_scanner"
+  },
+  "sniper_mode": {
+    "enabled": true,
+    "min_score": 80,
+    "buy_scale": 0.6,
+    "allow_in_regimes": [
+      "bull",
+      "neutral"
+    ],
+    "require_sniper_eligible": true,
+    "block_pump_protected": true,
+    "relax_require_sniper_eligible": false
+  },
+  "profit_harvest": {
+    "enabled": true,
+    "satellite_only": true,
+    "cooldown_hours": 12,
+    "min_harvest_usd": 8,
+    "tiers": [
+      {
+        "gain_pct": 0.3,
+        "trim_pct": 0.35
+      },
+      {
+        "gain_pct": 0.15,
+        "trim_pct": 0.25
+      },
+      {
+        "gain_pct": 0.08,
+        "trim_pct": 0.15
+      }
+    ],
+    "routes": {
+      "BTC-USD": 0.45,
+      "ETH-USD": 0.25,
+      "SOL-USD": 0.15,
+      "CASH": 0.15
+    }
+  },
+  "sell_policy_defaults": {
+    "core": {
+      "min_meaningful_sell_usd": 5,
+      "allow_full_exit_on_small_remainder": false,
+      "preserve_tradable_remainder": true
     },
-    "profit_harvest": {
-        "enabled": true,
-        "satellite_only": true,
-        "cooldown_hours": 12,
-        "min_harvest_usd": 8,
-        "tiers": [
-            {"gain_pct": 0.30, "trim_pct": 0.35},
-            {"gain_pct": 0.15, "trim_pct": 0.25},
-            {"gain_pct": 0.08, "trim_pct": 0.15}
-        ],
-        "routes": {
-            "BTC-USD": 0.45,
-            "ETH-USD": 0.25,
-            "SOL-USD": 0.15,
-            "CASH": 0.15
-        }
+    "satellite_active": {
+      "min_meaningful_sell_usd": 5,
+      "allow_full_exit_on_small_remainder": false,
+      "preserve_tradable_remainder": true
     },
-    "sell_policy_defaults": {
-        "core": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": false, "preserve_tradable_remainder": true},
-        "satellite_active": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": false, "preserve_tradable_remainder": true},
-        "satellite_blocked": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false},
-        "dust": {"min_meaningful_sell_usd": 0, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false},
-        "nontradable": {"min_meaningful_sell_usd": 0, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false},
-        "unknown": {"min_meaningful_sell_usd": 5, "allow_full_exit_on_small_remainder": true, "preserve_tradable_remainder": false}
+    "satellite_blocked": {
+      "min_meaningful_sell_usd": 5,
+      "allow_full_exit_on_small_remainder": true,
+      "preserve_tradable_remainder": false
     },
-    "sell_policy_overrides": {},
-    "defensive_sell_enabled": true,
-    "defensive_sell_regimes": ["risk_off", "caution"],
-    "defensive_sell_pct_per_cycle": 0.05,
-    "defensive_sell_max_pct": 0.90,
-    "defensive_rebuy_regimes": ["bull", "neutral"],
-    "defensive_rebuy_pct_per_cycle": 0.10,
-    "auto_trading": {
-        "enabled": false,
-        "mode": "semi",
-        "min_entry_score": 65,
-        "min_exit_score": 35,
-        "max_satellites": 4,
-        "position_size_method": "score_weighted",
-        "sentiment_weight": 0.25,
-        "technical_weight": 0.40,
-        "momentum_weight": 0.20,
-        "regime_weight": 0.15,
-        "rebalance_on_score_change": true,
-        "notify_on_entry": true,
-        "notify_on_exit": true
+    "dust": {
+      "min_meaningful_sell_usd": 0,
+      "allow_full_exit_on_small_remainder": true,
+      "preserve_tradable_remainder": false
     },
-    "max_active_satellites": 4,
-    "min_meme_score": 65.0
+    "nontradable": {
+      "min_meaningful_sell_usd": 0,
+      "allow_full_exit_on_small_remainder": true,
+      "preserve_tradable_remainder": false
+    },
+    "unknown": {
+      "min_meaningful_sell_usd": 5,
+      "allow_full_exit_on_small_remainder": true,
+      "preserve_tradable_remainder": false
+    }
+  },
+  "sell_policy_overrides": {},
+  "defensive_sell_enabled": true,
+  "defensive_sell_regimes": [
+    "risk_off",
+    "caution"
+  ],
+  "defensive_sell_pct_per_cycle": 0.05,
+  "defensive_sell_max_pct": 0.9,
+  "defensive_rebuy_regimes": [
+    "bull",
+    "neutral"
+  ],
+  "defensive_rebuy_pct_per_cycle": 0.1,
+  "auto_trading": {
+    "enabled": true,
+    "mode": "semi",
+    "min_entry_score": 65,
+    "min_exit_score": 35,
+    "max_satellites": 4,
+    "position_size_method": "score_weighted",
+    "sentiment_weight": 0.25,
+    "technical_weight": 0.4,
+    "momentum_weight": 0.2,
+    "regime_weight": 0.15,
+    "rebalance_on_score_change": true,
+    "notify_on_entry": true,
+    "notify_on_exit": true
+  },
+  "max_active_satellites": 4,
+  "min_meme_score": 65.0,
+  "config_proposal_generation_mode": "auto",
+  "config_proposal_apply_mode": "after_approval",
+  "config_proposal_min_confidence": "high"
 }

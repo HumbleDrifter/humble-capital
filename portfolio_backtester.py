@@ -122,7 +122,7 @@ class PortfolioBacktester:
             "dca_amount_pct": _safe_float(config.get("dca_amount_pct", 0.02), 0.02),
             "fee_pct": _safe_float(config.get("fee_pct", 0.006), 0.006),
             "defensive_sell_enabled": bool(config.get("defensive_sell_enabled", True)),
-            "defensive_sell_regimes": list(config.get("defensive_sell_regimes") or ["risk_off"]),
+            "defensive_sell_regimes": list(config.get("defensive_sell_regimes") or ["risk_off", "caution"]),
             "defensive_sell_pct_per_bar": _safe_float(config.get("defensive_sell_pct_per_bar", 0.02), 0.02),
             "defensive_sell_max_pct": _safe_float(config.get("defensive_sell_max_pct", 0.70), 0.70),
             "defensive_rebuy_regimes": list(config.get("defensive_rebuy_regimes") or ["bull", "neutral"]),
@@ -488,7 +488,12 @@ class PortfolioBacktester:
         core_value = _safe_float(snapshot.get("core_value"), 0.0)
 
         if regime in sell_regimes and core_value > 0:
-            sell_pct = _safe_float(self.config.get("defensive_sell_pct_per_bar"), 0.02)
+            if regime == "risk_off":
+                sell_pct = _safe_float(self.config.get("defensive_sell_pct_per_bar"), 0.02)
+            elif regime == "caution":
+                sell_pct = _safe_float(self.config.get("defensive_sell_pct_per_bar"), 0.02) * 0.3
+            else:
+                sell_pct = 0.0
             max_sell_pct = _safe_float(self.config.get("defensive_sell_max_pct"), 0.70)
 
             if not hasattr(self, "_defensive_sold_value"):

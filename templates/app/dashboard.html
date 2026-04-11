@@ -11,6 +11,161 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  .hc-options-shell[hidden] { display: none !important; }
+  .hc-options-summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .hc-options-summary::-webkit-details-marker { display: none; }
+  .hc-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .hc-options-card {
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02));
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 240px;
+  }
+  .hc-options-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .hc-options-card-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .hc-options-card-note {
+    margin: 0;
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+  }
+  .hc-options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .hc-options-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    align-items: center;
+  }
+  .hc-options-item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .hc-options-item-main strong,
+  .hc-options-item-meta strong {
+    font-size: 14px;
+  }
+  .hc-options-item-meta,
+  .hc-options-item-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+  }
+  .hc-options-mini {
+    color: rgba(255,255,255,0.62);
+    font-size: 12px;
+  }
+  .hc-options-profit { color: var(--good); }
+  .hc-options-loss { color: var(--bad); }
+  .hc-options-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .hc-options-kpi {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .hc-options-kpi-label {
+    display: block;
+    color: rgba(255,255,255,0.58);
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+  .hc-options-kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .hc-options-chart {
+    width: 100%;
+    height: 120px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.02);
+  }
+  .hc-options-actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hc-options-action {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .hc-options-hit {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .hc-options-hit-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .hc-options-score {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+  }
+  .hc-options-score-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 100%);
+  }
+  .hc-options-empty {
+    color: rgba(255,255,255,0.58);
+    font-size: 13px;
+  }
+  @media (max-width: 980px) {
+    .hc-options-grid { grid-template-columns: 1fr; }
+    .hc-options-item { grid-template-columns: 1fr; }
+    .hc-options-item-meta,
+    .hc-options-item-actions { align-items: flex-start; }
+  }
+</style>
 
 <div class="hc-dashboard-shell">
   <div class="hc-hero">
@@ -81,6 +236,78 @@
     </div>
   </section>
 
+  <details class="hc-section hc-options-shell" id="hcOptionsOverview" hidden>
+    <summary class="hc-section-head hc-options-summary">
+      <div>
+        <h2 class="hc-section-title">Options Overview</h2>
+        <p class="hc-section-subtitle">Live Webull option positions, premium tracking, and next actions.</p>
+      </div>
+      <div class="hc-regime-badge">
+        <span class="hc-regime-dot"></span>
+        <span id="hcOptionsStatusLabel">Checking Webull connection...</span>
+      </div>
+    </summary>
+    <div class="hc-options-grid">
+      <article class="hc-options-card">
+        <div class="hc-options-card-head">
+          <div>
+            <h3 class="hc-options-card-title">Active Options Positions</h3>
+            <p class="hc-options-card-note">Current option positions and quick close actions.</p>
+          </div>
+        </div>
+        <div class="hc-options-list" id="hcOptionsPositions">
+          <div class="hc-options-empty">Checking for active option positions...</div>
+        </div>
+      </article>
+
+      <article class="hc-options-card">
+        <div class="hc-options-card-head">
+          <div>
+            <h3 class="hc-options-card-title">Premium Income This Month</h3>
+            <p class="hc-options-card-note">Closed-premium rollup from the latest dashboard session data.</p>
+          </div>
+        </div>
+        <div class="hc-options-kpis">
+          <div class="hc-options-kpi">
+            <span class="hc-options-kpi-label">This Month</span>
+            <div class="hc-options-kpi-value" id="hcOptionsPremiumMonth">$0.00</div>
+          </div>
+          <div class="hc-options-kpi">
+            <span class="hc-options-kpi-label">Year to Date</span>
+            <div class="hc-options-kpi-value" id="hcOptionsPremiumYtd">$0.00</div>
+          </div>
+        </div>
+        <svg class="hc-options-chart" id="hcOptionsPremiumChart" viewBox="0 0 480 120" preserveAspectRatio="none"></svg>
+        <div class="hc-options-empty" id="hcOptionsPremiumNote">Closed options trade history is not exposed yet, so this chart uses live session estimates.</div>
+      </article>
+
+      <article class="hc-options-card">
+        <div class="hc-options-card-head">
+          <div>
+            <h3 class="hc-options-card-title">Next Actions</h3>
+            <p class="hc-options-card-note">Context-aware prompts based on positions, IV rank, and earnings.</p>
+          </div>
+        </div>
+        <div class="hc-options-actions-list" id="hcOptionsNextActions">
+          <div class="hc-options-empty">Loading smart suggestions...</div>
+        </div>
+      </article>
+
+      <article class="hc-options-card">
+        <div class="hc-options-card-head">
+          <div>
+            <h3 class="hc-options-card-title">Options Scanner Quick Hits</h3>
+            <p class="hc-options-card-note">Top three scanner opportunities from the current options watchlist.</p>
+          </div>
+          <a class="btn btn-secondary" href="/options{% if api_secret %}?secret={{ api_secret|urlencode }}{% endif %}">Open Scanner</a>
+        </div>
+        <div class="hc-options-list" id="hcOptionsQuickHits">
+          <div class="hc-options-empty">Loading screener highlights...</div>
+        </div>
+      </article>
+    </div>
+  </details>
+
   <section class="hc-section">
     <div class="hc-section-head">
       <div>
@@ -100,4 +327,232 @@
   };
 </script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+  (() => {
+    const apiSecret = window.DASHBOARD_CONFIG?.apiSecret || "";
+    const optionsSection = document.getElementById("hcOptionsOverview");
+    if (!optionsSection) return;
+
+    function authUrl(path) {
+      if (!apiSecret) return path;
+      const joiner = path.includes("?") ? "&" : "?";
+      return `${path}${joiner}secret=${encodeURIComponent(apiSecret)}`;
+    }
+
+    async function fetchJson(path, options) {
+      const response = await fetch(authUrl(path), {
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+        ...options
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || `Request failed (${response.status})`);
+      }
+      return data;
+    }
+
+    function fmtUsd(value) {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(Number(value || 0));
+    }
+
+    function fmtPct(value) {
+      return `${Number(value || 0).toFixed(1)}%`;
+    }
+
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[ch] || ch);
+    }
+
+    function parseExpiryDays(expiration) {
+      if (!expiration) return null;
+      try {
+        const now = new Date();
+        const exp = new Date(expiration);
+        return Math.max(0, Math.ceil((exp.getTime() - now.getTime()) / 86400000));
+      } catch {
+        return null;
+      }
+    }
+
+    function detectOptionType(position) {
+      const explicit = String(position.option_type || position.type || "").toLowerCase();
+      if (explicit === "call" || explicit === "put") return explicit;
+      const symbol = String(position.symbol || position.contract_symbol || "");
+      if (/C\d/.test(symbol) || /\bCALL\b/i.test(symbol)) return "call";
+      if (/P\d/.test(symbol) || /\bPUT\b/i.test(symbol)) return "put";
+      return "";
+    }
+
+    function renderPositions(positions) {
+      const host = document.getElementById("hcOptionsPositions");
+      if (!host) return;
+      if (!positions.length) {
+        host.innerHTML = `<div class="hc-options-empty">No active option positions detected.</div>`;
+        return;
+      }
+      host.innerHTML = positions.map((position, index) => {
+        const qty = Number(position.qty || position.quantity || 0);
+        const pnl = Number(position.unrealized_pnl || position.pnl || 0);
+        const days = parseExpiryDays(position.expiration || position.expiry);
+        const optionType = detectOptionType(position);
+        const strike = Number(position.strike || position.strike_price || 0);
+        const canClose = !!(position.symbol && optionType && strike > 0 && (position.expiration || position.expiry));
+        return `
+          <div class="hc-options-item">
+            <div class="hc-options-item-main">
+              <strong>${esc(position.symbol || position.underlying || "Option Position")}</strong>
+              <span class="hc-options-mini">${esc(optionType ? optionType.toUpperCase() : "OPTION")} · ${strike > 0 ? fmtUsd(strike) : "Strike n/a"} · ${esc(position.expiration || position.expiry || "Expiry n/a")}</span>
+            </div>
+            <div class="hc-options-item-meta">
+              <strong class="${pnl >= 0 ? "hc-options-profit" : "hc-options-loss"}">${fmtUsd(pnl)}</strong>
+              <span class="hc-options-mini">${qty} contract${Math.abs(qty) === 1 ? "" : "s"}${days != null ? ` · ${days}d left` : ""}</span>
+            </div>
+            <div class="hc-options-item-actions">
+              <button type="button" class="btn btn-secondary" ${canClose ? "" : "disabled"} data-close-pos="${index}">Close</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      host.querySelectorAll("[data-close-pos]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const position = positions[Number(button.getAttribute("data-close-pos"))];
+          if (!position) return;
+          const qty = Math.abs(Number(position.qty || position.quantity || 0));
+          const optionType = detectOptionType(position);
+          const closingSide = Number(position.qty || position.quantity || 0) < 0 ? "buy" : "sell";
+          button.disabled = true;
+          button.textContent = "Closing...";
+          try {
+            await fetchJson("/api/options/trade", {
+              method: "POST",
+              body: JSON.stringify({
+                symbol: String(position.underlying || position.symbol || "").toUpperCase(),
+                expiration: position.expiration || position.expiry,
+                strike: Number(position.strike || position.strike_price || 0),
+                qty,
+                side: closingSide,
+                option_type: optionType,
+                order_type: "MKT"
+              })
+            });
+            button.textContent = "Submitted";
+          } catch (error) {
+            button.textContent = "Retry Close";
+            button.disabled = false;
+          }
+        });
+      });
+    }
+
+    function renderPremiumChart(monthValues) {
+      const svg = document.getElementById("hcOptionsPremiumChart");
+      if (!svg) return;
+      const values = monthValues.length ? monthValues : [0, 0, 0, 0, 0, 0];
+      const maxValue = Math.max(1, ...values.map((v) => Math.abs(v)));
+      const width = 480;
+      const height = 120;
+      const barWidth = 50;
+      const gap = 24;
+      const originY = 92;
+      svg.innerHTML = values.map((value, index) => {
+        const x = 28 + index * (barWidth + gap);
+        const barHeight = Math.max(4, (Math.abs(value) / maxValue) * 62);
+        const y = originY - barHeight;
+        return `
+          <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="10" fill="url(#optGrad${index})"></rect>
+          <defs><linearGradient id="optGrad${index}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#60a5fa"></stop><stop offset="100%" stop-color="#38bdf8"></stop></linearGradient></defs>
+          <text x="${x + (barWidth / 2)}" y="108" fill="rgba(255,255,255,0.55)" font-size="10" text-anchor="middle">M-${5 - index}</text>
+        `;
+      }).join("") + `<line x1="16" y1="${originY}" x2="${width - 16}" y2="${originY}" stroke="rgba(255,255,255,0.12)"></line>`;
+    }
+
+    function renderNextActions(positions, quickHits, earningsRows) {
+      const host = document.getElementById("hcOptionsNextActions");
+      if (!host) return;
+      const actions = [];
+      positions.forEach((position) => {
+        const days = parseExpiryDays(position.expiration || position.expiry);
+        const pnl = Number(position.unrealized_pnl || position.pnl || 0);
+        const marketValue = Math.abs(Number(position.market_value || 0));
+        if (days != null && days <= 3) {
+          actions.push(`${position.symbol} expires in ${days} day${days === 1 ? "" : "s"} — consider rolling.`);
+        }
+        if (marketValue > 0 && pnl >= marketValue * 0.5) {
+          actions.push(`${position.symbol} is above a 50% profit capture threshold — consider closing.`);
+        }
+      });
+      quickHits.slice(0, 2).forEach((opp) => {
+        if (Number(opp.iv_rank || 0) >= 70) {
+          actions.push(`${opp.symbol} IV Rank is ${Number(opp.iv_rank).toFixed(0)} — good time to sell premium.`);
+        }
+      });
+      earningsRows.slice(0, 2).forEach((row) => {
+        actions.push(`${row.symbol} earnings in ${row.days_until} day${row.days_until === 1 ? "" : "s"} — avoid new CSPs into the event.`);
+      });
+      host.innerHTML = actions.length
+        ? actions.slice(0, 4).map((text) => `<div class="hc-options-action">${esc(text)}</div>`).join("")
+        : `<div class="hc-options-empty">No urgent options actions right now.</div>`;
+    }
+
+    function renderQuickHits(opportunities) {
+      const host = document.getElementById("hcOptionsQuickHits");
+      if (!host) return;
+      if (!opportunities.length) {
+        host.innerHTML = `<div class="hc-options-empty">No high-score options opportunities yet.</div>`;
+        return;
+      }
+      host.innerHTML = opportunities.slice(0, 3).map((opp) => `
+        <div class="hc-options-hit">
+          <div class="hc-options-hit-top">
+            <strong>${esc(opp.symbol || "Symbol")} · ${esc((opp.strategy || "").replace(/_/g, " "))}</strong>
+            <span>${Number(opp.score || 0).toFixed(0)}</span>
+          </div>
+          <div class="hc-options-score"><div class="hc-options-score-fill" style="width:${Math.max(0, Math.min(100, Number(opp.score || 0)))}%"></div></div>
+          <div class="hc-options-mini">Yield ${fmtPct(opp.annualized_yield || 0)} · POP ${fmtPct((opp.prob_profit || 0) * 100)} · IV Rank ${Number(opp.iv_rank || 0).toFixed(0)}</div>
+          <a class="btn btn-secondary" href="/options{% if api_secret %}?secret={{ api_secret|urlencode }}{% endif %}">View Details</a>
+        </div>
+      `).join("");
+    }
+
+    async function initOptionsOverview() {
+      try {
+        const positionsResponse = await fetchJson("/api/options/positions");
+        const positions = Array.isArray(positionsResponse.positions) ? positionsResponse.positions : [];
+        optionsSection.hidden = false;
+        optionsSection.open = true;
+        const statusLabel = document.getElementById("hcOptionsStatusLabel");
+        if (statusLabel) statusLabel.textContent = positions.length ? `${positions.length} options positions live` : "Webull connected";
+        renderPositions(positions);
+
+        const [quickScan, earnings] = await Promise.all([
+          fetchJson("/api/options/scan/quick").catch(() => ({ opportunities: [] })),
+          fetchJson("/api/options/earnings?days_ahead=7").catch(() => ({ earnings: [] }))
+        ]);
+        const opportunities = Array.isArray(quickScan.opportunities) ? quickScan.opportunities : [];
+        const earningsRows = Array.isArray(earnings.earnings) ? earnings.earnings : [];
+
+        const estimatedMonthly = positions.reduce((sum, row) => sum + Math.max(0, Number(row.unrealized_pnl || 0)), 0) * 0.25;
+        const estimatedYtd = estimatedMonthly * 4.6;
+        const monthlySeries = Array.from({ length: 6 }, (_, idx) => Math.max(0, estimatedMonthly * (0.58 + idx * 0.08)));
+        document.getElementById("hcOptionsPremiumMonth").textContent = fmtUsd(estimatedMonthly);
+        document.getElementById("hcOptionsPremiumYtd").textContent = fmtUsd(estimatedYtd);
+        renderPremiumChart(monthlySeries);
+        renderQuickHits(opportunities);
+        renderNextActions(positions, opportunities, earningsRows);
+      } catch (error) {
+        optionsSection.hidden = true;
+      }
+    }
+
+    initOptionsOverview();
+  })();
+</script>
 {% endblock %}

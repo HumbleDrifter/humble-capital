@@ -79,6 +79,11 @@ def check_trailing_stop(product_id: str, current_price: float, entry_price: floa
             return result
 
         tracking = _POSITION_PEAKS.get(product_id) or {}
+        position_opened_at = _safe_int(tracking.get("first_seen_at"), 0)
+        position_age_sec = int(time.time()) - int(position_opened_at or 0)
+        if position_age_sec < 14400:  # 4 hours
+            return {"should_exit": False, "reason": "min_hold_period"}
+
         peak_price = max(
             current_price,
             _safe_float(tracking.get("peak_price"), 0.0),
@@ -127,6 +132,10 @@ def check_stale_position(product_id: str, current_price: float, entry_price: flo
 
         if not product_id or current_price <= 0 or entry_price <= 0 or position_opened_at <= 0:
             return result
+
+        position_age_sec = int(time.time()) - int(position_opened_at or 0)
+        if position_age_sec < 14400:  # 4 hours
+            return {"should_exit": False, "reason": "min_hold_period"}
 
         stale_hours = 72.0
         stale_move_pct = 5.0

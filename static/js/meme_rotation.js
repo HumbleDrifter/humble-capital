@@ -199,6 +199,7 @@ function resolveOpportunityScore(row) {
   const canonical = numericOrNull(row?.display_score);
   if (canonical != null) return canonical;
   const candidates = [
+    row?.composite_score,
     row?.net_score,
     row?.gross_score,
     row?.score
@@ -465,6 +466,64 @@ function assetTypeForCandidate(row) {
 
 function signalLabel(row) {
   return String(row.source || row.strategy || "Scanner").trim() || "Scanner";
+}
+
+function opportunitySignalLabel(row) {
+  const raw = String(row?.signal || row?.signal_label || "").trim().toLowerCase();
+  if (!raw) return "Hold";
+  return raw
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function resolveScoreComponent(row, key) {
+  const numeric = numericOrNull(row?.[key]);
+  return Math.max(0, Math.min(100, numeric != null ? numeric : 0));
+}
+
+function renderOpportunityScoreBreakdown(row) {
+  const compositeScore = Math.max(0, Math.min(100, resolveOpportunityScore(row)));
+  const technicalScore = resolveScoreComponent(row, "technical_score");
+  const sentimentScore = resolveScoreComponent(row, "sentiment_score");
+  const momentumScore = resolveScoreComponent(row, "momentum_score");
+  const signal = opportunitySignalLabel(row);
+  const reasoning = String(row?.reasoning || "").trim();
+
+  return `
+    <div class="opportunity-score-breakdown">
+      <div class="score-total">
+        <div class="score-label">Score</div>
+        <div class="score-value" style="color:${scoreTextColor(compositeScore)}">${fmtNumber(compositeScore)}</div>
+      </div>
+      <div class="score-bars">
+        <div class="score-bar-row">
+          <span class="score-bar-label">Technical</span>
+          <div class="score-bar-track">
+            <div class="score-bar" style="width:${technicalScore}%; background:${scoreColor(technicalScore)}"></div>
+          </div>
+          <span class="score-bar-value">${fmtNumber(technicalScore)}</span>
+        </div>
+        <div class="score-bar-row">
+          <span class="score-bar-label">Sentiment</span>
+          <div class="score-bar-track">
+            <div class="score-bar sentiment" style="width:${sentimentScore}%; background:#22c55e"></div>
+          </div>
+          <span class="score-bar-value">${fmtNumber(sentimentScore)}</span>
+        </div>
+        <div class="score-bar-row">
+          <span class="score-bar-label">Momentum</span>
+          <div class="score-bar-track">
+            <div class="score-bar momentum" style="width:${momentumScore}%; background:#f59e0b"></div>
+          </div>
+          <span class="score-bar-value">${fmtNumber(momentumScore)}</span>
+        </div>
+      </div>
+      <div class="score-signal">${escapeHtml(signal)}</div>
+      <div class="score-reasoning">${escapeHtml(reasoning || "Composite score blends technicals, sentiment, momentum, and regime context.")}</div>
+    </div>
+  `;
 }
 
 function statusText(row) {
@@ -829,7 +888,6 @@ function renderShadowProposalActionState(shadowData, recentProposalItems) {
   const score = resolveOpportunityScore(row);
   const tone = opportunityTone(score);
     const cardStyle = opportunityCardThemeStyle(score);
-    const scoreStyle = `color:${scoreTextColor(score)}`;
     const move24h = resolve24hMove(row);
     const decision = String(row?.decision || "").trim();
     const decisionConfidence = String(row?.decision_confidence || "").trim();
@@ -843,11 +901,7 @@ function renderShadowProposalActionState(shadowData, recentProposalItems) {
               <span class="tiny">${escapeHtml(signalLabel(row))}</span>
             </div>
           </div>
-          <div class="opportunity-score-wrap opp-score-wrap">
-            <div class="opportunity-score-kicker opp-score-kicker">Intelligence Score</div>
-            <div class="opportunity-score opp-score" style="${scoreStyle}">${fmtNumber(score)}</div>
-            <div class="tiny">${escapeHtml(scoreLabel(score))} confidence</div>
-          </div>
+          <div class="opportunity-score-wrap opp-score-wrap">${renderOpportunityScoreBreakdown(row)}</div>
         </div>
 
         <div class="opportunity-pill-row opp-pill-row">
@@ -1212,15 +1266,7 @@ function renderTopOpportunities(data) {
             <div class="opportunity-symbol opp-symbol">${escapeHtml(productId)}</div>
             <div class="opportunity-subline opp-subline">${escapeHtml(assetTypeForCandidate(row))}</div>
           </div>
-          <div class="opportunity-score-wrap opp-score-wrap">
-            <div class="opportunity-score-kicker opp-score-kicker">Score</div>
-            <div class="opportunity-score opp-score" style="color:${scoreTextColor(score)}">${fmtNumber(score)}</div>
-          </div>
-        </div>
-        <div class="opp-progress-shell">
-          <div class="opp-progress-bar">
-            <span class="opp-progress-fill" style="width:${score}%; background:${scoreColor(score)};"></span>
-          </div>
+          <div class="opportunity-score-wrap opp-score-wrap">${renderOpportunityScoreBreakdown(row)}</div>
         </div>
         <div class="opportunity-metrics opp-metrics">
           <div class="opportunity-metric opp-metric">

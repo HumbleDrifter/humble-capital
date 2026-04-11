@@ -49,6 +49,7 @@ from options.screener import OptionsScreener
 from options.sentiment import SocialSentimentScanner
 from portfolio_backtester import PortfolioBacktester
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
+from scoring_engine import ScoringEngine
 from signal_scanner import (
     SignalScanner,
     get_scanner_params,
@@ -680,6 +681,15 @@ def _build_meme_rotation():
     summary = portfolio_summary(snapshot)
     cfg = load_asset_config() or {}
     rotation = load_meme_rotation() or {"candidates": []}
+    scoring_engine = ScoringEngine()
+    scoring_scanner = SignalScanner(timeframe="4h")
+    scoring_snapshot = dict(snapshot) if isinstance(snapshot, dict) else {}
+    try:
+        btc_candles = scoring_scanner.fetch_candles("BTC-USD", limit=250)
+        if btc_candles:
+            scoring_snapshot["btc_candles"] = btc_candles
+    except Exception as exc:
+        _log_api(f"meme rotation BTC candle preload skipped: {exc}")
 
     held_assets = set((summary.get("assets") or {}).keys())
     allowed = set(cfg.get("satellite_allowed", []))
@@ -862,7 +872,7 @@ def _build_meme_rotation():
             _LAST_SHADOW_ROTATION_LOG_KEY = log_key
 
     def _display_score(row):
-        for key in ("net_score", "gross_score", "score"):
+        for key in ("display_score", "composite_score", "net_score", "gross_score", "score"):
             value = row.get(key)
             if value is None:
                 continue
@@ -912,6 +922,25 @@ def _build_meme_rotation():
             },
             asset,
         )
+        score_payload = {
+            "composite_score": 0.0,
+            "technical_score": 0.0,
+            "sentiment_score": 0.0,
+            "momentum_score": 0.0,
+            "signal": "hold",
+            "reasoning": "Composite score unavailable.",
+        }
+        try:
+            candidate_candles = scoring_scanner.fetch_candles(product_id, limit=250)
+            if len(candidate_candles) >= 60:
+                score_payload = scoring_engine.score_crypto_asset(
+                    product_id,
+                    candidate_candles,
+                    summary.get("market_regime"),
+                    scoring_snapshot,
+                )
+        except Exception as exc:
+            _log_api(f"meme rotation scoring skipped for {product_id}: {exc}")
 
         candidates.append({
             "product_id": product_id,
@@ -947,6 +976,12 @@ def _build_meme_rotation():
                 "Held" if product_id in held_assets else
                 "Watching"
             ),
+            "composite_score": round(_safe_float(score_payload.get("composite_score"), 0.0), 2),
+            "technical_score": round(_safe_float(score_payload.get("technical_score"), 0.0), 2),
+            "sentiment_score": round(_safe_float(score_payload.get("sentiment_score"), 0.0), 2),
+            "momentum_score": round(_safe_float(score_payload.get("momentum_score"), 0.0), 2),
+            "signal": str(score_payload.get("signal") or "hold"),
+            "reasoning": str(score_payload.get("reasoning") or "").strip(),
             **shadow_scores,
         })
 
@@ -1068,7 +1103,7 @@ def _build_meme_rotation():
         if str(row.get("product_id") or "").strip()
     }
     for candidate in candidates:
-        candidate["display_score"] = round(_display_score(candidate), 2)
+        candidate["display_score"] = round(_safe_float(candidate.get("composite_score"), _display_score(candidate)), 2)
         candidate["display_status"] = _display_status(candidate)
         candidate["display_group"] = _display_group(candidate)
         candidate["display_rank"] = rank_lookup.get(str(candidate.get("product_id") or "").strip())

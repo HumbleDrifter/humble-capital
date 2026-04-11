@@ -15,6 +15,8 @@
   {% set portfolio_url = '/analytics?secret=' ~ (secret_value|urlencode) if secret_value else '/analytics' %}
   {% set performance_url = '/performance?secret=' ~ (secret_value|urlencode) if secret_value else '/performance' %}
   {% set backtest_url = '/backtest?secret=' ~ (secret_value|urlencode) if secret_value else '/backtest' %}
+  {% set charts_url = '/charts?secret=' ~ (secret_value|urlencode) if secret_value else '/charts' %}
+  {% set algorithm_url = '/algorithm?secret=' ~ (secret_value|urlencode) if secret_value else '/algorithm' %}
   {% set opportunities_url = '/meme-rotation?secret=' ~ (secret_value|urlencode) if secret_value else '/meme-rotation' %}
   {% set activity_url = '/trade-history?secret=' ~ (secret_value|urlencode) if secret_value else '/trade-history' %}
   {% set automation_url = '/configuration?secret=' ~ (secret_value|urlencode) if secret_value else '/configuration' %}
@@ -24,8 +26,10 @@
   {% set automation_active = current_path == '/configuration' %}
   {% set performance_active = current_path == '/performance' %}
   {% set backtest_active = current_path == '/backtest' %}
+  {% set charts_active = current_path == '/charts' %}
+  {% set algorithm_active = current_path == '/algorithm' %}
   {% set settings_active = current_path in ['/settings', '/system-status'] %}
-  {% set more_active = accounts_active or automation_active or settings_active or performance_active or backtest_active %}
+  {% set more_active = accounts_active or automation_active or settings_active or performance_active or backtest_active or charts_active or algorithm_active %}
 
   <div class="app-shell">
     <aside class="sidebar">
@@ -52,6 +56,9 @@
         </a>
         <a class="nav-link {% if current_path == '/meme-rotation' %}active{% endif %}" href="{{ opportunities_url }}">
           <span class="nav-link-label">Opportunities</span>
+        </a>
+        <a class="nav-link {% if charts_active %}active{% endif %}" href="{{ charts_url }}">
+          <span class="nav-link-label">Charts</span>
         </a>
         <a class="nav-link {% if accounts_active %}active{% endif %}" href="{{ accounts_url }}">
           <span class="nav-link-label">Accounts</span>
@@ -135,9 +142,9 @@
       <span class="mobile-nav-label">Opportunities</span>
     </a>
 
-    <a class="mobile-nav-link {% if current_path == '/trade-history' %}active{% endif %}" href="{{ activity_url }}">
+    <a class="mobile-nav-link {% if charts_active %}active{% endif %}" href="{{ charts_url }}">
       <span class="mobile-nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-      <span class="mobile-nav-label">Activity</span>
+      <span class="mobile-nav-label">Charts</span>
     </a>
 
     <details class="mobile-more-menu {% if more_active %}active{% endif %}">
@@ -147,9 +154,11 @@
       </summary>
       <div class="mobile-more-sheet">
         <a class="mobile-more-link {% if performance_active %}active{% endif %}" href="{{ performance_url }}">Performance</a>
+        <a class="mobile-more-link {% if current_path == '/trade-history' %}active{% endif %}" href="{{ activity_url }}">Activity</a>
         <a class="mobile-more-link {% if backtest_active %}active{% endif %}" href="{{ backtest_url }}">Backtesting</a>
         <a class="mobile-more-link {% if accounts_active %}active{% endif %}" href="{{ accounts_url }}">Accounts</a>
         <a class="mobile-more-link {% if automation_active %}active{% endif %}" href="{{ automation_url }}">Automation</a>
+        <a class="mobile-more-link {% if algorithm_active %}active{% endif %}" href="{{ algorithm_url }}">Algorithm</a>
         <a class="mobile-more-link {% if settings_active %}active{% endif %}" href="{{ settings_url }}">Settings</a>
       </div>
     </details>

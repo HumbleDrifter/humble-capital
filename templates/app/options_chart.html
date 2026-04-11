@@ -12,6 +12,8 @@
   .optc-grid { display:grid; gap:14px; grid-template-columns:2fr 1fr 1fr 1fr; }
   .optc-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
   .optc-select,.optc-input { width:100%; min-height:46px; border-radius:12px; border:1px solid rgba(255,255,255,.1); background:rgba(11,16,24,.78); color:var(--hc-text,#ecf3ff); padding:0 14px; }
+  .optc-symbol-search { display:flex; flex-direction:column; }
+  .optc-symbol-search input { font-size:13px; padding:6px 10px; min-height:32px; margin-bottom:4px; }
   .optc-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.56); margin-bottom:8px; display:block; }
   .optc-label-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
   .optc-info-wrap { position:relative; display:inline-flex; align-items:center; }
@@ -95,59 +97,12 @@
     <div class="optc-grid">
       <div>
         <label class="optc-label" for="optcSymbol">Symbol</label>
-        <select id="optcSymbol" class="optc-select">
-          <option value="AAPL">AAPL</option>
-          <option value="AMD">AMD</option>
-          <option value="AMZN">AMZN</option>
-          <option value="ABNB">ABNB</option>
-          <option value="AVAX">AVAX</option>
-          <option value="BA">BA</option>
-          <option value="BAC">BAC</option>
-          <option value="COIN">COIN</option>
-          <option value="COST">COST</option>
-          <option value="CRM">CRM</option>
-          <option value="CVX">CVX</option>
-          <option value="DIS">DIS</option>
-          <option value="F">F</option>
-          <option value="GM">GM</option>
-          <option value="GME">GME</option>
-          <option value="GOOGL">GOOGL</option>
-          <option value="GS">GS</option>
-          <option value="HD">HD</option>
-          <option value="INTC">INTC</option>
-          <option value="IWM">IWM</option>
-          <option value="JNJ">JNJ</option>
-          <option value="JPM">JPM</option>
-          <option value="KO">KO</option>
-          <option value="LOW">LOW</option>
-          <option value="MA">MA</option>
-          <option value="MARA">MARA</option>
-          <option value="META">META</option>
-          <option value="MSFT">MSFT</option>
-          <option value="MU">MU</option>
-          <option value="NFLX">NFLX</option>
-          <option value="NIO">NIO</option>
-          <option value="NVDA">NVDA</option>
-          <option value="ORCL">ORCL</option>
-          <option value="PEP">PEP</option>
-          <option value="PFE">PFE</option>
-          <option value="PLTR">PLTR</option>
-          <option value="PYPL">PYPL</option>
-          <option value="QCOM">QCOM</option>
-          <option value="QQQ">QQQ</option>
-          <option value="RIOT">RIOT</option>
-          <option value="RIVN">RIVN</option>
-          <option value="SOFI">SOFI</option>
-          <option value="SQ">SQ</option>
-          <option value="SPY">SPY</option>
-          <option value="T">T</option>
-          <option value="TSLA">TSLA</option>
-          <option value="UBER">UBER</option>
-          <option value="V">V</option>
-          <option value="VZ">VZ</option>
-          <option value="WMT">WMT</option>
-          <option value="XOM">XOM</option>
-        </select>
+        <div class="optc-symbol-search">
+          <input id="optcSymbolFilter" class="optc-input" type="text" placeholder="Search ticker...">
+          <select id="optcSymbol" class="optc-select" size="1">
+            <option value="AAPL">Loading symbols...</option>
+          </select>
+        </div>
       </div>
       <div>
         <label class="optc-label" for="optcStrategy">Strategy</label>
@@ -286,7 +241,8 @@
 <script>
 (() => {
   const API_SECRET = {{ api_secret|tojson }};
-  const FALLBACK_SYMBOLS = ["AAPL","AMD","AMZN","ABNB","AVAX","BA","BAC","COIN","COST","CRM","CVX","DIS","F","GM","GME","GOOGL","GS","HD","INTC","IWM","JNJ","JPM","KO","LOW","MA","MARA","META","MSFT","MU","NFLX","NIO","NVDA","ORCL","PEP","PFE","PLTR","PYPL","QCOM","QQQ","RIOT","RIVN","SOFI","SQ","SPY","T","TSLA","UBER","V","VZ","WMT","XOM"];
+  const FALLBACK_SYMBOLS = ["AAPL","AMD","AMZN","ABNB","BA","BAC","COIN","COST","CRM","CVX","DIS","F","GM","GME","GOOGL","GS","HD","INTC","IWM","JNJ","JPM","KO","LOW","MA","MARA","META","MSFT","MU","NFLX","NIO","NVDA","ORCL","PEP","PFE","PLTR","PYPL","QCOM","QQQ","RIOT","RIVN","SOFI","SQ","SPY","T","TSLA","UBER","V","VZ","WMT","XOM"];
+  let allSymbols = [];
   let bars = [];
   let viewDays = 30;
   let refreshTimer = null;
@@ -714,6 +670,37 @@
     renderCharts();
   }
 
+  function populateSymbolDropdown(symbols) {
+    const select = document.getElementById("optcSymbol");
+    if (!select) return;
+    const currentVal = (select.value || "AAPL").toUpperCase().trim();
+    const rows = Array.isArray(symbols) && symbols.length ? symbols : FALLBACK_SYMBOLS.map((s) => ({ symbol: s, name: "" }));
+    select.innerHTML = rows.map((entry) => {
+      const sym = String(entry.symbol || "").toUpperCase().trim();
+      const name = String(entry.name || "").trim();
+      const label = name ? `${sym} — ${name}` : sym;
+      return `<option value="${sym}" ${sym === currentVal ? "selected" : ""}>${esc(label)}</option>`;
+    }).join("");
+    if (![...select.options].some((opt) => opt.value === currentVal) && rows.length) {
+      select.value = String(rows[0].symbol || "AAPL").toUpperCase().trim();
+    }
+  }
+
+  async function loadSymbolUniverse() {
+    try {
+      const data = await fetchJson("/api/options/symbols");
+      allSymbols = Array.isArray(data.symbols) ? data.symbols : [];
+      if (!allSymbols.length) {
+        allSymbols = FALLBACK_SYMBOLS.map((s) => ({ symbol: s, name: "" }));
+      }
+      populateSymbolDropdown(allSymbols);
+      document.getElementById("optcMeta").textContent = `${allSymbols.length} symbols available`;
+    } catch (e) {
+      allSymbols = FALLBACK_SYMBOLS.map((s) => ({ symbol: s, name: "" }));
+      populateSymbolDropdown(allSymbols);
+    }
+  }
+
   const rerender = debounce(() => { if (bars.length) renderCharts(); }, 500);
   function bindControls(){
     [["optcDelta","optcDeltaValue",(v)=>Number(v).toFixed(2)],["optcDte","optcDteValue",(v)=>`${v} days`],["optcProfit","optcProfitValue",(v)=>`${v}%`],["optcWidth","optcWidthValue",(v)=>`$${v}`]].forEach(([id, out, fmt]) => {
@@ -723,6 +710,18 @@
     });
     document.getElementById("optcStrategy").addEventListener("change", rerender);
     document.getElementById("optcSymbol").addEventListener("change", loadBars);
+    document.getElementById("optcSymbolFilter").addEventListener("input", (event) => {
+      const query = String(event.target.value || "").toUpperCase().trim();
+      if (!query) {
+        populateSymbolDropdown(allSymbols);
+        return;
+      }
+      const filtered = allSymbols.filter((entry) =>
+        String(entry.symbol || "").toUpperCase().includes(query) ||
+        String(entry.name || "").toUpperCase().includes(query)
+      );
+      populateSymbolDropdown(filtered);
+    });
     document.getElementById("optcRefreshBtn").addEventListener("click", loadBars);
     document.querySelectorAll(".optc-range").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -749,6 +748,7 @@
 
   async function init(){
     bindControls();
+    await loadSymbolUniverse();
     if (!document.getElementById("optcSymbol").value) document.getElementById("optcSymbol").value = FALLBACK_SYMBOLS[0];
     await loadBars();
     clearInterval(refreshTimer);

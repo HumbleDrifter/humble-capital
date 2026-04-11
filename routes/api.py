@@ -80,6 +80,15 @@ _API_CACHE_LOCK = threading.Lock()
 _API_CACHE = {}
 _SHADOW_ROTATION_LOG_LOCK = threading.Lock()
 _LAST_SHADOW_ROTATION_LOG_KEY = None
+_SYMBOLS_CACHE = []
+_SYMBOLS_CACHE_TS = 0.0
+
+FALLBACK_SYMBOLS = [
+    "AAPL", "AMD", "AMZN", "ABNB", "BA", "BAC", "COIN", "COST", "CRM", "CVX", "DIS",
+    "F", "GM", "GME", "GOOGL", "GS", "HD", "INTC", "IWM", "JNJ", "JPM", "KO", "LOW", "MA",
+    "MARA", "META", "MSFT", "MU", "NFLX", "NIO", "NVDA", "ORCL", "PEP", "PFE", "PLTR",
+    "PYPL", "QCOM", "QQQ", "RIOT", "RIVN", "SOFI", "SQ", "SPY", "T", "TSLA", "UBER", "V", "VZ", "WMT", "XOM"
+]
 
 
 def _log_api(msg):
@@ -2747,6 +2756,83 @@ def api_options_chain():
         return jsonify(result), (200 if result.get("ok") else 500)
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/symbols", methods=["GET"])
+@require_api_auth
+def api_options_symbols():
+    """Return all tradable US stock symbols from Webull, cached for 24 hours."""
+    global _SYMBOLS_CACHE, _SYMBOLS_CACHE_TS
+
+    try:
+        if (time.time() - _SYMBOLS_CACHE_TS) < 86400 and _SYMBOLS_CACHE:
+            return jsonify({"ok": True, "symbols": _SYMBOLS_CACHE, "count": len(_SYMBOLS_CACHE), "source": "cache"})
+
+        app_key = os.getenv("WEBULL_APP_KEY", "")
+        app_secret = os.getenv("WEBULL_APP_SECRET", "")
+        if not app_key or not app_secret:
+            fallback = [{"symbol": symbol, "name": ""} for symbol in FALLBACK_SYMBOLS]
+            return jsonify({"ok": True, "symbols": fallback, "count": len(fallback), "source": "fallback"})
+
+        from webull.core.client import ApiClient
+        from webull.data.data_client import DataClient
+
+        api_client = ApiClient(app_key, app_secret, "us")
+        api_client.add_endpoint("us", "api.webull.com")
+        data_client = DataClient(api_client)
+
+        all_symbols = []
+        last_id = None
+        page_size = 1000
+
+        for _ in range(20):
+            kwargs = {"category": "US_STOCK", "page_size": page_size}
+            if last_id:
+                kwargs["last_instrument_id"] = last_id
+
+            response = data_client.instrument.get_instrument(**kwargs)
+            if getattr(response, "status_code", 500) != 200:
+                break
+
+            data = response.json()
+            instruments = data if isinstance(data, list) else data.get("instruments", data.get("data", []))
+            if not instruments:
+                break
+
+            for inst in instruments:
+                sym = str(inst.get("symbol", "")).strip().upper()
+                name = str(inst.get("name", inst.get("instrument_name", ""))).strip()
+                if sym and len(sym) <= 5 and sym.isalpha():
+                    all_symbols.append({"symbol": sym, "name": name})
+
+            last_inst = instruments[-1] if instruments else {}
+            last_id = str(last_inst.get("instrument_id", last_inst.get("id", ""))).strip()
+            if len(instruments) < page_size:
+                break
+
+        all_symbols.sort(key=lambda row: row["symbol"])
+        unique = []
+        seen = set()
+        for row in all_symbols:
+            sym = row["symbol"]
+            if sym in seen:
+                continue
+            seen.add(sym)
+            unique.append(row)
+
+        if not unique:
+            unique = [{"symbol": symbol, "name": ""} for symbol in FALLBACK_SYMBOLS]
+            source = "fallback"
+        else:
+            source = "webull"
+
+        _SYMBOLS_CACHE = unique
+        _SYMBOLS_CACHE_TS = time.time()
+        return jsonify({"ok": True, "symbols": unique, "count": len(unique), "source": source})
+
+    except Exception as exc:
+        fallback = [{"symbol": symbol, "name": ""} for symbol in FALLBACK_SYMBOLS]
+        return jsonify({"ok": True, "symbols": fallback, "count": len(fallback), "source": "fallback", "error": str(exc)})
 
 
 @api_bp.route("/api/options/expirations", methods=["GET"])

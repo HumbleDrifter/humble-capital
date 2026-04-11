@@ -41,6 +41,14 @@ from performance import (
 )
 from backtester import Backtester
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
+from signal_scanner import (
+    SignalScanner,
+    get_scanner_params,
+    get_scanner_state,
+    get_signal_log,
+    run_scanner_sweep,
+    update_scanner_params,
+)
 from services.config_proposal_service import (
     apply_config_proposal,
     approve_config_proposal,
@@ -2545,6 +2553,112 @@ def api_backtest_quick():
             "candle_count": len(candles),
             "summary": summary,
             "trade_count": len(result.get("trades", [])),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/candles", methods=["GET"])
+@require_api_auth
+def api_candles():
+    try:
+        product_id = (request.args.get("product_id") or "BTC-USD").upper().strip()
+        timeframe = (request.args.get("timeframe") or "1h").lower().strip()
+        limit = int(request.args.get("limit") or 250)
+
+        scanner = SignalScanner(timeframe=timeframe)
+        candles = scanner.fetch_candles(product_id, limit=limit)
+        candles = scanner.compute_indicators(candles)
+
+        return jsonify({
+            "ok": True,
+            "product_id": product_id,
+            "timeframe": timeframe,
+            "candles": candles,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/signals/log", methods=["GET"])
+@require_api_auth
+def api_signals_log():
+    try:
+        limit = int(request.args.get("limit") or 100)
+        return jsonify({
+            "ok": True,
+            "signals": get_signal_log(limit=limit),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/signals/state", methods=["GET"])
+@require_api_auth
+def api_signals_state():
+    try:
+        return jsonify({
+            "ok": True,
+            "states": get_scanner_state(),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/scanner/params", methods=["GET"])
+@require_api_auth
+def api_scanner_params_get():
+    try:
+        return jsonify({
+            "ok": True,
+            "params": get_scanner_params(),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/scanner/params", methods=["POST"])
+@require_api_auth
+def api_scanner_params_post():
+    try:
+        data = request.get_json(silent=True) or {}
+        preset = str(data.get("preset") or "").strip()
+        params = data.get("params") or {}
+        updated = update_scanner_params(preset, params)
+        return jsonify({
+            "ok": True,
+            "updated": updated,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/scanner/run", methods=["POST"])
+@require_api_auth
+def api_scanner_run():
+    try:
+        return jsonify(run_scanner_sweep())
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/signals/chart", methods=["GET"])
+@require_api_auth
+def api_signals_chart():
+    try:
+        product_id = (request.args.get("product_id") or "BTC-USD").upper().strip()
+        timeframe = (request.args.get("timeframe") or "1h").lower().strip()
+        limit = int(request.args.get("limit") or 250)
+
+        scanner = SignalScanner(timeframe=timeframe)
+        candles = scanner.fetch_candles(product_id, limit=limit)
+        candles = scanner.compute_indicators(candles)
+        signals = [signal for signal in get_signal_log(limit=500) if str(signal.get("product_id") or "").upper().strip() == product_id]
+
+        return jsonify({
+            "ok": True,
+            "candles": candles,
+            "signals": signals,
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

@@ -46,6 +46,7 @@ from options.chain_fetcher import OptionChainFetcher
 from options.earnings import EarningsCalendar
 from options.performance import OptionsPerformance
 from options.screener import OptionsScreener
+from options.sentiment import SocialSentimentScanner
 from portfolio_backtester import PortfolioBacktester
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
 from signal_scanner import (
@@ -2876,6 +2877,73 @@ def api_options_iv_rank():
             "iv_rank": fetcher.get_iv_rank(symbol),
             "current_iv": round(current_iv, 4),
         })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/sentiment", methods=["GET"])
+@require_api_auth
+def api_options_sentiment():
+    try:
+        symbol = (request.args.get("symbol") or "").upper().strip()
+        if not symbol:
+            return jsonify({"ok": False, "error": "missing_symbol"}), 400
+        scanner = SocialSentimentScanner()
+        result = scanner.get_composite_sentiment(symbol)
+        return jsonify({"ok": True, **result})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/sentiment/scan", methods=["GET"])
+@require_api_auth
+def api_options_sentiment_scan():
+    try:
+        raw_symbols = str(request.args.get("symbols") or "").strip()
+        top_n = max(1, int(request.args.get("top") or 10))
+        if raw_symbols:
+            symbols = [
+                str(part or "").upper().strip()
+                for part in raw_symbols.split(",")
+                if str(part or "").strip()
+            ]
+        else:
+            symbols = list(FALLBACK_SYMBOLS)
+
+        scanner = SocialSentimentScanner()
+        results = scanner.scan_watchlist(symbols, top_n=top_n)
+        return jsonify(
+            {
+                "ok": True,
+                "symbols": symbols,
+                "results": results,
+                "count": len(results),
+            }
+        )
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/options/sentiment/trending", methods=["GET"])
+@require_api_auth
+def api_options_sentiment_trending():
+    try:
+        top_n = max(1, int(request.args.get("top") or 10))
+        watchlist = list(OptionsScreener().watchlist or FALLBACK_SYMBOLS)
+        scanner = SocialSentimentScanner()
+        results = scanner.scan_watchlist(watchlist, top_n=len(watchlist))
+        trending = sorted(
+            results,
+            key=lambda row: _safe_float(row.get("total_mentions"), 0.0),
+            reverse=True,
+        )[:top_n]
+        return jsonify(
+            {
+                "ok": True,
+                "results": trending,
+                "count": len(trending),
+            }
+        )
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 

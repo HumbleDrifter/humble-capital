@@ -140,6 +140,10 @@ class PortfolioBacktester:
         self.dca_total_invested = 0.0
         self._all_candles = {}
         self._current_bar = 0
+        self._current_ts = 0
+        self._candle_by_ts = {}
+        self._index_by_ts = {}
+        self._timeline = []
 
     def _to_dict(self, x):
         return x.to_dict() if hasattr(x, "to_dict") else x
@@ -268,10 +272,19 @@ class PortfolioBacktester:
                 _log(f"indicator build failed product_id={product_id} error={exc}")
         return enriched
 
-    def estimate_regime(self, btc_candles, bar_index) -> str:
-        if not btc_candles or bar_index >= len(btc_candles):
+    def estimate_regime(self, btc_candles, bar_ref) -> str:
+        if not btc_candles:
             return "neutral"
-        bar = btc_candles[bar_index]
+        if isinstance(bar_ref, (int, float)):
+            ts_lookup = _safe_int(bar_ref, 0)
+            btc_index = (self._index_by_ts.get("BTC-USD") or {}).get(ts_lookup)
+            if btc_index is None:
+                btc_index = _safe_int(bar_ref, 0)
+        else:
+            btc_index = 0
+        if btc_index < 0 or btc_index >= len(btc_candles):
+            return "neutral"
+        bar = btc_candles[btc_index]
         close = _safe_float(bar.get("close"), 0.0)
         ema50 = bar.get("ema50")
         ema200 = bar.get("ema200")
@@ -288,18 +301,19 @@ class PortfolioBacktester:
             return "neutral"
         return "caution"
 
-    def get_portfolio_value(self, all_candles, bar_index) -> dict:
+    def get_portfolio_value(self, all_candles, bar_ref) -> dict:
         core_assets = set(_normalize_product_id(pid) for pid in (self.config["core_assets"] or {}).keys())
         total_value = self.cash
         core_value = 0.0
         satellite_value = 0.0
         weights = {}
+        ts_lookup = _safe_int(bar_ref, self._current_ts)
 
         for product_id, position in list(self.positions.items()):
-            candles = all_candles.get(product_id) or []
-            if bar_index >= len(candles):
+            candle = (self._candle_by_ts.get(product_id) or {}).get(ts_lookup)
+            if not isinstance(candle, dict):
                 continue
-            price = _safe_float(candles[bar_index].get("close"), 0.0)
+            price = _safe_float(candle.get("close"), 0.0)
             value = _safe_float(position.get("qty"), 0.0) * price
             position["value"] = value
             total_value += value
@@ -320,9 +334,9 @@ class PortfolioBacktester:
             "weights": weights,
         }
 
-    def check_rebalance(self, weights, bar_index) -> list:
+    def check_rebalance(self, weights, bar_ref) -> list:
         actions = []
-        snapshot = self.get_portfolio_value(self._all_candles, bar_index)
+        snapshot = self.get_portfolio_value(self._all_candles, bar_ref)
         total_value = _safe_float(snapshot.get("total_value"), 0.0)
         if total_value <= 0:
             return actions
@@ -349,11 +363,11 @@ class PortfolioBacktester:
             )
         return actions
 
-    def execute_dca(self, all_candles, bar_index, regime) -> list:
+    def execute_dca(self, all_candles, bar_ref, regime) -> list:
         if regime not in {"bull", "neutral"}:
             return []
 
-        snapshot = self.get_portfolio_value(all_candles, bar_index)
+        snapshot = self.get_portfolio_value(all_candles, bar_ref)
         total_value = _safe_float(snapshot.get("total_value"), 0.0)
         dca_budget = total_value * _safe_float(self.config["dca_amount_pct"], 0.02)
         reserve_floor = total_value * _safe_float(self.config["cash_reserve"], 0.08)
@@ -379,22 +393,24 @@ class PortfolioBacktester:
 
         for product_id, shortfall in underweights:
             alloc = dca_budget * (shortfall / total_shortfall)
-            candles = all_candles.get(product_id) or []
-            if bar_index >= len(candles):
+            candle = (self._candle_by_ts.get(product_id) or {}).get(_safe_int(bar_ref, self._current_ts))
+            if not isinstance(candle, dict):
                 continue
-            price = _safe_float(candles[bar_index].get("close"), 0.0)
+            price = _safe_float(candle.get("close"), 0.0)
             if price <= 0 or alloc <= 1.0:
                 continue
-            res = self.execute_trade(product_id, "buy", alloc, price, "dca", _safe_int(candles[bar_index].get("ts"), 0))
+            res = self.execute_trade(product_id, "buy", alloc, price, "dca", _safe_int(candle.get("ts"), 0))
             if res:
                 self.dca_total_invested += alloc
                 actions.append(res)
         return actions
 
-    def evaluate_satellite_entry(self, product_id, candles, bar_index, regime) -> dict:
+    def evaluate_satellite_entry(self, product_id, candles, bar_ref, regime) -> dict:
         if regime not in set(self.config["satellite_regime_filter"] or ["bull"]):
             return {"signal": None}
-        if bar_index < 50 or bar_index >= len(candles):
+        ts_lookup = _safe_int(bar_ref, self._current_ts)
+        bar_index = (self._index_by_ts.get(product_id) or {}).get(ts_lookup)
+        if bar_index is None or bar_index < 50 or bar_index >= len(candles):
             return {"signal": None}
 
         params = self.config["satellite_params"]
@@ -445,8 +461,10 @@ class PortfolioBacktester:
 
         return {"signal": "buy", "conviction": round(max(0.5, min(1.5, conviction)), 4), "price": close}
 
-    def evaluate_satellite_exit(self, product_id, candles, bar_index) -> dict:
-        if product_id not in self.positions or bar_index >= len(candles):
+    def evaluate_satellite_exit(self, product_id, candles, bar_ref) -> dict:
+        ts_lookup = _safe_int(bar_ref, self._current_ts)
+        bar_index = (self._index_by_ts.get(product_id) or {}).get(ts_lookup)
+        if product_id not in self.positions or bar_index is None or bar_index >= len(candles):
             return {"signal": None}
 
         position = self.positions.get(product_id) or {}
@@ -500,7 +518,8 @@ class PortfolioBacktester:
             pos["qty"] = new_qty
             pos["value"] = new_qty * price
             if product_id not in self.config["core_assets"]:
-                pos["atr_at_entry"] = _safe_float((self._all_candles.get(product_id) or [{}])[self._current_bar].get("atr"), 0.0)
+                entry_candle = (self._candle_by_ts.get(product_id) or {}).get(self._current_ts, {})
+                pos["atr_at_entry"] = _safe_float((entry_candle or {}).get("atr"), 0.0)
                 pos["max_price_since_entry"] = price
             record = {"ts": ts, "product_id": product_id, "action": "BUY", "qty": qty, "price": price, "value": value_usd, "fee": fee, "reason": reason}
         else:
@@ -526,6 +545,15 @@ class PortfolioBacktester:
     def run(self) -> dict:
         all_candles = self.fetch_all_candles()
         self._all_candles = self.compute_all_indicators(all_candles)
+        self._candle_by_ts = {}
+        self._index_by_ts = {}
+        for product_id, candles in self._all_candles.items():
+            self._candle_by_ts[product_id] = {row["ts"]: row for row in candles if _safe_int(row.get("ts"), 0) > 0}
+            self._index_by_ts[product_id] = {
+                _safe_int(row.get("ts"), 0): idx
+                for idx, row in enumerate(candles)
+                if _safe_int(row.get("ts"), 0) > 0
+            }
 
         btc_candles = self._all_candles.get("BTC-USD") or []
         if not btc_candles:
@@ -537,16 +565,16 @@ class PortfolioBacktester:
                 "final_positions": {},
             }
 
-        min_length = min((len(candles) for candles in self._all_candles.values() if candles), default=0)
+        self._timeline = [_safe_int(row.get("ts"), 0) for row in btc_candles if _safe_int(row.get("ts"), 0) > 0]
         regime_counts = {"bull": 0, "neutral": 0, "caution": 0, "risk_off": 0}
 
-        for bar_index in range(min_length):
+        for bar_index, ts in enumerate(self._timeline):
             self._current_bar = bar_index
-            ts = _safe_int(btc_candles[bar_index].get("ts"), 0)
-            regime = self.estimate_regime(btc_candles, bar_index)
+            self._current_ts = ts
+            regime = self.estimate_regime(btc_candles, ts)
             regime_counts[regime] = regime_counts.get(regime, 0) + 1
 
-            snapshot = self.get_portfolio_value(self._all_candles, bar_index)
+            snapshot = self.get_portfolio_value(self._all_candles, ts)
             self.equity_curve.append(
                 {
                     "ts": ts,
@@ -560,14 +588,14 @@ class PortfolioBacktester:
             )
 
             if bar_index > 0 and bar_index % max(1, _safe_int(self.config["rebalance_frequency_bars"], 42)) == 0:
-                rebalance_actions = self.check_rebalance(snapshot.get("weights") or {}, bar_index)
+                rebalance_actions = self.check_rebalance(snapshot.get("weights") or {}, ts)
                 executed = []
                 for action in rebalance_actions:
                     product_id = action["product_id"]
-                    candles = self._all_candles.get(product_id) or []
-                    if bar_index >= len(candles):
+                    candle = (self._candle_by_ts.get(product_id) or {}).get(ts)
+                    if not isinstance(candle, dict):
                         continue
-                    price = _safe_float(candles[bar_index].get("close"), 0.0)
+                    price = _safe_float(candle.get("close"), 0.0)
                     if price <= 0:
                         continue
                     amount = abs(_safe_float(action.get("adjustment"), 0.0))
@@ -585,12 +613,12 @@ class PortfolioBacktester:
                     self.rebalance_log.append({"ts": ts, "actions": executed})
 
             if bar_index > 0 and bar_index % max(1, _safe_int(self.config["dca_frequency_bars"], 42)) == 0:
-                self.execute_dca(self._all_candles, bar_index, regime)
+                self.execute_dca(self._all_candles, ts, regime)
 
             held_satellites = [pid for pid in self.positions if pid not in self.config["core_assets"]]
             for product_id in list(held_satellites):
                 candles = self._all_candles.get(product_id) or []
-                exit_sig = self.evaluate_satellite_exit(product_id, candles, bar_index)
+                exit_sig = self.evaluate_satellite_exit(product_id, candles, ts)
                 if exit_sig.get("signal") == "exit":
                     current_value = _safe_float((self.positions.get(product_id) or {}).get("value"), 0.0)
                     if current_value > 1.0:
@@ -602,7 +630,7 @@ class PortfolioBacktester:
                     if product_id in self.positions:
                         continue
                     candles = self._all_candles.get(product_id) or []
-                    entry_sig = self.evaluate_satellite_entry(product_id, candles, bar_index, regime)
+                    entry_sig = self.evaluate_satellite_entry(product_id, candles, ts, regime)
                     if entry_sig.get("signal") == "buy":
                         candidates.append((product_id, entry_sig))
 
@@ -610,7 +638,7 @@ class PortfolioBacktester:
                 for product_id, entry_sig in candidates:
                     if len([pid for pid in self.positions if pid not in self.config["core_assets"]]) >= _safe_int(self.config["max_active_satellites"], 4):
                         break
-                    snapshot = self.get_portfolio_value(self._all_candles, bar_index)
+                    snapshot = self.get_portfolio_value(self._all_candles, ts)
                     total_value = _safe_float(snapshot.get("total_value"), 0.0)
                     reserve_floor = total_value * _safe_float(self.config["cash_reserve"], 0.08)
                     available_cash = max(0.0, self.cash - reserve_floor)
@@ -624,7 +652,7 @@ class PortfolioBacktester:
                         continue
                     self.execute_trade(product_id, "buy", alloc, _safe_float(entry_sig.get("price"), 0.0), "satellite_entry", ts)
 
-        final_snapshot = self.get_portfolio_value(self._all_candles, min_length - 1 if min_length > 0 else 0)
+        final_snapshot = self.get_portfolio_value(self._all_candles, self._timeline[-1] if self._timeline else 0)
         summary = self.get_summary(
             {
                 "equity_curve": self.equity_curve,

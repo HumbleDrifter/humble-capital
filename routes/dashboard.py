@@ -77,6 +77,12 @@ def backtest_page():
     return render_template("app/backtest.html", **_page_context("Backtesting"))
 
 
+@dashboard_bp.route("/charts", methods=["GET"])
+@require_dashboard_auth
+def charts_page():
+    return render_template("app/charts.html", **_page_context("Charts"))
+
+
 @dashboard_bp.route("/meme-rotation", methods=["GET"])
 @require_dashboard_auth
 def meme_rotation():

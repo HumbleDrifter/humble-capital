@@ -9496,3 +9496,204 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   CHARTS — HUMBLE CAPITAL (chart-*)
+========================================================= */
+
+.chart-shell {
+  display: grid;
+  gap: 24px;
+  color: var(--hc-text);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  padding-top: 8px;
+}
+
+.chart-header,
+.chart-controls,
+.chart-layout {
+  animation: hcFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.chart-header-copy {
+  display: grid;
+  gap: 10px;
+  max-width: 760px;
+}
+
+.chart-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hc-teal);
+}
+
+.chart-title {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--hc-text);
+}
+
+.chart-subtitle,
+.chart-section-subtitle {
+  margin: 0;
+  color: var(--hc-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.chart-controls-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(220px, 1fr) minmax(220px, 0.9fr);
+  gap: 12px;
+}
+
+.chart-form-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+}
+
+.chart-run-card {
+  justify-content: space-between;
+}
+
+.chart-run-btn {
+  width: 100%;
+}
+
+.chart-timeframe-toggle {
+  justify-content: flex-start;
+}
+
+.chart-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.7fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.chart-main {
+  display: grid;
+  gap: 12px;
+}
+
+.chart-sidebar {
+  display: grid;
+  gap: 12px;
+}
+
+.chart-panel,
+.chart-side-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02));
+}
+
+.chart-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.chart-section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--hc-text);
+}
+
+.chart-canvas-wrap {
+  width: 100%;
+  min-height: 420px;
+}
+
+.chart-canvas-wrap-small {
+  min-height: 160px;
+}
+
+.chart-canvas {
+  width: 100%;
+  height: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0a1018;
+}
+
+.chart-canvas-small {
+  height: 160px;
+}
+
+.chart-metric-list {
+  display: grid;
+  gap: 10px;
+}
+
+.chart-metric-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--hc-text-secondary);
+}
+
+.chart-metric-row strong {
+  color: var(--hc-text);
+  font-weight: 700;
+}
+
+.chart-signal-feed {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+}
+
+.chart-signal-card {
+  border-radius: 14px;
+}
+
+.chart-observe,
+.chart-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
+}
+
+.chart-visible,
+.chart-visible .chart-reveal {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 1080px) {
+  .chart-controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .chart-shell {
+    gap: 20px;
+  }
+
+  .chart-canvas-wrap {
+    min-height: 340px;
+  }
+
+  .chart-canvas {
+    height: 340px;
+  }
+
+  .chart-canvas-small {
+    height: 150px;
+  }
+}

@@ -1,0 +1,452 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="chart-shell">
+  <section class="chart-header chart-observe">
+    <div class="chart-header-copy chart-reveal">
+      <div class="chart-kicker">Signal Charts</div>
+      <h2 class="chart-title">Candles, indicator overlays, and live scanner signals in one TradingView-free workspace.</h2>
+      <p class="chart-subtitle" id="chartMeta">Loading chart workspace...</p>
+    </div>
+  </section>
+
+  <section class="chart-controls chart-observe">
+    <div class="hc-chart-section chart-reveal">
+      <div class="chart-controls-grid">
+        <div class="form-card chart-form-card">
+          <label for="chartProduct">Product</label>
+          <input id="chartProductSearch" class="form-input" type="text" placeholder="Filter products">
+          <select id="chartProduct" class="select"></select>
+        </div>
+        <div class="form-card chart-form-card">
+          <label>Timeframe</label>
+          <div class="hc-chart-range-group chart-timeframe-toggle">
+            <button class="hc-range-btn active" data-timeframe="1h" type="button">1H</button>
+            <button class="hc-range-btn" data-timeframe="4h" type="button">4H</button>
+          </div>
+          <div class="field-help">Switches candles and scanner context.</div>
+        </div>
+        <div class="form-card chart-form-card chart-run-card">
+          <label>Scanner</label>
+          <button class="btn btn-primary chart-run-btn" id="chartScanBtn" type="button">Scan Now</button>
+          <div class="field-help" id="chartStatus">Ready.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="chart-layout chart-observe">
+    <div class="chart-main chart-reveal">
+      <div class="hc-chart-section chart-panel">
+        <div class="chart-section-head">
+          <div>
+            <h2 class="chart-section-title">Price & EMAs</h2>
+            <p class="chart-section-subtitle" id="chartHeadMeta">Waiting for candle data...</p>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <div id="chartMain" class="chart-canvas"></div>
+        </div>
+      </div>
+
+      <div class="hc-chart-section chart-panel">
+        <div class="chart-section-head">
+          <div>
+            <h2 class="chart-section-title">RSI</h2>
+            <p class="chart-section-subtitle">Momentum oscillator</p>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap chart-canvas-wrap-small">
+          <div id="chartRsi" class="chart-canvas chart-canvas-small"></div>
+        </div>
+      </div>
+
+      <div class="hc-chart-section chart-panel">
+        <div class="chart-section-head">
+          <div>
+            <h2 class="chart-section-title">MACD Histogram</h2>
+            <p class="chart-section-subtitle">Momentum acceleration</p>
+          </div>
+        </div>
+        <div class="chart-canvas-wrap chart-canvas-wrap-small">
+          <div id="chartMacd" class="chart-canvas chart-canvas-small"></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="chart-sidebar chart-reveal">
+      <div class="hc-context-card chart-side-card">
+        <div class="hc-context-label">Scanner State</div>
+        <div class="hc-context-value" id="chartScannerState">Unknown</div>
+        <div class="hc-context-detail" id="chartScannerStateDetail">Waiting for scanner state...</div>
+      </div>
+
+      <div class="hc-context-card chart-side-card">
+        <div class="hc-context-label">Latest Indicators</div>
+        <div class="chart-metric-list">
+          <div class="chart-metric-row"><span>RSI</span><strong id="chartRsiValue">—</strong></div>
+          <div class="chart-metric-row"><span>MACD Hist</span><strong id="chartMacdValue">—</strong></div>
+          <div class="chart-metric-row"><span>Extension</span><strong id="chartExtValue">—</strong></div>
+          <div class="chart-metric-row"><span>EMA Stack</span><strong id="chartTrendValue">—</strong></div>
+        </div>
+      </div>
+
+      <div class="hc-context-card chart-side-card">
+        <div class="hc-context-label">Recent Signals</div>
+        <div class="chart-signal-feed" id="chartSignalFeed">
+          <div class="hc-empty-card">No signals loaded yet.</div>
+        </div>
+      </div>
+    </aside>
+  </section>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+  (function () {
+    const API_SECRET = {{ api_secret|tojson }};
+    const FALLBACK_PRODUCTS = [
+      "BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD",
+      "DOGE-USD", "SHIB-USD", "PEPE-USD", "BONK-USD",
+      "SUI-USD", "RENDER-USD", "JASMY-USD", "HYPE-USD",
+      "TAO-USD", "ICP-USD", "WIF-USD", "PENGU-USD"
+    ];
+    const REFRESH_MS = 60000;
+    let currentProduct = "BTC-USD";
+    let currentTimeframe = "1h";
+    let refreshTimer = null;
+    let revealObserver = null;
+    let mainChart = null;
+    let rsiChart = null;
+    let macdChart = null;
+    let candleSeries = null;
+    let emaFastSeries = null;
+    let emaMidSeries = null;
+    let emaSlowSeries = null;
+    let emaTrendSeries = null;
+    let rsiSeries = null;
+    let macdSeries = null;
+
+    function authUrl(path) {
+      if (!API_SECRET) return path;
+      const sep = path.includes("?") ? "&" : "?";
+      return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
+    }
+
+    async function fetchJson(path, options) {
+      const response = await fetch(authUrl(path), Object.assign({ credentials: "same-origin" }, options || {}));
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+      return data;
+    }
+
+    function fmtNum(value, digits = 2) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return "—";
+      return numeric.toFixed(digits);
+    }
+
+    function fmtDateTime(ts) {
+      const numeric = Number(ts || 0);
+      if (!numeric) return "—";
+      return new Date(numeric * 1000).toLocaleString();
+    }
+
+    function setStatus(text) {
+      const node = document.getElementById("chartStatus");
+      if (node) node.textContent = text;
+    }
+
+    function createBaseChart(container, height) {
+      return LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: height,
+        layout: {
+          background: { color: "#0a1018" },
+          textColor: "rgba(236,243,255,0.82)"
+        },
+        grid: {
+          vertLines: { color: "rgba(255,255,255,0.05)" },
+          horzLines: { color: "rgba(255,255,255,0.05)" }
+        },
+        rightPriceScale: {
+          borderColor: "rgba(255,255,255,0.08)"
+        },
+        timeScale: {
+          borderColor: "rgba(255,255,255,0.08)",
+          timeVisible: true,
+          secondsVisible: false
+        },
+        crosshair: {
+          vertLine: { color: "rgba(255,255,255,0.14)" },
+          horzLine: { color: "rgba(255,255,255,0.14)" }
+        }
+      });
+    }
+
+    function ensureCharts() {
+      if (mainChart) return;
+      const mainNode = document.getElementById("chartMain");
+      const rsiNode = document.getElementById("chartRsi");
+      const macdNode = document.getElementById("chartMacd");
+
+      mainChart = createBaseChart(mainNode, 420);
+      rsiChart = createBaseChart(rsiNode, 160);
+      macdChart = createBaseChart(macdNode, 160);
+
+      candleSeries = mainChart.addCandlestickSeries({
+        upColor: "#38bdf8",
+        downColor: "#fb7185",
+        borderUpColor: "#38bdf8",
+        borderDownColor: "#fb7185",
+        wickUpColor: "#38bdf8",
+        wickDownColor: "#fb7185"
+      });
+      emaFastSeries = mainChart.addLineSeries({ color: "#60a5fa", lineWidth: 2 });
+      emaMidSeries = mainChart.addLineSeries({ color: "#38bdf8", lineWidth: 2 });
+      emaSlowSeries = mainChart.addLineSeries({ color: "rgba(255,255,255,0.82)", lineWidth: 2 });
+      emaTrendSeries = mainChart.addLineSeries({ color: "#fb7185", lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed });
+
+      rsiSeries = rsiChart.addLineSeries({ color: "#38bdf8", lineWidth: 2 });
+      macdSeries = macdChart.addHistogramSeries({
+        color: "#38bdf8",
+        base: 0,
+        priceFormat: { type: "price", precision: 4, minMove: 0.0001 }
+      });
+
+      window.addEventListener("resize", () => {
+        mainChart.applyOptions({ width: mainNode.clientWidth });
+        rsiChart.applyOptions({ width: rsiNode.clientWidth });
+        macdChart.applyOptions({ width: macdNode.clientWidth });
+      });
+    }
+
+    function normalizeCandle(row) {
+      return {
+        time: Number(row.ts || 0),
+        open: Number(row.open || 0),
+        high: Number(row.high || 0),
+        low: Number(row.low || 0),
+        close: Number(row.close || 0)
+      };
+    }
+
+    function linePoints(rows, key) {
+      return rows
+        .filter((row) => row && row[key] != null)
+        .map((row) => ({ time: Number(row.ts || 0), value: Number(row[key]) }));
+    }
+
+    function renderIndicators(rows) {
+      const last = rows.length ? rows[rows.length - 1] : null;
+      const rsiValue = Number(last && last.rsi != null ? last.rsi : NaN);
+      const macdValue = Number(last && last.macd_hist != null ? last.macd_hist : NaN);
+      const emaMid = Number(last && last.ema_mid != null ? last.ema_mid : NaN);
+      const close = Number(last && last.close != null ? last.close : NaN);
+      const extension = Number.isFinite(emaMid) && emaMid > 0 && Number.isFinite(close)
+        ? ((close - emaMid) / emaMid) * 100
+        : NaN;
+      const trendState = last && Number(last.ema_fast || 0) > Number(last.ema_mid || 0) && Number(last.ema_mid || 0) > Number(last.ema_slow || 0)
+        ? "Aligned"
+        : "Mixed";
+
+      document.getElementById("chartRsiValue").textContent = fmtNum(rsiValue);
+      document.getElementById("chartMacdValue").textContent = fmtNum(macdValue, 4);
+      document.getElementById("chartExtValue").textContent = Number.isFinite(extension) ? `${fmtNum(extension)}%` : "—";
+      document.getElementById("chartTrendValue").textContent = trendState;
+    }
+
+    function renderSignals(signals) {
+      const host = document.getElementById("chartSignalFeed");
+      const rows = Array.isArray(signals) ? signals.slice().sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0)) : [];
+      if (!rows.length) {
+        host.innerHTML = '<div class="hc-empty-card">No recent signals for this product.</div>';
+        return;
+      }
+
+      host.innerHTML = rows.slice(0, 12).map((signal) => {
+        const kind = String(signal.signal || "").toLowerCase();
+        const badgeClass = kind === "buy" ? "buy" : (kind === "trim" ? "trim" : "exit");
+        return `
+          <article class="hc-trade-card chart-signal-card">
+            <div class="hc-trade-main">
+              <span class="hc-trade-badge ${badgeClass}">${kind.toUpperCase()}</span>
+              <div class="hc-trade-copy">
+                <div class="hc-trade-title">${currentProduct} at ${Number(signal.price || 0).toFixed(4)}</div>
+                <div class="hc-trade-subtitle">${fmtDateTime(signal.ts)} · conviction ${(Number(signal.conviction || 0) * 100).toFixed(0)}%</div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderScannerState(stateMap) {
+      const state = (stateMap || {})[currentProduct] || {};
+      const rawState = Number(state.state);
+      const label = rawState === 1 ? "Positioned" : (rawState === 2 ? "Trimmed" : "Flat");
+      document.getElementById("chartScannerState").textContent = label;
+      document.getElementById("chartScannerStateDetail").textContent =
+        `Exit cooldown ${Number(state.bars_since_exit ?? 999)} bars · trim cooldown ${Number(state.bars_since_trim ?? 999)} bars`;
+    }
+
+    function markersFromSignals(signals) {
+      return (signals || []).map((signal) => {
+        const kind = String(signal.signal || "").toLowerCase();
+        if (kind === "buy") {
+          return {
+            time: Number(signal.ts || 0),
+            position: "belowBar",
+            color: "#34d399",
+            shape: "arrowUp",
+            text: "BUY"
+          };
+        }
+        if (kind === "trim") {
+          return {
+            time: Number(signal.ts || 0),
+            position: "aboveBar",
+            color: "#fbbf24",
+            shape: "arrowDown",
+            text: "TRIM"
+          };
+        }
+        return {
+          time: Number(signal.ts || 0),
+          position: "aboveBar",
+          color: "#fb7185",
+          shape: "arrowDown",
+          text: "EXIT"
+        };
+      });
+    }
+
+    async function loadUniverse() {
+      const select = document.getElementById("chartProduct");
+      try {
+        const data = await fetchJson("/api/portfolio");
+        const config = (data.snapshot || {}).config || {};
+        const products = Array.from(new Set([
+          ...Object.keys(config.core_assets || {}),
+          ...(config.satellite_allowed || []),
+          ...FALLBACK_PRODUCTS
+        ])).sort();
+        select.innerHTML = products.map((product) => `<option value="${product}">${product}</option>`).join("");
+        select.value = currentProduct;
+      } catch (error) {
+        select.innerHTML = FALLBACK_PRODUCTS.map((product) => `<option value="${product}">${product}</option>`).join("");
+        select.value = currentProduct;
+      }
+    }
+
+    async function loadChartData() {
+      ensureCharts();
+      setStatus("Loading candles...");
+      try {
+        const [candleData, signalData, scannerState] = await Promise.all([
+          fetchJson(`/api/candles?product_id=${encodeURIComponent(currentProduct)}&timeframe=${encodeURIComponent(currentTimeframe)}&limit=250`),
+          fetchJson(`/api/signals/chart?product_id=${encodeURIComponent(currentProduct)}&timeframe=${encodeURIComponent(currentTimeframe)}`),
+          fetchJson("/api/signals/state")
+        ]);
+
+        const rows = Array.isArray(candleData.candles) ? candleData.candles : [];
+        candleSeries.setData(rows.map(normalizeCandle));
+        emaFastSeries.setData(linePoints(rows, "ema_fast"));
+        emaMidSeries.setData(linePoints(rows, "ema_mid"));
+        emaSlowSeries.setData(linePoints(rows, "ema_slow"));
+        emaTrendSeries.setData(linePoints(rows, "ema_trend"));
+        rsiSeries.setData(linePoints(rows, "rsi"));
+        macdSeries.setData(
+          rows
+            .filter((row) => row && row.macd_hist != null)
+            .map((row) => ({
+              time: Number(row.ts || 0),
+              value: Number(row.macd_hist || 0),
+              color: Number(row.macd_hist || 0) >= 0 ? "rgba(56,189,248,0.85)" : "rgba(251,113,133,0.85)"
+            }))
+        );
+        candleSeries.setMarkers(markersFromSignals(signalData.signals || []));
+
+        renderSignals(signalData.signals || []);
+        renderScannerState(scannerState.states || {});
+        renderIndicators(rows);
+
+        document.getElementById("chartHeadMeta").textContent = `${currentProduct} · ${currentTimeframe.toUpperCase()} · ${rows.length} candles loaded`;
+        document.getElementById("chartMeta").textContent = `Chart workspace synced for ${currentProduct} on ${currentTimeframe.toUpperCase()}.`;
+        setStatus("Updated.");
+      } catch (error) {
+        setStatus(`Load failed: ${error.message}`);
+      }
+    }
+
+    async function runScannerNow() {
+      setStatus("Running scanner sweep...");
+      try {
+        const result = await fetchJson("/api/scanner/run", { method: "POST" });
+        setStatus(`Scanner complete · core ${Number((result.core_signals || []).length)} · satellite ${Number((result.satellite_signals || []).length)}`);
+        loadChartData();
+      } catch (error) {
+        setStatus(`Scanner failed: ${error.message}`);
+      }
+    }
+
+    function observeSections() {
+      if (!revealObserver) {
+        revealObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("chart-visible");
+          });
+        }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+      }
+
+      document.querySelectorAll(".chart-observe").forEach((node) => {
+        if (node.dataset.chartObserved === "true") return;
+        node.dataset.chartObserved = "true";
+        revealObserver.observe(node);
+      });
+    }
+
+    function bindControls() {
+      document.getElementById("chartProduct").addEventListener("change", (event) => {
+        currentProduct = event.target.value || "BTC-USD";
+        loadChartData();
+      });
+
+      document.getElementById("chartProductSearch").addEventListener("input", (event) => {
+        const term = String(event.target.value || "").toUpperCase().trim();
+        const select = document.getElementById("chartProduct");
+        Array.from(select.options).forEach((option) => {
+          option.hidden = term && !option.value.includes(term);
+        });
+      });
+
+      document.querySelectorAll("[data-timeframe]").forEach((button) => {
+        button.addEventListener("click", () => {
+          currentTimeframe = button.dataset.timeframe || "1h";
+          document.querySelectorAll("[data-timeframe]").forEach((node) => node.classList.toggle("active", node === button));
+          loadChartData();
+        });
+      });
+
+      document.getElementById("chartScanBtn").addEventListener("click", runScannerNow);
+    }
+
+    function startAutoRefresh() {
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = setInterval(loadChartData, REFRESH_MS);
+    }
+
+    loadUniverse().then(loadChartData);
+    bindControls();
+    observeSections();
+    startAutoRefresh();
+  })();
+</script>
+{% endblock %}

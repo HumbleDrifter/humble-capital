@@ -44,8 +44,8 @@ PORTFOLIO_HISTORY_MIN_INTERVAL_SEC = float(os.getenv("PORTFOLIO_HISTORY_MIN_INTE
 PORTFOLIO_HISTORY_MIN_CHANGE_USD = float(os.getenv("PORTFOLIO_HISTORY_MIN_CHANGE_USD", "1.0"))
 _ROTATED_WEIGHTS_CACHE = {"ts": 0, "value": {}}
 _ROTATED_WEIGHTS_TTL_SEC = 900  # 15 minutes
-_WEBULL_VALUE_CACHE = {"ts": 0.0, "value": 0.0, "connected": False, "error": None}
-_WEBULL_VALUE_TTL_SEC = 300
+_WEBULL_DATA_CACHE = {"ts": 0.0, "data": None}
+_WEBULL_DATA_TTL_SEC = 300
 
 _PORTFOLIO_CACHE_LOCK = threading.Lock()
 _PORTFOLIO_CACHE = {
@@ -318,44 +318,57 @@ def _webull_enabled():
     return str(os.getenv("WEBULL_ENABLED", "") or "").strip().lower() in {"true", "1", "yes", "on"}
 
 
-def _get_webull_account_value():
+def _get_webull_data():
     if not _webull_enabled():
-        return {"value": 0.0, "connected": False}
-
-    now = time.time()
-    cached_at = float(_WEBULL_VALUE_CACHE.get("ts", 0.0) or 0.0)
-    if cached_at > 0 and (now - cached_at) < _WEBULL_VALUE_TTL_SEC:
         return {
-            "value": safe_float(_WEBULL_VALUE_CACHE.get("value")),
-            "connected": bool(_WEBULL_VALUE_CACHE.get("connected", False)),
+            "value": 0.0,
+            "connected": False,
+            "positions": [],
+            "stocks": [],
+            "options": [],
+            "error": None,
         }
 
-    value = 0.0
-    connected = False
-    error = None
+    now = time.time()
+    cached_at = float(_WEBULL_DATA_CACHE.get("ts", 0.0) or 0.0)
+    cached_data = _WEBULL_DATA_CACHE.get("data")
+    if cached_at > 0 and (now - cached_at) < _WEBULL_DATA_TTL_SEC and isinstance(cached_data, dict):
+        return dict(cached_data)
+
+    result = {
+        "value": 0.0,
+        "connected": False,
+        "positions": [],
+        "stocks": [],
+        "options": [],
+        "error": None,
+    }
     try:
         from brokers.webull_adapter import WebullAdapter
 
         wb = WebullAdapter()
         wb_info = wb.get_account_info() if hasattr(wb, "get_account_info") else {}
+        wb_positions = wb.get_positions() if hasattr(wb, "get_positions") else []
+        if isinstance(wb_positions, list):
+            result["positions"] = [row for row in wb_positions if isinstance(row, dict)]
+            result["stocks"] = [row for row in result["positions"] if str(row.get("asset_type") or "").lower() == "stock"]
+            result["options"] = [row for row in result["positions"] if str(row.get("asset_type") or "").lower() == "option"]
         if isinstance(wb_info, dict) and wb_info.get("ok"):
-            value = safe_float(wb_info.get("balance", 0.0))
-            connected = True
+            result["value"] = safe_float(wb_info.get("balance", 0.0))
+            result["connected"] = True
         else:
-            error = (wb_info or {}).get("error") if isinstance(wb_info, dict) else "account_unavailable"
+            result["error"] = (wb_info or {}).get("error") if isinstance(wb_info, dict) else "account_unavailable"
     except Exception as exc:
-        error = str(exc)
+        result["error"] = str(exc)
 
-    _WEBULL_VALUE_CACHE.update({
+    _WEBULL_DATA_CACHE.update({
         "ts": now,
-        "value": value,
-        "connected": connected,
-        "error": error,
+        "data": dict(result),
     })
-    if error:
-        _log_portfolio(f"webull account value lookup unavailable: {error}")
+    if result.get("error"):
+        _log_portfolio(f"webull data lookup unavailable: {result['error']}")
 
-    return {"value": value, "connected": connected}
+    return result
 
 
 def _estimate_avg_entry_price(product_id, position_row, current_price):
@@ -871,21 +884,11 @@ def _build_portfolio_snapshot():
     usd_cash = float(cash_breakdown["TOTAL_CASH_EQUIV_USD"])
     asset_total = sum(v["value_total_usd"] for v in positions.values())
     coinbase_total = asset_total + usd_cash
-    webull_info = _get_webull_account_value()
+    webull_info = _get_webull_data()
     webull_value = float(webull_info.get("value", 0.0) or 0.0)
-    webull_stocks = []
-    webull_options = []
-    webull_positions = []
-    if _webull_enabled():
-        try:
-            from brokers.webull_adapter import WebullAdapter
-            wb = WebullAdapter()
-            if wb.connect().get("ok"):
-                webull_positions = wb.get_positions()
-                webull_stocks = [p for p in webull_positions if str(p.get("asset_type","")).lower() == "stock"]
-                webull_options = [p for p in webull_positions if str(p.get("asset_type","")).lower() == "option"]
-        except Exception as exc:
-            _log_portfolio(f"webull positions fetch failed: {exc}")
+    webull_positions = list(webull_info.get("positions") or [])
+    webull_stocks = list(webull_info.get("stocks") or [])
+    webull_options = list(webull_info.get("options") or [])
     total_value = coinbase_total + webull_value
     if total_value <= 0:
         total_value = 1e-9
@@ -904,8 +907,18 @@ def _build_portfolio_snapshot():
         "portfolio_drawdown": 0.0,
         "active_satellite_buy_universe": [],
         "brokers": {
-            "coinbase": {"value": coinbase_total, "connected": True},
-            "webull": {"value": webull_value, "connected": bool(webull_info.get("connected", False)), "stocks": webull_stocks, "options": webull_options},
+            "coinbase": {
+                "value": coinbase_total,
+                "positions": len(positions),
+                "connected": True,
+            },
+            "webull": {
+                "value": webull_value,
+                "positions": len(webull_positions),
+                "stocks": webull_stocks,
+                "options": webull_options,
+                "connected": bool(webull_info.get("connected", False)),
+            },
         },
     }
 

@@ -156,9 +156,47 @@
     background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 100%);
   }
   .hc-options-empty {
-    color: rgba(255,255,255,0.58);
-    font-size: 13px;
-  }
+      color: rgba(255,255,255,0.58);
+      font-size: 13px;
+    }
+    .broker-breakdown { margin: 12px 0 24px; }
+    .broker-bar {
+      display: flex;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.04);
+      margin-bottom: 8px;
+    }
+    .broker-segment.coinbase { background: #38bdf8; }
+    .broker-segment.webull { background: #818cf8; }
+    .broker-legend { display: flex; gap: 24px; flex-wrap: wrap; }
+    .broker-legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(236,243,255,0.6); }
+    .broker-legend-value { font-weight: 600; color: #ecf3ff; }
+    .broker-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .broker-dot.coinbase { background: #38bdf8; }
+    .broker-dot.webull { background: #818cf8; }
+    .holdings-section { margin-bottom: 24px; }
+    .holdings-group-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #ecf3ff;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .holdings-group-value { margin-left: auto; font-variant-numeric: tabular-nums; }
+    .holdings-group-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(56,189,248,0.1);
+      color: rgba(56,189,248,0.8);
+      border: 1px solid rgba(56,189,248,0.2);
+    }
   @media (max-width: 980px) {
     .hc-options-grid { grid-template-columns: 1fr; }
     .hc-options-item { grid-template-columns: 1fr; }
@@ -168,18 +206,36 @@
 </style>
 
 <div class="hc-dashboard-shell">
-  <div class="hc-hero">
-    <div class="hc-hero-label">Total Portfolio Value</div>
-    <h1 class="hc-hero-value" id="heroPortfolioValue">$0.00</h1>
+    <div class="hc-hero">
+      <div class="hc-hero-label">Total Portfolio Value</div>
+      <h1 class="hc-hero-value" id="heroPortfolioValue">$0.00</h1>
     <div class="hc-hero-pnl" id="heroDailyPnl">
       <span class="hc-hero-pnl-value">+$0.00</span>
       <span class="hc-hero-pnl-pct">(+0.00%)</span>
       <span class="hc-hero-pnl-period">today</span>
     </div>
-    <div class="hc-hero-meta" id="heroMeta">
-      All-time: <span id="heroTotalPnl">$0.00</span>
+      <div class="hc-hero-meta" id="heroMeta">
+        All-time: <span id="heroTotalPnl">$0.00</span>
+      </div>
+      <div class="broker-breakdown" id="hcBrokerBreakdown">
+        <div class="broker-bar">
+          <div class="broker-segment coinbase" id="hcBrokerCoinbaseBar" style="width:100%"></div>
+          <div class="broker-segment webull" id="hcBrokerWebullBar" style="width:0%"></div>
+        </div>
+        <div class="broker-legend">
+          <div class="broker-legend-item">
+            <span class="broker-dot coinbase"></span>
+            <span>Coinbase</span>
+            <span class="broker-legend-value" id="hcBrokerCoinbaseValue">$0.00 (0.0%)</span>
+          </div>
+          <div class="broker-legend-item">
+            <span class="broker-dot webull"></span>
+            <span>Webull</span>
+            <span class="broker-legend-value" id="hcBrokerWebullValue">$0.00 (0.0%)</span>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
 
   <div class="hc-chart-section">
     <div class="hc-chart-header">

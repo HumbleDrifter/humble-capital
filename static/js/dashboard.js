@@ -198,6 +198,89 @@
         <text x="${width - 54}" y="${height - 12}" fill="rgba(255,255,255,0.4)" font-size="12" font-family="DM Sans, system-ui, sans-serif">Now</text>
       </svg>
     `;
+
+    const tooltipHost = container.parentElement || container;
+    tooltipHost.style.position = "relative";
+    const tooltip = document.getElementById("equityTooltip");
+    const svg = container.querySelector("svg");
+    if (!svg || !tooltip) return;
+
+    const ensureCrosshair = (id, tagName) => {
+      let node = svg.querySelector(`#${id}`);
+      if (!node) {
+        node = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+        node.setAttribute("id", id);
+        svg.appendChild(node);
+      }
+      return node;
+    };
+
+    const crosshair = ensureCrosshair("hcEquityCrosshair", "line");
+    crosshair.setAttribute("stroke", "rgba(56,189,248,0.4)");
+    crosshair.setAttribute("stroke-width", "1");
+    crosshair.setAttribute("stroke-dasharray", "4,4");
+    crosshair.style.display = "none";
+
+    const dot = ensureCrosshair("hcEquityDot", "circle");
+    dot.setAttribute("r", "4");
+    dot.setAttribute("fill", "#38bdf8");
+    dot.setAttribute("stroke", "#ecf3ff");
+    dot.setAttribute("stroke-width", "1.5");
+    dot.style.display = "none";
+
+    const formatPointDate = (row) => {
+      const raw = row?.ts ?? row?.timestamp ?? row?.date;
+      if (raw == null) return "Unknown";
+      if (typeof raw === "number" || /^\d+$/.test(String(raw))) {
+        const ts = Number(raw);
+        const millis = ts > 1e12 ? ts : ts * 1000;
+        const date = new Date(millis);
+        return Number.isNaN(date.getTime()) ? String(raw) : date.toLocaleString();
+      }
+      const parsed = new Date(raw);
+      return Number.isNaN(parsed.getTime()) ? String(raw) : parsed.toLocaleString();
+    };
+
+    const showTooltip = (event) => {
+      const rect = svg.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const clampedX = Math.max(leftPad, Math.min(width - rightPad, (localX / rect.width) * width));
+      const ratio = (clampedX - leftPad) / Math.max(chartWidth, 1);
+      const index = Math.max(0, Math.min(points.length - 1, Math.round(ratio * Math.max(points.length - 1, 0))));
+      const point = points[index];
+      const coord = coords[index];
+      const value = Number(point?.equity_usd ?? point?.total_value_usd ?? 0);
+
+      crosshair.setAttribute("x1", coord.x.toFixed(2));
+      crosshair.setAttribute("x2", coord.x.toFixed(2));
+      crosshair.setAttribute("y1", topPad.toFixed(2));
+      crosshair.setAttribute("y2", (height - bottomPad).toFixed(2));
+      crosshair.style.display = "block";
+
+      dot.setAttribute("cx", coord.x.toFixed(2));
+      dot.setAttribute("cy", coord.y.toFixed(2));
+      dot.style.display = "block";
+
+      tooltip.innerHTML = `
+        <div style="font-weight:600; margin-bottom:2px;">${escapeHtml(formatPointDate(point))}</div>
+        <div>${escapeHtml(fmtUsd(value))}</div>
+      `;
+      tooltip.style.display = "block";
+      const tooltipX = Math.min(tooltipHost.clientWidth - 160, Math.max(8, (coord.x / width) * container.clientWidth + 12));
+      const tooltipY = Math.max(8, (coord.y / height) * container.clientHeight - 12);
+      tooltip.style.left = `${tooltipX}px`;
+      tooltip.style.top = `${tooltipY}px`;
+    };
+
+    const hideTooltip = () => {
+      tooltip.style.display = "none";
+      crosshair.style.display = "none";
+      dot.style.display = "none";
+    };
+
+    svg.onmousemove = showTooltip;
+    svg.onmouseleave = hideTooltip;
+    svg.onmouseenter = showTooltip;
   }
 
   function setRangeButtons(activeRange) {
@@ -270,14 +353,62 @@
     return known[symbol] || symbol;
   }
 
+  function buildHoldingCard(title, subtitle, value, pnlDisplay, pnlClass, href, badgeClass = "satellite") {
+    return `
+      <a class="holding-card-link" href="${escapeHtml(href)}">
+        <div class="hc-pos-card">
+          <div class="hc-pos-icon ${badgeClass}">${escapeHtml(String(title || "").slice(0, 2).toUpperCase())}</div>
+          <div class="hc-pos-info">
+            <div class="hc-pos-symbol">${escapeHtml(title || "Position")}</div>
+            <div class="hc-pos-name">${escapeHtml(subtitle || "")}</div>
+          </div>
+          <div class="hc-pos-right">
+            <div class="hc-pos-value">${escapeHtml(fmtUsd(value || 0))}</div>
+            <div class="hc-pos-change ${pnlClass || ""}">${escapeHtml(pnlDisplay || "—")}</div>
+          </div>
+        </div>
+      </a>
+    `;
+  }
+
+  function renderHoldingsSection(title, totalValue, broker, cardsHtml) {
+    return `
+      <div class="holdings-section">
+        <h3 class="holdings-group-title">
+          <span>${escapeHtml(title)}</span>
+          <span class="holdings-group-value">${escapeHtml(fmtUsd(totalValue || 0))}</span>
+          <span class="holdings-group-badge">${escapeHtml(broker)}</span>
+        </h3>
+        <div class="hc-pos-grid">${cardsHtml || `<div class="hc-empty-card">No ${escapeHtml(title.toLowerCase())} positions.</div>`}</div>
+      </div>
+    `;
+  }
+
+  function updateBrokerBreakdown(snapshot) {
+    const totalValue = Number(snapshot?.total_value_usd || 0);
+    const coinbaseValue = Number(snapshot?.brokers?.coinbase?.value || snapshot?.coinbase_value_usd || 0);
+    const webullValue = Number(snapshot?.brokers?.webull?.value || snapshot?.webull_value_usd || 0);
+    const coinbasePct = totalValue > 0 ? (coinbaseValue / totalValue) * 100 : 0;
+    const webullPct = totalValue > 0 ? (webullValue / totalValue) * 100 : 0;
+
+    const coinbaseBar = document.getElementById("hcBrokerCoinbaseBar");
+    const webullBar = document.getElementById("hcBrokerWebullBar");
+    const coinbaseLabel = document.getElementById("hcBrokerCoinbaseValue");
+    const webullLabel = document.getElementById("hcBrokerWebullValue");
+
+    if (coinbaseBar) coinbaseBar.style.width = `${Math.max(0, coinbasePct)}%`;
+    if (webullBar) webullBar.style.width = `${Math.max(0, webullPct)}%`;
+    if (coinbaseLabel) coinbaseLabel.textContent = `${fmtUsd(coinbaseValue)} (${coinbasePct.toFixed(1)}%)`;
+    if (webullLabel) webullLabel.textContent = `${fmtUsd(webullValue)} (${webullPct.toFixed(1)}%)`;
+  }
+
   function renderHoldings(snapshot) {
     const host = document.getElementById("hcHoldingsGrid");
     if (!host) return;
 
     const positions = snapshot?.positions && typeof snapshot.positions === "object" ? snapshot.positions : {};
-    const coreAssets = new Set(Object.keys(snapshot?.config?.core_assets || {}));
     const dustMinValueUsd = Number(snapshot?.config?.dust_min_value_usd || 2.0);
-    const rows = Object.entries(positions)
+    const cryptoRows = Object.entries(positions)
       .map(([productId, row]) => ({
         productId,
         row: row || {}
@@ -285,14 +416,20 @@
       .filter(({ row }) => Number(row.value_total_usd || 0) >= dustMinValueUsd)
       .sort((a, b) => Number(b.row.value_total_usd || 0) - Number(a.row.value_total_usd || 0));
 
-    if (!rows.length) {
+    const webullStocks = Array.isArray(snapshot?.brokers?.webull?.stocks)
+      ? snapshot.brokers.webull.stocks.filter((row) => Number(row?.market_value || 0) >= dustMinValueUsd)
+      : [];
+    const webullOptions = Array.isArray(snapshot?.brokers?.webull?.options)
+      ? snapshot.brokers.webull.options.filter((row) => Number(row?.market_value || 0) >= dustMinValueUsd)
+      : [];
+
+    if (!cryptoRows.length && !webullStocks.length && !webullOptions.length) {
       host.innerHTML = `<div class="hc-empty-card">No active holdings available.</div>`;
       return;
     }
 
-    host.innerHTML = rows.map(({ productId, row }) => {
+    const cryptoCards = cryptoRows.map(({ productId, row }) => {
       const symbol = String(productId || "").split("-")[0];
-      const isCore = coreAssets.has(productId);
       const qty = Number(row.base_qty_total || 0);
       const entryPrice = Number(row.avg_entry_price || row.cost_basis || 0);
       const currentPrice = Number(row.price_usd || row.current_price || 0);
@@ -314,23 +451,59 @@
         ? `${fmtSignedUsd(unrealizedPnl)} (${fmtSignedPct(changePct, true)})`
         : "P&L unavailable";
       const pnlClass = unrealizedPnl === null ? "" : (positive ? "positive" : "negative");
-      return `
-        <a class="holding-card-link" href="/trading?symbol=${encodeURIComponent(productId)}#charts">
-        <div class="hc-pos-card">
-          <div class="hc-pos-icon ${isCore ? "core" : "satellite"}">${escapeHtml(symbol.slice(0, 2))}</div>
-          <div class="hc-pos-info">
-            <div class="hc-pos-symbol">${escapeHtml(symbol)}</div>
-            <div class="hc-pos-name">${escapeHtml(symbolName(productId))}</div>
-          </div>
-          ${buildSparkline(productId, positive)}
-          <div class="hc-pos-right">
-            <div class="hc-pos-value">${escapeHtml(fmtUsd(row.value_total_usd || 0))}</div>
-            <div class="hc-pos-change ${pnlClass}">${escapeHtml(pnlDisplay)}</div>
-          </div>
-        </div>
-        </a>
-      `;
+      return buildHoldingCard(
+        symbol,
+        `${symbolName(productId)} · ${qty.toFixed(4)}`,
+        Number(row.value_total_usd || 0),
+        pnlDisplay,
+        pnlClass,
+        `/trading?symbol=${encodeURIComponent(productId)}#charts`,
+        "core"
+      );
     }).join("");
+
+    const stockCards = webullStocks.map((row) => {
+      const pnl = Number(row.unrealized_pnl || 0);
+      const pnlPct = Number(row.unrealized_pnl_pct || 0);
+      const pnlDisplay = `${fmtSignedUsd(pnl)} (${fmtSignedPct(pnlPct, true)})`;
+      return buildHoldingCard(
+        row.symbol || "Stock",
+        `${Number(row.qty || 0).toFixed(2)} shares · Last ${fmtUsd(row.last_price || 0)}`,
+        Number(row.market_value || 0),
+        pnlDisplay,
+        pnl >= 0 ? "positive" : "negative",
+        `/trading?symbol=${encodeURIComponent(row.symbol || "")}#charts`,
+        "satellite"
+      );
+    }).join("");
+
+    const optionCards = webullOptions.map((row) => {
+      const pnl = Number(row.unrealized_pnl || 0);
+      const pnlPct = Number(row.unrealized_pnl_pct || 0);
+      const strike = Number(row.strike || 0);
+      const exp = String(row.expiration || "");
+      const expShort = /^\d{4}-\d{2}-\d{2}$/.test(exp) ? exp.slice(5).replace("-", "/") : exp;
+      const type = String(row.option_type || "").toUpperCase() || "OPTION";
+      return buildHoldingCard(
+        row.symbol || "Option",
+        `${strike > 0 ? fmtUsd(strike) : "Strike n/a"} ${type} ${expShort} · ${Number(row.qty || 0)} contracts`,
+        Number(row.market_value || 0),
+        `${fmtSignedUsd(pnl)} (${fmtSignedPct(pnlPct, true)})`,
+        pnl >= 0 ? "positive" : "negative",
+        `/options?symbol=${encodeURIComponent(row.symbol || "")}#charts`,
+        "satellite"
+      );
+    }).join("");
+
+    const cryptoTotal = cryptoRows.reduce((sum, { row }) => sum + Number(row.value_total_usd || 0), 0);
+    const stockTotal = webullStocks.reduce((sum, row) => sum + Number(row.market_value || 0), 0);
+    const optionsTotal = webullOptions.reduce((sum, row) => sum + Number(row.market_value || 0), 0);
+
+    host.innerHTML = [
+      renderHoldingsSection("Crypto", cryptoTotal, "Coinbase", cryptoCards),
+      renderHoldingsSection("Stocks", stockTotal, "Webull", stockCards),
+      renderHoldingsSection("Options", optionsTotal, "Webull", optionCards)
+    ].join("");
   }
 
   function renderActivity(trades) {
@@ -389,8 +562,8 @@
       const totalPnlEl = document.getElementById("heroTotalPnl");
       if (totalPnlEl) totalPnlEl.textContent = fmtSignedUsd(totalPnl);
 
-      const meta = document.getElementById("heroMeta");
-      if (meta) {
+        const meta = document.getElementById("heroMeta");
+        if (meta) {
         const coinbaseValue = Number(snapshot.coinbase_value_usd || Math.max(0, totalValue - Number(snapshot.webull_value_usd || 0)));
         const webullValue = Number(snapshot.webull_value_usd || 0);
         if (webullValue > 0) {
@@ -398,11 +571,12 @@
         } else {
           meta.innerHTML = `All-time: <span id="heroTotalPnl">${escapeHtml(fmtSignedUsd(totalPnl))}</span>`;
         }
-      }
+        }
+        updateBrokerBreakdown(snapshot);
 
-      const cashPct = totalValue > 0 ? cash / totalValue : 0;
-      const corePct = totalValue > 0 ? coreValue / totalValue : 0;
-      const satPct = totalValue > 0 ? satelliteValue / totalValue : 0;
+        const cashPct = totalValue > 0 ? cash / totalValue : 0;
+        const corePct = totalValue > 0 ? coreValue / totalValue : 0;
+        const satPct = totalValue > 0 ? satelliteValue / totalValue : 0;
 
       const risk = inferRiskScore(snapshot);
       const riskScoreEl = document.getElementById("ctxRiskScore");
@@ -414,14 +588,16 @@
       }
       if (riskLabelEl) riskLabelEl.textContent = risk.label;
 
-      const positions = snapshot.positions && typeof snapshot.positions === "object" ? Object.entries(snapshot.positions) : [];
-      const coreAssets = new Set(Object.keys(snapshot.config?.core_assets || {}));
-      const dustMin = Number(snapshot.config?.dust_min_value_usd || 2.0);
-      const meaningfulPositions = positions.filter(([, row]) => Number(row?.value_total_usd || 0) >= dustMin);
-      const coreCount = meaningfulPositions.filter(([productId]) => coreAssets.has(productId)).length;
-      const satelliteCount = meaningfulPositions.filter(([productId]) => !coreAssets.has(productId)).length;
+        const positions = snapshot.positions && typeof snapshot.positions === "object" ? Object.entries(snapshot.positions) : [];
+        const coreAssets = new Set(Object.keys(snapshot.config?.core_assets || {}));
+        const dustMin = Number(snapshot.config?.dust_min_value_usd || 2.0);
+        const meaningfulCrypto = positions.filter(([, row]) => Number(row?.value_total_usd || 0) >= dustMin);
+        const webullStocks = Array.isArray(snapshot?.brokers?.webull?.stocks) ? snapshot.brokers.webull.stocks.filter((row) => Number(row?.market_value || 0) >= dustMin) : [];
+        const webullOptions = Array.isArray(snapshot?.brokers?.webull?.options) ? snapshot.brokers.webull.options.filter((row) => Number(row?.market_value || 0) >= dustMin) : [];
+        const coreCount = meaningfulCrypto.filter(([productId]) => coreAssets.has(productId)).length;
+        const satelliteCount = meaningfulCrypto.filter(([productId]) => !coreAssets.has(productId)).length + webullStocks.length + webullOptions.length;
 
-      document.getElementById("ctxCash").textContent = fmtUsd(cash);
+        document.getElementById("ctxCash").textContent = fmtUsd(cash);
       document.getElementById("ctxCashPct").textContent = `${fmtPct(cashPct)} of portfolio`;
       document.getElementById("allocCore").style.width = `${Math.max(0, corePct * 100)}%`;
       document.getElementById("allocSat").style.width = `${Math.max(0, satPct * 100)}%`;

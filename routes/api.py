@@ -40,6 +40,7 @@ from performance import (
     get_round_trips,
 )
 from backtester import Backtester
+from portfolio_backtester import PortfolioBacktester
 from rebalancer import get_profit_harvest_plan, get_rebalance_plan
 from signal_scanner import (
     SignalScanner,
@@ -2561,6 +2562,59 @@ def api_backtest_quick():
             "trade_count": len(result.get("trades", [])),
             "trades": result.get("trades", []),
             "equity_curve": result.get("equity_curve", []),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/backtest/portfolio", methods=["POST"])
+@require_api_auth
+def api_backtest_portfolio():
+    try:
+        data = request.get_json(silent=True) or {}
+        bt = PortfolioBacktester(config=data)
+        result = bt.run()
+
+        full_equity_curve = list(result.get("equity_curve") or [])
+        sampled_equity_curve = list(full_equity_curve)
+        if len(sampled_equity_curve) > 500:
+            step = max(1, len(sampled_equity_curve) // 500)
+            sampled_equity_curve = sampled_equity_curve[::step]
+            if sampled_equity_curve and full_equity_curve and sampled_equity_curve[-1] != full_equity_curve[-1]:
+                sampled_equity_curve.append(full_equity_curve[-1])
+            sampled_equity_curve = sampled_equity_curve[:500]
+
+        return jsonify({
+            "ok": True,
+            "summary": result.get("summary", {}),
+            "equity_curve": sampled_equity_curve,
+            "trade_count": len(result.get("trade_log", [])),
+            "rebalance_count": len(result.get("rebalance_log", [])),
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@api_bp.route("/api/backtest/portfolio/quick", methods=["GET"])
+@require_api_auth
+def api_backtest_portfolio_quick():
+    try:
+        days = int(request.args.get("days") or 180)
+        capital = float(request.args.get("capital") or 1000)
+
+        end = datetime.utcnow()
+        start = end - timedelta(days=days)
+
+        bt = PortfolioBacktester(config={
+            "starting_capital": capital,
+            "start_date": start.strftime("%Y-%m-%d"),
+            "end_date": end.strftime("%Y-%m-%d"),
+        })
+        result = bt.run()
+
+        return jsonify({
+            "ok": True,
+            "summary": result.get("summary", {}),
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

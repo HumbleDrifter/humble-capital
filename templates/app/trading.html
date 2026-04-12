@@ -2648,8 +2648,6 @@
         chartSymbol = stockUniverse[0]?.symbol || "AAPL";
       }
       _contractCache = {};
-      const tickerInput = document.getElementById("contractTickerFilter");
-      if (tickerInput) tickerInput.value = "";
       syncOptionsUI();
       await loadSymbolList(chartType);
       await loadChartSymbols();

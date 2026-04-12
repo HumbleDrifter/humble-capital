@@ -2019,8 +2019,10 @@
     const labelVolume = document.getElementById("chartLabelVolume");
     const labelHigh = document.getElementById("chartLabelHigh");
     const labelLow = document.getElementById("chartLabelLow");
-    document.getElementById("chartSymbolName").textContent = assetType === "stock" ? (data.symbol || chartSymbol) : chartSymbol;
-    document.getElementById("chartSymbolType").textContent =
+    const symNameEl = document.getElementById("chartSymbolName");
+    const symTypeEl = document.getElementById("chartSymbolType");
+    if (symNameEl) symNameEl.textContent = assetType === "stock" ? (data.symbol || chartSymbol) : chartSymbol;
+    if (symTypeEl) symTypeEl.textContent =
       assetType === "crypto" ? "Crypto" :
       assetType === "futures" ? "Futures" :
       assetType === "options" ? "Options" : "Stock";

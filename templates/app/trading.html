@@ -2125,7 +2125,15 @@
     let rows = [];
     if (chartType === "crypto") {
       console.log("Fetching candles for", chartSymbol);
-      const data = await fetchJson(`/api/candles?product_id=${encodeURIComponent(chartSymbol)}&timeframe=${encodeURIComponent(chartFrame)}&limit=250`);
+      // Use pre-fetched data if available for instant display
+      let data;
+      const prefetch = window._prefetchedCandles;
+      if (prefetch && prefetch.symbol === chartSymbol && prefetch.timeframe === chartFrame) {
+        data = { candles: prefetch.candles, ok: true };
+        window._prefetchedCandles = null; // use once
+      } else {
+        data = await fetchJson(`/api/candles?product_id=${encodeURIComponent(chartSymbol)}&timeframe=${encodeURIComponent(chartFrame)}&limit=250`);
+      }
       console.log("Received", Array.isArray(data.candles) ? data.candles.length : 0, "candles");
       rows = Array.isArray(data.candles) ? data.candles : [];
     } else if (chartType === "futures") {
@@ -2162,6 +2170,26 @@
     rsiUpperSeries.setData([]);
     rsiLowerSeries.setData([]);
     candleSeries.setData(candleData);
+    // Update price immediately from last candle
+    if (chartRows && chartRows.length) {
+      const last = chartRows[chartRows.length - 1];
+      const prev = chartRows[chartRows.length - 2] || last;
+      const price = last.close || 0;
+      const prevClose = prev.close || price;
+      const changePct = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
+      const changeVal = price - prevClose;
+      const priceEl = document.getElementById("chartPrice");
+      const changeEl = document.getElementById("chartChange");
+      const bidEl = document.getElementById("chartBid");
+      const askEl = document.getElementById("chartAsk");
+      if (priceEl) priceEl.textContent = fmtUsd(price);
+      if (changeEl) {
+        changeEl.textContent = `${changeVal >= 0 ? "+" : ""}${fmtUsd(Math.abs(changeVal))} (${fmtPct(changePct, 2)})`;
+        changeEl.className = "chart-price-change " + (changeVal >= 0 ? "positive" : "negative");
+      }
+      if (bidEl) bidEl.textContent = fmtUsd(price);
+      if (askEl) askEl.textContent = fmtUsd(price);
+    }
     ema21Series.setData(lineData(chartRows, "ema_fast"));
     ema50Series.setData(lineData(chartRows, "ema_mid"));
     ema200Series.setData(lineData(chartRows, "ema_trend"));

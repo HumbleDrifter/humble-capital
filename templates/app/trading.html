@@ -2387,7 +2387,12 @@
     if (contractPanel) {
       const showContracts = chartType === "options" || chartType === "futures";
       contractPanel.style.display = showContracts ? "" : "none";
-      if (showContracts) loadContractPanel();
+      if (showContracts) {
+        const currentSymbol = document.getElementById("tradingChartSymbolInput")?.value || chartSymbol;
+        if (!_contractCache.symbol || _contractCache.symbol !== currentSymbol) {
+          loadContractPanel();
+        }
+      }
     }
   }
 
@@ -2405,7 +2410,19 @@
       let contracts = [];
       let expirations = new Set();
 
-      if (chartType === "futures") {
+      // Pre-populate expiry dropdown for options using dedicated endpoint
+    if (chartType === "options") {
+      try {
+        const underlying = chartSymbol.replace("-USD","").toUpperCase();
+        const expData = await fetchJson(`/api/options/expirations?symbol=${encodeURIComponent(underlying)}`);
+        const exps = expData.expirations || [];
+        if (exps.length && expirySelect) {
+          expirySelect.innerHTML = `<option value="">All Dates</option>` +
+            exps.map((e) => `<option value="${e}">${e}</option>`).join("");
+        }
+      } catch(e) {}
+    }
+    if (chartType === "futures") {
         const data = await fetchJson(`/api/futures/products`);
         const products = (data.products || []).filter((p) =>
           String(p.underlying || p.display_name || "").toUpperCase().includes(
@@ -2455,7 +2472,7 @@
           [...expirations].sort().map((e) => `<option value="${e}">${e}</option>`).join("");
       }
 
-      _contractCache = { contracts, type: chartType };
+      _contractCache = { contracts, type: chartType, symbol: chartSymbol };
       renderContractTable(contracts);
       loading.textContent = `${contracts.length} contracts`;
     } catch(e) {

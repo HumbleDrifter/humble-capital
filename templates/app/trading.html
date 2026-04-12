@@ -608,6 +608,7 @@
               <button class="chart-pill trading-chart-type asset-type-toggle active" data-type="crypto" type="button">Crypto</button>
               <button class="chart-pill trading-chart-type asset-type-toggle" data-type="stock" type="button">Stock</button>
               <button class="chart-pill trading-chart-type asset-type-toggle" data-type="futures" type="button">Futures</button>
+              <button class="chart-pill trading-chart-type asset-type-toggle" data-type="options" type="button">Options</button>
             </div>
             <input type="text" id="tradingChartSymbolInput" list="symbolDatalist" class="chart-symbol-input" placeholder="BTC-USD" value="BTC-USD">
             <datalist id="symbolDatalist"></datalist>
@@ -635,9 +636,7 @@
           <button class="chart-toggle active" data-overlay="bb" type="button">BB</button>
           <button class="chart-toggle" data-overlay="vwap" type="button">VWAP</button>
           <button class="chart-toggle active" data-overlay="signals" type="button">Signals</button>
-          <div class="chart-asset-context" id="chartAssetContext" style="display:none;
-            display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-            padding:6px 0; margin-bottom:6px; font-size:12px;">
+          <div class="chart-asset-context" id="chartAssetContext" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;margin-bottom:6px;font-size:12px;">
             <span class="chart-context-badge" id="ctxAssetClass" style="
               padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
               background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);">
@@ -671,22 +670,45 @@
         </div>
 
         <div id="chartContractPanel" style="display:none;margin-top:8px;">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <span style="font-size:12px;font-weight:700;color:rgba(236,243,255,0.6);
               text-transform:uppercase;letter-spacing:0.06em;">Contracts</span>
-            <select id="contractExpiry" class="select" style="font-size:12px;padding:4px 8px;">
-              <option value="">All Expirations</option>
-            </select>
-            <select id="contractType" class="select" style="font-size:12px;padding:4px 8px;">
-              <option value="">All Types</option>
-              <option value="call">Calls</option>
-              <option value="put">Puts</option>
-            </select>
-            <input id="contractStrikeFilter" type="number" placeholder="Strike near..."
-              style="font-size:12px;padding:4px 8px;background:rgba(255,255,255,0.05);
-              border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;width:100px;">
             <span id="contractLoadingMsg" style="font-size:11px;color:rgba(236,243,255,0.4);"></span>
           </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:end;">
+            <div>
+              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Ticker</label>
+              <input id="contractTickerFilter" type="text" placeholder="e.g. GME"
+                style="width:100%;font-size:12px;padding:5px 8px;background:rgba(255,255,255,0.05);
+                border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Expiration</label>
+              <select id="contractExpiry" class="select"
+                style="width:100%;font-size:12px;padding:5px 8px;box-sizing:border-box;">
+                <option value="">All Dates</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Type</label>
+              <select id="contractType" class="select"
+                style="width:100%;font-size:12px;padding:5px 8px;box-sizing:border-box;">
+                <option value="">All Types</option>
+                <option value="call">Call</option>
+                <option value="put">Put</option>
+                <option value="perp">Perp</option>
+                <option value="dated">Dated</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Strike Near</label>
+              <input id="contractStrikeFilter" type="number" placeholder="Price..."
+                style="width:100%;font-size:12px;padding:5px 8px;background:rgba(255,255,255,0.05);
+                border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;box-sizing:border-box;">
+            </div>
+          </div>
+        </div>
           <div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
               <thead>
@@ -1604,14 +1626,15 @@
     const datalist = document.getElementById("symbolDatalist");
     if (!datalist) return [];
     try {
-      const url = assetType === "futures"
+      const resolvedType = assetType === "options" ? "stock" : assetType;
+      const url = resolvedType === "futures"
         ? "/api/futures/products"
-        : `/api/symbols?type=${encodeURIComponent(assetType)}`;
+        : `/api/symbols?type=${encodeURIComponent(resolvedType)}`;
       const data = await fetchJson(url);
-      const symbols = assetType === "futures"
+      const symbols = resolvedType === "futures"
         ? (Array.isArray(data.products) ? data.products.map((row) => String(row.product_id || "").trim()).filter(Boolean) : [])
         : (Array.isArray(data.symbols) ? data.symbols : []);
-      if (assetType === "futures" && Array.isArray(data.products)) {
+      if (resolvedType === "futures" && Array.isArray(data.products)) {
         futuresProducts = data.products.slice();
       }
       if (data.ok && Array.isArray(symbols) && symbols.length) {
@@ -1996,7 +2019,10 @@
     const labelHigh = document.getElementById("chartLabelHigh");
     const labelLow = document.getElementById("chartLabelLow");
     document.getElementById("chartSymbolName").textContent = assetType === "stock" ? (data.symbol || chartSymbol) : chartSymbol;
-    document.getElementById("chartSymbolType").textContent = assetType === "crypto" ? "Crypto" : assetType === "futures" ? "Futures" : "Stock";
+    document.getElementById("chartSymbolType").textContent =
+      assetType === "crypto" ? "Crypto" :
+      assetType === "futures" ? "Futures" :
+      assetType === "options" ? "Options" : "Stock";
     document.getElementById("chartPrice").textContent = fmtUsd(price);
     const changeNode = document.getElementById("chartChange");
     changeNode.textContent = `${changeValue >= 0 ? "+" : "-"}${fmtUsd(Math.abs(changeValue))} (${fmtPct(changePct, 2)})`;
@@ -2034,9 +2060,13 @@
   async function loadLiveQuote() {
     try {
       if (chartType === "crypto") {
-        console.log("Fetching ticker for", chartSymbol);
         const data = await fetchJson(`/api/ticker?product_id=${encodeURIComponent(chartSymbol)}`);
-        console.log("Ticker response:", data);
+        if (!data.price && chartRows && chartRows.length) {
+          const last = chartRows[chartRows.length - 1];
+          data.price = last.close || 0;
+          data.bid = data.bid || data.price;
+          data.ask = data.ask || data.price;
+        }
         updatePriceHeader(data, "crypto");
       } else if (chartType === "futures") {
         console.log("Fetching ticker for", chartSymbol);
@@ -2065,7 +2095,7 @@
         console.log("Fetching ticker for", chartSymbol);
         const data = await fetchJson(`/api/stocks/quote?symbol=${encodeURIComponent(chartSymbol)}`);
         console.log("Ticker response:", data);
-        updatePriceHeader(data, "stock");
+        updatePriceHeader(data, chartType === "options" ? "options" : "stock");
       }
     } catch (error) {
       console.error("Ticker fetch failed:", error);
@@ -2101,6 +2131,10 @@
       console.log("Received", Array.isArray(data.candles) ? data.candles.length : 0, "candles");
       rows = Array.isArray(data.candles) ? data.candles : [];
       if (chartFrame === "1w") rows = aggregateWeekly(rows);
+    } else if (chartType === "options") {
+      const underlying = chartSymbol.replace("-USD","").toUpperCase();
+      const data = await fetchJson(`/api/stocks/bars?symbol=${encodeURIComponent(underlying)}&days=90`);
+      rows = Array.isArray(data.bars) ? data.bars : [];
     } else {
       const days = chartFrame === "1w" ? 730 : chartFrame === "1d" ? 365 : chartFrame === "4h" ? 180 : 90;
       console.log("Fetching candles for", chartSymbol);
@@ -2292,6 +2326,7 @@
           vol: fmtCompact(p.volume_24h || 0),
           iv: "—",
           delta: "—",
+          underlying: chartSymbol.replace("-USD","").replace("PERP","").trim(),
           product_id: p.product_id,
         }));
       } else if (chartType === "options") {
@@ -2313,6 +2348,8 @@
                 vol: (c.volume || 0).toLocaleString(),
                 iv: c.iv ? `${(c.iv * 100).toFixed(1)}%` : "—",
                 delta: c.delta ? c.delta.toFixed(3) : "—",
+                symbol: underlying,
+                underlying,
               });
             });
           });
@@ -2336,7 +2373,11 @@
     const typeFilter = document.getElementById("contractType")?.value || "";
     const strikeFilter = Number(document.getElementById("contractStrikeFilter")?.value || 0);
 
+    const tickerFilter = (document.getElementById("contractTickerFilter")?.value || "").trim().toUpperCase();
     let rows = contracts;
+    if (tickerFilter) rows = rows.filter((r) =>
+      String(r.product_id || r.symbol || r.underlying || "").toUpperCase().includes(tickerFilter)
+    );
     if (expiryFilter) rows = rows.filter((r) => r.expiry === expiryFilter);
     if (typeFilter) rows = rows.filter((r) => r.type.toLowerCase().includes(typeFilter));
     if (strikeFilter > 0) rows = rows.filter((r) => {
@@ -2506,6 +2547,9 @@
         status.textContent = "Save failed";
         status.style.color = "#ef4444";
       }
+    });
+    document.getElementById("contractTickerFilter")?.addEventListener("input", () => {
+      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
     });
     document.getElementById("contractExpiry")?.addEventListener("change", () => {
       if (_contractCache.contracts) renderContractTable(_contractCache.contracts);

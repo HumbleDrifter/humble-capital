@@ -626,15 +626,17 @@
             <button class="chart-pill trading-chart-frame" data-frame="4h" type="button">4H</button>
             <button class="chart-pill trading-chart-frame" data-frame="1d" type="button">1D</button>
             <button class="chart-pill trading-chart-frame" data-frame="1w" type="button">1W</button>
-            <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px;align-self:stretch;"></div>
-            <button class="chart-pill chart-role-btn active" data-role="core" type="button"
-              style="background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);">
-              Core
-            </button>
-            <button class="chart-pill chart-role-btn" data-role="satellite" type="button"
-              style="background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);border:1px solid rgba(255,255,255,0.1);">
-              Satellite
-            </button>
+            <div id="chartRoleBtnGroup" style="display:flex;align-items:center;gap:4px;">
+              <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px;align-self:stretch;"></div>
+              <button class="chart-pill chart-role-btn active" data-role="core" type="button"
+                style="background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);">
+                Core
+              </button>
+              <button class="chart-pill chart-role-btn" data-role="satellite" type="button"
+                style="background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);border:1px solid rgba(255,255,255,0.1);">
+                Satellite
+              </button>
+            </div>
           </div>
         </div>
 
@@ -808,6 +810,58 @@
             <input type="color" id="colorEma200" value="#ef4444"
               style="width:36px;height:24px;border:none;background:none;cursor:pointer;padding:0;">
             <input type="range" id="widthEma200" min="1" max="3" step="1" value="1" class="config-slider" style="width:50px;">
+          </div>
+        </div>
+
+        <div class="config-section" id="optionsConfigSection" style="display:none;">
+          <div class="config-section-title">Options Bot Config</div>
+          <div class="config-row">
+            <span class="config-label">Strategy</span>
+            <select id="optBotStrategy" class="select" style="flex:1;font-size:11px;padding:3px 6px;">
+              <option value="wheel">Wheel (Income)</option>
+              <option value="csp">Cash Secured Put</option>
+              <option value="covered_call">Covered Call</option>
+              <option value="meme_call">Meme Squeeze Call</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Min Score</span>
+            <input class="config-slider" id="optMinScore" type="range" min="40" max="90" step="5" value="65">
+            <span class="config-value" id="optMinScoreVal">65</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Max Squeeze</span>
+            <input class="config-slider" id="optMaxSqueeze" type="range" min="1" max="5" step="1" value="2">
+            <span class="config-value" id="optMaxSqueezeVal">2</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Entry Score</span>
+            <input class="config-slider" id="optEntryScore" type="range" min="40" max="90" step="5" value="65">
+            <span class="config-value" id="optEntryScoreVal">65</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Hold Score</span>
+            <input class="config-slider" id="optHoldScore" type="range" min="20" max="70" step="5" value="35">
+            <span class="config-value" id="optHoldScoreVal">35</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Max Active</span>
+            <input class="config-slider" id="optMaxActive" type="range" min="1" max="8" step="1" value="4">
+            <span class="config-value" id="optMaxActiveVal">4</span>
+          </div>
+          <button id="optConfigSaveBtn" type="button"
+            style="width:100%;margin-top:8px;padding:7px;background:rgba(45,212,191,0.15);
+            color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);border-radius:6px;
+            font-weight:600;font-size:12px;cursor:pointer;">
+            Save Options Config
+          </button>
+          <div id="optConfigStatus" style="font-size:10px;color:rgba(236,243,255,0.4);margin-top:4px;text-align:center;"></div>
+
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
+            <div class="config-section-title">Bot Activity</div>
+            <div id="optBotActivity" style="font-size:11px;color:rgba(236,243,255,0.5);line-height:1.6;">
+              Loading...
+            </div>
           </div>
         </div>
 
@@ -2200,6 +2254,7 @@
     console.log("Markers to display:", currentMarkers.length, currentMarkers.slice(0, 3));
     candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
     updateAssetContext().catch(console.error);
+    window.syncOptionsUI?.();
     toggleOverlay("ema21", chartOverlayState.ema21);
     toggleOverlay("ema50", chartOverlayState.ema50);
     toggleOverlay("ema200", chartOverlayState.ema200);
@@ -2312,7 +2367,15 @@
     if (contractPanel) {
       const showContracts = chartType === "options" || chartType === "futures";
       contractPanel.style.display = showContracts ? "" : "none";
-      if (showContracts) loadContractPanel();
+      if (showContracts) {
+        const currentSymbol = (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol).replace("-USD","").toUpperCase();
+        if (!_contractCache.symbol || _contractCache.symbol !== currentSymbol) {
+          _contractCache = {};
+          const tickerInput = document.getElementById("contractTickerFilter");
+          if (tickerInput) tickerInput.value = currentSymbol;
+          loadContractPanel();
+        }
+      }
     }
   }
 
@@ -2380,7 +2443,13 @@
           [...expirations].sort().map((e) => `<option value="${e}">${e}</option>`).join("");
       }
 
-      _contractCache = { contracts, type: chartType };
+      _contractCache = {
+        contracts,
+        type: chartType,
+        symbol: chartType === "options"
+          ? chartSymbol.replace("-USD","").toUpperCase()
+          : (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol).replace("-USD","").toUpperCase(),
+      };
       renderContractTable(contracts);
       loading.textContent = `${contracts.length} contracts`;
     } catch(e) {
@@ -2470,9 +2539,15 @@
       } else if (chartType === "futures") {
         const symbols = await loadSymbolList("futures");
         chartSymbol = symbols[0] || "BTC-PERP";
+      } else if (chartType === "options") {
+        chartSymbol = stockUniverse[0]?.symbol || "AAPL";
       } else {
         chartSymbol = stockUniverse[0]?.symbol || "AAPL";
       }
+      _contractCache = {};
+      const tickerInput = document.getElementById("contractTickerFilter");
+      if (tickerInput) tickerInput.value = "";
+      syncOptionsUI();
       await loadSymbolList(chartType);
       await loadChartSymbols();
       if (!chartReady) {
@@ -2653,6 +2728,91 @@
           updateSignalLog(sim);
         }
       });
+    });
+    function syncOptionsUI() {
+      const isOptions = chartType === "options";
+      const roleBtns = document.getElementById("chartRoleBtnGroup");
+      const optCfg = document.getElementById("optionsConfigSection");
+      const botCfg = document.querySelector(".config-section:has(#botMaxTrade)") ||
+        document.getElementById("botMaxTrade")?.closest(".config-section");
+      const sigParams = document.querySelector(".config-section:has(#tradingParamRsiMin)") ||
+        document.getElementById("tradingParamRsiMin")?.closest(".config-section");
+      if (roleBtns) roleBtns.style.display = isOptions ? "none" : "flex";
+      if (optCfg) optCfg.style.display = isOptions ? "" : "none";
+      if (botCfg) botCfg.style.display = isOptions ? "none" : "";
+      if (sigParams) sigParams.style.display = isOptions ? "none" : "";
+      if (isOptions) loadOptionsConfig();
+    }
+
+    async function loadOptionsConfig() {
+      try {
+        const data = await fetchJson("/api/config");
+        const cfg = data.config || {};
+        const meme = cfg.meme_rotation || {};
+        const entryEl = document.getElementById("optEntryScore");
+        const holdEl = document.getElementById("optHoldScore");
+        const maxEl = document.getElementById("optMaxActive");
+        const minEl = document.getElementById("optMinScore");
+        if (entryEl) { entryEl.value = meme.entry_score || 65; document.getElementById("optEntryScoreVal").textContent = entryEl.value; }
+        if (holdEl) { holdEl.value = meme.hold_score || 35; document.getElementById("optHoldScoreVal").textContent = holdEl.value; }
+        if (maxEl) { maxEl.value = meme.max_active || 4; document.getElementById("optMaxActiveVal").textContent = maxEl.value; }
+        if (minEl) { minEl.value = cfg.min_meme_score || 65; document.getElementById("optMinScoreVal").textContent = minEl.value; }
+      } catch(e) {}
+
+      try {
+        const log = await fetchJson("/api/options/executor/log");
+        const activity = document.getElementById("optBotActivity");
+        if (activity) {
+          const entries = (log.log || []).slice(-5).reverse();
+          if (entries.length) {
+            activity.innerHTML = entries.map((e) => {
+              const action = e.action || e.strategy || e.event || "scan";
+              const sym = e.symbol || e.ticker || "";
+              const pnl = e.pnl_pct != null ? ` ${Number(e.pnl_pct) >= 0 ? "+" : ""}${Number(e.pnl_pct).toFixed(1)}%` : "";
+              const color = action.includes("BUY") || action.includes("OPEN") ? "#22c55e" :
+                            action.includes("CLOSE") || action.includes("EXIT") ? "#ef4444" : "rgba(236,243,255,0.4)";
+              return `<div style="color:${color};margin-bottom:2px;">${action}${sym ? " " + sym : ""}${pnl}</div>`;
+            }).join("");
+          } else {
+            activity.textContent = "No recent options activity.";
+          }
+        }
+      } catch(e) {
+        const activity = document.getElementById("optBotActivity");
+        if (activity) activity.textContent = "No activity logged yet.";
+      }
+    }
+    window.syncOptionsUI = syncOptionsUI;
+
+    ["optMinScore","optMaxSqueeze","optEntryScore","optHoldScore","optMaxActive"].forEach((id) => {
+      const el = document.getElementById(id);
+      const valEl = document.getElementById(id + "Val");
+      if (el && valEl) el.addEventListener("input", () => { valEl.textContent = el.value; });
+    });
+
+    document.getElementById("optConfigSaveBtn")?.addEventListener("click", async () => {
+      const status = document.getElementById("optConfigStatus");
+      status.textContent = "Saving...";
+      try {
+        const result = await fetchJson("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            min_meme_score: Number(document.getElementById("optMinScore").value),
+            meme_rotation: {
+              entry_score: Number(document.getElementById("optEntryScore").value),
+              hold_score: Number(document.getElementById("optHoldScore").value),
+              max_active: Number(document.getElementById("optMaxActive").value),
+            },
+          }),
+        });
+        status.textContent = result.ok ? "Saved ✓" : "Error: " + result.error;
+        status.style.color = result.ok ? "#22c55e" : "#ef4444";
+        setTimeout(() => { status.textContent = ""; }, 3000);
+      } catch(e) {
+        status.textContent = "Save failed";
+        status.style.color = "#ef4444";
+      }
     });
     document.getElementById("contractTickerFilter")?.addEventListener("input", () => {
       if (_contractCache.contracts) renderContractTable(_contractCache.contracts);

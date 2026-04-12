@@ -626,6 +626,15 @@
             <button class="chart-pill trading-chart-frame" data-frame="4h" type="button">4H</button>
             <button class="chart-pill trading-chart-frame" data-frame="1d" type="button">1D</button>
             <button class="chart-pill trading-chart-frame" data-frame="1w" type="button">1W</button>
+            <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px;align-self:stretch;"></div>
+            <button class="chart-pill chart-role-btn active" data-role="core" type="button"
+              style="background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);">
+              Core
+            </button>
+            <button class="chart-pill chart-role-btn" data-role="satellite" type="button"
+              style="background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);border:1px solid rgba(255,255,255,0.1);">
+              Satellite
+            </button>
           </div>
         </div>
 
@@ -873,6 +882,14 @@
             ▶ Run Backtest
           </button>
           <div id="chartBtStatus" style="font-size:11px;color:rgba(236,243,255,0.4);margin-top:6px;text-align:center;"></div>
+          <button id="chartApplyConfigBtn" type="button" style="display:none;
+            width:100%;margin-top:8px;padding:7px;
+            background:rgba(34,197,94,0.15);color:#22c55e;
+            border:1px solid rgba(34,197,94,0.3);border-radius:6px;
+            font-weight:600;font-size:12px;cursor:pointer;">
+            ✓ Apply These Params to Bot
+          </button>
+          <div id="chartApplyConfigStatus" style="font-size:10px;color:rgba(236,243,255,0.4);margin-top:4px;text-align:center;"></div>
         </div>
 
         <div class="config-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
@@ -960,6 +977,11 @@
   let chartReady = false;
   let chartBooting = false;
   let currentMarkers = [];
+  let chartRole = "core";
+  const ROLE_PARAMS = {
+    core: { rsiMin: 40, rsiMax: 70, adxMin: 20, trendLen: 200, extPct: 10 },
+    satellite: { rsiMin: 35, rsiMax: 75, adxMin: 15, trendLen: 50, extPct: 15 },
+  };
   const emaColors = { ema21: "#38bdf8", ema50: "#f59e0b", ema200: "#ef4444" };
   let futuresCategory = "all";
   let futuresProducts = [];
@@ -2596,6 +2618,53 @@
       } catch(e) {}
     })();
 
+    document.getElementById("chartApplyConfigBtn")?.addEventListener("click", async () => {
+      const applyStatus = document.getElementById("chartApplyConfigStatus");
+      const applyBtn = document.getElementById("chartApplyConfigBtn");
+      applyStatus.textContent = "Applying...";
+      try {
+        const params = currentParams();
+        const result = await fetchJson("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            [`${chartRole}_rsi_min`]: params.rsiMin,
+            [`${chartRole}_rsi_max`]: params.rsiMax,
+            [`${chartRole}_adx_min`]: params.adxMin,
+            [`${chartRole}_ema_trend`]: params.trendLen,
+            [`${chartRole}_ext_pct`]: params.extPct,
+          }),
+        });
+        ROLE_PARAMS[chartRole] = {
+          rsiMin: params.rsiMin,
+          rsiMax: params.rsiMax,
+          adxMin: params.adxMin,
+          trendLen: params.trendLen,
+          extPct: params.extPct,
+        };
+        applyStatus.textContent = result.ok
+          ? `✓ ${chartRole} params saved`
+          : "Saved locally (config endpoint unavailable)";
+        applyStatus.style.color = "#22c55e";
+        applyBtn.style.background = "rgba(34,197,94,0.25)";
+        setTimeout(() => {
+          applyStatus.textContent = "";
+          applyBtn.style.display = "none";
+        }, 3000);
+      } catch(e) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("hc_role_params") || "{}");
+          stored[chartRole] = currentParams();
+          localStorage.setItem("hc_role_params", JSON.stringify(stored));
+          applyStatus.textContent = "Saved locally";
+          applyStatus.style.color = "#f59e0b";
+        } catch(le) {
+          applyStatus.textContent = "Save failed";
+          applyStatus.style.color = "#ef4444";
+        }
+      }
+    });
+
     document.getElementById("botConfigSaveBtn")?.addEventListener("click", async () => {
       const status = document.getElementById("botConfigStatus");
       status.textContent = "Saving...";
@@ -2615,6 +2684,43 @@
         status.textContent = "Save failed";
         status.style.color = "#ef4444";
       }
+    });
+    document.querySelectorAll(".chart-role-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        chartRole = btn.dataset.role || "core";
+        document.querySelectorAll(".chart-role-btn").forEach((b) => {
+          const isActive = b.dataset.role === chartRole;
+          b.classList.toggle("active", isActive);
+          b.style.background = isActive
+            ? (chartRole === "core" ? "rgba(45,212,191,0.15)" : "rgba(139,92,246,0.15)")
+            : "rgba(255,255,255,0.05)";
+          b.style.color = isActive
+            ? (chartRole === "core" ? "#2dd4bf" : "#a78bfa")
+            : "rgba(236,243,255,0.5)";
+          b.style.borderColor = isActive
+            ? (chartRole === "core" ? "rgba(45,212,191,0.3)" : "rgba(139,92,246,0.3)")
+            : "rgba(255,255,255,0.1)";
+        });
+        const params = ROLE_PARAMS[chartRole] || ROLE_PARAMS.core;
+        document.getElementById("tradingParamRsiMin").value = params.rsiMin;
+        document.getElementById("tradingParamRsiMinValue").textContent = params.rsiMin;
+        document.getElementById("tradingParamRsiMax").value = params.rsiMax;
+        document.getElementById("tradingParamRsiMaxValue").textContent = params.rsiMax;
+        document.getElementById("tradingParamAdx").value = params.adxMin;
+        document.getElementById("tradingParamAdxValue").textContent = params.adxMin;
+        document.getElementById("tradingParamTrend").value = params.trendLen;
+        document.getElementById("tradingParamTrendValue").textContent = params.trendLen;
+        document.getElementById("tradingParamExt").value = params.extPct;
+        document.getElementById("tradingParamExtValue").textContent = params.extPct;
+        if (chartRows && chartRows.length) {
+          const sim = simulateSignals(chartRows);
+          currentMarkers = sim.markers;
+          if (candleSeries && chartOverlayState.signals) {
+            candleSeries.setMarkers(currentMarkers);
+          }
+          updateSignalLog(sim);
+        }
+      });
     });
     document.getElementById("contractTickerFilter")?.addEventListener("input", () => {
       if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
@@ -2681,6 +2787,11 @@
           s.avg_hold_bars ? `${s.avg_hold_bars} bars` : "—";
         resultsPanel.style.display = "";
         status.textContent = `${data.trades?.length || 0} trades · ${data.candle_count || 0} candles`;
+        const applyBtn = document.getElementById("chartApplyConfigBtn");
+        if (applyBtn) {
+          applyBtn.style.display = "";
+          applyBtn.textContent = `✓ Apply ${chartRole.charAt(0).toUpperCase() + chartRole.slice(1)} Config to Bot`;
+        }
       } catch (err) {
         status.textContent = "Error: " + err.message;
       }

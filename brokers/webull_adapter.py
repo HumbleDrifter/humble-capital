@@ -578,6 +578,20 @@ class WebullAdapter(BrokerAdapter):
             _log_webull_event("get_option_chain_failed", {"symbol": symbol, "error": str(exc)})
             return broker_result(False, broker=self.name, mode=self._mode(), error=str(exc), symbol=symbol, expirations=[], chains={})
 
+    def _get_instrument_id(self, symbol, data_client) -> str:
+        """Resolve Webull instrument_id from ticker symbol."""
+        symbol = _normalize_symbol(symbol)
+        try:
+            result = data_client.instrument.get_instrument(symbol, "US_STOCK")
+            rows = result.json() if hasattr(result, "json") else []
+            if isinstance(rows, list) and rows:
+                return str(rows[0].get("instrument_id", "") or "").strip()
+            if isinstance(rows, dict):
+                return str(rows.get("instrument_id", "") or "").strip()
+        except Exception as exc:
+            _log_webull_event("get_instrument_id_failed", {"symbol": symbol, "error": str(exc)})
+        return ""
+
     def place_stock_order(self, symbol, side, qty, order_type="MKT", limit_price=None) -> dict:
         symbol = _normalize_symbol(symbol)
         side = _normalize_side(side)
@@ -586,14 +600,26 @@ class WebullAdapter(BrokerAdapter):
         if not symbol or side not in {"BUY", "SELL"} or qty <= 0:
             return broker_result(False, broker=self.name, mode=self._mode(), error="invalid_stock_order")
         try:
-            _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
+            _api_client, trade_client, data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
+            instrument_id = self._get_instrument_id(symbol, data_client)
+            if not instrument_id:
+                return broker_result(False, broker=self.name, mode=self._mode(),
+                                     error=f"instrument_id_not_found:{symbol}", symbol=symbol)
+            import uuid
+            client_order_id = str(uuid.uuid4()).replace("-", "")[:32]
+            # Map order type to Webull SDK format
+            wb_order_type = "MKT" if order_type in ("MKT", "MARKET") else "LMT"
+            wb_side = "BUY" if side == "BUY" else "SELL"
             response = trade_client.order.place_order(
-                account_id=account_id,
-                symbol=symbol,
-                side=side,
-                qty=qty,
-                order_type=order_type,
+                account_id,
+                int(qty),
+                instrument_id,
+                wb_side,
+                client_order_id,
+                wb_order_type,
+                False,  # extended_hours_trading
+                "DAY",  # tif
                 limit_price=limit_price,
             )
             payload = _response_json(response)

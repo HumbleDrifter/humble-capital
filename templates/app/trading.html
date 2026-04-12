@@ -2845,9 +2845,9 @@
       const isOptions = chartType === "options";
       const roleBtns = document.getElementById("chartRoleBtnGroup");
       const optCfg = document.getElementById("optionsConfigSection");
-      const botCfg = document.querySelector(".config-section:has(#botMaxTrade)") ||
+      const botCfg = // removed :has() selector
         document.getElementById("botMaxTrade")?.closest(".config-section");
-      const sigParams = document.querySelector(".config-section:has(#tradingParamRsiMin)") ||
+      const sigParams = // removed :has() selector
         document.getElementById("tradingParamRsiMin")?.closest(".config-section");
       if (roleBtns) roleBtns.style.display = isOptions ? "none" : "flex";
       if (optCfg) optCfg.style.display = isOptions ? "" : "none";

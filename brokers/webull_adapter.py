@@ -536,36 +536,19 @@ class WebullAdapter(BrokerAdapter):
                 for exp in target_exps:
                     try:
                         chain = ticker.option_chain(exp)
-                        calls = []
-                        for _, row in chain.calls.iterrows():
-                            calls.append({
-                                "strike": float(row.get("strike", 0)),
-                                "bid": float(row.get("bid", 0)),
-                                "ask": float(row.get("ask", 0)),
-                                "last": float(row.get("lastPrice", 0)),
-                                "volume": int(row.get("volume", 0) or 0),
-                                "open_interest": int(row.get("openInterest", 0) or 0),
-                                "iv": float(row.get("impliedVolatility", 0)),
-                                "delta": None,
-                                "gamma": None,
-                                "theta": None,
-                                "vega": None,
-                            })
-                        puts = []
-                        for _, row in chain.puts.iterrows():
-                            puts.append({
-                                "strike": float(row.get("strike", 0)),
-                                "bid": float(row.get("bid", 0)),
-                                "ask": float(row.get("ask", 0)),
-                                "last": float(row.get("lastPrice", 0)),
-                                "volume": int(row.get("volume", 0) or 0),
-                                "open_interest": int(row.get("openInterest", 0) or 0),
-                                "iv": float(row.get("impliedVolatility", 0)),
-                                "delta": None,
-                                "gamma": None,
-                                "theta": None,
-                                "vega": None,
-                            })
+                        def _row_to_contract(row):
+                            return {
+                                "strike": float(row["strike"] if "strike" in row.index else 0),
+                                "bid": float(row["bid"] if "bid" in row.index else 0),
+                                "ask": float(row["ask"] if "ask" in row.index else 0),
+                                "last": float(row["lastPrice"] if "lastPrice" in row.index else 0),
+                                "volume": int(row["volume"] if "volume" in row.index and row["volume"] == row["volume"] else 0),
+                                "open_interest": int(row["openInterest"] if "openInterest" in row.index and row["openInterest"] == row["openInterest"] else 0),
+                                "iv": float(row["impliedVolatility"] if "impliedVolatility" in row.index else 0),
+                                "delta": None, "gamma": None, "theta": None, "vega": None,
+                            }
+                        calls = [_row_to_contract(row) for _, row in chain.calls.iterrows()]
+                        puts = [_row_to_contract(row) for _, row in chain.puts.iterrows()]
                         chains[exp] = {"calls": calls, "puts": puts}
                     except Exception:
                         continue

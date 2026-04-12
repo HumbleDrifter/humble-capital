@@ -523,6 +523,58 @@ class WebullAdapter(BrokerAdapter):
                 chains=chains,
             )
         except Exception as exc:
+            # Fallback to yfinance for options chain data
+            try:
+                import yfinance as yf
+                ticker = yf.Ticker(symbol)
+                expirations_list = ticker.options or []
+                if not expirations_list:
+                    _log_webull_event("get_option_chain_failed", {"symbol": symbol, "error": str(exc)})
+                    return broker_result(False, broker=self.name, mode=self._mode(), error=str(exc), symbol=symbol, expirations=[], chains={})
+                chains = {}
+                target_exps = [expiration] if expiration and expiration in expirations_list else expirations_list[:6]
+                for exp in target_exps:
+                    try:
+                        chain = ticker.option_chain(exp)
+                        calls = []
+                        for _, row in chain.calls.iterrows():
+                            calls.append({
+                                "strike": float(row.get("strike", 0)),
+                                "bid": float(row.get("bid", 0)),
+                                "ask": float(row.get("ask", 0)),
+                                "last": float(row.get("lastPrice", 0)),
+                                "volume": int(row.get("volume", 0) or 0),
+                                "open_interest": int(row.get("openInterest", 0) or 0),
+                                "iv": float(row.get("impliedVolatility", 0)),
+                                "delta": None,
+                                "gamma": None,
+                                "theta": None,
+                                "vega": None,
+                            })
+                        puts = []
+                        for _, row in chain.puts.iterrows():
+                            puts.append({
+                                "strike": float(row.get("strike", 0)),
+                                "bid": float(row.get("bid", 0)),
+                                "ask": float(row.get("ask", 0)),
+                                "last": float(row.get("lastPrice", 0)),
+                                "volume": int(row.get("volume", 0) or 0),
+                                "open_interest": int(row.get("openInterest", 0) or 0),
+                                "iv": float(row.get("impliedVolatility", 0)),
+                                "delta": None,
+                                "gamma": None,
+                                "theta": None,
+                                "vega": None,
+                            })
+                        chains[exp] = {"calls": calls, "puts": puts}
+                    except Exception:
+                        continue
+                if chains:
+                    _log_webull_event("get_option_chain_yfinance", {"symbol": symbol, "expirations": len(chains)})
+                    return broker_result(True, broker=self.name, mode=self._mode(), symbol=symbol,
+                                        expirations=list(chains.keys()), chains=chains)
+            except Exception as yf_exc:
+                _log_webull_event("get_option_chain_yfinance_failed", {"symbol": symbol, "error": str(yf_exc)})
             _log_webull_event("get_option_chain_failed", {"symbol": symbol, "error": str(exc)})
             return broker_result(False, broker=self.name, mode=self._mode(), error=str(exc), symbol=symbol, expirations=[], chains={})
 

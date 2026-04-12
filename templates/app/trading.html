@@ -2448,16 +2448,11 @@
       const showContracts = chartType === "options" || chartType === "futures";
       contractPanel.style.display = showContracts ? "" : "none";
       if (showContracts) {
-<<<<<<< HEAD
-        const currentSymbol = document.getElementById("tradingChartSymbolInput")?.value || chartSymbol;
-        if (!_contractCache.symbol || _contractCache.symbol !== currentSymbol) {
-=======
         const currentSymbol = (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol).replace("-USD","").toUpperCase();
         if (!_contractCache.symbol || _contractCache.symbol !== currentSymbol) {
           _contractCache = {};
           const tickerInput = document.getElementById("contractTickerFilter");
           if (tickerInput) tickerInput.value = currentSymbol;
->>>>>>> a6e906c2c96967ecd4da929bee35ae38db1ac8c8
           loadContractPanel();
         }
       }
@@ -2545,9 +2540,6 @@
           [...expirations].sort().map((e) => `<option value="${e}">${e}</option>`).join("");
       }
 
-<<<<<<< HEAD
-      _contractCache = { contracts, type: chartType, symbol: chartSymbol };
-=======
       _contractCache = {
         contracts,
         type: chartType,
@@ -2555,7 +2547,6 @@
           ? chartSymbol.replace("-USD","").toUpperCase()
           : (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol).replace("-USD","").toUpperCase(),
       };
->>>>>>> a6e906c2c96967ecd4da929bee35ae38db1ac8c8
       renderContractTable(contracts);
       loading.textContent = `${contracts.length} contracts`;
     } catch(e) {

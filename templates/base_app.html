@@ -13,7 +13,7 @@
   {% set secret_value = secret if secret is defined and secret else request.args.get('secret', '') %}
   {% set dashboard_url = '/dashboard?secret=' ~ (secret_value|urlencode) if secret_value else '/dashboard' %}
   {% set portfolio_url = '/portfolio?secret=' ~ (secret_value|urlencode) if secret_value else '/portfolio' %}
-  {% set trading_url = '/trading?secret=' ~ (secret_value|urlencode) if secret_value else '/trading' %}
+  {% set trading_url = '/trading?secret=' ~ (secret_value|urlencode) ~ '#charts' if secret_value else '/trading#charts' %}
   {% set options_url = '/options?secret=' ~ (secret_value|urlencode) if secret_value else '/options' %}
   {% set backtesting_url = '/backtesting?secret=' ~ (secret_value|urlencode) if secret_value else '/backtesting' %}
   {% set activity_url = '/activity?secret=' ~ (secret_value|urlencode) if secret_value else '/activity' %}

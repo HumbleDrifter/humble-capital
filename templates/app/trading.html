@@ -262,6 +262,121 @@
     display: grid;
     gap: 4px;
   }
+
+  .chart-workspace {
+    display: flex;
+    gap: 0;
+    height: calc(100vh - 120px);
+    min-height: 600px;
+  }
+
+  .chart-workspace-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .chart-config-panel {
+    width: 220px;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.02);
+    border-left: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .chart-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chart-topbar-left { display: flex; align-items: center; gap: 8px; }
+
+  .chart-topbar-center {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  .chart-topbar-right { display: flex; gap: 4px; }
+
+  .chart-overlay-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chart-detail-item { display: flex; align-items: center; gap: 4px; color: rgba(236,243,255,0.5); }
+
+  .config-section {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .config-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(236,243,255,0.35);
+    margin-bottom: 10px;
+  }
+
+  .config-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .config-label {
+    font-size: 11px;
+    color: rgba(236,243,255,0.5);
+    width: 72px;
+    flex-shrink: 0;
+  }
+
+  .config-slider {
+    flex: 1;
+    accent-color: #2dd4bf;
+    cursor: pointer;
+  }
+
+  .config-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2dd4bf;
+    width: 28px;
+    text-align: right;
+  }
+
+  .chart-bt-results-bar {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: rgba(45,212,191,0.06);
+    border: 1px solid rgba(45,212,191,0.15);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .chart-bt-stat { display: flex; flex-direction: column; gap: 2px; }
+  .chart-bt-label { font-size: 10px; color: rgba(236,243,255,0.4); }
+  .chart-bt-value { font-size: 14px; font-weight: 700; color: #ecf3ff; }
+  .chart-symbol-pill-group { display: flex; gap: 4px; }
 </style>
 <div class="opp-shell">
   <section class="opp-hero opp-panel">
@@ -484,82 +599,152 @@
   </div>
 
   <div class="page-tab-content" id="tab-charts">
-    <section class="opp-panel">
-      <div class="chart-controls-row">
-        <div class="chart-control-group">
-          <button class="chart-pill trading-chart-type asset-type-toggle active" data-type="crypto" type="button">Crypto</button>
-          <button class="chart-pill trading-chart-type asset-type-toggle" data-type="stock" type="button">Stock</button>
-          <button class="chart-pill trading-chart-type asset-type-toggle" data-type="futures" type="button">Futures</button>
-        </div>
-        <div class="chart-control-group">
-          <input type="text" id="tradingChartSymbolInput" list="symbolDatalist" class="chart-symbol-input" placeholder="BTC-USD" value="BTC-USD">
-          <datalist id="symbolDatalist"></datalist>
-        </div>
-        <div class="chart-control-group">
-          <button class="chart-pill trading-chart-frame active" data-frame="1h" type="button">1H</button>
-          <button class="chart-pill trading-chart-frame" data-frame="4h" type="button">4H</button>
-          <button class="chart-pill trading-chart-frame" data-frame="1d" type="button">1D</button>
-          <button class="chart-pill trading-chart-frame" data-frame="1w" type="button">1W</button>
-        </div>
-      </div>
-    </section>
+    <div class="chart-workspace">
 
-    <section class="opp-panel">
-      <div class="chart-price-header">
-        <div class="chart-price-symbol">
-          <span class="chart-symbol-name" id="chartSymbolName">BTC-USD</span>
-          <span class="chart-symbol-type" id="chartSymbolType">Crypto</span>
+      <div class="chart-workspace-main">
+        <div class="chart-topbar">
+          <div class="chart-topbar-left">
+            <div class="chart-symbol-pill-group">
+              <button class="chart-pill trading-chart-type asset-type-toggle active" data-type="crypto" type="button">Crypto</button>
+              <button class="chart-pill trading-chart-type asset-type-toggle" data-type="stock" type="button">Stock</button>
+              <button class="chart-pill trading-chart-type asset-type-toggle" data-type="futures" type="button">Futures</button>
+            </div>
+            <input type="text" id="tradingChartSymbolInput" list="symbolDatalist" class="chart-symbol-input" placeholder="BTC-USD" value="BTC-USD">
+            <datalist id="symbolDatalist"></datalist>
+          </div>
+          <div class="chart-topbar-center">
+            <span class="chart-symbol-name" id="chartSymbolName">BTC-USD</span>
+            <span class="chart-price-value" id="chartPrice">$0.00</span>
+            <span class="chart-price-change positive" id="chartChange">+$0.00 (+0.00%)</span>
+            <span class="chart-detail-item"><span class="chart-label">Bid</span><span id="chartBid">–</span></span>
+            <span class="chart-detail-item"><span class="chart-label">Ask</span><span id="chartAsk">–</span></span>
+            <span class="chart-detail-item"><span class="chart-label">Vol</span><span id="chartVolume">–</span></span>
+          </div>
+          <div class="chart-topbar-right">
+            <button class="chart-pill trading-chart-frame active" data-frame="1h" type="button">1H</button>
+            <button class="chart-pill trading-chart-frame" data-frame="4h" type="button">4H</button>
+            <button class="chart-pill trading-chart-frame" data-frame="1d" type="button">1D</button>
+            <button class="chart-pill trading-chart-frame" data-frame="1w" type="button">1W</button>
+          </div>
         </div>
-        <div class="chart-price-main">
-          <span class="chart-price-value" id="chartPrice">$0.00</span>
-          <span class="chart-price-change positive" id="chartChange">+$0.00 (+0.00%)</span>
+
+        <div class="chart-overlay-bar">
+          <button class="chart-toggle active" data-overlay="ema21" type="button">EMA 21</button>
+          <button class="chart-toggle active" data-overlay="ema50" type="button">EMA 50</button>
+          <button class="chart-toggle" data-overlay="ema200" type="button">EMA 200</button>
+          <button class="chart-toggle active" data-overlay="bb" type="button">BB</button>
+          <button class="chart-toggle" data-overlay="vwap" type="button">VWAP</button>
+          <button class="chart-toggle active" data-overlay="signals" type="button">Signals</button>
+          <span style="margin-left:auto;font-size:12px;color:rgba(236,243,255,0.4);" id="tradingChartMeta"></span>
         </div>
-        <div class="chart-price-detail">
-          <div class="chart-bid-ask"><span class="chart-label" id="chartLabelBid">Bid</span><span class="chart-bid" id="chartBid">$0.00</span></div>
-          <div class="chart-bid-ask"><span class="chart-label" id="chartLabelAsk">Ask</span><span class="chart-ask" id="chartAsk">$0.00</span></div>
-          <div class="chart-bid-ask"><span class="chart-label" id="chartLabelSpread">Spread</span><span class="chart-spread" id="chartSpread">$0.00</span></div>
-          <div class="chart-bid-ask"><span class="chart-label" id="chartLabelVolume">24h Vol</span><span id="chartVolume">$0.00</span></div>
-          <div class="chart-bid-ask"><span class="chart-label" id="chartLabelHigh">24h High</span><span id="chartHigh">$0.00</span></div>
-          <div class="chart-bid-ask"><span class="chart-label" id="chartLabelLow">24h Low</span><span id="chartLow">$0.00</span></div>
+
+        <div class="chart-stack">
+          <div class="chart-main" id="tradingChartMain" style="height:420px;"></div>
+          <div class="chart-volume" id="tradingChartVolume" style="height:70px;"></div>
+          <div class="chart-rsi" id="tradingChartRsi" style="height:90px;"></div>
+        </div>
+
+        <div class="chart-tooltip" id="chartTooltip">
+          <span class="tooltip-label">O</span><span id="tooltipO">-</span>
+          <span class="tooltip-label">H</span><span id="tooltipH">-</span>
+          <span class="tooltip-label">L</span><span id="tooltipL">-</span>
+          <span class="tooltip-label">C</span><span id="tooltipC">-</span>
+          <span class="tooltip-label">Vol</span><span id="tooltipV">-</span>
+          <span class="tooltip-label">RSI</span><span id="tooltipRsi">-</span>
+          <span class="tooltip-label">E21</span><span id="tooltipEma21">-</span>
+          <span class="tooltip-label">E50</span><span id="tooltipEma50">-</span>
+          <span class="tooltip-label">E200</span><span id="tooltipEma200">-</span>
+        </div>
+
+        <div id="tradingChartKpis" class="opp-status-bar" style="margin-top:8px;"></div>
+
+        <div id="chartBtResultsPanel" style="display:none;margin-top:12px;">
+          <div class="chart-bt-results-bar">
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Return</span>
+              <span class="chart-bt-value" id="chartBtReturn">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Win Rate</span>
+              <span class="chart-bt-value" id="chartBtWinRate">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Trades</span>
+              <span class="chart-bt-value" id="chartBtTrades">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Profit Factor</span>
+              <span class="chart-bt-value" id="chartBtPF">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Max DD</span>
+              <span class="chart-bt-value" id="chartBtDD">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Avg Hold</span>
+              <span class="chart-bt-value" id="chartBtHold">—</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="chart-config-panel">
+        <div class="config-section">
+          <div class="config-section-title">Signal Parameters</div>
+
+          <div class="config-row">
+            <span class="config-label">RSI Min</span>
+            <input class="config-slider" id="tradingParamRsiMin" type="range" min="20" max="60" step="1" value="40">
+            <span class="config-value" id="tradingParamRsiMinValue">40</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">RSI Max</span>
+            <input class="config-slider" id="tradingParamRsiMax" type="range" min="50" max="85" step="1" value="70">
+            <span class="config-value" id="tradingParamRsiMaxValue">70</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">ADX Min</span>
+            <input class="config-slider" id="tradingParamAdx" type="range" min="10" max="40" step="1" value="20">
+            <span class="config-value" id="tradingParamAdxValue">20</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">EMA Trend</span>
+            <input class="config-slider" id="tradingParamTrend" type="range" min="50" max="250" step="5" value="200">
+            <span class="config-value" id="tradingParamTrendValue">200</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Extension %</span>
+            <input class="config-slider" id="tradingParamExt" type="range" min="2" max="25" step="0.5" value="10">
+            <span class="config-value" id="tradingParamExtValue">10</span>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Backtest</div>
+          <div class="config-row">
+            <span class="config-label">Lookback</span>
+            <select id="chartBtLookback" class="select" style="flex:1;font-size:12px;padding:4px 8px;">
+              <option value="30">30d</option>
+              <option value="60">60d</option>
+              <option value="90" selected>90d</option>
+              <option value="180">180d</option>
+              <option value="365">1Y</option>
+            </select>
+          </div>
+          <button id="chartRunBtBtn" type="button"
+            style="width:100%;margin-top:8px;padding:9px;background:#2dd4bf;color:#0f172a;border:none;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">
+            ▶ Run Backtest
+          </button>
+          <div id="chartBtStatus" style="font-size:11px;color:rgba(236,243,255,0.4);margin-top:6px;text-align:center;"></div>
+        </div>
+
+        <div class="config-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div class="config-section-title">Signal Log</div>
+          <div id="chartSignalLog" style="flex:1;overflow-y:auto;font-size:11px;color:rgba(236,243,255,0.6);"></div>
         </div>
       </div>
-      <div class="chart-overlay-toggles">
-        <button class="chart-toggle active" data-overlay="ema21" type="button">EMA 21</button>
-        <button class="chart-toggle active" data-overlay="ema50" type="button">EMA 50</button>
-        <button class="chart-toggle" data-overlay="ema200" type="button">EMA 200</button>
-        <button class="chart-toggle active" data-overlay="bb" type="button">Bollinger</button>
-        <button class="chart-toggle" data-overlay="vwap" type="button">VWAP</button>
-        <button class="chart-toggle active" data-overlay="signals" type="button">Signals</button>
-      </div>
-      <div class="opp-section-subtitle" id="tradingChartMeta" style="margin: 0 0 10px;">Load any crypto pair or stock and replay signals client-side.</div>
-      <div class="chart-stack">
-        <div class="chart-main" id="tradingChartMain" style="height:400px;"></div>
-        <div class="chart-volume" id="tradingChartVolume" style="height:80px;"></div>
-        <div class="chart-rsi" id="tradingChartRsi" style="height:100px;"></div>
-      </div>
-      <div class="chart-tooltip" id="chartTooltip">
-        <span class="tooltip-label">O</span><span id="tooltipO">-</span>
-        <span class="tooltip-label">H</span><span id="tooltipH">-</span>
-        <span class="tooltip-label">L</span><span id="tooltipL">-</span>
-        <span class="tooltip-label">C</span><span id="tooltipC">-</span>
-        <span class="tooltip-label">Vol</span><span id="tooltipV">-</span>
-        <span class="tooltip-label">RSI</span><span id="tooltipRsi">-</span>
-        <span class="tooltip-label">E21</span><span id="tooltipEma21">-</span>
-        <span class="tooltip-label">E50</span><span id="tooltipEma50">-</span>
-        <span class="tooltip-label">E200</span><span id="tooltipEma200">-</span>
-      </div>
-      <details class="signal-params-panel">
-        <summary>Signal Parameters</summary>
-        <div class="signal-params-grid">
-          <label>RSI Min <input id="tradingParamRsiMin" type="range" min="20" max="60" step="1" value="40"><span id="tradingParamRsiMinValue">40</span></label>
-          <label>RSI Max <input id="tradingParamRsiMax" type="range" min="50" max="85" step="1" value="70"><span id="tradingParamRsiMaxValue">70</span></label>
-          <label>EMA Trend <input id="tradingParamTrend" type="range" min="50" max="250" step="5" value="200"><span id="tradingParamTrendValue">200</span></label>
-          <label>ADX Min <input id="tradingParamAdx" type="range" min="10" max="40" step="1" value="20"><span id="tradingParamAdxValue">20</span></label>
-          <label>Extension % <input id="tradingParamExt" type="range" min="2" max="25" step="0.5" value="10"><span id="tradingParamExtValue">10</span></label>
-        </div>
-      </details>
-    </section>
-    <section class="opp-panel"><div id="tradingChartKpis" class="opp-status-bar"></div></section>
+    </div>
   </div>
 </div>
 
@@ -1836,6 +2021,7 @@
     rsiLowerSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 30 })));
     const sim = simulateSignals(chartRows);
     currentMarkers = sim.markers;
+    updateSignalLog(sim);
     console.log("Markers to display:", currentMarkers.length, currentMarkers.slice(0, 3));
     candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
     toggleOverlay("ema21", chartOverlayState.ema21);
@@ -1905,6 +2091,21 @@
       return;
     }
     await refreshChart();
+  }
+
+  function updateSignalLog(sim) {
+    const host = document.getElementById("chartSignalLog");
+    if (!host || !sim) return;
+    const entries = [];
+    if (sim.buyCount) entries.push(`<div style="color:#22c55e;">▲ ${sim.buyCount} BUY signal${sim.buyCount !== 1 ? "s" : ""}</div>`);
+    if (sim.exitCount) entries.push(`<div style="color:#ef4444;">▼ ${sim.exitCount} EXIT signal${sim.exitCount !== 1 ? "s" : ""}</div>`);
+    if (sim.shortCount) entries.push(`<div style="color:#ef4444;">▼ ${sim.shortCount} SHORT signal${sim.shortCount !== 1 ? "s" : ""}</div>`);
+    if (sim.closeShortCount) entries.push(`<div style="color:#f59e0b;">■ ${sim.closeShortCount} CLOSE SHORT</div>`);
+    if (!entries.length) entries.push(`<div style="color:rgba(236,243,255,0.3);">No signals in current window</div>`);
+    entries.push(`<div style="margin-top:6px;color:rgba(236,243,255,0.2);font-size:10px;">
+      RSI ${currentParams().rsiMin}–${currentParams().rsiMax} · ADX≥${currentParams().adxMin} · EXT≤${currentParams().extPct}%
+    </div>`);
+    host.innerHTML = entries.join("");
   }
 
   function bindControls() {
@@ -1984,6 +2185,63 @@
           refreshChart().catch(console.error);
         }, 300);
       });
+    });
+    document.getElementById("chartRunBtBtn")?.addEventListener("click", async () => {
+      const status = document.getElementById("chartBtStatus");
+      const resultsPanel = document.getElementById("chartBtResultsPanel");
+      status.textContent = "Running backtest...";
+      try {
+        const symbol = chartSymbol || "BTC-USD";
+        const lookback = Number(document.getElementById("chartBtLookback")?.value || 90);
+        const data = await fetchJson("/api/backtest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_id: symbol,
+            timeframe: chartFrame || "4h",
+            lookback_days: lookback,
+          }),
+        });
+        if (!data.ok) { status.textContent = "Backtest failed."; return; }
+
+        if (candleSeries && Array.isArray(data.trades) && data.trades.length) {
+          const btMarkers = data.trades
+            .filter((t) => t && t.ts && t.action)
+            .map((t) => ({
+              time: Number(t.ts),
+              position: t.action === "BUY" ? "belowBar" : "aboveBar",
+              color: t.action === "BUY" ? "#2dd4bf" : "#f59e0b",
+              shape: t.action === "BUY" ? "arrowUp" : "arrowDown",
+              text: t.action === "BUY"
+                ? `BOT BUY $${Number(t.price || 0).toFixed(0)}`
+                : `BOT EXIT $${Number(t.price || 0).toFixed(0)}`,
+            }))
+            .sort((a, b) => a.time - b.time);
+          const merged = [...(currentMarkers || []), ...btMarkers]
+            .sort((a, b) => a.time - b.time);
+          candleSeries.setMarkers(merged);
+        }
+
+        const s = data.summary || {};
+        document.getElementById("chartBtReturn").textContent =
+          `${Number(s.total_pnl_pct || 0) >= 0 ? "+" : ""}${Number(s.total_pnl_pct || 0).toFixed(2)}%`;
+        document.getElementById("chartBtReturn").style.color =
+          Number(s.total_pnl_pct || 0) >= 0 ? "#22c55e" : "#ef4444";
+        document.getElementById("chartBtWinRate").textContent =
+          `${Number(s.win_rate_pct || 0).toFixed(1)}%`;
+        document.getElementById("chartBtTrades").textContent =
+          String(data.trades?.length || 0);
+        document.getElementById("chartBtPF").textContent =
+          Number(s.profit_factor || 0).toFixed(2);
+        document.getElementById("chartBtDD").textContent =
+          `${Number(s.max_drawdown_pct || 0).toFixed(2)}%`;
+        document.getElementById("chartBtHold").textContent =
+          s.avg_hold_bars ? `${s.avg_hold_bars} bars` : "—";
+        resultsPanel.style.display = "";
+        status.textContent = `${data.trades?.length || 0} trades · ${data.candle_count || 0} candles`;
+      } catch (err) {
+        status.textContent = "Error: " + err.message;
+      }
     });
     document.querySelectorAll(".chart-toggle").forEach((btn) => {
       btn.addEventListener("click", () => {

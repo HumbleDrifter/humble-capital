@@ -2036,9 +2036,12 @@
     changeNode.textContent = `${changeValue >= 0 ? "+" : "-"}${fmtUsd(Math.abs(changeValue))} (${fmtPct(changePct, 2)})`;
     changeNode.classList.toggle("positive", changeValue >= 0);
     changeNode.classList.toggle("negative", changeValue < 0);
-    document.getElementById("chartBid").textContent = fmtUsd(bid);
-    document.getElementById("chartAsk").textContent = fmtUsd(ask);
-    document.getElementById("chartSpread").textContent = fmtUsd(spread);
+    const bidEl2 = document.getElementById("chartBid");
+    const askEl2 = document.getElementById("chartAsk");
+    const spreadEl = document.getElementById("chartSpread");
+    if (bidEl2) bidEl2.textContent = fmtUsd(bid);
+    if (askEl2) askEl2.textContent = fmtUsd(ask);
+    if (spreadEl) spreadEl.textContent = fmtUsd(spread);
     if (assetType === "futures") {
       if (labelBid) labelBid.textContent = "Mark";
       if (labelAsk) labelAsk.textContent = "Entry";
@@ -2060,9 +2063,12 @@
     if (labelVolume) labelVolume.textContent = assetType === "crypto" ? "24h Vol" : "Volume";
     if (labelHigh) labelHigh.textContent = "24h High";
     if (labelLow) labelLow.textContent = "24h Low";
-    document.getElementById("chartVolume").textContent = assetType === "crypto" ? fmtCompact(data.volume_24h || 0) : fmtCompact(data.volume || 0);
-    document.getElementById("chartHigh").textContent = fmtUsd(data.high_24h || 0);
-    document.getElementById("chartLow").textContent = fmtUsd(data.low_24h || 0);
+    const volEl = document.getElementById("chartVolume");
+    const highEl = document.getElementById("chartHigh");
+    const lowEl = document.getElementById("chartLow");
+    if (volEl) volEl.textContent = assetType === "crypto" ? fmtCompact(data.volume_24h || 0) : fmtCompact(data.volume || 0);
+    if (highEl) highEl.textContent = fmtUsd(data.high_24h || 0);
+    if (lowEl) lowEl.textContent = fmtUsd(data.low_24h || 0);
   }
 
   function updatePriceFromCandles() {

@@ -608,6 +608,7 @@
               <button class="chart-pill trading-chart-type asset-type-toggle active" data-type="crypto" type="button">Crypto</button>
               <button class="chart-pill trading-chart-type asset-type-toggle" data-type="stock" type="button">Stock</button>
               <button class="chart-pill trading-chart-type asset-type-toggle" data-type="futures" type="button">Futures</button>
+              <button class="chart-pill trading-chart-type asset-type-toggle" data-type="options" type="button">Options</button>
             </div>
             <input type="text" id="tradingChartSymbolInput" list="symbolDatalist" class="chart-symbol-input" placeholder="BTC-USD" value="BTC-USD">
             <datalist id="symbolDatalist"></datalist>
@@ -635,6 +636,30 @@
           <button class="chart-toggle active" data-overlay="bb" type="button">BB</button>
           <button class="chart-toggle" data-overlay="vwap" type="button">VWAP</button>
           <button class="chart-toggle active" data-overlay="signals" type="button">Signals</button>
+          <div class="chart-asset-context" id="chartAssetContext" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;margin-bottom:6px;font-size:12px;">
+            <span class="chart-context-badge" id="ctxAssetClass" style="
+              padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
+              background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);">
+              Crypto
+            </span>
+            <span class="chart-context-badge" id="ctxBotRole" style="
+              padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
+              background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);
+              cursor:pointer;" title="Click to toggle bot role">
+              Core
+            </span>
+            <span class="chart-context-badge" id="ctxBotTimeframe" style="
+              padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
+              background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">
+              4H Scanner
+            </span>
+            <span class="chart-context-badge" id="ctxBotIndicators" style="
+              padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
+              background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);
+              border:1px solid rgba(255,255,255,0.08);">
+              EMA21 · EMA50 · BB · RSI · MACD · ADX
+            </span>
+          </div>
           <span style="margin-left:auto;font-size:12px;color:rgba(236,243,255,0.4);" id="tradingChartMeta"></span>
         </div>
 
@@ -642,6 +667,71 @@
           <div class="chart-main" id="tradingChartMain" style="height:420px;"></div>
           <div class="chart-volume" id="tradingChartVolume" style="height:70px;"></div>
           <div class="chart-rsi" id="tradingChartRsi" style="height:90px;"></div>
+        </div>
+
+        <div id="chartContractPanel" style="display:none;margin-top:8px;">
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:12px;font-weight:700;color:rgba(236,243,255,0.6);
+              text-transform:uppercase;letter-spacing:0.06em;">Contracts</span>
+            <span id="contractLoadingMsg" style="font-size:11px;color:rgba(236,243,255,0.4);"></span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:end;">
+            <div>
+              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Ticker</label>
+              <input id="contractTickerFilter" type="text" placeholder="e.g. GME"
+                style="width:100%;font-size:12px;padding:5px 8px;background:rgba(255,255,255,0.05);
+                border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Expiration</label>
+              <select id="contractExpiry" class="select"
+                style="width:100%;font-size:12px;padding:5px 8px;box-sizing:border-box;">
+                <option value="">All Dates</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Type</label>
+              <select id="contractType" class="select"
+                style="width:100%;font-size:12px;padding:5px 8px;box-sizing:border-box;">
+                <option value="">All Types</option>
+                <option value="call">Call</option>
+                <option value="put">Put</option>
+                <option value="perp">Perp</option>
+                <option value="dated">Dated</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Strike Near</label>
+              <input id="contractStrikeFilter" type="number" placeholder="Price..."
+                style="width:100%;font-size:12px;padding:5px 8px;background:rgba(255,255,255,0.05);
+                border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;box-sizing:border-box;">
+            </div>
+          </div>
+        </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead>
+                <tr style="color:rgba(236,243,255,0.4);border-bottom:1px solid rgba(255,255,255,0.06);">
+                  <th style="text-align:left;padding:4px 8px;">Type</th>
+                  <th style="text-align:left;padding:4px 8px;">Strike</th>
+                  <th style="text-align:left;padding:4px 8px;">Expiry</th>
+                  <th style="text-align:right;padding:4px 8px;">Bid</th>
+                  <th style="text-align:right;padding:4px 8px;">Ask</th>
+                  <th style="text-align:right;padding:4px 8px;">Last</th>
+                  <th style="text-align:right;padding:4px 8px;">OI</th>
+                  <th style="text-align:right;padding:4px 8px;">Vol</th>
+                  <th style="text-align:right;padding:4px 8px;">IV</th>
+                  <th style="text-align:right;padding:4px 8px;">Delta</th>
+                </tr>
+              </thead>
+              <tbody id="contractTableBody">
+                <tr><td colspan="10" style="padding:12px 8px;color:rgba(236,243,255,0.3);">
+                  Select a symbol to load contracts.
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div class="chart-tooltip" id="chartTooltip">
@@ -1536,14 +1626,15 @@
     const datalist = document.getElementById("symbolDatalist");
     if (!datalist) return [];
     try {
-      const url = assetType === "futures"
+      const resolvedType = assetType === "options" ? "stock" : assetType;
+      const url = resolvedType === "futures"
         ? "/api/futures/products"
-        : `/api/symbols?type=${encodeURIComponent(assetType)}`;
+        : `/api/symbols?type=${encodeURIComponent(resolvedType)}`;
       const data = await fetchJson(url);
-      const symbols = assetType === "futures"
+      const symbols = resolvedType === "futures"
         ? (Array.isArray(data.products) ? data.products.map((row) => String(row.product_id || "").trim()).filter(Boolean) : [])
         : (Array.isArray(data.symbols) ? data.symbols : []);
-      if (assetType === "futures" && Array.isArray(data.products)) {
+      if (resolvedType === "futures" && Array.isArray(data.products)) {
         futuresProducts = data.products.slice();
       }
       if (data.ok && Array.isArray(symbols) && symbols.length) {
@@ -1928,7 +2019,10 @@
     const labelHigh = document.getElementById("chartLabelHigh");
     const labelLow = document.getElementById("chartLabelLow");
     document.getElementById("chartSymbolName").textContent = assetType === "stock" ? (data.symbol || chartSymbol) : chartSymbol;
-    document.getElementById("chartSymbolType").textContent = assetType === "crypto" ? "Crypto" : assetType === "futures" ? "Futures" : "Stock";
+    document.getElementById("chartSymbolType").textContent =
+      assetType === "crypto" ? "Crypto" :
+      assetType === "futures" ? "Futures" :
+      assetType === "options" ? "Options" : "Stock";
     document.getElementById("chartPrice").textContent = fmtUsd(price);
     const changeNode = document.getElementById("chartChange");
     changeNode.textContent = `${changeValue >= 0 ? "+" : "-"}${fmtUsd(Math.abs(changeValue))} (${fmtPct(changePct, 2)})`;
@@ -1966,9 +2060,13 @@
   async function loadLiveQuote() {
     try {
       if (chartType === "crypto") {
-        console.log("Fetching ticker for", chartSymbol);
         const data = await fetchJson(`/api/ticker?product_id=${encodeURIComponent(chartSymbol)}`);
-        console.log("Ticker response:", data);
+        if (!data.price && chartRows && chartRows.length) {
+          const last = chartRows[chartRows.length - 1];
+          data.price = last.close || 0;
+          data.bid = data.bid || data.price;
+          data.ask = data.ask || data.price;
+        }
         updatePriceHeader(data, "crypto");
       } else if (chartType === "futures") {
         console.log("Fetching ticker for", chartSymbol);
@@ -1997,7 +2095,7 @@
         console.log("Fetching ticker for", chartSymbol);
         const data = await fetchJson(`/api/stocks/quote?symbol=${encodeURIComponent(chartSymbol)}`);
         console.log("Ticker response:", data);
-        updatePriceHeader(data, "stock");
+        updatePriceHeader(data, chartType === "options" ? "options" : "stock");
       }
     } catch (error) {
       console.error("Ticker fetch failed:", error);
@@ -2033,6 +2131,10 @@
       console.log("Received", Array.isArray(data.candles) ? data.candles.length : 0, "candles");
       rows = Array.isArray(data.candles) ? data.candles : [];
       if (chartFrame === "1w") rows = aggregateWeekly(rows);
+    } else if (chartType === "options") {
+      const underlying = chartSymbol.replace("-USD","").toUpperCase();
+      const data = await fetchJson(`/api/stocks/bars?symbol=${encodeURIComponent(underlying)}&days=90`);
+      rows = Array.isArray(data.bars) ? data.bars : [];
     } else {
       const days = chartFrame === "1w" ? 730 : chartFrame === "1d" ? 365 : chartFrame === "4h" ? 180 : 90;
       console.log("Fetching candles for", chartSymbol);
@@ -2075,6 +2177,7 @@
     updateSignalLog(sim);
     console.log("Markers to display:", currentMarkers.length, currentMarkers.slice(0, 3));
     candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
+    updateAssetContext().catch(console.error);
     toggleOverlay("ema21", chartOverlayState.ema21);
     toggleOverlay("ema50", chartOverlayState.ema50);
     toggleOverlay("ema200", chartOverlayState.ema200);
@@ -2142,6 +2245,166 @@
       return;
     }
     await refreshChart();
+  }
+
+  async function updateAssetContext() {
+    const ctx = document.getElementById("chartAssetContext");
+    const ctxClass = document.getElementById("ctxAssetClass");
+    const ctxRole = document.getElementById("ctxBotRole");
+    const ctxTf = document.getElementById("ctxBotTimeframe");
+    if (!ctx) return;
+    ctx.style.display = "flex";
+
+    const classMap = {
+      crypto: { label: "Crypto", color: "#38bdf8", bg: "rgba(56,189,248,0.15)", border: "rgba(56,189,248,0.3)" },
+      stock:  { label: "Stock",  color: "#22c55e", bg: "rgba(34,197,94,0.15)",  border: "rgba(34,197,94,0.3)" },
+      futures:{ label: "Futures",color: "#f59e0b", bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.3)" },
+      options:{ label: "Options",color: "#a78bfa", bg: "rgba(167,139,250,0.15)",border: "rgba(167,139,250,0.3)" },
+    };
+    const cls = classMap[chartType] || classMap.crypto;
+    ctxClass.textContent = cls.label;
+    ctxClass.style.color = cls.color;
+    ctxClass.style.background = cls.bg;
+    ctxClass.style.borderColor = cls.border;
+
+    try {
+      const snap = await fetchJson("/api/portfolio");
+      const config = (snap.snapshot || {}).config || {};
+      const coreAssets = Object.keys(config.core_assets || {});
+      const satAllowed = config.satellite_allowed || [];
+      const sym = chartSymbol.toUpperCase();
+      const isCore = coreAssets.some((id) => id.toUpperCase().includes(sym) || sym.includes(id.replace("-USD","")));
+      const isSat = satAllowed.some((id) => id.toUpperCase() === sym);
+      ctxRole.textContent = isCore ? "Core Asset" : isSat ? "Satellite" : "Watchlist";
+      ctxRole.style.background = isCore ? "rgba(45,212,191,0.15)" : "rgba(255,255,255,0.05)";
+      ctxRole.style.color = isCore ? "#2dd4bf" : "rgba(236,243,255,0.5)";
+    } catch(e) {
+      ctxRole.textContent = chartType === "crypto" ? "Satellite" : "External";
+    }
+
+    const tfLabel = chartFrame === "1h" ? "1H Scanner" : chartFrame === "4h" ? "4H Scanner" :
+                    chartFrame === "1d" ? "Daily" : "Weekly";
+    ctxTf.textContent = tfLabel;
+
+    const contractPanel = document.getElementById("chartContractPanel");
+    if (contractPanel) {
+      const showContracts = chartType === "options" || chartType === "futures";
+      contractPanel.style.display = showContracts ? "" : "none";
+      if (showContracts) loadContractPanel();
+    }
+  }
+
+  let _contractCache = {};
+  async function loadContractPanel() {
+    const tbody = document.getElementById("contractTableBody");
+    const loading = document.getElementById("contractLoadingMsg");
+    const expirySelect = document.getElementById("contractExpiry");
+    if (!tbody) return;
+
+    loading.textContent = "Loading contracts...";
+    tbody.innerHTML = `<tr><td colspan="10" style="padding:12px 8px;color:rgba(236,243,255,0.3);">Loading...</td></tr>`;
+
+    try {
+      let contracts = [];
+      let expirations = new Set();
+
+      if (chartType === "futures") {
+        const data = await fetchJson(`/api/futures/products`);
+        const products = (data.products || []).filter((p) =>
+          String(p.underlying || p.display_name || "").toUpperCase().includes(
+            chartSymbol.replace("-USD","").replace("PERP","").trim()
+          )
+        );
+        contracts = products.map((p) => ({
+          type: p.is_perp ? "PERP" : "DATED",
+          strike: "—",
+          expiry: p.expiry || "Perpetual",
+          bid: fmtUsd(p.price || 0, 2),
+          ask: "—",
+          last: fmtUsd(p.price || 0, 2),
+          oi: "—",
+          vol: fmtCompact(p.volume_24h || 0),
+          iv: "—",
+          delta: "—",
+          underlying: chartSymbol.replace("-USD","").replace("PERP","").trim(),
+          product_id: p.product_id,
+        }));
+      } else if (chartType === "options") {
+        const underlying = chartSymbol.replace("-USD","").toUpperCase();
+        const data = await fetchJson(`/api/options/chain?symbol=${encodeURIComponent(underlying)}`);
+        const chains = data.chains || {};
+        Object.entries(chains).forEach(([exp, sides]) => {
+          expirations.add(exp);
+          ["calls","puts"].forEach((side) => {
+            (sides[side] || []).forEach((c) => {
+              contracts.push({
+                type: side === "calls" ? "CALL" : "PUT",
+                strike: fmtUsd(c.strike || 0, 2),
+                expiry: exp,
+                bid: fmtUsd(c.bid || 0, 2),
+                ask: fmtUsd(c.ask || 0, 2),
+                last: fmtUsd(c.last || 0, 2),
+                oi: (c.open_interest || 0).toLocaleString(),
+                vol: (c.volume || 0).toLocaleString(),
+                iv: c.iv ? `${(c.iv * 100).toFixed(1)}%` : "—",
+                delta: c.delta ? c.delta.toFixed(3) : "—",
+                symbol: underlying,
+                underlying,
+              });
+            });
+          });
+        });
+        expirySelect.innerHTML = `<option value="">All Expirations</option>` +
+          [...expirations].sort().map((e) => `<option value="${e}">${e}</option>`).join("");
+      }
+
+      _contractCache = { contracts, type: chartType };
+      renderContractTable(contracts);
+      loading.textContent = `${contracts.length} contracts`;
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="10" style="padding:12px;color:#ef4444;">Failed to load contracts: ${e.message}</td></tr>`;
+      loading.textContent = "";
+    }
+  }
+
+  function renderContractTable(contracts) {
+    const tbody = document.getElementById("contractTableBody");
+    const expiryFilter = document.getElementById("contractExpiry")?.value || "";
+    const typeFilter = document.getElementById("contractType")?.value || "";
+    const strikeFilter = Number(document.getElementById("contractStrikeFilter")?.value || 0);
+
+    const tickerFilter = (document.getElementById("contractTickerFilter")?.value || "").trim().toUpperCase();
+    let rows = contracts;
+    if (tickerFilter) rows = rows.filter((r) =>
+      String(r.product_id || r.symbol || r.underlying || "").toUpperCase().includes(tickerFilter)
+    );
+    if (expiryFilter) rows = rows.filter((r) => r.expiry === expiryFilter);
+    if (typeFilter) rows = rows.filter((r) => r.type.toLowerCase().includes(typeFilter));
+    if (strikeFilter > 0) rows = rows.filter((r) => {
+      const s = parseFloat(String(r.strike).replace("$","").replace(",",""));
+      return !isNaN(s) && Math.abs(s - strikeFilter) <= strikeFilter * 0.1;
+    });
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="10" style="padding:12px;color:rgba(236,243,255,0.3);">No contracts match filters.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.slice(0, 50).map((r) => `
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;"
+          onmouseover="this.style.background='rgba(255,255,255,0.03)'"
+          onmouseout="this.style.background=''">
+        <td style="padding:5px 8px;font-weight:600;color:${r.type==="CALL"||r.type==="PERP"?"#22c55e":"#ef4444"};">${r.type}</td>
+        <td style="padding:5px 8px;">${r.strike}</td>
+        <td style="padding:5px 8px;color:rgba(236,243,255,0.5);">${r.expiry}</td>
+        <td style="padding:5px 8px;text-align:right;color:#22c55e;">${r.bid}</td>
+        <td style="padding:5px 8px;text-align:right;color:#ef4444;">${r.ask}</td>
+        <td style="padding:5px 8px;text-align:right;">${r.last}</td>
+        <td style="padding:5px 8px;text-align:right;color:rgba(236,243,255,0.5);">${r.oi}</td>
+        <td style="padding:5px 8px;text-align:right;color:rgba(236,243,255,0.5);">${r.vol}</td>
+        <td style="padding:5px 8px;text-align:right;color:#a78bfa;">${r.iv}</td>
+        <td style="padding:5px 8px;text-align:right;color:#f59e0b;">${r.delta}</td>
+      </tr>`).join("");
   }
 
   function updateSignalLog(sim) {
@@ -2284,6 +2547,18 @@
         status.textContent = "Save failed";
         status.style.color = "#ef4444";
       }
+    });
+    document.getElementById("contractTickerFilter")?.addEventListener("input", () => {
+      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
+    });
+    document.getElementById("contractExpiry")?.addEventListener("change", () => {
+      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
+    });
+    document.getElementById("contractType")?.addEventListener("change", () => {
+      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
+    });
+    document.getElementById("contractStrikeFilter")?.addEventListener("input", () => {
+      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
     });
     document.getElementById("chartRunBtBtn")?.addEventListener("click", async () => {
       const status = document.getElementById("chartBtStatus");

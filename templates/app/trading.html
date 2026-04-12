@@ -1647,6 +1647,12 @@
   async function loadSymbolList(assetType) {
     const datalist = document.getElementById("symbolDatalist");
     if (!datalist) return [];
+    // Return cached symbols instantly if available
+    if (_symbolCache[assetType]) {
+      const cached = _symbolCache[assetType];
+      datalist.innerHTML = cached.map((s) => `<option value="${s}">`).join("");
+      return cached;
+    }
     try {
       const resolvedType = assetType === "options" ? "stock" : assetType;
       const url = resolvedType === "futures"
@@ -1781,6 +1787,7 @@
     });
   }
 
+  const _symbolCache = {};
   async function loadChartSymbols() {
     const input = document.getElementById("tradingChartSymbolInput");
     if (!input) return;
@@ -2533,6 +2540,8 @@
     document.getElementById("tradingBackBtn")?.addEventListener("click", () => { window.location.href = "/dashboard"; });
     document.querySelectorAll(".trading-chart-type").forEach((button) => button.addEventListener("click", async () => {
       chartType = button.dataset.type || "crypto";
+      // Immediately update active state without waiting for async
+      document.querySelectorAll(".trading-chart-type").forEach((b) => b.classList.toggle("active", b === button));
       if (chartType === "crypto") {
         chartSymbol = "BTC-USD";
       } else if (chartType === "futures") {

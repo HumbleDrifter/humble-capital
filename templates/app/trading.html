@@ -2063,10 +2063,11 @@
   }
 
   function updatePriceFromCandles() {
-    if (!chartRows || !chartRows.length) return;
+    if (!chartRows || !chartRows.length) { console.warn("updatePriceFromCandles: no chartRows"); return; }
     const last = chartRows[chartRows.length - 1];
     const prev = chartRows[chartRows.length - 2] || last;
     const price = last.close || 0;
+    console.log("updatePriceFromCandles:", price, "priceEl:", document.getElementById("chartPrice"));
     const prevClose = prev.close || price;
     const changePct = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
     const changeVal = price - prevClose;

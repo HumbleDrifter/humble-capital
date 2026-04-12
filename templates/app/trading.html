@@ -2331,10 +2331,15 @@
     } else if (value.includes("PERP") || /\d{2}[A-Z]{3}\d{2}/.test(value)) {
       chartType = "futures";
       chartSymbol = value;
+    } else if (chartType === "options") {
+      // Stay in options mode, use stock bars for underlying
+      chartSymbol = value;
     } else {
       chartType = "stock";
       chartSymbol = value;
     }
+    // Keep asset type buttons in sync
+    document.querySelectorAll(".trading-chart-type").forEach((b) => b.classList.toggle("active", b.dataset.type === chartType));
     await syncChartControls();
     await loadLiveQuote();
     if (!chartReady) {
@@ -2402,6 +2407,11 @@
     const loading = document.getElementById("contractLoadingMsg");
     const expirySelect = document.getElementById("contractExpiry");
     if (!tbody) return;
+
+    // Sync ticker filter with current symbol
+    const tickerInput = document.getElementById("contractTickerFilter");
+    const underlying = chartSymbol.replace("-USD","").toUpperCase();
+    if (tickerInput && !tickerInput.value) tickerInput.value = underlying;
 
     loading.textContent = "Loading contracts...";
     tbody.innerHTML = `<tr><td colspan="10" style="padding:12px 8px;color:rgba(236,243,255,0.3);">Loading...</td></tr>`;
@@ -2559,6 +2569,10 @@
       chartType = button.dataset.type || "crypto";
       // Immediately update active state without waiting for async
       document.querySelectorAll(".trading-chart-type").forEach((b) => b.classList.toggle("active", b === button));
+      // Reset contract cache on asset type change
+      _contractCache = {};
+      const tickerInput = document.getElementById("contractTickerFilter");
+      if (tickerInput) tickerInput.value = "";
       if (chartType === "crypto") {
         chartSymbol = "BTC-USD";
       } else if (chartType === "futures") {

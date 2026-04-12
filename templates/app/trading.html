@@ -2023,7 +2023,12 @@
       assetType === "crypto" ? "Crypto" :
       assetType === "futures" ? "Futures" :
       assetType === "options" ? "Options" : "Stock";
-    document.getElementById("chartPrice").textContent = fmtUsd(price);
+    const priceDisplayEl = document.getElementById("chartPrice");
+    if (priceDisplayEl) {
+      priceDisplayEl.textContent = fmtUsd(price);
+      // Force visible even if tab is hidden
+      priceDisplayEl.style.opacity = "1";
+    }
     const changeNode = document.getElementById("chartChange");
     changeNode.textContent = `${changeValue >= 0 ? "+" : "-"}${fmtUsd(Math.abs(changeValue))} (${fmtPct(changePct, 2)})`;
     changeNode.classList.toggle("positive", changeValue >= 0);
@@ -2055,6 +2060,26 @@
     document.getElementById("chartVolume").textContent = assetType === "crypto" ? fmtCompact(data.volume_24h || 0) : fmtCompact(data.volume || 0);
     document.getElementById("chartHigh").textContent = fmtUsd(data.high_24h || 0);
     document.getElementById("chartLow").textContent = fmtUsd(data.low_24h || 0);
+  }
+
+  function updatePriceFromCandles() {
+    if (!chartRows || !chartRows.length) return;
+    const last = chartRows[chartRows.length - 1];
+    const prev = chartRows[chartRows.length - 2] || last;
+    const price = last.close || 0;
+    const prevClose = prev.close || price;
+    const changePct = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
+    const changeVal = price - prevClose;
+    const priceEl = document.getElementById("chartPrice");
+    const changeEl = document.getElementById("chartChange");
+    if (priceEl && price > 0) {
+      priceEl.textContent = fmtUsd(price);
+      priceEl.style.opacity = "1";
+    }
+    if (changeEl) {
+      changeEl.textContent = `${changeVal >= 0 ? "+" : ""}${fmtUsd(Math.abs(changeVal))} (${fmtPct(changePct, 2)})`;
+      changeEl.className = "chart-price-change " + (changeVal >= 0 ? "positive" : "negative");
+    }
   }
 
   async function loadLiveQuote() {
@@ -2171,6 +2196,7 @@
     rsiLowerSeries.setData([]);
     candleSeries.setData(candleData);
     // Update price immediately from last candle
+    updatePriceFromCandles();
     if (chartRows && chartRows.length) {
       const last = chartRows[chartRows.length - 1];
       const prev = chartRows[chartRows.length - 2] || last;

@@ -1850,6 +1850,7 @@
     if (mainChart && volumeChart && rsiChart && !mainChart.__synced) {
       mainChart.__synced = true;
       mainChart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+          if (!range || range.from == null || range.to == null) return;
         if (range) {
           volumeChart.timeScale().setVisibleRange(range);
           rsiChart.timeScale().setVisibleRange(range);

@@ -626,7 +626,15 @@
             <button class="chart-pill trading-chart-frame" data-frame="4h" type="button">4H</button>
             <button class="chart-pill trading-chart-frame" data-frame="1d" type="button">1D</button>
             <button class="chart-pill trading-chart-frame" data-frame="1w" type="button">1W</button>
-            <div id="chartRoleBtnGroup" style="display:flex;align-items:center;gap:4px;">
+          <div id="optionsSignalToggleGroup" style="display:none;align-items:center;gap:4px;">
+            <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px;align-self:stretch;"></div>
+            <button id="optSignalToggleBtn" class="chart-pill active" type="button"
+              style="background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);">
+              ⚡ Options Signals
+            </button>
+          </div>
+
+          <div id="chartRoleBtnGroup" style="display:flex;align-items:center;gap:4px;">
               <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px;align-self:stretch;"></div>
               <button class="chart-pill chart-role-btn active" data-role="core" type="button"
                 style="background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);">
@@ -1035,6 +1043,7 @@
   let chartBooting = false;
   let currentMarkers = [];
   let chartRole = "core";
+  let optionsSignalsEnabled = true;
   const ROLE_PARAMS = {
     core: { rsiMin: 40, rsiMax: 70, adxMin: 20, trendLen: 200, extPct: 10 },
     satellite: { rsiMin: 35, rsiMax: 75, adxMin: 15, trendLen: 50, extPct: 15 },
@@ -2353,7 +2362,7 @@
       if (chartType === "options") {
         const optSim = simulateOptionsSignals(chartRows);
         currentMarkers = optSim.markers;
-        candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
+        candleSeries.setMarkers((chartOverlayState.signals && optionsSignalsEnabled) ? currentMarkers : []);
         updateOptionsSignalLog(optSim);
         // Update KPI bar
         const kpiBar = document.getElementById("optionsSignalKpis");
@@ -2532,9 +2541,11 @@
           underlying: chartSymbol.replace("-USD","").replace("PERP","").trim(),
           product_id: p.product_id,
         }));
-      } else if (chartType === "options") {
-        const underlying = chartSymbol.replace("-USD","").toUpperCase();
-        const data = await fetchJson(`/api/options/chain?symbol=${encodeURIComponent(underlying)}`);
+        } else if (chartType === "options") {
+          const tickerInput = document.getElementById("contractTickerFilter");
+          const underlying = (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol).replace("-USD","").toUpperCase();
+          if (tickerInput) tickerInput.value = underlying;
+          const data = await fetchJson(`/api/options/chain?symbol=${encodeURIComponent(underlying)}`);
         const chains = data.chains || {};
         Object.entries(chains).forEach(([exp, sides]) => {
           expirations.add(exp);
@@ -2861,18 +2872,20 @@
         }
       });
     });
-    function syncOptionsUI() {
-      const isOptions = chartType === "options";
-      const roleBtns = document.getElementById("chartRoleBtnGroup");
-      const optCfg = document.getElementById("optionsConfigSection");
-      const botCfg = document.querySelector(".config-section:has(#botMaxTrade)") ||
-        document.getElementById("botMaxTrade")?.closest(".config-section");
-      const sigParams = document.querySelector(".config-section:has(#tradingParamRsiMin)") ||
-        document.getElementById("tradingParamRsiMin")?.closest(".config-section");
-      if (roleBtns) roleBtns.style.display = isOptions ? "none" : "flex";
-      if (optCfg) optCfg.style.display = isOptions ? "" : "none";
-      if (botCfg) botCfg.style.display = isOptions ? "none" : "";
-      if (sigParams) sigParams.style.display = isOptions ? "none" : "";
+      function syncOptionsUI() {
+        const isOptions = chartType === "options";
+        const roleBtns = document.getElementById("chartRoleBtnGroup");
+        const optToggleGroup = document.getElementById("optionsSignalToggleGroup");
+        const optCfg = document.getElementById("optionsConfigSection");
+        const botCfg = document.querySelector(".config-section:has(#botMaxTrade)") ||
+          document.getElementById("botMaxTrade")?.closest(".config-section");
+        const sigParams = document.querySelector(".config-section:has(#tradingParamRsiMin)") ||
+          document.getElementById("tradingParamRsiMin")?.closest(".config-section");
+        if (roleBtns) roleBtns.style.display = isOptions ? "none" : "flex";
+        if (optToggleGroup) optToggleGroup.style.display = isOptions ? "flex" : "none";
+        if (optCfg) optCfg.style.display = isOptions ? "" : "none";
+        if (botCfg) botCfg.style.display = isOptions ? "none" : "";
+        if (sigParams) sigParams.style.display = isOptions ? "none" : "";
       if (isOptions) loadOptionsConfig();
     }
 
@@ -2914,7 +2927,7 @@
         if (activity) activity.textContent = "No activity logged yet.";
       }
     }
-    window.syncOptionsUI = syncOptionsUI;
+      window.syncOptionsUI = syncOptionsUI;
 
     ["optMinScore","optMaxSqueeze","optEntryScore","optHoldScore","optMaxActive"].forEach((id) => {
       const el = document.getElementById(id);
@@ -2946,9 +2959,24 @@
         status.style.color = "#ef4444";
       }
     });
-    document.getElementById("contractTickerFilter")?.addEventListener("input", () => {
-      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
-    });
+      document.getElementById("optSignalToggleBtn")?.addEventListener("click", () => {
+        optionsSignalsEnabled = !optionsSignalsEnabled;
+        const btn = document.getElementById("optSignalToggleBtn");
+        if (btn) {
+          btn.style.background = optionsSignalsEnabled
+            ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.05)";
+          btn.style.color = optionsSignalsEnabled ? "#a78bfa" : "rgba(236,243,255,0.4)";
+          btn.style.borderColor = optionsSignalsEnabled
+            ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.1)";
+        }
+        if (candleSeries) {
+          candleSeries.setMarkers(optionsSignalsEnabled ? currentMarkers : []);
+        }
+      });
+
+      document.getElementById("contractTickerFilter")?.addEventListener("input", () => {
+        if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
+      });
     document.getElementById("contractExpiry")?.addEventListener("change", () => {
       if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
     });

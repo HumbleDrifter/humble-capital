@@ -758,6 +758,9 @@
         </div>
 
         <div id="tradingChartKpis" class="opp-status-bar" style="margin-top:8px;"></div>
+        <div id="optionsSignalKpis" style="display:none;margin-top:6px;font-size:12px;
+          color:rgba(236,243,255,0.5);display:flex;gap:16px;flex-wrap:wrap;padding:4px 0;">
+        </div>
 
         <div id="chartBtResultsPanel" style="display:none;margin-top:12px;">
           <div class="chart-bt-results-bar">
@@ -2013,6 +2016,99 @@
     };
   }
 
+  function simulateOptionsSignals(rows) {
+    if (!rows || rows.length < 50) return { markers: [], summary: {} };
+    const markers = [];
+    let counts = { buy_call: 0, buy_put: 0, sell_csp: 0, sell_cc: 0, wheel: 0 };
+
+    for (let i = 50; i < rows.length; i++) {
+      const bar = rows[i];
+      const prev = rows[i - 1] || bar;
+      const rsi = Number(bar.rsi || 50);
+      const close = Number(bar.close || 0);
+      const ema21 = Number(bar.ema_fast || close);
+      const ema50 = Number(bar.ema_mid || close);
+      const ema200 = Number(bar.ema_trend || close);
+      const macdHist = Number(bar.macd_hist || 0);
+      const prevMacd = Number(prev.macd_hist || 0);
+
+      // MEME SQUEEZE CALL: strong upward momentum + oversold bounce
+      if (rsi > 60 && rsi < 80 && macdHist > 0 && macdHist > prevMacd
+          && close > ema21 && close > ema50) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "belowBar",
+          color: "#22c55e",
+          shape: "arrowUp",
+          text: "BUY CALL",
+        });
+        counts.buy_call++;
+        i += 3; // cooldown
+        continue;
+      }
+
+      // BUY PUT: bearish momentum + overbought
+      if (rsi > 65 && macdHist < 0 && macdHist < prevMacd
+          && close < ema21 && close < ema50) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "aboveBar",
+          color: "#ef4444",
+          shape: "arrowDown",
+          text: "BUY PUT",
+        });
+        counts.buy_put++;
+        i += 3;
+        continue;
+      }
+
+      // SELL CSP (Cash Secured Put): oversold + above EMA200 support
+      if (rsi < 35 && close > ema200 && macdHist > prevMacd) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "belowBar",
+          color: "#2dd4bf",
+          shape: "circle",
+          text: "SELL CSP",
+        });
+        counts.sell_csp++;
+        i += 5;
+        continue;
+      }
+
+      // SELL COVERED CALL: overbought + extended above EMA50
+      const ext = ema50 > 0 ? ((close - ema50) / ema50) * 100 : 0;
+      if (rsi > 70 && ext > 5 && macdHist < prevMacd) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "aboveBar",
+          color: "#f59e0b",
+          shape: "circle",
+          text: "SELL CC",
+        });
+        counts.sell_cc++;
+        i += 5;
+        continue;
+      }
+
+      // WHEEL ENTRY: near EMA200 support + low RSI
+      if (rsi < 40 && Math.abs(close - ema200) / ema200 < 0.03 && macdHist > prevMacd) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "belowBar",
+          color: "#a78bfa",
+          shape: "square",
+          text: "WHEEL",
+        });
+        counts.wheel++;
+        i += 8;
+        continue;
+      }
+    }
+
+    return { markers, counts };
+  }
+
   function simulateSignals(rows) {
     const params = currentParams();
     const markers = [];
@@ -2324,12 +2420,34 @@
     rsiUpperSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 70 })));
     rsiLowerSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 30 })));
     const sim = simulateSignals(chartRows);
-    currentMarkers = sim.markers;
-    updateSignalLog(sim);
-    console.log("Markers to display:", currentMarkers.length, currentMarkers.slice(0, 3));
-    candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
-    updateAssetContext().catch(console.error);
-    window.syncOptionsUI?.();
+      currentMarkers = sim.markers;
+      updateSignalLog(sim);
+      console.log("Markers to display:", currentMarkers.length, currentMarkers.slice(0, 3));
+      candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
+      // Override with options signals when in options mode
+      if (chartType === "options") {
+        const optSim = simulateOptionsSignals(chartRows);
+        currentMarkers = optSim.markers;
+        candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
+        updateOptionsSignalLog(optSim);
+        // Update KPI bar
+        const kpiBar = document.getElementById("optionsSignalKpis");
+        if (kpiBar) {
+          const c = optSim.counts || {};
+          const total = Object.values(c).reduce((a, b) => a + b, 0);
+          kpiBar.style.display = total > 0 ? "flex" : "none";
+          kpiBar.innerHTML = [
+            c.buy_call ? `<span style="color:#22c55e;">▲ ${c.buy_call} CALL</span>` : "",
+            c.buy_put ? `<span style="color:#ef4444;">▼ ${c.buy_put} PUT</span>` : "",
+            c.sell_csp ? `<span style="color:#2dd4bf;">● ${c.sell_csp} CSP</span>` : "",
+            c.sell_cc ? `<span style="color:#f59e0b;">● ${c.sell_cc} CC</span>` : "",
+            c.wheel ? `<span style="color:#a78bfa;">■ ${c.wheel} WHEEL</span>` : "",
+            total ? `<span style="color:rgba(236,243,255,0.3);">${total} total signals</span>` : "",
+          ].filter(Boolean).join("");
+        }
+      }
+      updateAssetContext().catch(console.error);
+      window.syncOptionsUI?.();
     toggleOverlay("ema21", chartOverlayState.ema21);
     toggleOverlay("ema50", chartOverlayState.ema50);
     toggleOverlay("ema200", chartOverlayState.ema200);
@@ -2607,6 +2725,20 @@
     entries.push(`<div style="margin-top:6px;color:rgba(236,243,255,0.2);font-size:10px;">
       RSI ${currentParams().rsiMin}–${currentParams().rsiMax} · ADX≥${currentParams().adxMin} · EXT≤${currentParams().extPct}%
     </div>`);
+    host.innerHTML = entries.join("");
+  }
+
+  function updateOptionsSignalLog(sim) {
+    const host = document.getElementById("chartSignalLog");
+    if (!host || !sim) return;
+    const c = sim.counts || {};
+    const entries = [];
+    if (c.buy_call) entries.push(`<div style="color:#22c55e;">▲ ${c.buy_call} BUY CALL signal${c.buy_call !== 1 ? "s" : ""}</div>`);
+    if (c.buy_put) entries.push(`<div style="color:#ef4444;">▼ ${c.buy_put} BUY PUT signal${c.buy_put !== 1 ? "s" : ""}</div>`);
+    if (c.sell_csp) entries.push(`<div style="color:#2dd4bf;">● ${c.sell_csp} SELL CSP signal${c.sell_csp !== 1 ? "s" : ""}</div>`);
+    if (c.sell_cc) entries.push(`<div style="color:#f59e0b;">● ${c.sell_cc} SELL CC signal${c.sell_cc !== 1 ? "s" : ""}</div>`);
+    if (c.wheel) entries.push(`<div style="color:#a78bfa;">■ ${c.wheel} WHEEL signal${c.wheel !== 1 ? "s" : ""}</div>`);
+    if (!entries.length) entries.push(`<div style="color:rgba(236,243,255,0.3);">No options signals in current window</div>`);
     host.innerHTML = entries.join("");
   }
 

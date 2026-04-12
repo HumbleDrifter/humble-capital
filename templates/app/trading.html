@@ -2061,6 +2061,10 @@
     try {
       if (chartType === "crypto") {
         const data = await fetchJson(`/api/ticker?product_id=${encodeURIComponent(chartSymbol)}`);
+        // Normalize field names from Coinbase response
+        data.change_pct = data.change_pct || data.price_percentage_change_24h || 0;
+        data.volume = data.volume || data.volume_24h || 0;
+        // Fallback to last candle close if price is 0
         if (!data.price && chartRows && chartRows.length) {
           const last = chartRows[chartRows.length - 1];
           data.price = last.close || 0;
@@ -2497,7 +2501,7 @@
             return;
           }
           refreshChart().catch(console.error);
-        }, 300);
+        }, 100);
       });
     });
     function applyEmaStyle(id, series) {

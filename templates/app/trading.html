@@ -691,6 +691,52 @@
 
       <div class="chart-config-panel">
         <div class="config-section">
+          <div class="config-section-title">Indicator Colors</div>
+          <div class="config-row">
+            <span class="config-label">EMA 21</span>
+            <input type="color" id="colorEma21" value="#38bdf8"
+              style="width:36px;height:24px;border:none;background:none;cursor:pointer;padding:0;">
+            <input type="range" id="widthEma21" min="1" max="3" step="1" value="1" class="config-slider" style="width:50px;">
+          </div>
+          <div class="config-row">
+            <span class="config-label">EMA 50</span>
+            <input type="color" id="colorEma50" value="#f59e0b"
+              style="width:36px;height:24px;border:none;background:none;cursor:pointer;padding:0;">
+            <input type="range" id="widthEma50" min="1" max="3" step="1" value="1" class="config-slider" style="width:50px;">
+          </div>
+          <div class="config-row">
+            <span class="config-label">EMA 200</span>
+            <input type="color" id="colorEma200" value="#ef4444"
+              style="width:36px;height:24px;border:none;background:none;cursor:pointer;padding:0;">
+            <input type="range" id="widthEma200" min="1" max="3" step="1" value="1" class="config-slider" style="width:50px;">
+          </div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Bot Config</div>
+          <div class="config-row">
+            <span class="config-label">Max Trade $</span>
+            <input id="botMaxTrade" type="number" min="10" step="10" value="150"
+              style="flex:1;font-size:11px;padding:3px 6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#ecf3ff;">
+          </div>
+          <div class="config-row">
+            <span class="config-label">Cash Reserve</span>
+            <input id="botCashReserve" type="number" min="0.01" max="0.5" step="0.01" value="0.08"
+              style="flex:1;font-size:11px;padding:3px 6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#ecf3ff;">
+          </div>
+          <div class="config-row">
+            <span class="config-label">Sat Target</span>
+            <input id="botSatTarget" type="number" min="0.05" max="0.5" step="0.05" value="0.20"
+              style="flex:1;font-size:11px;padding:3px 6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#ecf3ff;">
+          </div>
+          <button id="botConfigSaveBtn" type="button"
+            style="width:100%;margin-top:8px;padding:7px;background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);border-radius:6px;font-weight:600;font-size:12px;cursor:pointer;">
+            Save Bot Config
+          </button>
+          <div id="botConfigStatus" style="font-size:10px;color:rgba(236,243,255,0.4);margin-top:4px;text-align:center;"></div>
+        </div>
+
+        <div class="config-section">
           <div class="config-section-title">Signal Parameters</div>
 
           <div class="config-row">
@@ -824,6 +870,7 @@
   let chartReady = false;
   let chartBooting = false;
   let currentMarkers = [];
+  const emaColors = { ema21: "#38bdf8", ema50: "#f59e0b", ema200: "#ef4444" };
   let futuresCategory = "all";
   let futuresProducts = [];
   let futuresPositions = [];
@@ -1757,9 +1804,13 @@
     return rows.filter((row) => row[field] != null).map((row) => ({ time: Number(row.ts || 0), value: Number(row[field] || 0) }));
   }
 
-  function setSeriesVisible(series, visible) {
+  function setSeriesVisible(series, visible, defaultWidth) {
     if (!series) return;
-    series.applyOptions({ visible: !!visible });
+    try {
+      series.applyOptions({ visible: !!visible });
+    } catch(e) {
+      series.applyOptions({ lineWidth: visible ? (defaultWidth || 1) : 0 });
+    }
   }
 
   function toggleOverlay(overlay, enabled) {
@@ -2185,6 +2236,54 @@
           refreshChart().catch(console.error);
         }, 300);
       });
+    });
+    function applyEmaStyle(id, series) {
+      const color = document.getElementById("color" + id)?.value;
+      const width = Number(document.getElementById("width" + id)?.value || 1);
+      if (series && color) series.applyOptions({ color, lineWidth: width });
+    }
+    ["Ema21", "Ema50", "Ema200"].forEach((id) => {
+      document.getElementById("color" + id)?.addEventListener("input", () => {
+        if (id === "Ema21") applyEmaStyle(id, ema21Series);
+        if (id === "Ema50") applyEmaStyle(id, ema50Series);
+        if (id === "Ema200") applyEmaStyle(id, ema200Series);
+      });
+      document.getElementById("width" + id)?.addEventListener("input", () => {
+        if (id === "Ema21") applyEmaStyle(id, ema21Series);
+        if (id === "Ema50") applyEmaStyle(id, ema50Series);
+        if (id === "Ema200") applyEmaStyle(id, ema200Series);
+      });
+    });
+
+    (async () => {
+      try {
+        const data = await fetchJson("/api/config");
+        const cfg = data.config || {};
+        if (cfg.max_quote_per_trade_usd) document.getElementById("botMaxTrade").value = cfg.max_quote_per_trade_usd;
+        if (cfg.min_cash_reserve) document.getElementById("botCashReserve").value = cfg.min_cash_reserve;
+        if (cfg.satellite_total_target) document.getElementById("botSatTarget").value = cfg.satellite_total_target;
+      } catch(e) {}
+    })();
+
+    document.getElementById("botConfigSaveBtn")?.addEventListener("click", async () => {
+      const status = document.getElementById("botConfigStatus");
+      status.textContent = "Saving...";
+      try {
+        const result = await fetchJson("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            max_quote_per_trade_usd: Number(document.getElementById("botMaxTrade").value),
+            min_cash_reserve: Number(document.getElementById("botCashReserve").value),
+            satellite_total_target: Number(document.getElementById("botSatTarget").value),
+          }),
+        });
+        status.textContent = result.ok ? "Saved ✓" : "Error: " + result.error;
+        status.style.color = result.ok ? "#22c55e" : "#ef4444";
+      } catch(e) {
+        status.textContent = "Save failed";
+        status.style.color = "#ef4444";
+      }
     });
     document.getElementById("chartRunBtBtn")?.addEventListener("click", async () => {
       const status = document.getElementById("chartBtStatus");

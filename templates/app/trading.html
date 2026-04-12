@@ -689,65 +689,73 @@
         </div>
 
         <div id="chartContractPanel" style="display:none;margin-top:8px;">
-        <div style="margin-bottom:10px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <!-- Top filter bar -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
             <span style="font-size:12px;font-weight:700;color:rgba(236,243,255,0.6);
-              text-transform:uppercase;letter-spacing:0.06em;">Contracts</span>
-            <span id="contractLoadingMsg" style="font-size:11px;color:rgba(236,243,255,0.4);"></span>
+              text-transform:uppercase;letter-spacing:0.06em;">Options Chain</span>
+            <select id="chainExpirySelect" class="select"
+              style="font-size:12px;padding:4px 10px;min-width:140px;">
+              <option value="">All Expirations</option>
+            </select>
+            <div style="display:flex;gap:4px;">
+              <button class="chain-side-btn active" data-side="both" type="button"
+                style="padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;
+                background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);">
+                Both
+              </button>
+              <button class="chain-side-btn" data-side="calls" type="button"
+                style="padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;
+                background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);border:1px solid rgba(255,255,255,0.1);">
+                Calls
+              </button>
+              <button class="chain-side-btn" data-side="puts" type="button"
+                style="padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;
+                background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);border:1px solid rgba(255,255,255,0.1);">
+                Puts
+              </button>
+            </div>
+            <input id="chainStrikeInput" type="number" placeholder="Near strike..."
+              style="font-size:12px;padding:4px 8px;background:rgba(255,255,255,0.05);
+              border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;width:110px;">
+            <span id="chainLoadingMsg" style="font-size:11px;color:rgba(236,243,255,0.4);margin-left:auto;"></span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:end;">
-            <div>
-              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Ticker</label>
-              <input id="contractTickerFilter" type="text" placeholder="e.g. GME"
-                style="width:100%;font-size:12px;padding:5px 8px;background:rgba(255,255,255,0.05);
-                border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;box-sizing:border-box;">
-            </div>
-            <div>
-              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Expiration</label>
-              <select id="contractExpiry" class="select"
-                style="width:100%;font-size:12px;padding:5px 8px;box-sizing:border-box;">
-                <option value="">All Dates</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Type</label>
-              <select id="contractType" class="select"
-                style="width:100%;font-size:12px;padding:5px 8px;box-sizing:border-box;">
-                <option value="">All Types</option>
-                <option value="call">Call</option>
-                <option value="put">Put</option>
-                <option value="perp">Perp</option>
-                <option value="dated">Dated</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:10px;color:rgba(236,243,255,0.4);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em;">Strike Near</label>
-              <input id="contractStrikeFilter" type="number" placeholder="Price..."
-                style="width:100%;font-size:12px;padding:5px 8px;background:rgba(255,255,255,0.05);
-                border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;box-sizing:border-box;">
-            </div>
-          </div>
-        </div>
+
+          <!-- Chain table -->
           <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <table id="chainTable" style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;">
+              <colgroup>
+                <col style="width:12%"><col style="width:10%"><col style="width:10%">
+                <col style="width:12%">
+                <col style="width:10%"><col style="width:10%"><col style="width:12%">
+              </colgroup>
               <thead>
-                <tr style="color:rgba(236,243,255,0.4);border-bottom:1px solid rgba(255,255,255,0.06);">
-                  <th style="text-align:left;padding:4px 8px;">Type</th>
-                  <th style="text-align:left;padding:4px 8px;">Strike</th>
-                  <th style="text-align:left;padding:4px 8px;">Expiry</th>
-                  <th style="text-align:right;padding:4px 8px;">Bid</th>
-                  <th style="text-align:right;padding:4px 8px;">Ask</th>
-                  <th style="text-align:right;padding:4px 8px;">Last</th>
-                  <th style="text-align:right;padding:4px 8px;">OI</th>
-                  <th style="text-align:right;padding:4px 8px;">Vol</th>
-                  <th style="text-align:right;padding:4px 8px;">IV</th>
-                  <th style="text-align:right;padding:4px 8px;">Delta</th>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                  <th colspan="3" style="text-align:center;padding:6px 4px;
+                    color:#2dd4bf;font-weight:600;font-size:11px;letter-spacing:0.05em;">
+                    CALLS
+                  </th>
+                  <th style="text-align:center;padding:6px 4px;
+                    color:rgba(236,243,255,0.5);font-size:11px;">
+                    STRIKE
+                  </th>
+                  <th colspan="3" style="text-align:center;padding:6px 4px;
+                    color:#f87171;font-weight:600;font-size:11px;letter-spacing:0.05em;">
+                    PUTS
+                  </th>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Bid</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Ask</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Last</th>
+                  <th style="text-align:center;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Price</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Bid</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Ask</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Last</th>
                 </tr>
               </thead>
-              <tbody id="contractTableBody">
-                <tr><td colspan="10" style="padding:12px 8px;color:rgba(236,243,255,0.3);">
-                  Select a symbol to load contracts.
-                </td></tr>
+              <tbody id="chainTableBody">
+                <tr><td colspan="7" style="padding:16px;text-align:center;
+                  color:rgba(236,243,255,0.3);">Select a symbol to load chain.</td></tr>
               </tbody>
             </table>
           </div>
@@ -2588,140 +2596,139 @@
 
   let _contractCache = {};
   async function loadContractPanel() {
-    const tbody = document.getElementById("contractTableBody");
-    const loading = document.getElementById("contractLoadingMsg");
-    const expirySelect = document.getElementById("contractExpiry");
+    const tbody = document.getElementById("chainTableBody");
+    const loading = document.getElementById("chainLoadingMsg");
+    const expirySelect = document.getElementById("chainExpirySelect");
     if (!tbody) return;
 
-    // Sync ticker filter with current symbol
-    const tickerInput = document.getElementById("contractTickerFilter");
-    const underlying = chartSymbol.replace("-USD","").toUpperCase();
-    if (tickerInput && !tickerInput.value) tickerInput.value = underlying;
+    const underlying = (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol)
+      .replace("-USD","").toUpperCase();
 
-    loading.textContent = "Loading contracts...";
-    tbody.innerHTML = `<tr><td colspan="10" style="padding:12px 8px;color:rgba(236,243,255,0.3);">Loading...</td></tr>`;
+    loading.textContent = "Loading chain...";
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:16px;text-align:center;
+      color:rgba(236,243,255,0.3);">Loading ${underlying} options...</td></tr>`;
 
     try {
-      let contracts = [];
-      let expirations = new Set();
+      const data = await fetchJson(`/api/options/chain?symbol=${encodeURIComponent(underlying)}`);
+      if (!data.ok) throw new Error(data.error || "chain_failed");
 
-      // Pre-populate expiry dropdown for options using dedicated endpoint
-    if (chartType === "options") {
-      try {
-        const underlying = chartSymbol.replace("-USD","").toUpperCase();
-        const expData = await fetchJson(`/api/options/expirations?symbol=${encodeURIComponent(underlying)}`);
-        const exps = expData.expirations || [];
-        if (exps.length && expirySelect) {
-          expirySelect.innerHTML = `<option value="">All Dates</option>` +
-            exps.map((e) => `<option value="${e}">${e}</option>`).join("");
-        }
-      } catch(e) {}
-    }
-    if (chartType === "futures") {
-        const data = await fetchJson(`/api/futures/products`);
-        const products = (data.products || []).filter((p) =>
-          String(p.underlying || p.display_name || "").toUpperCase().includes(
-            chartSymbol.replace("-USD","").replace("PERP","").trim()
-          )
-        );
-        contracts = products.map((p) => ({
-          type: p.is_perp ? "PERP" : "DATED",
-          strike: "—",
-          expiry: p.expiry || "Perpetual",
-          bid: fmtUsd(p.price || 0, 2),
-          ask: "—",
-          last: fmtUsd(p.price || 0, 2),
-          oi: "—",
-          vol: fmtCompact(p.volume_24h || 0),
-          iv: "—",
-          delta: "—",
-          underlying: chartSymbol.replace("-USD","").replace("PERP","").trim(),
-          product_id: p.product_id,
-        }));
-        } else if (chartType === "options") {
-          const tickerInput = document.getElementById("contractTickerFilter");
-          const underlying = (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol).replace("-USD","").toUpperCase();
-          if (tickerInput) tickerInput.value = underlying;
-          const data = await fetchJson(`/api/options/chain?symbol=${encodeURIComponent(underlying)}`);
-        const chains = data.chains || {};
-        Object.entries(chains).forEach(([exp, sides]) => {
-          expirations.add(exp);
-          ["calls","puts"].forEach((side) => {
-            (sides[side] || []).forEach((c) => {
-              contracts.push({
-                type: side === "calls" ? "CALL" : "PUT",
-                strike: fmtUsd(c.strike || 0, 2),
-                expiry: exp,
-                bid: fmtUsd(c.bid || 0, 2),
-                ask: fmtUsd(c.ask || 0, 2),
-                last: fmtUsd(c.last || 0, 2),
-                oi: (c.open_interest || 0).toLocaleString(),
-                vol: (c.volume || 0).toLocaleString(),
-                iv: c.iv ? `${(c.iv * 100).toFixed(1)}%` : "—",
-                delta: c.delta ? c.delta.toFixed(3) : "—",
-                symbol: underlying,
-                underlying,
-              });
-            });
-          });
-        });
-        expirySelect.innerHTML = `<option value="">All Expirations</option>` +
-          [...expirations].sort().map((e) => `<option value="${e}">${e}</option>`).join("");
-      }
+      const expirations = data.expirations || [];
+      const chains = data.chains || {};
+      const underlyingPrice = data.underlying_price || 0;
 
-      _contractCache = {
-        contracts,
-        type: chartType,
-        symbol: chartType === "options"
-          ? chartSymbol.replace("-USD","").toUpperCase()
-          : (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol).replace("-USD","").toUpperCase(),
-      };
-      renderContractTable(contracts);
-      loading.textContent = `${contracts.length} contracts`;
+      expirySelect.innerHTML = `<option value="">All Expirations</option>` +
+        expirations.map((e) => {
+          const days = Math.round((new Date(e) - new Date()) / 86400000);
+          return `<option value="${e}">${e} (${days}D)</option>`;
+        }).join("");
+
+      _contractCache = { chains, expirations, underlyingPrice, symbol: underlying };
+      renderChain();
+      loading.textContent = `${underlyingPrice > 0 ? "$" + underlyingPrice.toFixed(2) : ""}`;
     } catch(e) {
-      tbody.innerHTML = `<tr><td colspan="10" style="padding:12px;color:#ef4444;">Failed to load contracts: ${e.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="padding:16px;text-align:center;
+        color:#ef4444;">Failed: ${e.message}</td></tr>`;
       loading.textContent = "";
     }
   }
 
-  function renderContractTable(contracts) {
-    const tbody = document.getElementById("contractTableBody");
-    const expiryFilter = document.getElementById("contractExpiry")?.value || "";
-    const typeFilter = document.getElementById("contractType")?.value || "";
-    const strikeFilter = Number(document.getElementById("contractStrikeFilter")?.value || 0);
+  function renderChain() {
+    const tbody = document.getElementById("chainTableBody");
+    if (!tbody || !_contractCache.chains) return;
 
-    const tickerFilter = (document.getElementById("contractTickerFilter")?.value || "").trim().toUpperCase();
-    let rows = contracts;
-    if (tickerFilter) rows = rows.filter((r) =>
-      String(r.product_id || r.symbol || r.underlying || "").toUpperCase().includes(tickerFilter)
-    );
-    if (expiryFilter) rows = rows.filter((r) => r.expiry === expiryFilter);
-    if (typeFilter) rows = rows.filter((r) => r.type.toLowerCase().includes(typeFilter));
-    if (strikeFilter > 0) rows = rows.filter((r) => {
-      const s = parseFloat(String(r.strike).replace("$","").replace(",",""));
-      return !isNaN(s) && Math.abs(s - strikeFilter) <= strikeFilter * 0.1;
-    });
+    const selectedExpiry = document.getElementById("chainExpirySelect")?.value || "";
+    const selectedSide = document.querySelector(".chain-side-btn.active")?.dataset.side || "both";
+    const strikeNear = Number(document.getElementById("chainStrikeInput")?.value || 0);
+    const underlyingPrice = _contractCache.underlyingPrice || 0;
+    const chains = _contractCache.chains;
 
-    if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="10" style="padding:12px;color:rgba(236,243,255,0.3);">No contracts match filters.</td></tr>`;
-      return;
+    const expirations = selectedExpiry
+      ? [selectedExpiry]
+      : (_contractCache.expirations || []).slice(0, 4);
+
+    const rows = [];
+
+    for (const exp of expirations) {
+      const chain = chains[exp] || {};
+      const calls = chain.calls || [];
+      const puts = chain.puts || [];
+
+      const callMap = {};
+      const putMap = {};
+      calls.forEach((c) => { callMap[c.strike] = c; });
+      puts.forEach((p) => { putMap[p.strike] = p; });
+      const allStrikes = [...new Set([...calls.map((c) => c.strike), ...puts.map((p) => p.strike)])]
+        .sort((a, b) => a - b);
+
+      const filteredStrikes = strikeNear > 0
+        ? allStrikes.filter((s) => Math.abs(s - strikeNear) <= strikeNear * 0.08)
+        : allStrikes;
+
+      if (!filteredStrikes.length) continue;
+
+      const days = Math.round((new Date(exp) - new Date()) / 86400000);
+      rows.push(`<tr style="background:rgba(255,255,255,0.03);">
+        <td colspan="7" style="padding:5px 8px;font-size:11px;font-weight:600;
+          color:rgba(236,243,255,0.5);">
+          ${exp} &nbsp;<span style="color:rgba(236,243,255,0.3);">${days}D</span>
+        </td>
+      </tr>`);
+
+      let itmShown = false;
+
+      for (const strike of filteredStrikes) {
+        const call = callMap[strike] || {};
+        const put = putMap[strike] || {};
+        const isItm = underlyingPrice > 0 && strike <= underlyingPrice;
+        const isAtm = underlyingPrice > 0 && Math.abs(strike - underlyingPrice) / underlyingPrice < 0.005;
+
+        if (!itmShown && underlyingPrice > 0 && strike > underlyingPrice) {
+          itmShown = true;
+          rows.push(`<tr style="background:rgba(56,189,248,0.08);border-top:1px solid rgba(56,189,248,0.2);
+            border-bottom:1px solid rgba(56,189,248,0.2);">
+            <td colspan="3" style="padding:3px 8px;font-size:10px;color:#38bdf8;">▲ ITM</td>
+            <td style="text-align:center;padding:3px 4px;font-size:10px;color:#38bdf8;font-weight:600;">
+              $${underlyingPrice.toFixed(2)}
+            </td>
+            <td colspan="3" style="padding:3px 8px;font-size:10px;color:#38bdf8;text-align:right;">ITM ▼</td>
+          </tr>`);
+        }
+
+        const callBg = isItm ? "rgba(45,212,191,0.04)" : "";
+        const putBg = isItm ? "" : "rgba(248,113,113,0.04)";
+        const atmStyle = isAtm ? "font-weight:700;background:rgba(56,189,248,0.08);" : "";
+
+        const fmtVal = (v) => v ? Number(v).toFixed(2) : "—";
+        const callCols = selectedSide !== "puts" ? `
+          <td style="text-align:right;padding:4px;color:#2dd4bf;background:${callBg};">${fmtVal(call.bid)}</td>
+          <td style="text-align:right;padding:4px;color:#f87171;background:${callBg};">${fmtVal(call.ask)}</td>
+          <td style="text-align:right;padding:4px;color:rgba(236,243,255,0.7);background:${callBg};">${fmtVal(call.last)}</td>
+        ` : `<td colspan="3" style="background:${callBg};"></td>`;
+
+        const putCols = selectedSide !== "calls" ? `
+          <td style="text-align:right;padding:4px;color:#2dd4bf;background:${putBg};">${fmtVal(put.bid)}</td>
+          <td style="text-align:right;padding:4px;color:#f87171;background:${putBg};">${fmtVal(put.ask)}</td>
+          <td style="text-align:right;padding:4px;color:rgba(236,243,255,0.7);background:${putBg};">${fmtVal(put.last)}</td>
+        ` : `<td colspan="3" style="background:${putBg};"></td>`;
+
+        rows.push(`<tr style="${atmStyle}border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;"
+            onmouseover="this.style.background='rgba(255,255,255,0.04)'"
+            onmouseout="this.style.background='${isAtm ? 'rgba(56,189,248,0.08)' : ''}'">
+          ${callCols}
+          <td style="text-align:center;padding:4px;font-weight:600;
+            color:${isAtm ? '#38bdf8' : 'rgba(236,243,255,0.8)'};
+            background:rgba(255,255,255,0.02);">
+            $${Number(strike).toFixed(strike % 1 === 0 ? 0 : 1)}
+          </td>
+          ${putCols}
+        </tr>`);
+      }
     }
 
-    tbody.innerHTML = rows.slice(0, 50).map((r) => `
-      <tr style="border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;"
-          onmouseover="this.style.background='rgba(255,255,255,0.03)'"
-          onmouseout="this.style.background=''">
-        <td style="padding:5px 8px;font-weight:600;color:${r.type==="CALL"||r.type==="PERP"?"#22c55e":"#ef4444"};">${r.type}</td>
-        <td style="padding:5px 8px;">${r.strike}</td>
-        <td style="padding:5px 8px;color:rgba(236,243,255,0.5);">${r.expiry}</td>
-        <td style="padding:5px 8px;text-align:right;color:#22c55e;">${r.bid}</td>
-        <td style="padding:5px 8px;text-align:right;color:#ef4444;">${r.ask}</td>
-        <td style="padding:5px 8px;text-align:right;">${r.last}</td>
-        <td style="padding:5px 8px;text-align:right;color:rgba(236,243,255,0.5);">${r.oi}</td>
-        <td style="padding:5px 8px;text-align:right;color:rgba(236,243,255,0.5);">${r.vol}</td>
-        <td style="padding:5px 8px;text-align:right;color:#a78bfa;">${r.iv}</td>
-        <td style="padding:5px 8px;text-align:right;color:#f59e0b;">${r.delta}</td>
-      </tr>`).join("");
+    tbody.innerHTML = rows.length
+      ? rows.join("")
+      : `<tr><td colspan="7" style="padding:16px;text-align:center;color:rgba(236,243,255,0.3);">
+          No contracts found.</td></tr>`;
   }
 
   function updateSignalLog(sim) {
@@ -3073,18 +3080,24 @@
         }
       });
 
-      document.getElementById("contractTickerFilter")?.addEventListener("input", () => {
-        if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
+      // Chain filter controls
+      document.getElementById("chainExpirySelect")?.addEventListener("change", () => renderChain());
+      document.getElementById("chainStrikeInput")?.addEventListener("input", () => renderChain());
+      document.querySelectorAll(".chain-side-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".chain-side-btn").forEach((b) => {
+            b.classList.remove("active");
+            b.style.background = "rgba(255,255,255,0.05)";
+            b.style.color = "rgba(236,243,255,0.5)";
+            b.style.borderColor = "rgba(255,255,255,0.1)";
+          });
+          btn.classList.add("active");
+          btn.style.background = "rgba(56,189,248,0.15)";
+          btn.style.color = "#38bdf8";
+          btn.style.borderColor = "rgba(56,189,248,0.3)";
+          renderChain();
+        });
       });
-    document.getElementById("contractExpiry")?.addEventListener("change", () => {
-      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
-    });
-    document.getElementById("contractType")?.addEventListener("change", () => {
-      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
-    });
-    document.getElementById("contractStrikeFilter")?.addEventListener("input", () => {
-      if (_contractCache.contracts) renderContractTable(_contractCache.contracts);
-    });
     document.getElementById("chartRunBtBtn")?.addEventListener("click", async () => {
       const status = document.getElementById("chartBtStatus");
       const resultsPanel = document.getElementById("chartBtResultsPanel");

@@ -617,18 +617,20 @@ class WebullAdapter(BrokerAdapter):
             # trade_client.order routes to the HK endpoint and rejects MARKET orders
             new_order = {
                 "market": "US",
+                "combo_type": "NORMAL",
+                "symbol": symbol,
                 "client_order_id": client_order_id,
                 "instrument_id": instrument_id,
-                "qty": int(qty),
+                "quantity": int(qty),
                 "side": wb_side,
-                "tif": "DAY",
+                "time_in_force": "DAY",
                 "order_type": wb_order_type,
-                "extended_hours_trading": False,
+                "entrust_type": "QTY",
+                "support_trading_session": "CORE",
             }
             if wb_order_type == "LIMIT" and limit_price is not None:
                 new_order["limit_price"] = str(limit_price)
             # order_v2 = /openapi/trade/stock/order/place (US stocks)
-            # order_v3 = /openapi/trade/order/place (combo/legs — rejects plain stock orders)
             response = trade_client.order_v2.place_order(
                 account_id,
                 [new_order],

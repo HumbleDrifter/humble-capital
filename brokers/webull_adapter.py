@@ -536,15 +536,22 @@ class WebullAdapter(BrokerAdapter):
                 for exp in target_exps:
                     try:
                         chain = ticker.option_chain(exp)
+                        def _safe_num(val, default=0.0):
+                            import math
+                            try:
+                                v = float(val)
+                                return default if (math.isnan(v) or math.isinf(v)) else v
+                            except Exception:
+                                return default
                         def _row_to_contract(row):
                             return {
-                                "strike": float(row["strike"] if "strike" in row.index else 0),
-                                "bid": float(row["bid"] if "bid" in row.index else 0),
-                                "ask": float(row["ask"] if "ask" in row.index else 0),
-                                "last": float(row["lastPrice"] if "lastPrice" in row.index else 0),
+                                "strike": _safe_num(row["strike"] if "strike" in row.index else 0),
+                                "bid": _safe_num(row["bid"] if "bid" in row.index else 0),
+                                "ask": _safe_num(row["ask"] if "ask" in row.index else 0),
+                                "last": _safe_num(row["lastPrice"] if "lastPrice" in row.index else 0),
                                 "volume": int(row["volume"] if "volume" in row.index and row["volume"] == row["volume"] else 0),
                                 "open_interest": int(row["openInterest"] if "openInterest" in row.index and row["openInterest"] == row["openInterest"] else 0),
-                                "iv": float(row["impliedVolatility"] if "impliedVolatility" in row.index else 0),
+                                "iv": _safe_num(row["impliedVolatility"] if "impliedVolatility" in row.index else 0),
                                 "delta": None, "gamma": None, "theta": None, "vega": None,
                             }
                         calls = [_row_to_contract(row) for _, row in chain.calls.iterrows()]

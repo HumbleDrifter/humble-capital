@@ -13,6 +13,7 @@ from portfolio import get_portfolio_snapshot
 
 _EXECUTOR_LOCK = threading.Lock()
 _POSITION_COOLDOWNS: dict[str, float] = {}
+_PENDING_CLOSES: set[str] = set()
 _EXECUTOR_LOG: list[dict[str, Any]] = []
 
 MAX_OPEN_POSITIONS = 3
@@ -197,14 +198,18 @@ def run_futures_position_monitor() -> dict[str, Any]:
         if mark_price <= 0 or entry_price <= 0 or size <= 0:
             continue
 
+        # Use scanner-suggested levels if available, else fall back to defaults
+        scanner_stop = _safe_float(pos.get("stop_loss"))
+        scanner_target = _safe_float(pos.get("take_profit"))
+
         if side == "long":
-            stop_price = entry_price * 0.97
-            target_price = entry_price * 1.05
+            stop_price = scanner_stop if scanner_stop > 0 else entry_price * 0.97
+            target_price = scanner_target if scanner_target > 0 else entry_price * 1.05
             hit_stop = mark_price <= stop_price * STOP_LOSS_BUFFER
             hit_target = mark_price >= target_price * TAKE_PROFIT_BUFFER
         else:
-            stop_price = entry_price * 1.03
-            target_price = entry_price * 0.95
+            stop_price = scanner_stop if scanner_stop > 0 else entry_price * 1.03
+            target_price = scanner_target if scanner_target > 0 else entry_price * 0.95
             hit_stop = mark_price >= stop_price * (2 - STOP_LOSS_BUFFER)
             hit_target = mark_price <= target_price * (2 - TAKE_PROFIT_BUFFER)
 
@@ -215,25 +220,34 @@ def run_futures_position_monitor() -> dict[str, Any]:
             reason = "take_profit"
 
         if reason:
-            _log(
-                f"closing {side} {product_id} reason={reason} "
-                f"entry={entry_price:.4f} mark={mark_price:.4f} pnl={unrealized_pnl:.2f}"
-            )
-            result = client.close_position(product_id)
-            if result.get("ok"):
-                _set_cooldown(product_id)
-                actions.append({
-                    "product_id": product_id,
-                    "side": side,
-                    "reason": reason,
-                    "entry_price": entry_price,
-                    "exit_price": mark_price,
-                    "pnl": unrealized_pnl,
-                    "order_id": result.get("order_id"),
-                })
-                _log(f"closed {product_id} order_id={result.get('order_id')}")
-            else:
-                _log(f"close failed {product_id}: {result.get('error')}")
+            with _EXECUTOR_LOCK:
+                if product_id in _PENDING_CLOSES:
+                    _log(f"skip {product_id}: close already pending")
+                    continue
+                _PENDING_CLOSES.add(product_id)
+            try:
+                _log(
+                    f"closing {side} {product_id} reason={reason} "
+                    f"entry={entry_price:.4f} mark={mark_price:.4f} pnl={unrealized_pnl:.2f}"
+                )
+                result = client.close_position(product_id)
+                if result.get("ok"):
+                    _set_cooldown(product_id)
+                    actions.append({
+                        "product_id": product_id,
+                        "side": side,
+                        "reason": reason,
+                        "entry_price": entry_price,
+                        "exit_price": mark_price,
+                        "pnl": unrealized_pnl,
+                        "order_id": result.get("order_id"),
+                    })
+                    _log(f"closed {product_id} order_id={result.get('order_id')}")
+                else:
+                    _log(f"close failed {product_id}: {result.get('error')}")
+            finally:
+                with _EXECUTOR_LOCK:
+                    _PENDING_CLOSES.discard(product_id)
 
     if actions:
         _log(f"monitor closed {len(actions)} position(s)")

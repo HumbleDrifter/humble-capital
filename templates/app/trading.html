@@ -2595,6 +2595,7 @@
   }
 
   let _contractCache = {};
+  let _expandedExpirations = new Set();
   async function loadContractPanel() {
     const tbody = document.getElementById("chainTableBody");
     const loading = document.getElementById("chainLoadingMsg");
@@ -2623,6 +2624,9 @@
         }).join("");
 
       _contractCache = { chains, expirations, underlyingPrice, symbol: underlying };
+      if (_expandedExpirations.size === 0 && expirations.length) {
+        _expandedExpirations.add(expirations[0]);
+      }
       renderChain();
       loading.textContent = `${underlyingPrice > 0 ? "$" + underlyingPrice.toFixed(2) : ""}`;
     } catch(e) {
@@ -2667,12 +2671,27 @@
       if (!filteredStrikes.length) continue;
 
       const days = Math.round((new Date(exp) - new Date()) / 86400000);
-      rows.push(`<tr style="background:rgba(255,255,255,0.03);">
-        <td colspan="7" style="padding:5px 8px;font-size:11px;font-weight:600;
-          color:rgba(236,243,255,0.5);">
-          ${exp} &nbsp;<span style="color:rgba(236,243,255,0.3);">${days}D</span>
+      const isExpanded = _expandedExpirations.has(exp);
+      const chevron = isExpanded ? "▲" : "▼";
+
+      rows.push(`<tr style="background:rgba(255,255,255,0.05);cursor:pointer;user-select:none;"
+          onclick="(function(){
+            if(_expandedExpirations.has('${exp}')){_expandedExpirations.delete('${exp}');}
+            else{_expandedExpirations.add('${exp}');}
+            renderChain();
+          })()">
+        <td colspan="3" style="padding:6px 8px;font-size:11px;font-weight:600;color:rgba(236,243,255,0.6);">
+          ${exp} &nbsp;<span style="color:rgba(236,243,255,0.3);font-weight:400;">${days}D</span>
+        </td>
+        <td style="text-align:center;padding:6px 4px;font-size:10px;color:rgba(236,243,255,0.3);">
+          <span style="font-size:9px;">${chevron}</span>
+        </td>
+        <td colspan="3" style="padding:6px 8px;text-align:right;font-size:10px;color:rgba(236,243,255,0.3);">
+          ${filteredStrikes.length} strikes
         </td>
       </tr>`);
+
+      if (!isExpanded) continue;
 
       let itmShown = false;
 
@@ -2684,13 +2703,14 @@
 
         if (!itmShown && underlyingPrice > 0 && strike > underlyingPrice) {
           itmShown = true;
-          rows.push(`<tr style="background:rgba(56,189,248,0.08);border-top:1px solid rgba(56,189,248,0.2);
-            border-bottom:1px solid rgba(56,189,248,0.2);">
-            <td colspan="3" style="padding:3px 8px;font-size:10px;color:#38bdf8;">▲ ITM</td>
-            <td style="text-align:center;padding:3px 4px;font-size:10px;color:#38bdf8;font-weight:600;">
-              $${underlyingPrice.toFixed(2)}
+          const sym = _contractCache.symbol || "";
+          rows.push(`<tr style="background:rgba(139,92,246,0.12);border-top:1px solid rgba(139,92,246,0.35);
+            border-bottom:1px solid rgba(139,92,246,0.35);">
+            <td colspan="3" style="padding:4px 8px;font-size:10px;color:#a78bfa;font-weight:600;">▲ ITM</td>
+            <td style="text-align:center;padding:4px;font-size:10px;color:#e2d9f3;font-weight:700;white-space:nowrap;">
+              ${sym}: $${underlyingPrice.toFixed(2)}
             </td>
-            <td colspan="3" style="padding:3px 8px;font-size:10px;color:#38bdf8;text-align:right;">ITM ▼</td>
+            <td colspan="3" style="padding:4px 8px;font-size:10px;color:#a78bfa;font-weight:600;text-align:right;">ITM ▼</td>
           </tr>`);
         }
 

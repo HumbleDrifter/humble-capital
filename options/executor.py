@@ -31,7 +31,27 @@ from portfolio import get_portfolio_snapshot
 # ---------------------------------------------------------------------------
 _EXECUTOR_LOCK = threading.Lock()
 _SYMBOL_COOLDOWNS: dict[str, float] = {}    # symbol -> last_entry_ts
+_PENDING_CLOSES: set[str] = set()           # dedup guard for position monitor
 _EXECUTOR_LOG: list[dict[str, Any]] = []
+
+
+def _is_market_open() -> bool:
+    """Returns True only during regular US market hours (9:30-16:00 ET)."""
+    try:
+        from datetime import datetime
+        import zoneinfo
+        now = datetime.now(zoneinfo.ZoneInfo("America/New_York"))
+        if now.weekday() >= 5:
+            return False
+        market_open  = now.replace(hour=9,  minute=30, second=0, microsecond=0)
+        market_close = now.replace(hour=16, minute=0,  second=0, microsecond=0)
+        return market_open <= now < market_close
+    except Exception:
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone(timedelta(hours=-4)))
+        if now.weekday() >= 5:
+            return False
+        return (9 * 60 + 30) <= (now.hour * 60 + now.minute) < (16 * 60)
 
 # ---------------------------------------------------------------------------
 # Config
@@ -185,6 +205,10 @@ def run_options_scan_and_execute() -> dict[str, Any]:
     Called hourly at :17. Scans options universe and executes
     high-conviction income plays and meme squeeze calls.
     """
+    if not _is_market_open():
+        _log("scan skipped: market closed (outside 9:30-16:00 ET)")
+        return {"ok": True, "skipped": True, "reason": "market_closed"}
+
     cash = _get_webull_cash()
     if cash < MIN_CASH:
         _log(f"scan skipped: cash=${cash:.2f} below minimum ${MIN_CASH}")
@@ -374,6 +398,9 @@ def run_options_position_monitor() -> dict[str, Any]:
     - Squeeze calls: close at 100% gain or -50% loss
     """
     try:
+        if not _is_market_open():
+            return {"ok": True, "actions": [], "skipped": True, "reason": "market_closed"}
+
         positions = _get_open_options_positions()
         if not positions:
             return {"ok": True, "actions": []}
@@ -414,11 +441,16 @@ def run_options_position_monitor() -> dict[str, Any]:
                     reason = "stop_loss_100pct"
 
             if reason:
-                _log(
-                    f"closing {symbol} reason={reason} "
-                    f"pnl_pct={pnl_pct*100:.1f}% pnl=${unrealized_pnl:.2f}"
-                )
+                with _EXECUTOR_LOCK:
+                    if symbol in _PENDING_CLOSES:
+                        _log(f"skip {symbol}: close already pending")
+                        continue
+                    _PENDING_CLOSES.add(symbol)
                 try:
+                    _log(
+                        f"closing {symbol} reason={reason} "
+                        f"pnl_pct={pnl_pct*100:.1f}% pnl=${unrealized_pnl:.2f}"
+                    )
                     close_order = {
                         "underlying": symbol,
                         "expiration": str(pos.get("expiration") or ""),
@@ -426,7 +458,7 @@ def run_options_position_monitor() -> dict[str, Any]:
                         "option_type": str(pos.get("option_type") or "call").lower(),
                         "side": "buy" if is_short else "sell",
                         "qty": qty,
-                        "order_type": "MKT",
+                        "order_type": "MARKET",
                         "limit_price": None,
                     }
                     result = adapter.place_options_order(close_order)
@@ -444,6 +476,9 @@ def run_options_position_monitor() -> dict[str, Any]:
                         _log(f"close failed {symbol}: {(result or {}).get('error')}")
                 except Exception as exc:
                     _log(f"close error {symbol}: {exc}")
+                finally:
+                    with _EXECUTOR_LOCK:
+                        _PENDING_CLOSES.discard(symbol)
 
         if actions:
             _log(f"monitor closed {len(actions)} option position(s)")

@@ -1038,8 +1038,8 @@ def run_defensive_regime_check():
         if not isinstance(_DEFENSIVE_STATE, dict):
             _DEFENSIVE_STATE = {"sold_value": 0.0, "active": False}
 
-        sell_regimes = ["risk_off"]
-        rebuy_regimes = ["bull", "neutral"]
+        sell_regimes = config.get("defensive_sell_regimes") or ["risk_off"]
+        rebuy_regimes = config.get("defensive_rebuy_regimes") or ["bull", "neutral"]
 
         actions = []
 

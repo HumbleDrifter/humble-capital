@@ -58,14 +58,14 @@ class StockUniverse:
         import pandas as pd
 
         url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-        tables = pd.read_html(url)
+        tables = pd.read_html(url, storage_options={"User-Agent": "Mozilla/5.0"})
         return [self._normalize_symbol(v) for v in tables[0]["Symbol"].tolist()]
 
     def _fetch_nasdaq100(self):
         import pandas as pd
 
         url = "https://en.wikipedia.org/wiki/Nasdaq-100"
-        tables = pd.read_html(url)
+        tables = pd.read_html(url, storage_options={"User-Agent": "Mozilla/5.0"})
         for table in tables:
             for col in ["Ticker", "Symbol"]:
                 if col in table.columns:
@@ -81,7 +81,7 @@ class StockUniverse:
         ]
         for url in urls:
             try:
-                tables = pd.read_html(url)
+                tables = pd.read_html(url, storage_options={"User-Agent": "Mozilla/5.0"})
                 for table in tables:
                     for col in ["Ticker", "Symbol"]:
                         if col in table.columns:

@@ -973,6 +973,18 @@ def dispatch_signal_action(
     }
 
 
+def _is_stock_market_open() -> bool:
+    try:
+        from datetime import datetime
+        import zoneinfo
+        now = datetime.now(zoneinfo.ZoneInfo("America/New_York"))
+        if now.weekday() >= 5:
+            return False
+        return (9 * 60 + 30) <= (now.hour * 60 + now.minute) < (16 * 60)
+    except Exception:
+        return True  # fail open — don't block if timezone check fails
+
+
 def run_trailing_exit_sweep():
     """Called periodically to check for trailing stop and stale position exits."""
     try:
@@ -995,6 +1007,20 @@ def run_trailing_exit_sweep():
             )
 
             if position_value <= 0:
+                continue
+
+            # Stock exits require market hours — crypto/futures can exit 24/7
+            asset_type = str(
+                (snapshot.get("positions", {}).get(product_id, {}) or {}).get("asset_type", "")
+            ).lower()
+            is_stock = asset_type == "stock" or (
+                "-USD" not in product_id and "-USDT" not in product_id
+                and not any(c in product_id for c in ["/", "PERP"])
+            )
+            if is_stock and not _is_stock_market_open():
+                _log_rebalancer_event("trailing_exit_skipped_market_closed", {
+                    "product_id": product_id, "reason": reason
+                })
                 continue
 
             result = execute_trim(

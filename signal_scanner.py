@@ -565,7 +565,7 @@ class SignalScanner:
             or snapshot.get("config", {}).get("market_regime")
             or "neutral"
         ).lower()
-        allowed_regimes = ["bull"]
+        allowed_regimes = ["bull", "neutral"]
         if regime not in allowed_regimes:
             _log(f"satellite scan skipped — regime={regime} not in {allowed_regimes}")
             return []

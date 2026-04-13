@@ -617,6 +617,7 @@ class WebullAdapter(BrokerAdapter):
             # trade_client.order routes to the HK endpoint and rejects MARKET orders
             new_order = {
                 "market": "US",
+                "combo_type": "SINGLE",
                 "client_order_id": client_order_id,
                 "instrument_id": instrument_id,
                 "qty": int(qty),

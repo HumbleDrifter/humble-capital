@@ -363,13 +363,23 @@ class WebullAdapter(BrokerAdapter):
             return broker_result(False, broker=self.name, mode=self._mode(), error=str(exc), balance=0.0, buying_power=0.0, positions=[])
 
     def get_positions(self) -> list:
+        import time as _time
+        # Return cached positions on 429 to avoid hammering Webull rate limits
+        _now = _time.time()
+        cached = getattr(self, "_positions_cache", None)
+        cache_ts = getattr(self, "_positions_cache_ts", 0)
+        if cached is not None and (_now - cache_ts) < 90:
+            return cached
         try:
             _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
             response = trade_client.account_v2.get_account_position(account_id)
             status_code = getattr(response, "status_code", None) or _response_status_code(response)
+            if status_code == 429:
+                _log_webull_event("get_positions_rate_limited", {"backoff_sec": 90})
+                return cached if cached is not None else []
             if status_code != 200:
-                return []
+                return cached if cached is not None else []
             raw_positions = response.json() if hasattr(response, "json") else _response_json(response)
             if not isinstance(raw_positions, list):
                 return []
@@ -419,10 +429,12 @@ class WebullAdapter(BrokerAdapter):
                     )
 
                 positions.append(position)
+            self._positions_cache = positions
+            self._positions_cache_ts = _time.time()
             return positions
         except Exception as exc:
             _log_webull_event("get_positions_failed", {"error": str(exc)})
-            return []
+            return cached if cached is not None else []
 
     def get_stock_quote(self, symbol) -> dict:
         symbol = _normalize_symbol(symbol)

@@ -23,6 +23,26 @@ from portfolio import get_portfolio_snapshot
 _EXECUTOR_LOCK = threading.Lock()
 _SYMBOL_COOLDOWNS: dict[str, float] = {}
 _EXECUTOR_LOG: list[dict[str, Any]] = []
+_PENDING_SELLS: set[str] = set()   # dedup guard
+
+
+def _is_market_open() -> bool:
+    """Returns True only during regular US market hours (9:30-16:00 ET)."""
+    try:
+        from datetime import datetime
+        import zoneinfo
+        now = datetime.now(zoneinfo.ZoneInfo("America/New_York"))
+        if now.weekday() >= 5:
+            return False
+        market_open  = now.replace(hour=9,  minute=30, second=0, microsecond=0)
+        market_close = now.replace(hour=16, minute=0,  second=0, microsecond=0)
+        return market_open <= now < market_close
+    except Exception:
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone(timedelta(hours=-4)))
+        if now.weekday() >= 5:
+            return False
+        return (9 * 60 + 30) <= (now.hour * 60 + now.minute) < (16 * 60)
 
 # ---------------------------------------------------------------------------
 # Config
@@ -266,6 +286,9 @@ def run_stock_position_monitor() -> dict[str, Any]:
     - Momentum exit: price < EMA_mid AND RSI < 40 (from scanner indicators)
     """
     try:
+        if not _is_market_open():
+            return {"ok": True, "actions": [], "skipped": True, "reason": "market_closed"}
+
         adapter = WebullAdapter()
         positions = adapter.get_positions() or []
         stock_positions = [

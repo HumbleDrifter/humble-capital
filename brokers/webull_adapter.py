@@ -598,19 +598,27 @@ class WebullAdapter(BrokerAdapter):
                                      error=f"instrument_id_not_found:{symbol}", symbol=symbol)
             import uuid
             client_order_id = str(uuid.uuid4()).replace("-", "")[:32]
-            # Map order type to Webull SDK format
-            wb_order_type = "MKT" if order_type in ("MKT", "MARKET") else "LMT"
+            # Map order type to Webull SDK v3 US format (MARKET/LIMIT, not MKT/LMT)
+            wb_order_type = "MARKET" if order_type in ("MKT", "MARKET") else "LIMIT"
             wb_side = "BUY" if side == "BUY" else "SELL"
-            response = trade_client.order.place_order(
+            # Use order_v3 — the US-specific endpoint (/openapi/trade/order/place)
+            # trade_client.order routes to the HK endpoint and rejects MARKET orders
+            new_order = {
+                "market": "US",
+                "instrument_type": "STOCK",
+                "client_order_id": client_order_id,
+                "instrument_id": instrument_id,
+                "qty": int(qty),
+                "side": wb_side,
+                "tif": "DAY",
+                "order_type": wb_order_type,
+                "extended_hours_trading": False,
+            }
+            if wb_order_type == "LIMIT" and limit_price is not None:
+                new_order["limit_price"] = str(limit_price)
+            response = trade_client.order_v3.place_order(
                 account_id,
-                int(qty),
-                instrument_id,
-                wb_side,
-                client_order_id,
-                wb_order_type,
-                False,  # extended_hours_trading
-                "DAY",  # tif
-                limit_price=limit_price,
+                [new_order],
             )
             payload = _response_json(response)
             status_code = _response_status_code(response)

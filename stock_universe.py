@@ -37,10 +37,34 @@ class StockUniverse:
     Dynamically discovers and maintains the tradeable stock universe.
     """
 
+    CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "conf", "stock_universe_cache.json")
+
     def __init__(self):
         self.cache = {"ts": 0, "tiers": {}}
         self.cache_ttl = 86400
         self._lock = RLock()
+        self._load_disk_cache()
+
+    def _load_disk_cache(self):
+        try:
+            import json
+            if os.path.exists(self.CACHE_FILE):
+                with open(self.CACHE_FILE) as f:
+                    data = json.load(f)
+                if data.get("tiers") and (time.time() - float(data.get("ts", 0))) < self.cache_ttl:
+                    self.cache = data
+                    self._log(f"loaded universe from disk tier1={len(data['tiers'].get('tier1', []))}")
+        except Exception as exc:
+            self._log(f"disk cache load failed: {exc}")
+
+    def _save_disk_cache(self):
+        try:
+            import json
+            os.makedirs(os.path.dirname(self.CACHE_FILE), exist_ok=True)
+            with open(self.CACHE_FILE, "w") as f:
+                json.dump(self.cache, f)
+        except Exception as exc:
+            self._log(f"disk cache save failed: {exc}")
 
     def _log(self, message):
         print(f"[stock_universe] {message}")
@@ -161,6 +185,7 @@ class StockUniverse:
                     "updated": int(time.time()),
                 }
                 self.cache = {"ts": time.time(), "tiers": tiers}
+                self._save_disk_cache()
                 self._log(f"discovered universe total={len(ranked)} tier1={len(tier1)} tier2={len(tier2)} tier3={len(tier3)}")
                 return tiers
             except Exception as exc:

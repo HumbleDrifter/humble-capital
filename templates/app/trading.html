@@ -298,6 +298,74 @@
     flex-wrap: wrap;
   }
 
+  /* ── Symbol search autocomplete ── */
+  .symbol-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .symbol-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 220px;
+    max-width: 320px;
+    max-height: 280px;
+    overflow-y: auto;
+    background: #0f1729;
+    border: 1px solid rgba(56,189,248,0.25);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    z-index: 9999;
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .symbol-dropdown.open { display: block; }
+  .symbol-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.1s;
+  }
+  .symbol-dropdown-item:last-child { border-bottom: none; }
+  .symbol-dropdown-item:hover,
+  .symbol-dropdown-item.active {
+    background: rgba(56,189,248,0.12);
+  }
+  .symbol-dropdown-item .sym-ticker {
+    font-weight: 600;
+    color: rgba(236,243,255,0.9);
+    letter-spacing: 0.02em;
+  }
+  .symbol-dropdown-item .sym-ticker mark {
+    background: transparent;
+    color: #38bdf8;
+    font-weight: 700;
+  }
+  .symbol-dropdown-item .sym-name {
+    font-size: 11px;
+    color: rgba(236,243,255,0.35);
+    margin-left: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+  .symbol-dropdown-empty {
+    padding: 12px;
+    text-align: center;
+    color: rgba(236,243,255,0.3);
+    font-size: 12px;
+  }
+  @media (max-width: 768px) {
+    .symbol-dropdown { min-width: 200px; max-width: 280px; }
+  }
+
   /* ── Mobile responsive chart layout ── */
   @media (max-width: 768px) {
     .chart-workspace { flex-direction: column; height: auto; min-height: unset; }
@@ -642,8 +710,12 @@
               <button class="chart-pill trading-chart-type asset-type-toggle" data-type="futures" type="button">Futures</button>
               <button class="chart-pill trading-chart-type asset-type-toggle" data-type="options" type="button">Options</button>
             </div>
-            <input type="text" id="tradingChartSymbolInput" list="symbolDatalist" class="chart-symbol-input" placeholder="BTC-USD" value="BTC-USD">
-            <datalist id="symbolDatalist"></datalist>
+            <div class="symbol-search-wrap" id="symbolSearchWrap">
+              <input type="text" id="tradingChartSymbolInput" class="chart-symbol-input"
+                placeholder="Search symbol..." value="BTC-USD"
+                autocomplete="off" spellcheck="false">
+              <div class="symbol-dropdown" id="symbolDropdown"></div>
+            </div>
           </div>
           <div class="chart-topbar-center">
             <span class="chart-symbol-name" id="chartSymbolName">BTC-USD</span>
@@ -1755,9 +1827,7 @@
     if (!datalist) return [];
     // Return cached symbols instantly if available
     if (_symbolCache[assetType]) {
-      const cached = _symbolCache[assetType];
-      datalist.innerHTML = cached.map((s) => `<option value="${s}">`).join("");
-      return cached;
+      return _symbolCache[assetType];
     }
     try {
       const resolvedType = assetType === "options" ? "stock" : assetType;
@@ -1772,7 +1842,7 @@
         futuresProducts = data.products.slice();
       }
       if (data.ok && Array.isArray(symbols) && symbols.length) {
-        datalist.innerHTML = symbols.map((symbol) => `<option value="${escapeHtml(symbol)}">${escapeHtml(symbol)}</option>`).join("");
+        _symbolCache[assetType] = symbols;
         console.log(`Loaded ${symbols.length} ${assetType} symbols`);
         return symbols;
       }
@@ -1780,11 +1850,11 @@
       console.error("Failed to load symbols:", err);
     }
     const fallback = assetType === "crypto"
-      ? ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"]
+      ? ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "DOGE-USD", "PEPE-USD", "BONK-USD"]
       : assetType === "futures"
         ? ["BTC-PERP", "ETH-PERP", "SOL-PERP"]
         : DEFAULT_STOCKS;
-    datalist.innerHTML = fallback.map((symbol) => `<option value="${escapeHtml(symbol)}">${escapeHtml(symbol)}</option>`).join("");
+    _symbolCache[assetType] = fallback;
     return fallback;
   }
 
@@ -2881,22 +2951,140 @@
       }
       await refreshChart();
     }));
-    document.getElementById("tradingChartSymbolInput")?.addEventListener("change", () => commitChartSymbolInput().catch(console.error));
-    document.getElementById("tradingChartSymbolInput")?.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
+    // ── Custom autocomplete ──────────────────────────────────────────────────
+    (function initSymbolAutocomplete() {
+      const input = document.getElementById("tradingChartSymbolInput");
+      const dropdown = document.getElementById("symbolDropdown");
+      if (!input || !dropdown) return;
+
+      let _activeIdx = -1;
+      let _dropItems = [];
+      let _debounce = null;
+
+      function getSymbols() {
+        return _symbolCache[chartType] || [];
+      }
+
+      function highlight(text, query) {
+        if (!query) return escapeHtml(text);
+        const idx = text.toUpperCase().indexOf(query.toUpperCase());
+        if (idx === -1) return escapeHtml(text);
+        return escapeHtml(text.slice(0, idx))
+          + `<mark>${escapeHtml(text.slice(idx, idx + query.length))}</mark>`
+          + escapeHtml(text.slice(idx + query.length));
+      }
+
+      function renderDropdown(query) {
+        const symbols = getSymbols();
+        if (!query || query.length < 1) { closeDropdown(); return; }
+        const q = query.toUpperCase();
+        // Prioritize starts-with, then contains
+        const starts = symbols.filter(s => {
+          const sym = typeof s === "string" ? s : (s.symbol || s.product_id || "");
+          return sym.toUpperCase().startsWith(q);
+        });
+        const contains = symbols.filter(s => {
+          const sym = typeof s === "string" ? s : (s.symbol || s.product_id || "");
+          return !sym.toUpperCase().startsWith(q) && sym.toUpperCase().includes(q);
+        });
+        _dropItems = [...starts, ...contains].slice(0, 12);
+        _activeIdx = _dropItems.length > 0 ? 0 : -1;
+
+        if (!_dropItems.length) {
+          dropdown.innerHTML = `<div class="symbol-dropdown-empty">No results for "${escapeHtml(query)}"</div>`;
+          dropdown.classList.add("open");
+          return;
+        }
+
+        dropdown.innerHTML = _dropItems.map((s, i) => {
+          const sym = typeof s === "string" ? s : (s.symbol || s.product_id || "");
+          const name = typeof s === "object" ? (s.name || s.display_name || "") : "";
+          return `<div class="symbol-dropdown-item${i === 0 ? " active" : ""}"
+            data-sym="${escapeHtml(sym)}"
+            onmousedown="event.preventDefault()"
+            onclick="(function(){
+              document.getElementById('tradingChartSymbolInput').value='${escapeHtml(sym)}';
+              window._selectSymbol && window._selectSymbol('${escapeHtml(sym)}');
+            })()">
+            <span class="sym-ticker">${highlight(sym, query)}</span>
+            ${name ? `<span class="sym-name">${escapeHtml(name)}</span>` : ""}
+          </div>`;
+        }).join("");
+        dropdown.classList.add("open");
+      }
+
+      function closeDropdown() {
+        dropdown.classList.remove("open");
+        _activeIdx = -1;
+      }
+
+      function selectActive() {
+        if (_activeIdx >= 0 && _dropItems[_activeIdx]) {
+          const sym = typeof _dropItems[_activeIdx] === "string"
+            ? _dropItems[_activeIdx]
+            : (_dropItems[_activeIdx].symbol || _dropItems[_activeIdx].product_id || "");
+          input.value = sym;
+          closeDropdown();
+          window._selectSymbol && window._selectSymbol(sym);
+        }
+      }
+
+      // Expose select handler
+      window._selectSymbol = function(sym) {
+        input.value = sym;
+        closeDropdown();
         commitChartSymbolInput().catch(console.error);
-      }
-    });
-    document.getElementById("tradingChartSymbolInput")?.addEventListener("click", function onSymbolClick() {
-      this._prevValue = this.value;
-      this.value = "";
-    });
-    document.getElementById("tradingChartSymbolInput")?.addEventListener("blur", function onSymbolBlur() {
-      if (this.value === "" && this._prevValue) {
-        this.value = this._prevValue;
-      }
-    });
+      };
+
+      input.addEventListener("input", () => {
+        clearTimeout(_debounce);
+        _debounce = setTimeout(() => renderDropdown(input.value.trim()), 80);
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (dropdown.classList.contains("open")) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            _activeIdx = Math.min(_activeIdx + 1, _dropItems.length - 1);
+            dropdown.querySelectorAll(".symbol-dropdown-item").forEach((el, i) =>
+              el.classList.toggle("active", i === _activeIdx));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            _activeIdx = Math.max(_activeIdx - 1, 0);
+            dropdown.querySelectorAll(".symbol-dropdown-item").forEach((el, i) =>
+              el.classList.toggle("active", i === _activeIdx));
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (_activeIdx >= 0) { selectActive(); }
+            else { closeDropdown(); commitChartSymbolInput().catch(console.error); }
+          } else if (e.key === "Escape") {
+            closeDropdown();
+          }
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          commitChartSymbolInput().catch(console.error);
+        }
+      });
+
+      input.addEventListener("focus", () => {
+        input._prevValue = input.value;
+        if (input.value) renderDropdown(input.value.trim());
+      });
+
+      input.addEventListener("blur", () => {
+        setTimeout(() => {
+          closeDropdown();
+          if (!input.value.trim()) input.value = input._prevValue || chartSymbol;
+        }, 150);
+      });
+
+      // Close on outside click
+      document.addEventListener("click", (e) => {
+        if (!document.getElementById("symbolSearchWrap")?.contains(e.target)) {
+          closeDropdown();
+        }
+      });
+    })();
     let debounce;
     ["tradingParamRsiMin", "tradingParamRsiMax", "tradingParamTrend", "tradingParamAdx", "tradingParamExt"].forEach((id) => {
       const node = document.getElementById(id);

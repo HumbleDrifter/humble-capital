@@ -145,7 +145,7 @@ def _config_proposal_loop():
                 print(f"[config_proposal_loop] new proposal drafted", flush=True)
 
             # Auto-approve pending high-confidence proposals
-            pending = list_pending_config_proposals(limit=10) or []
+            pending = list_pending_config_proposals() or []
             for proposal in pending:
                 proposal_id = str(proposal.get("proposal_id") or "").strip()
                 confidence = str(

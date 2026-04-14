@@ -906,11 +906,34 @@ def _build_portfolio_snapshot():
 
     # Compute day P&L: Webull day_profit_loss + Coinbase 24h position changes
     webull_day_pnl = safe_float(webull_info.get("day_pnl", 0.0))
-    coinbase_day_pnl = sum(
-        safe_float(p.get("day_pnl_usd") or p.get("change_24h_usd") or 0.0)
-        for p in positions.values()
-        if isinstance(p, dict)
-    )
+
+    # Compute Coinbase day PnL from 24h price changes
+    coinbase_day_pnl = 0.0
+    try:
+        from execution import get_client as _get_cb_client
+        _cb = _get_cb_client()
+        _product_ids = [pid for pid in positions.keys()
+                        if pid.endswith("-USD") and pid not in STABLECOIN_PRODUCTS]
+        for _pid in _product_ids:
+            _pos = positions.get(_pid, {})
+            _value = safe_float(_pos.get("value_total_usd", 0.0))
+            if _value < 1.0:
+                continue
+            try:
+                _prod = _cb.get_product(_pid)
+                _chg_pct = safe_float(
+                    (_prod.to_dict() if hasattr(_prod, "to_dict") else vars(_prod)).get(
+                        "price_percentage_change_24h", 0.0
+                    )
+                )
+                # day PnL = current value / (1 + chg_pct/100) * chg_pct/100
+                _prev_value = _value / (1.0 + _chg_pct / 100.0) if _chg_pct != -100 else _value
+                coinbase_day_pnl += _value - _prev_value
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     total_day_pnl = webull_day_pnl + coinbase_day_pnl
 
     snapshot = {

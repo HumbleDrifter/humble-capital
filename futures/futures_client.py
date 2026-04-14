@@ -389,7 +389,20 @@ class FuturesClient:
             return list(cached)
 
         try:
-            response = self.client.get_candles(product_id=product_id, granularity=granularity)
+            import time as _time
+            granularity_seconds = {
+                "ONE_MINUTE": 60, "FIVE_MINUTE": 300, "FIFTEEN_MINUTE": 900,
+                "THIRTY_MINUTE": 1800, "ONE_HOUR": 3600, "TWO_HOUR": 7200,
+                "FOUR_HOUR": 14400, "ONE_DAY": 86400,
+            }.get(granularity, 14400)
+            end_ts = int(_time.time())
+            start_ts = end_ts - (granularity_seconds * limit)
+            response = self.client.get_candles(
+                product_id=product_id,
+                granularity=granularity,
+                start=str(start_ts),
+                end=str(end_ts),
+            )
             payload = _to_dict(response) or {}
             candles = payload.get("candles") if isinstance(payload, dict) else payload
             if not isinstance(candles, list):

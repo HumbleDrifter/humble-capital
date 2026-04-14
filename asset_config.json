@@ -35,7 +35,17 @@
     "max_weight": 0.05
   },
   "satellite_blocked": [],
-  "satellite_allowed": [],
+  "satellite_allowed": [
+    "DOGE-USD",
+    "SHIB-USD",
+    "TURBO-USD",
+    "WIF-USD",
+    "FARTCOIN-USD",
+    "PEPE-USD",
+    "BONK-USD",
+    "PUMP-USD",
+    "TRUMP-USD"
+  ],
   "manual_holds": [],
   "satellite_volatility_map": {},
   "volatility_buckets": {
@@ -57,10 +67,10 @@
   },
   "meme_rotation": {
     "enabled": true,
-    "min_score": 65,
-    "entry_score": 65,
-    "hold_score": 35,
-    "max_active": 4,
+    "min_score": 20,
+    "entry_score": 20,
+    "hold_score": 10,
+    "max_active": 6,
     "excluded_products": [
       "BTC-USD",
       "ETH-USD",
@@ -175,9 +185,9 @@
   "config_proposal_min_confidence": "high",
   "max_new_satellites_per_cycle": 4,
   "stock_universe": {
-    "min_market_cap": 1000000000,
-    "min_avg_volume": 1000000,
-    "min_price": 5.0,
+    "min_market_cap": 50000000,
+    "min_avg_volume": 500000,
+    "min_price": 0.5,
     "max_price": 1500.0
   }
 }

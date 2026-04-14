@@ -133,7 +133,8 @@ class StockUniverse:
                 has_options = len(ticker.options or []) > 0
             except Exception:
                 has_options = False
-            tradeable = avg_vol >= MIN_AVG_VOLUME and market_cap >= MIN_MARKET_CAP_USD and MIN_PRICE <= price <= MAX_PRICE and has_options
+            # Meme stocks often lack options — don't require them
+            tradeable = avg_vol >= MIN_AVG_VOLUME and market_cap >= MIN_MARKET_CAP_USD and MIN_PRICE <= price <= MAX_PRICE
             return {
                 "tradeable": tradeable,
                 "avg_volume": avg_vol,

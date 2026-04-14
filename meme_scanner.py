@@ -148,6 +148,13 @@ def _meme_boost_products():
         "MYRO-USD",
         "NEIRO-USD",
         "ACT-USD",
+        "FARTCOIN-USD",
+        "PUMP-USD",
+        "TRUMP-USD",
+        "BOME-USD",
+        "DOGS-USD",
+        "GOAT-USD",
+        "MEME-USD",
     }
 
 def get_valid_products():

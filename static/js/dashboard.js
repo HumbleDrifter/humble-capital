@@ -578,6 +578,14 @@
   }
 
   function renderDashboardSnapshot(snapshot, summary) {
+    // Store day PnL for equity chart to use
+    const dayPnl = Number(snapshot.day_pnl_usd ?? 0);
+    if (dayPnl !== 0) {
+      window._lastSnapshotDayPnl = dayPnl;
+      const totalValue = Number(snapshot.total_value_usd || 0);
+      const dailyPct = totalValue > 0 ? dayPnl / (totalValue - dayPnl) : 0;
+      setHeroPnl(dayPnl, dailyPct);
+    }
       const futuresBalanceRaw = Number(snapshot?.futures?.balance?.futures_balance || 0);
       const coinbaseValueRaw = Number(snapshot.coinbase_value_usd || 0);
       const futuresAlreadyInCoinbase = coinbaseValueRaw > 0 && futuresBalanceRaw > 0 &&
@@ -730,12 +738,18 @@
       buildEquityChart(document.getElementById("hcChartHost"), points, range);
 
       if (points.length >= 2) {
-        const first = Number(points[0].equity_usd ?? points[0].total_value_usd ?? 0);
         const last = Number(points[points.length - 1].equity_usd ?? points[points.length - 1].total_value_usd ?? 0);
-        const prev = Number(points[Math.max(0, points.length - 2)].equity_usd ?? points[Math.max(0, points.length - 2)].total_value_usd ?? first);
-        const dailyPnl = last - prev;
-        const dailyPct = prev > 0 ? dailyPnl / prev : 0;
-        setHeroPnl(dailyPnl, dailyPct);
+        // Prefer day_pnl_usd from snapshot if available (more accurate)
+        const snapshotDayPnl = window._lastSnapshotDayPnl;
+        if (snapshotDayPnl != null && snapshotDayPnl !== 0) {
+          const dailyPct = last > 0 ? snapshotDayPnl / (last - snapshotDayPnl) : 0;
+          setHeroPnl(snapshotDayPnl, dailyPct);
+        } else {
+          const prev = Number(points[Math.max(0, points.length - 2)].equity_usd ?? points[Math.max(0, points.length - 2)].total_value_usd ?? last);
+          const dailyPnl = last - prev;
+          const dailyPct = prev > 0 ? dailyPnl / prev : 0;
+          setHeroPnl(dailyPnl, dailyPct);
+        }
       }
     } catch (error) {
       console.warn("Dashboard chart load failed:", error);

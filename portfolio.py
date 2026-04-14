@@ -356,8 +356,20 @@ def _get_webull_data():
         if isinstance(wb_info, dict) and wb_info.get("ok"):
             result["value"] = safe_float(wb_info.get("balance", 0.0))
             result["connected"] = True
+            # Extract day P&L from Webull balance
+            try:
+                wb_balance = wb.get_balance() or {}
+                result["day_pnl"] = safe_float(
+                    wb_balance.get("total_day_profit_loss")
+                    or wb_balance.get("day_profit_loss")
+                    or wb_balance.get("day_pnl")
+                    or 0.0
+                )
+            except Exception:
+                result["day_pnl"] = 0.0
         else:
             result["error"] = (wb_info or {}).get("error") if isinstance(wb_info, dict) else "account_unavailable"
+            result["day_pnl"] = 0.0
     except Exception as exc:
         result["error"] = str(exc)
 
@@ -893,12 +905,24 @@ def _build_portfolio_snapshot():
     if total_value <= 0:
         total_value = 1e-9
 
+    # Compute day P&L: Webull day_profit_loss + Coinbase 24h position changes
+    webull_day_pnl = safe_float(webull_info.get("day_pnl", 0.0))
+    coinbase_day_pnl = sum(
+        safe_float(p.get("day_pnl_usd") or p.get("change_24h_usd") or 0.0)
+        for p in positions.values()
+        if isinstance(p, dict)
+    )
+    total_day_pnl = webull_day_pnl + coinbase_day_pnl
+
     snapshot = {
         "timestamp": int(time.time()),
         "total_value_usd": total_value,
         "coinbase_value_usd": coinbase_total,
         "webull_value_usd": webull_value,
         "usd_cash": usd_cash,
+        "day_pnl_usd": total_day_pnl,
+        "webull_day_pnl_usd": webull_day_pnl,
+        "coinbase_day_pnl_usd": coinbase_day_pnl,
         "cash_breakdown": cash_breakdown,
         "cash_weight": usd_cash / total_value,
         "positions": positions,

@@ -204,6 +204,16 @@
     .hc-options-item-meta,
     .hc-options-item-actions { align-items: flex-start; }
   }
+  @media (max-width: 768px) {
+    .hc-options-kpis { grid-template-columns: 1fr 1fr; }
+    .hc-hero-value { font-size: clamp(28px, 8vw, 48px) !important; }
+    .hc-context-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+    .broker-legend { gap: 12px; }
+  }
+  @media (max-width: 480px) {
+    .hc-context-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .hc-context-value { font-size: 20px !important; }
+  }
 </style>
 
 <div class="hc-dashboard-shell">
@@ -650,7 +660,7 @@
         const positionsResponse = await fetchJson("/api/options/positions");
         const positions = Array.isArray(positionsResponse.positions) ? positionsResponse.positions : [];
         optionsSection.hidden = false;
-        optionsSection.open = true;
+        optionsSection.open = positions.length > 0;
         const statusLabel = document.getElementById("hcOptionsStatusLabel");
         if (statusLabel) statusLabel.textContent = positions.length ? `${positions.length} options positions live` : "Webull connected";
         renderPositions(positions);

@@ -4,6 +4,34 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  @media (max-width: 768px) {
+    .opt-chain-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+    .opt-chain-table { min-width: 600px; font-size: 11px; }
+    .opt-chain-table th, .opt-chain-table td { padding: 6px 4px !important; }
+    .opt-chain-strike { position: sticky; left: 0; background: #0f1729; z-index: 2; font-weight: 700; border-left: 1px solid rgba(255,255,255,0.08); border-right: 1px solid rgba(255,255,255,0.08); }
+    .opt-controls-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+    .opt-actions { flex-wrap: wrap; gap: 8px; }
+    .opt-actions .btn { flex: 1; min-width: 120px; }
+    .opt-overview-grid { grid-template-columns: 1fr !important; }
+    .opt-card-grid { grid-template-columns: 1fr !important; }
+    .opt-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+  }
+  @media (max-width: 480px) {
+    .opt-chain-table { font-size: 10px; min-width: 480px; }
+    .opt-chain-table th:nth-child(3), .opt-chain-table th:nth-child(4),
+    .opt-chain-table th:nth-child(9), .opt-chain-table th:nth-child(10),
+    .opt-chain-table td:nth-child(3), .opt-chain-table td:nth-child(4),
+    .opt-chain-table td:nth-child(9), .opt-chain-table td:nth-child(10) { display: none; }
+  }
+  .opt-quick-scan-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; background: rgba(56,189,248,0.12); color: #38bdf8;
+    border: 1px solid rgba(56,189,248,0.25); border-radius: 6px;
+    font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .opt-quick-scan-btn:hover { background: rgba(56,189,248,0.2); }
+</style>
 
 <div class="opt-shell">
   <div class="page-tabs">
@@ -154,10 +182,14 @@
           <p class="opt-section-subtitle" id="optChainMeta">Choose an opportunity or symbol to inspect the chain.</p>
         </div>
       </div>
-      <div class="opt-chain-toolbar">
-        <input id="optChainSymbol" class="form-input" type="text" placeholder="Symbol">
-        <select id="optChainExpiration" class="select"></select>
+      <div class="opt-chain-toolbar" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input id="optChainSymbol" class="form-input" type="text" placeholder="Symbol" style="flex:1;min-width:100px;">
+        <select id="optChainExpiration" class="select" style="flex:1;min-width:120px;"></select>
         <button class="btn btn-secondary" id="optLoadChainBtn" type="button">Load Chain</button>
+        <button class="opt-quick-scan-btn" id="optQuickChainScan" type="button">⚡ Quick Scan</button>
+      </div>
+      <div style="font-size:11px;color:rgba(236,243,255,0.35);margin-top:4px;padding:0 2px;">
+        Scroll chain horizontally · Tap any cell to stage a trade
       </div>
       <div class="opt-chain-table-wrap" id="optChainHost">
         <div class="hc-empty-card">Option chain data will appear here.</div>
@@ -798,6 +830,24 @@
       document.getElementById("optChainSymbol")?.value || "",
       document.getElementById("optChainExpiration")?.value || ""
     ));
+    document.getElementById("optQuickChainScan")?.addEventListener("click", async () => {
+      const sym = document.getElementById("optChainSymbol")?.value?.trim().toUpperCase();
+      if (!sym) return;
+      const status = document.getElementById("optRunStatus");
+      if (status) status.textContent = `Quick scanning ${sym}...`;
+      try {
+        const result = await fetchJson("/api/options/scan", {
+          method: "POST",
+          body: JSON.stringify({ symbols: [sym], strategies: strategiesFromUI(), min_score: 0, max_results: 6 }),
+        });
+        lastScan = result.opportunities || [];
+        renderResults(lastScan);
+        if (status) status.textContent = `${lastScan.length} results for ${sym}.`;
+        loadChain(sym, "");
+      } catch(e) {
+        if (status) status.textContent = `Quick scan failed: ${e.message}`;
+      }
+    });
     document.getElementById("optTradeConfirmBtn")?.addEventListener("click", submitTrade);
   }
 

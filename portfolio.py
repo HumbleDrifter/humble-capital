@@ -356,17 +356,16 @@ def _get_webull_data():
         if isinstance(wb_info, dict) and wb_info.get("ok"):
             result["value"] = safe_float(wb_info.get("balance", 0.0))
             result["connected"] = True
-            # Extract day P&L from Webull balance
-            try:
-                wb_balance = wb.get_balance() or {}
-                result["day_pnl"] = safe_float(
-                    wb_balance.get("total_day_profit_loss")
-                    or wb_balance.get("day_profit_loss")
-                    or wb_balance.get("day_pnl")
-                    or 0.0
-                )
-            except Exception:
-                result["day_pnl"] = 0.0
+            # Extract day P&L from raw account info
+            raw = wb_info.get("raw") or {}
+            result["day_pnl"] = safe_float(
+                raw.get("total_day_profit_loss")
+                or raw.get("day_profit_loss")
+                or 0.0
+            )
+            # Also tag day_pnl onto each position
+            for pos in result.get("positions", []):
+                pos["day_pnl_usd"] = safe_float(pos.get("day_pnl") or 0.0)
         else:
             result["error"] = (wb_info or {}).get("error") if isinstance(wb_info, dict) else "account_unavailable"
             result["day_pnl"] = 0.0

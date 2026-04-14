@@ -1355,6 +1355,20 @@ canvas {
   color: var(--hc-red);
 }
 
+/* Smooth data updates — no flicker */
+.hc-hero-value,
+.hc-hero-pnl-value,
+.hc-hero-pnl-pct,
+.hc-context-value,
+.hc-trade-amount,
+.hc-pos-value {
+  transition: color 0.3s ease;
+}
+.hc-pos-grid,
+.hc-trade-grid {
+  transition: opacity 0.15s ease;
+}
+
 .hc-trade-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -11910,4 +11924,5 @@ tbody tr:last-child td {
     grid-template-columns: repeat(4, auto);
   }
 }
+.opt-reveal, .opt-shell, .opt-header, .opt-controls, .opt-overview, .opt-results, .opt-chain-section, .opt-header-copy, .opt-section-head, .opt-controls-grid, .hc-chart-section, .opt-sentiment { opacity: 1 !important; transform: none !important; visibility: visible !important; }
 .opt-reveal, .opt-shell, .opt-header, .opt-controls, .opt-overview, .opt-results, .opt-chain-section, .opt-header-copy, .opt-section-head, .opt-controls-grid, .hc-chart-section, .opt-sentiment { opacity: 1 !important; transform: none !important; visibility: visible !important; }

@@ -531,12 +531,16 @@
     const optionsTotal = webullOptions.reduce((sum, row) => sum + Number(row.market_value || 0), 0);
     const futuresTotal = Number(snapshot?.futures?.balance?.futures_balance || 0);
 
-    host.innerHTML = [
+    const _newHoldingsHtml = [
       renderHoldingsSection("Crypto", cryptoTotal, "Coinbase", cryptoCards),
       renderHoldingsSection("Futures", futuresTotal, "Coinbase", futuresCards),
       renderHoldingsSection("Stocks", stockTotal, "Webull", stockCards),
       renderHoldingsSection("Options", optionsTotal, "Webull", optionCards)
     ].join("");
+    if (host.innerHTML !== _newHoldingsHtml) {
+      host.style.opacity = "1";
+      host.innerHTML = _newHoldingsHtml;
+    }
   }
 
   function renderActivity(trades) {
@@ -549,7 +553,7 @@
       return;
     }
 
-    host.innerHTML = rows.slice(0, 12).map((trade) => {
+    const _newActivityHtml = rows.slice(0, 12).map((trade) => {
       const side = String(trade.side || "BUY").toUpperCase();
       const badgeClass = side === "BUY" ? "buy" : side === "SELL" || side === "EXIT" ? "exit" : "trim";
       const signal = String(trade.signal_type || "").toLowerCase().replaceAll("_", " ") || String(side).toLowerCase();
@@ -575,6 +579,7 @@
         </div>
       `;
     }).join("");
+    if (host.innerHTML !== _newActivityHtml) host.innerHTML = _newActivityHtml;
   }
 
   function renderDashboardSnapshot(snapshot, summary) {

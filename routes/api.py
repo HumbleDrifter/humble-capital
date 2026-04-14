@@ -3355,7 +3355,7 @@ def api_stocks_squeeze():
         symbols = list(MEME_STOCKS)
         for symbol in symbols:
             try:
-                bars = scanner_inst.compute_indicators(scanner_inst.fetch_stock_bars(symbol, 60))
+                bars = scanner_inst.compute_indicators(scanner_inst.fetch_stock_bars(symbol, 365))
                 if len(bars) < 20:
                     continue
                 latest = bars[-1]

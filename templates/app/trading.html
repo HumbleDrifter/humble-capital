@@ -2589,7 +2589,7 @@
       if (chartFrame === "1w") rows = aggregateWeekly(rows);
     } else if (chartType === "options") {
       const underlying = chartSymbol.replace("-USD","").toUpperCase();
-      const data = await fetchJson(`/api/stocks/bars?symbol=${encodeURIComponent(underlying)}&days=90`);
+      const data = await fetchJson(`/api/stocks/bars?symbol=${encodeURIComponent(underlying)}&days=365`);
       rows = Array.isArray(data.bars) ? data.bars : [];
     } else {
       const days = chartFrame === "1w" ? 730 : chartFrame === "1d" ? 365 : chartFrame === "4h" ? 180 : 90;

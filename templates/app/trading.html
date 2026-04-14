@@ -1054,6 +1054,23 @@
               <option value="365">1Y</option>
             </select>
           </div>
+          <div id="stockBtControls" style="display:none;margin-top:8px;">
+            <div class="config-row" style="margin-bottom:6px;">
+              <span class="config-label">Strategy</span>
+              <select id="stockBtStrategy" class="select" style="font-size:11px;padding:3px 6px;"
+                onchange="if(chartRows && chartRows.length && chartType==='stock'){
+                  const sim = simulateStockSignals(chartRows);
+                  currentMarkers = sim.markers;
+                  candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
+                  updateSignalLog(sim);
+                }">
+                <option value="ema_momentum">EMA Momentum</option>
+                <option value="bb_breakout">BB Breakout</option>
+                <option value="mean_reversion">Mean Reversion</option>
+                <option value="trend_following">Trend Following</option>
+              </select>
+            </div>
+          </div>
           <button id="chartRunBtBtn" type="button"
             style="width:100%;margin-top:8px;padding:9px;background:#2dd4bf;color:#0f172a;border:none;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">
             ▶ Run Backtest
@@ -2148,6 +2165,87 @@
     };
   }
 
+  function simulateStockSignals(rows, strategy) {
+    strategy = strategy || document.getElementById("stockBtStrategy")?.value || "ema_momentum";
+    if (!rows || rows.length < 60) return { markers: [], buyCount: 0, exitCount: 0 };
+    const markers = [];
+    let state = 0;
+    let buyCount = 0;
+    let exitCount = 0;
+    let entryPrice = 0;
+
+    for (let i = 50; i < rows.length; i++) {
+      const bar = rows[i];
+      const prev = rows[i - 1] || bar;
+      const close = Number(bar.close || 0);
+      const rsi = Number(bar.rsi || 50);
+      const emaFast = Number(bar.ema_fast || close);
+      const emaMid = Number(bar.ema_mid || close);
+      const emaSlow = Number(bar.ema_slow || close);
+      const emaTrend = Number(bar.ema_trend || close);
+      const macdHist = Number(bar.macd_hist || 0);
+      const prevMacd = Number(prev.macd_hist || 0);
+      const adx = Number(bar.adx || 0);
+      const bbUpper = Number(bar.bb_upper || close * 1.02);
+      const bbMiddle = Number(bar.bb_middle || close);
+      const bbLower = Number(bar.bb_lower || close * 0.98);
+
+      const emaAligned = emaFast > emaMid && emaMid > emaSlow;
+      const aboveTrend = close > emaTrend;
+      const macdRising = macdHist > prevMacd;
+      const adxOk = adx >= 20;
+
+      let buySignal = false;
+      let exitSignal = false;
+
+      if (strategy === "ema_momentum") {
+        buySignal = emaAligned && aboveTrend && rsi >= 40 && rsi <= 70 && macdRising && adxOk;
+        exitSignal = close < emaMid || rsi >= 70 || macdHist < 0;
+      } else if (strategy === "bb_breakout") {
+        buySignal = close > bbUpper && adxOk && rsi >= 40 && rsi <= 70;
+        exitSignal = close < bbMiddle || close < emaMid;
+      } else if (strategy === "mean_reversion") {
+        buySignal = rsi <= 30 && close <= bbLower;
+        exitSignal = rsi >= 60 || close >= bbMiddle;
+      } else if (strategy === "trend_following") {
+        buySignal = aboveTrend && emaAligned && adxOk && rsi >= 45;
+        exitSignal = close < emaMid || adx < 15;
+      }
+
+      // Stop loss: -7% from entry
+      if (state === 1 && entryPrice > 0 && close < entryPrice * 0.93) {
+        exitSignal = true;
+      }
+
+      if (state === 0 && buySignal) {
+        markers.push({
+          time: Number(bar.ts || 0),
+          position: "belowBar",
+          color: "#22c55e",
+          shape: "arrowUp",
+          text: "BUY",
+        });
+        state = 1;
+        entryPrice = close;
+        buyCount++;
+      } else if (state === 1 && exitSignal) {
+        const pnl = entryPrice > 0 ? ((close - entryPrice) / entryPrice * 100).toFixed(1) : "0";
+        const isWin = close > entryPrice;
+        markers.push({
+          time: Number(bar.ts || 0),
+          position: "aboveBar",
+          color: isWin ? "#f59e0b" : "#ef4444",
+          shape: "arrowDown",
+          text: `EXIT ${isWin ? "+" : ""}${pnl}%`,
+        });
+        state = 0;
+        entryPrice = 0;
+        exitCount++;
+      }
+    }
+    return { markers, buyCount, exitCount };
+  }
+
   function simulateOptionsSignals(rows) {
     if (!rows || rows.length < 50) return { markers: [], summary: {} };
     const markers = [];
@@ -2551,7 +2649,11 @@
     rsiSeries.setData(lineData(chartRows, "rsi"));
     rsiUpperSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 70 })));
     rsiLowerSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 30 })));
-    const sim = simulateSignals(chartRows);
+    const sim = chartType === "stock" ? simulateStockSignals(chartRows) : simulateSignals(chartRows);
+    if (chartType === "stock") {
+      const stockControls = document.getElementById("stockBtControls");
+      if (stockControls) stockControls.style.display = "block";
+    }
       currentMarkers = sim.markers;
       updateSignalLog(sim);
       console.log("Markers to display:", currentMarkers.length, currentMarkers.slice(0, 3));
@@ -3355,17 +3457,36 @@
       const status = document.getElementById("chartBtStatus");
       const resultsPanel = document.getElementById("chartBtResultsPanel");
       status.textContent = "Running backtest...";
+
+      // Show stock strategy controls when on stock chart
+      const stockBtControls = document.getElementById("stockBtControls");
+      if (stockBtControls) stockBtControls.style.display = chartType === "stock" ? "block" : "none";
+
       try {
         const symbol = chartSymbol || "BTC-USD";
         const lookback = Number(document.getElementById("chartBtLookback")?.value || 90);
-        const data = await fetchJson("/api/backtest", {
+        const strategy = document.getElementById("stockBtStrategy")?.value || "ema_momentum";
+
+        // Route to stock backtester for stock charts
+        const isStock = chartType === "stock";
+        const url = isStock ? "/api/stocks/backtest" : "/api/backtest";
+        const body = isStock ? {
+          symbol: symbol,
+          strategy: strategy,
+          lookback_days: lookback,
+          timeframe: chartFrame || "1d",
+          starting_capital: 10000,
+          fee_pct: 0.001,
+        } : {
+          product_id: symbol,
+          timeframe: chartFrame || "4h",
+          lookback_days: lookback,
+        };
+
+        const data = await fetchJson(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            product_id: symbol,
-            timeframe: chartFrame || "4h",
-            lookback_days: lookback,
-          }),
+          body: JSON.stringify(body),
         });
         if (!data.ok) { status.textContent = "Backtest failed."; return; }
 
@@ -3388,16 +3509,22 @@
         }
 
         const s = data.summary || {};
+        // Stock backtester uses total_return_pct, crypto uses total_pnl_pct
+        const retPct = Number(s.total_return_pct ?? s.total_pnl_pct ?? 0);
+        const winRate = Number(s.win_rate ?? s.win_rate_pct ?? 0);
+        const trades = Number(s.total_trades ?? data.trades?.length ?? 0);
+        const pf = Number(s.profit_factor ?? 0);
+        const dd = Number(s.max_drawdown_pct ?? s.max_drawdown ?? 0);
+        const hold = Number(s.avg_hold_bars ?? s.avg_hold ?? 0);
+
         document.getElementById("chartBtReturn").textContent =
-          `${Number(s.total_pnl_pct || 0) >= 0 ? "+" : ""}${Number(s.total_pnl_pct || 0).toFixed(2)}%`;
+          `${retPct >= 0 ? "+" : ""}${retPct.toFixed(2)}%`;
         document.getElementById("chartBtReturn").style.color =
-          Number(s.total_pnl_pct || 0) >= 0 ? "#22c55e" : "#ef4444";
+          retPct >= 0 ? "#22c55e" : "#ef4444";
         document.getElementById("chartBtWinRate").textContent =
-          `${Number(s.win_rate_pct || 0).toFixed(1)}%`;
-        document.getElementById("chartBtTrades").textContent =
-          String(data.trades?.length || 0);
-        document.getElementById("chartBtPF").textContent =
-          Number(s.profit_factor || 0).toFixed(2);
+          `${winRate.toFixed(1)}%`;
+        document.getElementById("chartBtTrades").textContent = String(trades);
+        document.getElementById("chartBtPF").textContent = pf.toFixed(2);
         document.getElementById("chartBtDD").textContent =
           `${Number(s.max_drawdown_pct || 0).toFixed(2)}%`;
         document.getElementById("chartBtHold").textContent =

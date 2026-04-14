@@ -581,8 +581,8 @@
     // Store day PnL for equity chart to use — always update
     const dayPnl = Number(snapshot.day_pnl_usd ?? 0);
     window._lastSnapshotDayPnl = dayPnl;
-    const totalValue = Number(snapshot.total_value_usd || 0);
-    const dailyPct = totalValue > 0 && (totalValue - dayPnl) > 0 ? dayPnl / (totalValue - dayPnl) : 0;
+    const _heroTotalValue = Number(snapshot.total_value_usd || 0);
+    const dailyPct = _heroTotalValue > 0 && (_heroTotalValue - dayPnl) > 0 ? dayPnl / (_heroTotalValue - dayPnl) : 0;
     setHeroPnl(dayPnl, dailyPct);
       const futuresBalanceRaw = Number(snapshot?.futures?.balance?.futures_balance || 0);
       const coinbaseValueRaw = Number(snapshot.coinbase_value_usd || 0);

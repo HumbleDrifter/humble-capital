@@ -549,20 +549,27 @@
       return;
     }
 
-    host.innerHTML = rows.slice(0, 8).map((trade) => {
+    host.innerHTML = rows.slice(0, 12).map((trade) => {
       const side = String(trade.side || "BUY").toUpperCase();
-      const badgeClass = side === "BUY" ? "buy" : side === "EXIT" ? "exit" : "trim";
-      const signal = String(trade.signal_type || trade.side || "").toLowerCase().replaceAll("_", " ") || "execution";
-      const amount = Number(trade.price || 0) * Number(trade.base_size || 0);
+      const badgeClass = side === "BUY" ? "buy" : side === "SELL" || side === "EXIT" ? "exit" : "trim";
+      const signal = String(trade.signal_type || "").toLowerCase().replaceAll("_", " ") || String(side).toLowerCase();
+      // Try multiple amount fields
+      const amount = Number(trade.filled_value || trade.total_value ||
+        (Number(trade.avg_fill_price || trade.price || 0) * Number(trade.filled_base || trade.base_size || 1)) || 0);
+      const price = Number(trade.avg_fill_price || trade.price || 0);
+      const sym = String(trade.product_id || trade.symbol || "Unknown");
+      const priceText = price > 0 ? ` @ ${price < 1 ? price.toFixed(4) : price.toFixed(2)}` : "";
+      const pnl = Number(trade.pnl || trade.realized_pnl || 0);
+      const pnlText = pnl !== 0 ? `<span style="color:${pnl > 0 ? "#22c55e" : "#ef4444"};font-size:10px;font-weight:600;">${pnl > 0 ? "+" : ""}${fmtUsd(pnl)}</span>` : "";
       return `
         <div class="hc-trade-card">
           <div class="hc-trade-badge ${badgeClass}">${escapeHtml(side)}</div>
           <div class="hc-trade-info">
-            <div class="hc-trade-symbol">${escapeHtml(trade.product_id || "Unknown")}</div>
-            <div class="hc-trade-signal">${escapeHtml(signal)}</div>
+            <div class="hc-trade-symbol">${escapeHtml(sym)}${pnlText}</div>
+            <div class="hc-trade-signal">${escapeHtml(signal)}${priceText}</div>
           </div>
           <div class="hc-trade-right">
-            <div class="hc-trade-amount">${escapeHtml(fmtUsd(amount))}</div>
+            <div class="hc-trade-amount">${amount > 0 ? escapeHtml(fmtUsd(amount)) : "—"}</div>
             <div class="hc-trade-time">${escapeHtml(relativeTime(trade.created_at))}</div>
           </div>
         </div>

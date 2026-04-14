@@ -1361,6 +1361,13 @@ canvas {
   gap: 12px;
 }
 
+@media (max-width: 600px) {
+  .hc-trade-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
 .hc-trade-card {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -1467,18 +1474,42 @@ canvas {
 
   .hc-pos-card,
   .hc-trade-card {
-    grid-template-columns: 40px 1fr;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    padding: 10px 12px;
   }
 
-  .hc-pos-spark,
-  .hc-pos-right,
-  .hc-trade-right {
+  .hc-pos-spark {
     grid-column: 2;
   }
 
-  .hc-pos-right,
+  .hc-pos-right {
+    text-align: right;
+  }
+
   .hc-trade-right {
-    text-align: left;
+    text-align: right;
+    grid-column: auto;
+  }
+
+  .hc-trade-badge {
+    min-width: 38px;
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  .hc-trade-symbol {
+    font-size: 13px;
+  }
+
+  .hc-trade-signal,
+  .hc-trade-time {
+    font-size: 11px;
+  }
+
+  .hc-trade-amount {
+    font-size: 13px;
+    white-space: nowrap;
   }
 }
 
@@ -11879,3 +11910,4 @@ tbody tr:last-child td {
     grid-template-columns: repeat(4, auto);
   }
 }
+.opt-reveal, .opt-shell, .opt-header, .opt-controls, .opt-overview, .opt-results, .opt-chain-section, .opt-header-copy, .opt-section-head, .opt-controls-grid, .hc-chart-section, .opt-sentiment { opacity: 1 !important; transform: none !important; visibility: visible !important; }

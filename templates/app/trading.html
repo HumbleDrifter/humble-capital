@@ -298,6 +298,38 @@
     flex-wrap: wrap;
   }
 
+  /* ── Mobile responsive chart layout ── */
+  @media (max-width: 768px) {
+    .chart-workspace { flex-direction: column; height: auto; min-height: unset; }
+    .chart-config-panel { width: 100%; border-left: none; border-top: 1px solid rgba(255,255,255,0.06); padding: 8px; }
+    .chart-workspace-main { padding: 6px; }
+    .chart-topbar { gap: 6px; margin-bottom: 6px; }
+    .chart-topbar-left { width: 100%; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 6px; }
+    .chart-topbar-left::-webkit-scrollbar { display: none; }
+    .chart-topbar-center { width: 100%; order: -1; justify-content: flex-start; gap: 8px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .chart-topbar-right { width: 100%; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 4px; }
+    .chart-topbar-right::-webkit-scrollbar { display: none; }
+    .chart-symbol-pill-group { flex-shrink: 0; }
+    .chart-symbol-input { min-width: 100px; flex-shrink: 0; }
+    .chart-overlay-bar { display: flex; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; flex-wrap: nowrap; }
+    .chart-overlay-bar::-webkit-scrollbar { display: none; }
+    #tradingChartMain { height: 280px !important; }
+    #tradingChartVolume { height: 60px !important; }
+    #tradingChartRsi { height: 80px !important; }
+    .chart-asset-context { flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .chart-asset-context::-webkit-scrollbar { display: none; }
+    .chart-price-value { font-size: 16px !important; }
+    .chart-price-change { font-size: 12px !important; }
+    .chart-detail-item { display: none; }
+    .chart-pill { padding: 4px 8px !important; font-size: 11px !important; }
+  }
+  @media (max-width: 480px) {
+    #tradingChartMain { height: 220px !important; }
+    #tradingChartVolume { height: 50px !important; }
+    #tradingChartRsi { height: 70px !important; }
+    .chart-workspace-main { padding: 4px; }
+  }
+
   .chart-topbar-left { display: flex; align-items: center; gap: 8px; }
 
   .chart-topbar-center {
@@ -1952,28 +1984,41 @@
     }
     if (mainChart && volumeChart && rsiChart && !mainChart.__synced) {
       mainChart.__synced = true;
-      mainChart.timeScale().subscribeVisibleTimeRangeChange((range) => {
-        try {
-          if (!range || range.from == null || range.to == null) return;
-          volumeChart.timeScale().setVisibleRange(range);
-          rsiChart.timeScale().setVisibleRange(range);
-        } catch(e) {}
-      });
+      let _syncing = false;
+      function syncCharts(src, targets) {
+        if (_syncing) return;
+        const range = src.timeScale().getVisibleLogicalRange();
+        if (!range) return;
+        _syncing = true;
+        targets.forEach(t => { try { t.timeScale().setVisibleLogicalRange(range); } catch(e) {} });
+        _syncing = false;
+      }
+      mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => syncCharts(mainChart, [volumeChart, rsiChart]));
+      volumeChart.timeScale().subscribeVisibleLogicalRangeChange(() => syncCharts(volumeChart, [mainChart, rsiChart]));
+      rsiChart.timeScale().subscribeVisibleLogicalRangeChange(() => syncCharts(rsiChart, [mainChart, volumeChart]));
     }
+    const _isMobile = window.innerWidth <= 768;
+    const _isSmall = window.innerWidth <= 480;
+    const _mainH = _isSmall ? 220 : _isMobile ? 280 : 400;
+    const _volH  = _isSmall ? 50  : _isMobile ? 60  : 80;
+    const _rsiH  = _isSmall ? 70  : _isMobile ? 80  : 100;
     if (mainChart && mainHost) {
-      const width = Math.max(mainHost.offsetWidth || mainHost.clientWidth || 0, 320);
-      mainChart.resize(width, 400);
-      mainChart.applyOptions({ width, height: 400 });
+      const width = Math.max(mainHost.offsetWidth || mainHost.clientWidth || 0, 280);
+      mainHost.style.height = _mainH + "px";
+      mainChart.resize(width, _mainH);
+      mainChart.applyOptions({ width, height: _mainH });
     }
     if (volumeChart && volumeHost) {
-      const width = Math.max(volumeHost.offsetWidth || volumeHost.clientWidth || 0, 320);
-      volumeChart.resize(width, 80);
-      volumeChart.applyOptions({ width, height: 80 });
+      const width = Math.max(volumeHost.offsetWidth || volumeHost.clientWidth || 0, 280);
+      volumeHost.style.height = _volH + "px";
+      volumeChart.resize(width, _volH);
+      volumeChart.applyOptions({ width, height: _volH });
     }
     if (rsiChart && rsiHost) {
-      const width = Math.max(rsiHost.offsetWidth || rsiHost.clientWidth || 0, 320);
-      rsiChart.resize(width, 100);
-      rsiChart.applyOptions({ width, height: 100 });
+      const width = Math.max(rsiHost.offsetWidth || rsiHost.clientWidth || 0, 280);
+      rsiHost.style.height = _rsiH + "px";
+      rsiChart.resize(width, _rsiH);
+      rsiChart.applyOptions({ width, height: _rsiH });
     }
   }
 

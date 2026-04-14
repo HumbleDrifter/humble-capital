@@ -578,14 +578,12 @@
   }
 
   function renderDashboardSnapshot(snapshot, summary) {
-    // Store day PnL for equity chart to use
+    // Store day PnL for equity chart to use — always update
     const dayPnl = Number(snapshot.day_pnl_usd ?? 0);
-    if (dayPnl !== 0) {
-      window._lastSnapshotDayPnl = dayPnl;
-      const totalValue = Number(snapshot.total_value_usd || 0);
-      const dailyPct = totalValue > 0 ? dayPnl / (totalValue - dayPnl) : 0;
-      setHeroPnl(dayPnl, dailyPct);
-    }
+    window._lastSnapshotDayPnl = dayPnl;
+    const totalValue = Number(snapshot.total_value_usd || 0);
+    const dailyPct = totalValue > 0 && (totalValue - dayPnl) > 0 ? dayPnl / (totalValue - dayPnl) : 0;
+    setHeroPnl(dayPnl, dailyPct);
       const futuresBalanceRaw = Number(snapshot?.futures?.balance?.futures_balance || 0);
       const coinbaseValueRaw = Number(snapshot.coinbase_value_usd || 0);
       const futuresAlreadyInCoinbase = coinbaseValueRaw > 0 && futuresBalanceRaw > 0 &&
@@ -721,6 +719,11 @@
       const webullValue = [...(snapshot.brokers.webull.stocks || []), ...(snapshot.brokers.webull.options || [])]
         .reduce((sum, row) => sum + Number(row.market_value || 0), 0);
       if (webullValue > 0) snapshot.webull_value_usd = webullValue;
+      const webullDayPnl = [...(snapshot.brokers.webull.stocks || []), ...(snapshot.brokers.webull.options || [])]
+        .reduce((sum, row) => sum + Number(row.day_pnl || row.day_pnl_usd || 0), 0);
+      const coinbaseDayPnl = Number(snapshot.day_pnl_usd || 0) - Number(snapshot.webull_day_pnl_usd || 0);
+      snapshot.day_pnl_usd = webullDayPnl + coinbaseDayPnl;
+      snapshot.webull_day_pnl_usd = webullDayPnl;
 
       renderDashboardSnapshot(snapshot, summary);
 

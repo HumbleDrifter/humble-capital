@@ -29,6 +29,10 @@ _DEFAULT_SEED_UNIVERSE = [
     "JNJ", "V", "MA", "COST", "WMT", "HD", "LOW", "CRM", "ORCL", "ADBE",
     "INTC", "MU", "QCOM", "COIN", "MARA", "RIOT", "SQ", "PYPL", "UBER", "ABNB",
     "PLTR", "SOFI", "NIO", "RIVN", "F", "GM", "T", "VZ", "KO", "PEP",
+    "HOOD", "MSTR", "SMCI", "ARM", "AVGO", "PANW", "CRWD", "SNOW", "DDOG",
+    "NET", "SHOP", "SE", "ROKU", "RBLX", "PINS", "SNAP", "LYFT", "DASH",
+    "APP", "AFRM", "UPST", "OPEN", "BBAI", "IONQ", "SOUN", "RGTI", "QUBT",
+    "WOLF", "CLSK", "CIFR", "BITF", "HUT", "CORZ", "BTBT", "WULF",
 ]
 
 

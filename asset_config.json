@@ -24,13 +24,13 @@
     "freeze_level": 0.22
   },
   "dust_min_value_usd": 2.0,
-  "trade_min_value_usd": 5.0,
+  "trade_min_value_usd": 15.0,
   "max_quote_per_trade_usd": 150.0,
   "use_limit_orders": true,
-  "min_cash_reserve": 0.08,
+  "min_cash_reserve": 0.05,
   "satellite_mode": "rotation",
-  "satellite_total_target": 0.2,
-  "satellite_total_max": 0.25,
+  "satellite_total_target": 0.5,
+  "satellite_total_max": 0.6,
   "satellite_defaults": {
     "max_weight": 0.05
   },
@@ -168,9 +168,16 @@
     "notify_on_entry": true,
     "notify_on_exit": true
   },
-  "max_active_satellites": 4,
+  "max_active_satellites": 10,
   "min_meme_score": 65.0,
   "config_proposal_generation_mode": "auto",
   "config_proposal_apply_mode": "after_approval",
-  "config_proposal_min_confidence": "high"
+  "config_proposal_min_confidence": "high",
+  "max_new_satellites_per_cycle": 4,
+  "stock_universe": {
+    "min_market_cap": 1000000000,
+    "min_avg_volume": 1000000,
+    "min_price": 5.0,
+    "max_price": 1500.0
+  }
 }

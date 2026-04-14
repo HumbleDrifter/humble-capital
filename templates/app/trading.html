@@ -488,12 +488,43 @@
   </section>
 
   <div class="page-tabs">
-    <button class="page-tab active" data-tab="crypto" type="button">Crypto Scanner</button>
-    <button class="page-tab" data-tab="stocks" type="button">Stock Scanner</button>
+    <button class="page-tab active" data-tab="crypto" type="button">Crypto</button>
+    <button class="page-tab" data-tab="stocks" type="button">Stocks</button>
     <button class="page-tab" data-tab="futures" type="button">Futures</button>
-    <button class="page-tab" data-tab="social" type="button">Social</button>
-    <button class="page-tab" data-tab="squeeze" type="button">Squeeze</button>
+    <button class="page-tab" data-tab="social" type="button">Momentum</button>
+    <button class="page-tab" data-tab="squeeze" style="display:none;" type="button">Squeeze</button>
     <button class="page-tab" data-tab="charts" type="button">Charts</button>
+  </div>
+
+  <!-- Bot status bar -->
+  <div id="tradingBotStatusBar" style="
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:7px 12px;margin-bottom:4px;
+    background:rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.05);
+    border-radius:8px;font-size:12px;
+  ">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;
+        box-shadow:0 0 6px #22c55e;flex-shrink:0;" id="botPulseDot"></span>
+      <span style="color:rgba(236,243,255,0.5);">Bot</span>
+      <span style="font-weight:600;color:#22c55e;" id="botStatusLabel">Active</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <span style="color:rgba(236,243,255,0.4);">Regime</span>
+      <span id="tradingRegimeBadge" style="
+        padding:2px 8px;border-radius:10px;font-weight:600;font-size:11px;
+        background:rgba(251,191,36,0.15);color:#fbbf24;
+        border:1px solid rgba(251,191,36,0.25);">neutral</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0;">
+      <span style="color:rgba(236,243,255,0.4);">Last action</span>
+      <span id="tradingLastAction" style="color:rgba(236,243,255,0.6);
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        Monitoring positions
+      </span>
+    </div>
+    <div style="color:rgba(236,243,255,0.35);" id="tradingPortfolioValue">$—</div>
   </div>
 
   <div class="page-tab-content active" id="tab-crypto">
@@ -663,6 +694,7 @@
     </section>
   </div>
 
+  <div class="page-tab-content" id="tab-squeeze" style="display:none;"></div>
   <div class="page-tab-content" id="tab-social">
     <section class="opp-panel">
       <div class="opp-panel-head">
@@ -1320,8 +1352,22 @@
       return;
     }
     host.innerHTML = signals.map((signal) => `
-      <article class="opp-card">
-        <div class="opp-card-header"><div><h4 class="opp-card-title">${escapeHtml(signal.product_id || "Unknown")}</h4><div class="opp-card-subtitle">${new Date((Number(signal.ts || 0)) * 1000).toLocaleString()}</div></div><span class="opp-score-chip ${scoreTone(signal.conviction || 50)}">${escapeHtml(String(signal.signal || "signal").toUpperCase())}</span></div>
+      <article class="opp-card" style="cursor:pointer;" onclick="(function(){
+          const sym = '${escapeHtml(signal.product_id || '')}';
+          if(!sym) return;
+          document.getElementById('tradingChartSymbolInput').value = sym;
+          activateTab('charts');
+          const typeBtn = document.querySelector('.trading-chart-type[data-type=\'crypto\']');
+          if(typeBtn) typeBtn.click();
+          setTimeout(()=>commitChartSymbolInput().catch(()=>{}),200);
+        })()">
+        <div class="opp-card-header">
+          <div><h4 class="opp-card-title">${escapeHtml(signal.product_id || "Unknown")}</h4><div class="opp-card-subtitle">${new Date((Number(signal.ts || 0)) * 1000).toLocaleString()}</div></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="opp-score-chip ${scoreTone(signal.conviction || 50)}">${escapeHtml(String(signal.signal || "signal").toUpperCase())}</span>
+            <span style="font-size:10px;color:rgba(56,189,248,0.7);">Chart →</span>
+          </div>
+        </div>
         <div class="opp-card-metrics"><div class="opp-metric"><span class="opp-metric-label">Price</span><strong>$${fmtNum(signal.price || 0, 4)}</strong></div><div class="opp-metric"><span class="opp-metric-label">Conviction</span><strong>${fmtNum((Number(signal.conviction || 0) * 100), 0)}</strong></div></div>
       </article>`).join("");
   }
@@ -1333,13 +1379,57 @@
       return;
     }
     host.innerHTML = candidates.slice(0, 12).map((item) => `
-      <article class="opp-card">
-        <div class="opp-card-header"><div><h4 class="opp-card-title">${escapeHtml(item.product_id || item.symbol || "Unknown")}</h4><div class="opp-card-subtitle">${escapeHtml(item.social_label || "Watching")}</div></div><span class="opp-score-chip ${scoreTone(item.composite_score)}">${escapeHtml(String(item.signal || "hold").replace(/_/g, " "))}</span></div>
+      <article class="opp-card" style="cursor:pointer;" onclick="(function(){
+          const sym = ${JSON.stringify('')} || '${escapeHtml(item.product_id || item.symbol || '')}';
+          document.getElementById('tradingChartSymbolInput').value = sym;
+          activateTab('charts');
+          const typeBtn = document.querySelector('.trading-chart-type[data-type=\'crypto\']');
+          if(typeBtn) typeBtn.click();
+          setTimeout(()=>commitChartSymbolInput().catch(()=>{}),200);
+        })()">
+        <div class="opp-card-header">
+          <div><h4 class="opp-card-title">${escapeHtml(item.product_id || item.symbol || "Unknown")}</h4><div class="opp-card-subtitle">${escapeHtml(item.social_label || "Watching")}</div></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="opp-score-chip ${scoreTone(item.composite_score)}">${escapeHtml(String(item.signal || "hold").replace(/_/g, " "))}</span>
+            <span style="font-size:10px;color:rgba(56,189,248,0.7);white-space:nowrap;">Chart →</span>
+          </div>
+        </div>
         ${renderScoreBreakdown(item)}
       </article>`).join("");
   }
 
+  async function updateBotStatusBar() {
+    try {
+      const snap = await fetchJson("/api/portfolio/snapshot");
+      if (!snap || !snap.ok) return;
+      const regime = String(snap.market_regime || "neutral").toLowerCase();
+      const total = Number(snap.total_value_usd || 0);
+      const regimeBadge = document.getElementById("tradingRegimeBadge");
+      const portfolioValue = document.getElementById("tradingPortfolioValue");
+      const pulseDot = document.getElementById("botPulseDot");
+      if (regimeBadge) {
+        const colors = {
+          bull: ["#22c55e","rgba(34,197,94,0.15)","rgba(34,197,94,0.25)"],
+          neutral: ["#fbbf24","rgba(251,191,36,0.15)","rgba(251,191,36,0.25)"],
+          caution: ["#f97316","rgba(249,115,22,0.15)","rgba(249,115,22,0.25)"],
+          risk_off: ["#ef4444","rgba(239,68,68,0.15)","rgba(239,68,68,0.25)"],
+        };
+        const [c, bg, border] = colors[regime] || colors.neutral;
+        regimeBadge.style.color = c;
+        regimeBadge.style.background = bg;
+        regimeBadge.style.borderColor = border;
+        regimeBadge.textContent = regime.replace("_"," ");
+      }
+      if (portfolioValue) portfolioValue.textContent = "$" + total.toLocaleString(undefined,{maximumFractionDigits:0});
+      if (pulseDot) {
+        pulseDot.style.background = regime === "risk_off" ? "#ef4444" : regime === "caution" ? "#f97316" : "#22c55e";
+        pulseDot.style.boxShadow = "0 0 6px " + (regime === "risk_off" ? "#ef4444" : regime === "caution" ? "#f97316" : "#22c55e");
+      }
+    } catch(e) {}
+  }
+
   async function loadCrypto() {
+    updateBotStatusBar().catch(()=>{});
     const [rotation, signals] = await Promise.all([
       fetchJson("/api/meme_rotation"),
       fetchJson("/api/signals/log?limit=10")

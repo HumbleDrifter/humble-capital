@@ -720,10 +720,11 @@
         options: Array.isArray(webullResp?.options) ? webullResp.options : [],
         balance: webullResp?.balance || {}
       };
-      // Patch webull value into snapshot totals
-      const webullValue = [...(snapshot.brokers.webull.stocks || []), ...(snapshot.brokers.webull.options || [])]
-        .reduce((sum, row) => sum + Number(row.market_value || 0), 0);
-      if (webullValue > 0) snapshot.webull_value_usd = webullValue;
+      // Keep webull_value_usd from Phase 1 snapshot (portfolio.py net liquidation)
+      // Only update if webull balance API returns a reliable value
+      const webullBalanceApi = Number(webullResp?.balance?.balance || 0);
+      if (webullBalanceApi > 0) snapshot.webull_value_usd = webullBalanceApi;
+      // else keep snapshot.webull_value_usd from Phase 1 (already correct)
       const webullDayPnl = [...(snapshot.brokers.webull.stocks || []), ...(snapshot.brokers.webull.options || [])]
         .reduce((sum, row) => sum + Number(row.day_pnl || row.day_pnl_usd || 0), 0);
       const coinbaseDayPnl = Number(snapshot.day_pnl_usd || 0) - Number(snapshot.webull_day_pnl_usd || 0);

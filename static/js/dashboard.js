@@ -724,7 +724,12 @@
       // Only update if webull balance API returns a reliable value
       const webullBalanceApi = Number(webullResp?.balance?.balance || 0);
       if (webullBalanceApi > 0) snapshot.webull_value_usd = webullBalanceApi;
-      // else keep snapshot.webull_value_usd from Phase 1 (already correct)
+      // Recalculate total to ensure webull is included
+      const _coinbaseVal = Number(snapshot.coinbase_value_usd || 0);
+      const _webullVal = Number(snapshot.webull_value_usd || 0);
+      if (_coinbaseVal > 0 && _webullVal > 0) {
+        snapshot.total_value_usd = _coinbaseVal + _webullVal;
+      }
       const webullDayPnl = [...(snapshot.brokers.webull.stocks || []), ...(snapshot.brokers.webull.options || [])]
         .reduce((sum, row) => sum + Number(row.day_pnl || row.day_pnl_usd || 0), 0);
       const coinbaseDayPnl = Number(snapshot.day_pnl_usd || 0) - Number(snapshot.webull_day_pnl_usd || 0);

@@ -464,8 +464,11 @@
         <article class="hc-pos-card opt-card opt-card-${tone}">
           <div class="opt-card-top">
             <div>
-              <div class="opt-card-title">${esc(opp.symbol)} <span class="opt-strategy-badge">${esc(opp.strategy)}</span></div>
-              <div class="opt-card-subtitle">${esc(opp.expiration || "No expiration")} · ${esc(details.strike || details.short_strike || "—")}</div>
+              <div class="opt-card-title">
+                <span>${esc(opp.symbol)}</span>
+                <span class="opt-strategy-badge">${esc((opp.strategy||"").replace(/_/g," "))}</span>
+              </div>
+              <div class="opt-card-subtitle">${esc(opp.expiration || "No expiration")} · Strike ${esc(details.strike || details.short_strike || "—")}</div>
             </div>
             <div class="opt-score-box">${Math.round(Number(opp.score || 0))}</div>
           </div>

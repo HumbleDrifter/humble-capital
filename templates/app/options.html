@@ -41,65 +41,56 @@
   </div>
 
   <div class="page-tab-content active" id="tab-scanner">
-  <section class="opt-header opt-observe">
-    <div class="opt-header-copy opt-reveal">
-      <div class="opt-kicker">Options Screener</div>
-      <h2 class="opt-title">Screen high-probability premium trades, inspect chains, and stage Webull execution from one workspace.</h2>
-      <p class="opt-subtitle" id="optMeta">Preparing options scanner...</p>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:4px 0 12px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;font-weight:700;color:#ecf3ff;">Options</span>
+      <span style="font-size:12px;color:rgba(236,243,255,0.4);" id="optMeta">Preparing scanner...</span>
     </div>
-  </section>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <span id="optVixBadge" style="padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;background:rgba(56,189,248,0.12);color:#38bdf8;border:1px solid rgba(56,189,248,0.2);">SPY IV --</span>
+      <span id="optBestBadge" style="padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.2);">Best: --</span>
+    </div>
+  </div>
 
-  <section class="opt-controls opt-observe">
-    <div class="hc-chart-section opt-reveal">
-      <div class="opt-section-head">
-        <div>
-          <h2 class="opt-section-title">Scanner Controls</h2>
-          <p class="opt-section-subtitle">Filter for the strategies and risk posture you want to see.</p>
-        </div>
-      </div>
-      <div class="opt-controls-grid">
-        <div class="form-card">
-          <label>Strategies</label>
-          <div class="opt-check-grid">
-            <label class="opt-check"><input id="optCoveredCalls" type="checkbox" checked> Covered Calls</label>
-            <label class="opt-check"><input id="optCashSecuredPuts" type="checkbox" checked> Cash-Secured Puts</label>
-            <label class="opt-check"><input id="optCreditSpreads" type="checkbox" checked> Credit Spreads</label>
-            <label class="opt-check"><input id="optIronCondors" type="checkbox" checked> Iron Condors</label>
-          </div>
-        </div>
-        <div class="form-card">
-          <label for="optCapital">Available Capital</label>
-          <input id="optCapital" class="form-input" type="number" min="0" step="100" value="5000">
-          <div class="field-help">Used for personalized recommendations and capital-aware screening.</div>
-        </div>
-        <div class="form-card">
-          <label>Risk Tolerance</label>
-          <div class="hc-chart-range-group">
-            <button class="hc-range-btn active opt-risk-btn" data-risk="conservative" type="button">Conservative</button>
-            <button class="hc-range-btn opt-risk-btn" data-risk="moderate" type="button">Moderate</button>
-            <button class="hc-range-btn opt-risk-btn" data-risk="aggressive" type="button">Aggressive</button>
-          </div>
-          <div class="field-help">Filters which strategies show up in recommendations.</div>
-        </div>
-        <div class="form-card">
-          <label for="optSymbols">Symbol Search</label>
-          <input id="optSymbols" class="form-input" type="text" placeholder="AAPL, NVDA, MSFT">
-          <div class="field-help">Optional comma-separated symbols. Leave blank for the full watchlist.</div>
-        </div>
-      </div>
-      <div class="opt-actions">
-        <button class="btn btn-primary" id="optScanBtn" type="button">Scan Universe</button>
-        <button class="btn btn-secondary" id="optSentimentBtn" type="button">Scan Sentiment</button>
-        <button class="btn btn-secondary" id="optRecommendBtn" type="button">Get Recommendations</button>
-        <div class="hc-chart-range-group">
-          <button class="hc-range-btn active opt-sentiment-filter-btn" data-filter="all" type="button">All</button>
-          <button class="hc-range-btn opt-sentiment-filter-btn" data-filter="bullish_only" type="button">Only bullish sentiment</button>
-          <button class="hc-range-btn opt-sentiment-filter-btn" data-filter="bearish_only" type="button">Only bearish</button>
-        </div>
-        <span class="opt-run-status" id="optRunStatus">Ready.</span>
-      </div>
+  <!-- Compact scanner toolbar -->
+  <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+    <!-- Row 1: Symbol + Scan buttons -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+      <input id="optSymbols" class="form-input" type="text" placeholder="Symbols (blank = watchlist)"
+        style="flex:1;min-width:160px;height:36px;font-size:13px;">
+      <input id="optCapital" class="form-input" type="number" min="0" step="100" value="5000"
+        placeholder="Capital $" style="width:110px;height:36px;font-size:13px;">
+      <button class="btn btn-primary" id="optScanBtn" type="button" style="height:36px;white-space:nowrap;">⚡ Scan</button>
+      <button class="btn btn-secondary" id="optRecommendBtn" type="button" style="height:36px;white-space:nowrap;">Ideas</button>
+      <button class="btn btn-secondary" id="optSentimentBtn" type="button" style="height:36px;white-space:nowrap;">Sentiment</button>
+      <span class="opt-run-status" id="optRunStatus" style="font-size:11px;color:rgba(236,243,255,0.4);">Ready.</span>
     </div>
-  </section>
+    <!-- Row 2: Strategy pills + Risk + Filter -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      <span style="font-size:11px;color:rgba(236,243,255,0.4);white-space:nowrap;">Strategy:</span>
+      <label class="opt-check" style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input id="optCoveredCalls" type="checkbox" checked> CC
+      </label>
+      <label class="opt-check" style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input id="optCashSecuredPuts" type="checkbox" checked> CSP
+      </label>
+      <label class="opt-check" style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input id="optCreditSpreads" type="checkbox" checked> Spreads
+      </label>
+      <label class="opt-check" style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+        <input id="optIronCondors" type="checkbox" checked> IC
+      </label>
+      <div style="width:1px;height:16px;background:rgba(255,255,255,0.1);margin:0 4px;"></div>
+      <span style="font-size:11px;color:rgba(236,243,255,0.4);">Risk:</span>
+      <button class="hc-range-btn active opt-risk-btn" data-risk="conservative" type="button" style="font-size:11px;padding:3px 8px;">Conservative</button>
+      <button class="hc-range-btn opt-risk-btn" data-risk="moderate" type="button" style="font-size:11px;padding:3px 8px;">Moderate</button>
+      <button class="hc-range-btn opt-risk-btn" data-risk="aggressive" type="button" style="font-size:11px;padding:3px 8px;">Aggressive</button>
+      <div style="width:1px;height:16px;background:rgba(255,255,255,0.1);margin:0 4px;"></div>
+      <button class="hc-range-btn active opt-sentiment-filter-btn" data-filter="all" type="button" style="font-size:11px;padding:3px 8px;">All</button>
+      <button class="hc-range-btn opt-sentiment-filter-btn" data-filter="bullish_only" type="button" style="font-size:11px;padding:3px 8px;">Bullish</button>
+      <button class="hc-range-btn opt-sentiment-filter-btn" data-filter="bearish_only" type="button" style="font-size:11px;padding:3px 8px;">Bearish</button>
+    </div>
+  </div>
 
   <section class="opt-overview opt-observe">
     <div class="opt-overview-grid">
@@ -716,8 +707,34 @@
   }
 
   async function loadOverview() {
-    try {
-      const quick = await fetchJson("/api/options/scan/quick");
+    // Load all three in parallel — don't let slow quick scan block positions
+    const [quickResult, vixResult, posResult] = await Promise.allSettled([
+      fetchJson("/api/options/scan/quick"),
+      fetchJson("/api/options/iv-rank?symbol=SPY"),
+      fetchJson("/api/options/positions"),
+    ]);
+
+    // Positions — show immediately regardless of scan
+    if (posResult.status === "fulfilled") {
+      renderPositions(posResult.value.positions || []);
+    } else {
+      renderPositions([]);
+    }
+
+    // IV rank
+    if (vixResult.status === "fulfilled") {
+      const vix = vixResult.value;
+      document.getElementById("optVixValue") && (document.getElementById("optVixValue").textContent = fmtPct(vix.iv_rank || 0));
+      document.getElementById("optVixDetail") && (document.getElementById("optVixDetail").textContent = `SPY IV ${(vix.current_iv || 0).toFixed(2)}`);
+      const vixBadge = document.getElementById("optVixBadge");
+      if (vixBadge) vixBadge.textContent = `SPY IV ${fmtPct(vix.iv_rank || 0)}`;
+    } else {
+      document.getElementById("optVixDetail").textContent = "IV data unavailable";
+    }
+
+    // Quick scan results
+    if (quickResult.status === "fulfilled") {
+      const quick = quickResult.value;
       const opps = quick.opportunities || [];
       renderTopIv(
         [...opps]
@@ -726,25 +743,20 @@
           .map((item) => ({ symbol: item.symbol, iv_rank: Number(item.iv_rank || 0) }))
       );
       const best = opps[0];
-      document.getElementById("optBestSymbol").textContent = best ? best.symbol : "--";
-      document.getElementById("optBestDetail").textContent = best ? `${best.strategy} · ${fmtPct(best.annualized_yield || 0)} annualized` : "No quick opportunities";
-    } catch (error) {
-      document.getElementById("optBestDetail").textContent = `Overview unavailable: ${error.message}`;
-    }
-
-    try {
-      const vix = await fetchJson("/api/options/iv-rank?symbol=SPY");
-      document.getElementById("optVixValue").textContent = fmtPct(vix.iv_rank || 0);
-      document.getElementById("optVixDetail").textContent = `SPY current IV ${(vix.current_iv || 0).toFixed(2)}`;
-    } catch (error) {
-      document.getElementById("optVixDetail").textContent = "VIX proxy unavailable";
-    }
-
-    try {
-      const pos = await fetchJson("/api/options/positions");
-      renderPositions(pos.positions || []);
-    } catch (error) {
-      renderPositions([]);
+      document.getElementById("optBestSymbol") && (document.getElementById("optBestSymbol").textContent = best ? best.symbol : "--");
+      document.getElementById("optBestDetail") && (document.getElementById("optBestDetail").textContent = best
+        ? `${best.strategy} · ${fmtPct(best.annualized_yield || 0)} ann.`
+        : "Run scan for ideas");
+      // Update compact header badges
+      const bestBadge = document.getElementById("optBestBadge");
+      if (bestBadge && best) bestBadge.textContent = `Best: ${best.symbol} ${Math.round(best.score || 0)}`;
+      // Auto-populate scan results if we got opps
+      if (opps.length > 0) {
+        renderResults(opps);
+        document.getElementById("optRunStatus").textContent = `${opps.length} quick opportunities loaded.`;
+      }
+    } else {
+      document.getElementById("optBestDetail").textContent = "Scan to surface ideas";
     }
   }
 

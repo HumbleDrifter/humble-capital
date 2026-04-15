@@ -3609,22 +3609,45 @@ def api_options_iv_rank():
         symbol = (request.args.get("symbol") or "").upper().strip()
         if not symbol:
             return jsonify({"ok": False, "error": "missing_symbol"}), 400
-        fetcher = OptionChainFetcher(broker="webull")
-        chain = fetcher.get_chain(symbol)
-        current_iv_values = []
-        if chain.get("ok"):
-            for expiry_data in (chain.get("chains") or {}).values():
-                for side in ("calls", "puts"):
-                    for row in (expiry_data.get(side) or []):
-                        iv = _safe_float(row.get("iv"), 0.0)
-                        if iv > 0:
-                            current_iv_values.append(iv)
-        current_iv = (sum(current_iv_values) / len(current_iv_values)) if current_iv_values else 0.0
+        # Fast path: use yfinance directly — no need to fetch full chain
+        import yfinance as yf
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period="60d")
+        info = ticker.fast_info
+        current_price = float(getattr(info, "last_price", None) or 0.0)
+        # Estimate IV from recent price volatility (annualized)
+        import math
+        current_iv = 0.0
+        iv_rank = 50.0
+        if len(hist) >= 20:
+            closes = hist["Close"].tolist()
+            returns = [math.log(closes[i]/closes[i-1]) for i in range(1, len(closes)) if closes[i-1] > 0]
+            if returns:
+                import statistics
+                daily_vol = statistics.stdev(returns)
+                current_iv = round(daily_vol * math.sqrt(252) * 100, 2)
+                # IV rank: where current IV sits vs 52-week range
+                hist_52 = ticker.history(period="252d")
+                if len(hist_52) >= 60:
+                    c52 = hist_52["Close"].tolist()
+                    r52 = [math.log(c52[i]/c52[i-1]) for i in range(1, len(c52)) if c52[i-1] > 0]
+                    # Rolling 20-day vol
+                    vols = []
+                    for i in range(20, len(r52)):
+                        chunk = r52[i-20:i]
+                        if chunk:
+                            vols.append(statistics.stdev(chunk) * math.sqrt(252) * 100)
+                    if vols:
+                        iv_min = min(vols)
+                        iv_max = max(vols)
+                        iv_rank = round(((current_iv - iv_min) / max(iv_max - iv_min, 0.01)) * 100, 1)
+                        iv_rank = max(0.0, min(100.0, iv_rank))
         return jsonify({
             "ok": True,
             "symbol": symbol,
-            "iv_rank": fetcher.get_iv_rank(symbol),
-            "current_iv": round(current_iv, 4),
+            "iv_rank": iv_rank,
+            "current_iv": current_iv,
+            "current_price": current_price,
         })
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500

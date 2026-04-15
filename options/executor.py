@@ -282,7 +282,7 @@ def run_options_scan_and_execute() -> dict[str, Any]:
             otm_screener = OptionsScreener(max_capital_per_trade=max_cost)
             otm_opps = []
             for symbol in otm_screener.watchlist[:15]:
-            scan_puts = bool(opts_cfg.get("scan_puts", True))
+                scan_puts = bool(opts_cfg.get("scan_puts", True))
                 otm_opps.extend(otm_screener.scan_cheap_otm_calls(
                     symbol,
                     max_cost_per_contract=max_cost,

@@ -698,6 +698,14 @@
       renderAll();
     });
 
+    // Load bot signals when symbol changes
+    let _symDebounce;
+    document.getElementById("osbSymbol")?.addEventListener("input", () => {
+      clearTimeout(_symDebounce);
+      _symDebounce = setTimeout(loadBotSignals, 600);
+    });
+    setTimeout(loadBotSignals, 1000);
+
     document.querySelectorAll("[data-template]").forEach((button) => {
       button.addEventListener("click", () => applyTemplate(button.getAttribute("data-template")));
     });

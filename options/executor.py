@@ -502,10 +502,11 @@ def run_options_position_monitor() -> dict[str, Any]:
     Called every 5 minutes. Checks open options positions for
     profit targets and stop losses. Closes via WebullAdapter.
 
-    Exit rules (aggressive_otm mode):
-    - Long OTM calls/puts: hold until -50% loss OR momentum reversal after +200%
-    - Income plays (CSP/CC/Wheel): close at 50% profit
-    - Balanced: 100% gain or -50% loss
+    Exit rules:
+    - Long calls: exit when underlying turns bearish (price<EMA9, EMA9<EMA21, MACD negative/falling)
+    - Long puts: exit when underlying turns bullish (price>EMA9, EMA9>EMA21, MACD positive/rising)
+    - No fixed % thresholds — pure momentum-based
+    - Income plays (short): close at 50% profit capture
     """
     try:
         if not _is_market_open():
@@ -538,46 +539,64 @@ def run_options_position_monitor() -> dict[str, Any]:
             reason = None
 
             opts_cfg = _options_config()
-            mode = str(opts_cfg.get("mode", "aggressive_otm")).lower()
-            is_long_debit = not is_short  # long calls/puts we bought
+            is_long_debit = not is_short
+            option_type = str(pos.get("option_type") or "call").lower()
 
             if is_long_debit:
-                if mode == "aggressive_otm":
-                    # Aggressive OTM: let winners run, cut losers at -50%
-                    # Only exit on momentum reversal OR -50% loss
-                    if pnl_pct <= -0.50:
-                        reason = "stop_loss_50pct"
-                    elif pnl_pct >= 2.0:
-                        # At 200%+ gain, check if momentum still good
-                        try:
-                            import yfinance as yf
-                            from datetime import datetime, timedelta, timezone
-                            end = datetime.now(timezone.utc)
-                            start = end - timedelta(days=20)
-                            hist = yf.Ticker(symbol).history(
-                                start=start.strftime("%Y-%m-%d"),
-                                end=end.strftime("%Y-%m-%d"), interval="1d"
-                            )
-                            closes = [float(r["Close"]) for _, r in hist.iterrows()] if not hist.empty else []
-                            if len(closes) >= 9:
-                                ema9 = sum(closes[-9:]) / 9
-                                last = closes[-1]
-                                prev = closes[-2] if len(closes) >= 2 else last
-                                if last < ema9 and last < prev:
-                                    reason = f"take_profit_{pnl_pct:.0%}_momentum_exit"
-                                else:
-                                    _log(f"holding winner {symbol} pnl={pnl_pct*100:.0f}% momentum still bullish")
-                            else:
-                                reason = f"take_profit_{pnl_pct:.0%}"
-                        except Exception:
-                            reason = f"take_profit_{pnl_pct:.0%}"
-                    # Between -50% and +200% — hold regardless
-                else:
-                    # Income/balanced: original logic
-                    if pnl_pct >= 1.0:
-                        reason = "take_profit_100pct"
-                    elif pnl_pct <= -0.5:
-                        reason = "stop_loss_50pct"
+                # Pure momentum-based exit — no fixed % thresholds
+                # Exit calls when underlying turns bearish
+                # Exit puts when underlying turns bullish
+                try:
+                    import yfinance as yf
+                    from datetime import datetime, timedelta, timezone
+                    from backtester import ema as bt_ema, rsi as bt_rsi, macd as bt_macd
+                    end = datetime.now(timezone.utc)
+                    start = end - timedelta(days=60)
+                    hist = yf.Ticker(symbol).history(
+                        start=start.strftime("%Y-%m-%d"),
+                        end=end.strftime("%Y-%m-%d"), interval="1d"
+                    )
+                    closes = [float(r["Close"]) for _, r in hist.iterrows()] if not hist.empty else []
+
+                    if len(closes) >= 20:
+                        ema9 = bt_ema(closes, 9)[-1]
+                        ema21 = bt_ema(closes, 21)[-1]
+                        ema50 = bt_ema(closes, 50)[-1] if len(closes) >= 50 else ema21
+                        rsi_val = bt_rsi(closes, 14)[-1]
+                        _, _, macd_hist_vals = bt_macd(closes, 12, 26, 9)
+                        macd_now = macd_hist_vals[-1] if macd_hist_vals else 0
+                        macd_prev = macd_hist_vals[-2] if len(macd_hist_vals) >= 2 else macd_now
+                        last = closes[-1]
+                        prev = closes[-2]
+
+                        # Bearish signals for calls (exit long call)
+                        bearish = (
+                            last < ema9 and ema9 < ema21 and  # price below EMAs, EMAs crossed down
+                            macd_now < 0 and macd_now < macd_prev  # MACD negative and falling
+                        )
+                        # Bullish signals for puts (exit long put)
+                        bullish = (
+                            last > ema9 and ema9 > ema21 and  # price above EMAs, EMAs crossed up
+                            macd_now > 0 and macd_now > macd_prev  # MACD positive and rising
+                        )
+
+                        # Also add when to add more (log only for now)
+                        strong_bull = bullish and rsi_val > 50 and last > ema50
+                        strong_bear = bearish and rsi_val < 50 and last < ema50
+
+                        if option_type == "call" and bearish:
+                            reason = f"momentum_bearish_exit_call rsi={rsi_val:.0f}"
+                            _log(f"EXIT signal: {symbol} CALL bearish — price={last:.2f} ema9={ema9:.2f} ema21={ema21:.2f} rsi={rsi_val:.0f} macd={macd_now:.3f} pnl={pnl_pct*100:.0f}%")
+                        elif option_type == "put" and bullish:
+                            reason = f"momentum_bullish_exit_put rsi={rsi_val:.0f}"
+                            _log(f"EXIT signal: {symbol} PUT bullish — price={last:.2f} ema9={ema9:.2f} ema21={ema21:.2f} rsi={rsi_val:.0f} macd={macd_now:.3f} pnl={pnl_pct*100:.0f}%")
+                        else:
+                            direction = "bullish" if option_type == "call" else "bearish"
+                            _log(f"HOLD {symbol} {option_type.upper()} — momentum {direction} rsi={rsi_val:.0f} ema9={ema9:.2f} last={last:.2f} pnl={pnl_pct*100:.0f}%")
+                    else:
+                        _log(f"HOLD {symbol} — insufficient bars for momentum check")
+                except Exception as _e:
+                    _log(f"momentum check failed {symbol}: {_e}")
             else:
                 # Short income plays: close at 50% profit capture
                 if pnl_pct >= 0.5:

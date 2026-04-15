@@ -201,10 +201,12 @@ def allocate_options_capital(vix_level):
 
 
 class OptionsScreener:
-    def __init__(self, watchlist=None, broker="webull"):
+    def __init__(self, watchlist=None, broker="webull", max_capital_per_trade=None):
         self.watchlist = [_normalize_symbol(symbol) for symbol in (watchlist or DEFAULT_WATCHLIST) if _normalize_symbol(symbol)]
         self.broker = str(broker or "webull").strip().lower()
         self.chain_fetcher = OptionChainFetcher(broker=self.broker)
+        # max_capital_per_trade filters CSPs/CCs to affordable strikes
+        self.max_capital_per_trade = _safe_float(max_capital_per_trade, 0.0)
 
     def _cache_key(self, strategies, sentiment_filter=None):
         strategies = tuple(sorted(str(item).strip().lower() for item in (strategies or [])))
@@ -397,6 +399,8 @@ class OptionsScreener:
             return []
 
         max_capital = _safe_float(max_capital, 0.0)
+        if max_capital <= 0:
+            max_capital = self.max_capital_per_trade
         opportunities = []
         for expiration in self._iter_tradeable_expirations(symbol):
             chain = self.chain_fetcher.get_chain(symbol, expiration=expiration)
@@ -415,6 +419,7 @@ class OptionsScreener:
                     continue
                 if oi <= 100 or premium <= 0 or strike >= current_price * 0.95:
                     continue
+                # Filter by max capital (e.g. $100 max = only strikes <= $1.00)
                 if max_capital > 0 and capital_at_risk > max_capital:
                     continue
                 monthly_yield_pct = (premium / strike) * (30.0 / max(1, dte)) * 100.0
@@ -465,7 +470,7 @@ class OptionsScreener:
                     short_strike = _safe_float(short_leg.get("strike"), 0.0)
                     long_strike = _safe_float(long_leg.get("strike"), 0.0)
                     width = abs(short_strike - long_strike)
-                    if width < 2 or width > 5:
+                    if width < 1 or width > 5:
                         continue
                     if spread_type == "bull_put" and not (long_strike < short_strike):
                         continue

@@ -3791,7 +3791,9 @@ def api_options_scan():
         strategies = data.get("strategies")
         min_score = _safe_float(data.get("min_score"), 0.0)
         max_results = max(1, int(data.get("max_results") or 20))
-        screener = OptionsScreener(watchlist=symbols, broker="webull")
+        capital = _safe_float(data.get("capital"), 0.0)
+        max_capital = _safe_float(data.get("max_capital_per_trade"), capital if capital > 0 else 0.0)
+        screener = OptionsScreener(watchlist=symbols, broker="webull", max_capital_per_trade=max_capital)
         result = screener.scan_universe(strategies=strategies)
         opportunities = [
             opp for opp in (result.get("opportunities") or [])

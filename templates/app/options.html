@@ -58,8 +58,8 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
       <input id="optSymbols" class="form-input" type="text" placeholder="Symbols (blank = watchlist)"
         style="flex:1;min-width:160px;height:36px;font-size:13px;">
-      <input id="optCapital" class="form-input" type="number" min="0" step="100" value="5000"
-        placeholder="Capital $" style="width:110px;height:36px;font-size:13px;">
+      <input id="optCapital" class="form-input" type="number" min="0" step="50" value="100"
+        placeholder="Max $ / trade" style="width:110px;height:36px;font-size:13px;" title="Maximum capital per trade (e.g. 100 = find options under $100)">
       <button class="btn btn-primary" id="optScanBtn" type="button" style="height:36px;white-space:nowrap;">⚡ Scan</button>
       <button class="btn btn-secondary" id="optRecommendBtn" type="button" style="height:36px;white-space:nowrap;">Ideas</button>
       <button class="btn btn-secondary" id="optSentimentBtn" type="button" style="height:36px;white-space:nowrap;">Sentiment</button>
@@ -646,6 +646,8 @@
           sentiment_filter: activeSentimentFilter,
           min_score: 0,
           max_results: 24,
+          capital: Number(document.getElementById("optCapital")?.value || 100),
+          max_capital_per_trade: Number(document.getElementById("optCapital")?.value || 100),
         }),
       });
       lastScan = (result.opportunities || []).filter((opp) => {

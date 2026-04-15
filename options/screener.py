@@ -7,14 +7,40 @@ from options.sentiment import SocialSentimentScanner
 _SCAN_CACHE = {}
 _SCAN_CACHE_TTL = 900
 
-DEFAULT_WATCHLIST = [
-    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD",
-    "SPY", "QQQ", "IWM", "NFLX", "DIS", "BA", "JPM", "GS", "BAC",
-    "XOM", "CVX", "PFE", "JNJ", "V", "MA", "COST", "WMT",
-    "HD", "LOW", "CRM", "ORCL", "ADBE", "INTC", "MU", "QCOM",
-    "COIN", "MARA", "RIOT", "SQ", "PYPL", "UBER", "ABNB",
-    "PLTR", "SOFI", "NIO", "RIVN", "F", "GM", "T", "VZ", "KO", "PEP",
+# Meme/momentum stocks get priority scanning
+MOMENTUM_PRIORITY = [
+    "GME", "AMC", "MARA", "RIOT", "NIO", "BBAI", "SOFI", "PLTR", "HOOD",
+    "COIN", "RIVN", "TSLA", "BYND", "OPEN", "SPCE", "CLOV", "SNDL",
+    "IONQ", "SOUN", "RGTI", "SMCI", "MSTR", "NVDA", "AMD", "AFRM",
+    "UPST", "RBLX", "SNAP", "LYFT", "DASH", "APP", "CRWD", "NET",
 ]
+
+def _build_dynamic_watchlist() -> list:
+    """
+    Build full options watchlist from stock universe.
+    Meme/momentum stocks appear first for priority scanning.
+    """
+    try:
+        from stock_universe import StockUniverse
+        u = StockUniverse()
+        all_stocks = u.get_all_tradeable()
+        symbols = [str(s.get("symbol") or s if isinstance(s, dict) else s).upper().strip()
+                   for s in all_stocks if s]
+        symbols = [s for s in symbols if s and len(s) <= 5]
+        # Put momentum stocks first, then rest of universe
+        priority = [s for s in MOMENTUM_PRIORITY if s in symbols]
+        rest = [s for s in symbols if s not in set(MOMENTUM_PRIORITY)]
+        return priority + rest
+    except Exception:
+        return MOMENTUM_PRIORITY + [
+            "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD",
+            "SPY", "QQQ", "IWM", "NFLX", "DIS", "BA", "JPM", "GS", "BAC",
+            "XOM", "CVX", "PFE", "JNJ", "V", "MA", "COST", "WMT",
+            "HD", "LOW", "CRM", "ORCL", "ADBE", "INTC", "MU", "QCOM",
+            "COIN", "SQ", "PYPL", "UBER", "ABNB", "RIVN", "F", "GM",
+        ]
+
+DEFAULT_WATCHLIST = _build_dynamic_watchlist()
 
 MEME_STOCKS = {
     "GME", "AMC", "BBAI", "NIO", "BYND", "OPEN", "MARA", "RIOT",
@@ -202,7 +228,11 @@ def allocate_options_capital(vix_level):
 
 class OptionsScreener:
     def __init__(self, watchlist=None, broker="webull", max_capital_per_trade=None):
-        self.watchlist = [_normalize_symbol(symbol) for symbol in (watchlist or DEFAULT_WATCHLIST) if _normalize_symbol(symbol)]
+        # If no watchlist provided, build dynamic one from full universe
+        if watchlist:
+            self.watchlist = [_normalize_symbol(symbol) for symbol in watchlist if _normalize_symbol(symbol)]
+        else:
+            self.watchlist = [_normalize_symbol(s) for s in _build_dynamic_watchlist() if _normalize_symbol(s)]
         self.broker = str(broker or "webull").strip().lower()
         self.chain_fetcher = OptionChainFetcher(broker=self.broker)
         # max_capital_per_trade filters CSPs/CCs to affordable strikes

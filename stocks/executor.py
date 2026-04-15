@@ -53,7 +53,7 @@ MAX_OPEN_POSITIONS = 8          # max concurrent stock positions
 MAX_ALLOC_PER_TRADE = 0.25      # max 25% of buying power per trade
 COOLDOWN_SECONDS = 14400        # 4 hours between re-entries on same symbol
 STOP_LOSS_PCT = 0.07            # 7% stop loss from entry
-TAKE_PROFIT_PCT = 0.15          # 15% take profit from entry
+TAKE_PROFIT_PCT = 0.30          # 15% take profit from entry
 
 # Regimes that allow new long stock entries
 LONG_ALLOWED_REGIMES = {"bull", "neutral"}
@@ -322,7 +322,32 @@ def run_stock_position_monitor() -> dict[str, Any]:
             if pnl_pct <= -STOP_LOSS_PCT:
                 reason = f"stop_loss_{STOP_LOSS_PCT:.0%}"
             elif pnl_pct >= TAKE_PROFIT_PCT:
-                reason = f"take_profit_{TAKE_PROFIT_PCT:.0%}"
+                # Check momentum before exiting winner — hold if still bullish
+                try:
+                    import yfinance as yf
+                    from datetime import datetime, timedelta, timezone
+                    end = datetime.now(timezone.utc)
+                    start = end - timedelta(days=30)
+                    hist = yf.Ticker(symbol).history(start=start.strftime("%Y-%m-%d"), end=end.strftime("%Y-%m-%d"), interval="1d")
+                    closes = [float(r["Close"]) for _, r in hist.iterrows()] if not hist.empty else []
+                    if len(closes) >= 15:
+                        ema9 = sum(closes[-9:]) / 9
+                        ema21 = sum(closes[-21:]) / 21 if len(closes) >= 21 else ema9
+                        gains = [max(0, closes[j]-closes[j-1]) for j in range(1, len(closes))]
+                        losses = [max(0, closes[j-1]-closes[j]) for j in range(1, len(closes))]
+                        ag = sum(gains[-14:]) / 14 if len(gains) >= 14 else 1
+                        al = sum(losses[-14:]) / 14 if len(losses) >= 14 else 1
+                        rsi = 100 - (100 / (1 + ag / max(al, 0.001)))
+                        bearish = mark_price < ema9 and ema9 < ema21
+                        reversing = rsi > 75 and len(closes) >= 2 and mark_price < closes[-2]
+                        if bearish or reversing:
+                            reason = f"take_profit_{pnl_pct:.0%}_momentum_exit"
+                        else:
+                            _log(f"holding winner {symbol} pnl={pnl_pct*100:.1f}% momentum bullish rsi={rsi:.0f}")
+                    else:
+                        reason = f"take_profit_{TAKE_PROFIT_PCT:.0%}"
+                except Exception:
+                    reason = f"take_profit_{TAKE_PROFIT_PCT:.0%}"
 
             if reason:
                 _log(

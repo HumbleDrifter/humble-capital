@@ -276,18 +276,24 @@ def run_options_scan_and_execute() -> dict[str, Any]:
     if regime in SQUEEZE_ALLOWED_REGIMES and squeeze_count < MAX_SQUEEZE_POSITIONS:
         try:
             max_cost = _safe_float(opts_cfg.get("max_cost_per_contract", 100.0), 100.0)
-            max_contracts = max(1, int(opts_cfg.get("max_contracts_per_trade", 5)))
+            max_budget = _safe_float(opts_cfg.get("max_cost_total_per_trade", 500.0), 500.0)
             delta_min = _safe_float(opts_cfg.get("delta_min", 0.10), 0.10)
             delta_max = _safe_float(opts_cfg.get("delta_max", 0.35), 0.35)
             otm_screener = OptionsScreener(max_capital_per_trade=max_cost)
             otm_opps = []
             for symbol in otm_screener.watchlist[:15]:
+            scan_puts = bool(opts_cfg.get("scan_puts", True))
                 otm_opps.extend(otm_screener.scan_cheap_otm_calls(
                     symbol,
                     max_cost_per_contract=max_cost,
                     delta_min=delta_min,
                     delta_max=delta_max,
                 ))
+                if scan_puts:
+                    otm_opps.extend(otm_screener.scan_cheap_otm_puts(
+                        symbol, max_cost_per_contract=max_cost,
+                        delta_min=delta_min, delta_max=delta_max,
+                    ))
             otm_opps.sort(key=lambda x: x.get("score", 0), reverse=True)
             _log(f"cheap OTM scan found {len(otm_opps)} opportunities (max_cost=${max_cost})")
             for opp in otm_opps[:5]:
@@ -304,8 +310,12 @@ def run_options_scan_and_execute() -> dict[str, Any]:
                 cost_per = _safe_float(details.get("cost_per_contract"), 0.0)
                 if cost_per <= 0 or cost_per > max_cost:
                     continue
-                qty = min(max_contracts, max(1, int(cash * 0.20 / cost_per)))
-                if qty < 1 or cost_per * qty > cash:
+                # No contract cap — buy as many as budget allows
+                budget = min(max_budget, cash * 0.20)
+                qty = max(1, int(budget / cost_per)) if cost_per > 0 else 1
+                if cost_per * qty > cash:
+                    qty = max(1, int(cash * 0.20 / cost_per))
+                if qty < 1 or cost_per > cash:
                     continue
                 _log(f"OTM call {symbol} score={score} cost=${cost_per} qty={qty} delta={details.get('delta')}")
                 if auto_execute:

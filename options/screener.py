@@ -272,6 +272,85 @@ class OptionsScreener:
             pass
         return 0.0
 
+    def scan_cheap_otm_calls(self, symbol, max_cost_per_contract=100.0,
+                               delta_min=0.10, delta_max=0.35,
+                               dte_min=7, dte_max=45) -> list:
+        """
+        Scan for cheap OTM call options under max_cost_per_contract.
+        Designed for aggressive momentum plays with multiple contracts.
+        """
+        symbol = _normalize_symbol(symbol)
+        opportunities = []
+        try:
+            quote = self.chain_fetcher._get_quote(symbol)
+            current_price = _safe_float((quote or {}).get("price"), 0.0)
+            if current_price <= 0:
+                return []
+            max_cost = _safe_float(max_cost_per_contract, 100.0)
+
+            for expiration in self._iter_tradeable_expirations(symbol):
+                dte = _dte(expiration)
+                if not (dte_min <= dte <= dte_max):
+                    continue
+                chain = self.chain_fetcher.get_chain(symbol, expiration=expiration)
+                if not chain.get("ok"):
+                    continue
+                calls = ((chain.get("chains") or {}).get(expiration) or {}).get("calls") or []
+                for call in calls:
+                    delta = abs(_safe_float(call.get("delta"), 0.0))
+                    if not (delta_min <= delta <= delta_max):
+                        continue
+                    strike = _safe_float(call.get("strike"), 0.0)
+                    if strike <= current_price:  # must be OTM
+                        continue
+                    ask = _safe_float(call.get("ask"), 0.0)
+                    bid = _safe_float(call.get("bid"), 0.0)
+                    mid = (bid + ask) / 2.0 if bid > 0 and ask > 0 else 0.0
+                    if mid <= 0:
+                        continue
+                    cost = mid * 100.0
+                    if cost > max_cost:
+                        continue
+                    oi = _safe_int(call.get("open_interest"), 0)
+                    if oi < 50:
+                        continue
+                    upside_pct = ((strike - current_price) / current_price) * 100.0
+                    breakeven = strike + mid
+                    # Score: favor high delta, low cost, good OI, near-term DTE
+                    momentum_score = (
+                        delta * 40.0 +
+                        min(oi / 1000.0, 20.0) +
+                        (1.0 - min(cost / max_cost, 1.0)) * 30.0 +
+                        (1.0 - min(dte / dte_max, 1.0)) * 10.0
+                    )
+                    # Max contracts affordable at this price
+                    max_contracts = max(1, int(max_cost / cost)) if cost > 0 else 1
+                    opportunities.append({
+                        "symbol": symbol,
+                        "strategy": "cheap_otm_call",
+                        "expiration": expiration,
+                        "score": round(min(momentum_score * 1.5, 100.0), 2),
+                        "details": {
+                            "strike": strike,
+                            "mid": round(mid, 2),
+                            "cost_per_contract": round(cost, 2),
+                            "max_contracts": max_contracts,
+                            "upside_needed_pct": round(upside_pct, 1),
+                            "breakeven": round(breakeven, 2),
+                            "delta": round(delta, 3),
+                            "dte": dte,
+                            "open_interest": oi,
+                        },
+                        "annualized_yield": 0.0,
+                        "prob_profit": round(delta, 3),
+                        "iv_rank": 0.0,
+                        "cost_per_contract": round(cost, 2),
+                        "max_contracts": max_contracts,
+                    })
+        except Exception as exc:
+            _log(f"scan_cheap_otm_calls failed symbol={symbol} error={exc}")
+        return sorted(opportunities, key=lambda x: x.get("score", 0), reverse=True)
+
     def scan_meme_calls(self, symbol) -> list:
         """
         Scan for long call opportunities on meme/squeeze candidates.
@@ -737,6 +816,7 @@ class OptionsScreener:
 
     def scan_universe(self, strategies=None, sentiment_filter=None) -> dict:
         default_strategies = [
+            "cheap_otm_calls",
             "covered_calls",
             "cash_secured_puts",
             "credit_spreads",
@@ -780,6 +860,15 @@ class OptionsScreener:
                     symbol_opps.extend(self.scan_iron_condors(symbol))
                 if "wheel" in strategies:
                     symbol_opps.extend(self.scan_wheel_opportunities(symbol))
+                # Cheap OTM calls — always scan if strategy enabled
+                if "cheap_otm_calls" in strategies or "aggressive_otm" in strategies:
+                    max_cost = _safe_float(getattr(self, "max_capital_per_trade", 100.0), 100.0)
+                    cheap_opps = self.scan_cheap_otm_calls(
+                        symbol,
+                        max_cost_per_contract=max_cost if max_cost > 0 else 100.0
+                    )
+                    symbol_opps.extend(cheap_opps)
+
                 if "meme_calls" in strategies and is_meme_squeeze(symbol, sentiment, iv_rank):
                     meme_opps = self.scan_meme_calls(symbol)
                     squeeze_conviction = min(1.0, _safe_float(sentiment.get("composite_score"), 0.0) / 100.0 + 0.5)

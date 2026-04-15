@@ -56,9 +56,33 @@ def _is_market_open() -> bool:
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-MIN_SCORE = 72.0                # minimum screener score to execute
-MIN_SQUEEZE_SCORE = 65.0        # lower bar for confirmed squeeze plays
-MIN_CASH = 200.0                # minimum Webull cash to place any trade
+MIN_SCORE = 55.0                # minimum screener score to execute
+MIN_SQUEEZE_SCORE = 50.0        # lower bar for confirmed squeeze plays
+MIN_CASH = 100.0                # minimum Webull cash to place any trade
+
+
+def _options_auto_execute_enabled() -> bool:
+    """Check asset_config.json for auto_execute flag."""
+    try:
+        import json, os
+        cfg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "asset_config.json")
+        with open(cfg_path) as f:
+            cfg = json.load(f)
+        return bool(cfg.get("options_trading", {}).get("auto_execute", False))
+    except Exception:
+        return False
+
+
+def _options_config() -> dict:
+    """Load options trading config from asset_config.json."""
+    try:
+        import json, os
+        cfg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "asset_config.json")
+        with open(cfg_path) as f:
+            cfg = json.load(f)
+        return cfg.get("options_trading", {})
+    except Exception:
+        return {}
 COOLDOWN_SECONDS = 14400        # 4 hours between re-entries on same symbol
 MAX_REGULAR_POSITIONS = 5       # max concurrent regular options positions
 MAX_SQUEEZE_POSITIONS = 2       # max concurrent squeeze/meme positions
@@ -209,6 +233,12 @@ def run_options_scan_and_execute() -> dict[str, Any]:
         _log("scan skipped: market closed (outside 9:30-16:00 ET)")
         return {"ok": True, "skipped": True, "reason": "market_closed"}
 
+    # Check auto-execute toggle — if off, scan but don't trade
+    auto_execute = _options_auto_execute_enabled()
+    opts_cfg = _options_config()
+    if not auto_execute:
+        _log("auto_execute=False — scanning only, no trades will be placed")
+
     cash = _get_webull_cash()
     if cash < MIN_CASH:
         _log(f"scan skipped: cash=${cash:.2f} below minimum ${MIN_CASH}")
@@ -241,6 +271,60 @@ def run_options_scan_and_execute() -> dict[str, Any]:
     adapter = WebullAdapter()
     executed_regular = []
     executed_squeeze = []
+
+    # --- CHEAP OTM CALL PLAYS (aggressive momentum) ---
+    if regime in SQUEEZE_ALLOWED_REGIMES and squeeze_count < MAX_SQUEEZE_POSITIONS:
+        try:
+            max_cost = _safe_float(opts_cfg.get("max_cost_per_contract", 100.0), 100.0)
+            max_contracts = max(1, int(opts_cfg.get("max_contracts_per_trade", 5)))
+            delta_min = _safe_float(opts_cfg.get("delta_min", 0.10), 0.10)
+            delta_max = _safe_float(opts_cfg.get("delta_max", 0.35), 0.35)
+            otm_screener = OptionsScreener(max_capital_per_trade=max_cost)
+            otm_opps = []
+            for symbol in otm_screener.watchlist[:15]:
+                otm_opps.extend(otm_screener.scan_cheap_otm_calls(
+                    symbol,
+                    max_cost_per_contract=max_cost,
+                    delta_min=delta_min,
+                    delta_max=delta_max,
+                ))
+            otm_opps.sort(key=lambda x: x.get("score", 0), reverse=True)
+            _log(f"cheap OTM scan found {len(otm_opps)} opportunities (max_cost=${max_cost})")
+            for opp in otm_opps[:5]:
+                symbol = str(opp.get("symbol") or "").upper()
+                score = _safe_float(opp.get("score"))
+                if score < _safe_float(opts_cfg.get("min_score", 55.0), 55.0):
+                    continue
+                if symbol in open_symbols:
+                    continue
+                cooldown_key = f"otm_{symbol}"
+                if time.time() - _SYMBOL_COOLDOWNS.get(cooldown_key, 0) < COOLDOWN_SECONDS:
+                    continue
+                details = opp.get("details", {})
+                cost_per = _safe_float(details.get("cost_per_contract"), 0.0)
+                if cost_per <= 0 or cost_per > max_cost:
+                    continue
+                qty = min(max_contracts, max(1, int(cash * 0.20 / cost_per)))
+                if qty < 1 or cost_per * qty > cash:
+                    continue
+                _log(f"OTM call {symbol} score={score} cost=${cost_per} qty={qty} delta={details.get('delta')}")
+                if auto_execute:
+                    result = _place_options_order(adapter, opp, qty, order_type="LMT")
+                    if result.get("ok"):
+                        _SYMBOL_COOLDOWNS[cooldown_key] = time.time()
+                        open_symbols.add(symbol)
+                        executed_squeeze.append({
+                            "symbol": symbol, "strategy": "cheap_otm_call",
+                            "qty": qty, "cost": cost_per * qty,
+                            "score": score,
+                        })
+                        _log(f"OTM call executed {symbol} qty={qty} order_id={result.get('order_id')}")
+                    else:
+                        _log(f"OTM call failed {symbol}: {result.get('error')}")
+                else:
+                    _log(f"[DRY RUN] would buy {qty}x {symbol} OTM call @ ${cost_per}")
+        except Exception as exc:
+            _log(f"cheap OTM scan error: {exc}")
 
     # --- REGULAR INCOME PLAYS ---
     if regime in INCOME_ALLOWED_REGIMES and regular_count < MAX_REGULAR_POSITIONS:

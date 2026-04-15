@@ -54,6 +54,37 @@
 
   <!-- Compact scanner toolbar -->
   <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+    <!-- Auto-execute toggle bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:12px;font-weight:600;color:rgba(236,243,255,0.7);">Auto-Trade Options</span>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <div style="position:relative;width:40px;height:22px;">
+            <input type="checkbox" id="optAutoExecuteToggle" style="opacity:0;width:0;height:0;position:absolute;">
+            <span id="optAutoExecuteTrack" style="position:absolute;inset:0;border-radius:11px;background:rgba(255,255,255,0.1);transition:background 0.2s;cursor:pointer;"
+              onclick="(function(){
+                const cb = document.getElementById('optAutoExecuteToggle');
+                cb.checked = !cb.checked;
+                document.getElementById('optAutoExecuteTrack').style.background = cb.checked ? '#22c55e' : 'rgba(255,255,255,0.1)';
+                document.getElementById('optAutoExecuteThumb').style.transform = cb.checked ? 'translateX(18px)' : 'translateX(2px)';
+                document.getElementById('optAutoExecuteLabel').textContent = cb.checked ? 'ON' : 'OFF';
+                document.getElementById('optAutoExecuteLabel').style.color = cb.checked ? '#22c55e' : 'rgba(236,243,255,0.4)';
+                saveAutoExecuteSetting(cb.checked);
+              })()">
+            </span>
+            <span id="optAutoExecuteThumb" style="position:absolute;top:3px;left:0;width:16px;height:16px;border-radius:50%;background:white;transition:transform 0.2s;transform:translateX(2px);pointer-events:none;"></span>
+          </div>
+          <span id="optAutoExecuteLabel" style="font-size:12px;font-weight:700;color:rgba(236,243,255,0.4);">OFF</span>
+        </label>
+        <span style="font-size:11px;color:rgba(236,243,255,0.3);">When ON, bot auto-buys high-score OTM calls during market hours</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:11px;color:rgba(236,243,255,0.4);">Mode:</span>
+        <button class="hc-range-btn active opt-mode-btn" data-mode="aggressive_otm" type="button" style="font-size:11px;padding:3px 8px;">Aggressive OTM</button>
+        <button class="hc-range-btn opt-mode-btn" data-mode="income" type="button" style="font-size:11px;padding:3px 8px;">Income</button>
+        <button class="hc-range-btn opt-mode-btn" data-mode="balanced" type="button" style="font-size:11px;padding:3px 8px;">Balanced</button>
+      </div>
+    </div>
     <!-- Row 1: Symbol + Scan buttons -->
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
       <input id="optSymbols" class="form-input" type="text" placeholder="Symbols (blank = watchlist)"
@@ -868,8 +899,59 @@
     document.getElementById("optTradeConfirmBtn")?.addEventListener("click", submitTrade);
   }
 
+  // Auto-execute toggle persistence
+  async function saveAutoExecuteSetting(enabled) {
+    try {
+      await fetchJson("/api/config/update", {
+        method: "POST",
+        body: JSON.stringify({
+          path: "options_trading.auto_execute",
+          value: enabled,
+        }),
+      });
+      document.getElementById("optRunStatus").textContent =
+        enabled ? "Auto-trade ON — bot will execute high-score OTM calls" : "Auto-trade OFF — scan only";
+    } catch(e) {
+      document.getElementById("optRunStatus").textContent = "Failed to save setting";
+    }
+  }
+
+  async function loadAutoExecuteSetting() {
+    try {
+      const cfg = await fetchJson("/api/config");
+      const enabled = !!(cfg?.config?.options_trading?.auto_execute);
+      const cb = document.getElementById("optAutoExecuteToggle");
+      const track = document.getElementById("optAutoExecuteTrack");
+      const thumb = document.getElementById("optAutoExecuteThumb");
+      const label = document.getElementById("optAutoExecuteLabel");
+      if (cb) cb.checked = enabled;
+      if (track) track.style.background = enabled ? "#22c55e" : "rgba(255,255,255,0.1)";
+      if (thumb) thumb.style.transform = enabled ? "translateX(18px)" : "translateX(2px)";
+      if (label) { label.textContent = enabled ? "ON" : "OFF"; label.style.color = enabled ? "#22c55e" : "rgba(236,243,255,0.4)"; }
+      // Load mode
+      const mode = cfg?.config?.options_trading?.mode || "aggressive_otm";
+      document.querySelectorAll(".opt-mode-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+      });
+    } catch(e) {}
+  }
+
+  document.querySelectorAll(".opt-mode-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      document.querySelectorAll(".opt-mode-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      try {
+        await fetchJson("/api/config/update", {
+          method: "POST",
+          body: JSON.stringify({ path: "options_trading.mode", value: btn.dataset.mode }),
+        });
+      } catch(e) {}
+    });
+  });
+
   bindUI();
   setRisk("conservative");
+  loadAutoExecuteSetting();
   loadOverview();
 })();
 </script>

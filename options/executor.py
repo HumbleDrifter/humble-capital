@@ -493,9 +493,10 @@ def run_options_position_monitor() -> dict[str, Any]:
     Called every 5 minutes. Checks open options positions for
     profit targets and stop losses. Closes via WebullAdapter.
 
-    Exit rules:
-    - Income plays (CSP/CC/Wheel): close at 50% profit (buy back at half premium)
-    - Squeeze calls: close at 100% gain or -50% loss
+    Exit rules (aggressive_otm mode):
+    - Long OTM calls/puts: hold until -50% loss OR momentum reversal after +200%
+    - Income plays (CSP/CC/Wheel): close at 50% profit
+    - Balanced: 100% gain or -50% loss
     """
     try:
         if not _is_market_open():
@@ -527,14 +528,49 @@ def run_options_position_monitor() -> dict[str, Any]:
             pnl_pct = unrealized_pnl / max(abs(cost_basis), 0.01)
             reason = None
 
-            if is_meme and not is_short:
-                # Long squeeze call: take 100% gain or cut at -50%
-                if pnl_pct >= 1.0:
-                    reason = "take_profit_100pct"
-                elif pnl_pct <= -0.5:
-                    reason = "stop_loss_50pct"
+            opts_cfg = _options_config()
+            mode = str(opts_cfg.get("mode", "aggressive_otm")).lower()
+            is_long_debit = not is_short  # long calls/puts we bought
+
+            if is_long_debit:
+                if mode == "aggressive_otm":
+                    # Aggressive OTM: let winners run, cut losers at -50%
+                    # Only exit on momentum reversal OR -50% loss
+                    if pnl_pct <= -0.50:
+                        reason = "stop_loss_50pct"
+                    elif pnl_pct >= 2.0:
+                        # At 200%+ gain, check if momentum still good
+                        try:
+                            import yfinance as yf
+                            from datetime import datetime, timedelta, timezone
+                            end = datetime.now(timezone.utc)
+                            start = end - timedelta(days=20)
+                            hist = yf.Ticker(symbol).history(
+                                start=start.strftime("%Y-%m-%d"),
+                                end=end.strftime("%Y-%m-%d"), interval="1d"
+                            )
+                            closes = [float(r["Close"]) for _, r in hist.iterrows()] if not hist.empty else []
+                            if len(closes) >= 9:
+                                ema9 = sum(closes[-9:]) / 9
+                                last = closes[-1]
+                                prev = closes[-2] if len(closes) >= 2 else last
+                                if last < ema9 and last < prev:
+                                    reason = f"take_profit_{pnl_pct:.0%}_momentum_exit"
+                                else:
+                                    _log(f"holding winner {symbol} pnl={pnl_pct*100:.0f}% momentum still bullish")
+                            else:
+                                reason = f"take_profit_{pnl_pct:.0%}"
+                        except Exception:
+                            reason = f"take_profit_{pnl_pct:.0%}"
+                    # Between -50% and +200% — hold regardless
+                else:
+                    # Income/balanced: original logic
+                    if pnl_pct >= 1.0:
+                        reason = "take_profit_100pct"
+                    elif pnl_pct <= -0.5:
+                        reason = "stop_loss_50pct"
             else:
-                # Income play (short): close at 50% profit
+                # Short income plays: close at 50% profit capture
                 if pnl_pct >= 0.5:
                     reason = "take_profit_50pct"
                 elif pnl_pct <= -1.0:

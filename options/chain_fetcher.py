@@ -163,11 +163,27 @@ class OptionChainFetcher:
         if cached is not None:
             return cached
 
+        # Try Webull first
         quote = self.adapter.get_stock_quote(symbol)
-        if isinstance(quote, dict) and quote.get("ok"):
+        if isinstance(quote, dict) and quote.get("ok") and float((quote.get("price") or 0)) > 0:
             _cache_set(_QUOTE_CACHE, cache_key, quote)
             return quote
-        return quote if isinstance(quote, dict) else {"ok": False, "error": "quote_unavailable", "symbol": symbol}
+        # Fallback to yfinance
+        try:
+            import yfinance as yf
+            ticker = yf.Ticker(symbol)
+            info = ticker.fast_info
+            price = float(getattr(info, "last_price", None) or getattr(info, "regularMarketPrice", None) or 0.0)
+            if price <= 0:
+                hist = ticker.history(period="1d")
+                price = float(hist["Close"].iloc[-1]) if not hist.empty else 0.0
+            if price > 0:
+                result = {"ok": True, "symbol": symbol, "price": price, "source": "yfinance"}
+                _cache_set(_QUOTE_CACHE, cache_key, result)
+                return result
+        except Exception:
+            pass
+        return {"ok": False, "error": "quote_unavailable", "symbol": symbol}
 
     def get_chain(self, symbol, expiration=None) -> dict:
         symbol = _normalize_symbol(symbol)

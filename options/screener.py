@@ -40,7 +40,8 @@ def _build_dynamic_watchlist() -> list:
             "COIN", "SQ", "PYPL", "UBER", "ABNB", "RIVN", "F", "GM",
         ]
 
-DEFAULT_WATCHLIST = _build_dynamic_watchlist()
+# Lazy — built on first use to avoid blocking at import time
+DEFAULT_WATCHLIST = None
 
 MEME_STOCKS = {
     "GME", "AMC", "BBAI", "NIO", "BYND", "OPEN", "MARA", "RIOT",
@@ -232,7 +233,10 @@ class OptionsScreener:
         if watchlist:
             self.watchlist = [_normalize_symbol(symbol) for symbol in watchlist if _normalize_symbol(symbol)]
         else:
-            self.watchlist = [_normalize_symbol(s) for s in _build_dynamic_watchlist() if _normalize_symbol(s)]
+            try:
+                self.watchlist = [_normalize_symbol(s) for s in _build_dynamic_watchlist() if _normalize_symbol(s)]
+            except Exception:
+                self.watchlist = [_normalize_symbol(s) for s in MOMENTUM_PRIORITY if _normalize_symbol(s)]
         self.broker = str(broker or "webull").strip().lower()
         self.chain_fetcher = OptionChainFetcher(broker=self.broker)
         # max_capital_per_trade filters CSPs/CCs to affordable strikes

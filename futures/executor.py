@@ -70,6 +70,16 @@ def _size_order(buying_power: float, conviction: float, leverage: int) -> float:
     return max(1.0, round(alloc / max(leverage, 1)))
 
 
+def _auto_execute_enabled() -> bool:
+    try:
+        import json as _j
+        with open("/root/tradingbot/asset_config.json") as _f:
+            cfg = _j.load(_f)
+        return bool(cfg.get("auto_trading", {}).get("auto_execute_futures", True))
+    except Exception:
+        return True
+
+
 def run_futures_scan_and_execute() -> dict[str, Any]:
     client = FuturesClient()
     scanner = FuturesScanner()

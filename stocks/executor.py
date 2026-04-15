@@ -26,6 +26,16 @@ _EXECUTOR_LOG: list[dict[str, Any]] = []
 _PENDING_SELLS: set[str] = set()   # dedup guard
 
 
+def _auto_execute_enabled() -> bool:
+    try:
+        import json as _j
+        with open("/root/tradingbot/asset_config.json") as _f:
+            cfg = _j.load(_f)
+        return bool(cfg.get("auto_trading", {}).get("auto_execute_stocks", True))
+    except Exception:
+        return True
+
+
 def _is_market_open() -> bool:
     """Returns True only during regular US market hours (9:30-16:00 ET)."""
     try:
@@ -153,6 +163,10 @@ def run_stock_scan_and_execute() -> dict[str, Any]:
     Called hourly at :47. Scans stock universe and executes
     high-conviction buy signals.
     """
+    if not _auto_execute_enabled():
+        _log("scan skipped: auto_execute_stocks=False")
+        return {"ok": True, "skipped": True, "reason": "auto_execute_disabled"}
+
     buying_power, held_symbols = _get_webull_state()
 
     if buying_power < MIN_BUYING_POWER:

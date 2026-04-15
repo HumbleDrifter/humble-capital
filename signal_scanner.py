@@ -756,6 +756,16 @@ class SignalScanner:
         return dispatched
 
 
+def _auto_execute_enabled() -> bool:
+    try:
+        import json as _j
+        with open("/root/tradingbot/asset_config.json") as _f:
+            cfg = _j.load(_f)
+        return bool(cfg.get("auto_trading", {}).get("auto_execute_crypto", True))
+    except Exception:
+        return True
+
+
 def run_scanner_sweep():
     try:
         snapshot = get_portfolio_snapshot()
@@ -791,6 +801,10 @@ def run_dip_detector():
     - Only trigger in neutral or caution regime (not risk_off — that's capitulation)
     - Cooldown: only one dip buy per asset per 24 hours
     """
+    if not _auto_execute_enabled():
+        _log("sweep skipped: auto_execute_crypto=False")
+        return []
+
     try:
         from portfolio import get_portfolio_snapshot, load_asset_config
         from rebalancer import dispatch_signal_action

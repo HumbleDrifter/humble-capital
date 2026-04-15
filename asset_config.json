@@ -176,7 +176,11 @@
     "regime_weight": 0.15,
     "rebalance_on_score_change": true,
     "notify_on_entry": true,
-    "notify_on_exit": true
+    "notify_on_exit": true,
+    "auto_execute_stocks": true,
+    "auto_execute_crypto": true,
+    "auto_execute_futures": true,
+    "auto_execute_options": true
   },
   "max_active_satellites": 10,
   "min_meme_score": 65.0,

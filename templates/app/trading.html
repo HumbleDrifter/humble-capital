@@ -525,6 +525,26 @@
       </span>
     </div>
     <div style="color:rgba(236,243,255,0.35);" id="tradingPortfolioValue">$—</div>
+    <!-- Auto-trade toggles -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;">
+      <span style="font-size:10px;color:rgba(236,243,255,0.3);white-space:nowrap;">Auto-Trade:</span>
+      <label id="toggle_crypto" title="Crypto auto-trade" onclick="toggleAutoTrade('crypto')"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#38bdf8;">
+        <span id="dot_crypto" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Crypto
+      </label>
+      <label id="toggle_stocks" title="Stocks auto-trade" onclick="toggleAutoTrade('stocks')"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#818cf8;">
+        <span id="dot_stocks" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Stocks
+      </label>
+      <label id="toggle_futures" title="Futures auto-trade" onclick="toggleAutoTrade('futures')"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#f59e0b;">
+        <span id="dot_futures" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Futures
+      </label>
+      <label id="toggle_options" title="Options auto-trade" onclick="toggleAutoTrade('options')"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#a78bfa;">
+        <span id="dot_options" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Options
+      </label>
+    </div>
   </div>
 
   <div class="page-tab-content active" id="tab-crypto">
@@ -1398,6 +1418,34 @@
       </article>`).join("");
   }
 
+  async function toggleAutoTrade(asset) {
+    try {
+      const cfg = await fetchJson("/api/config");
+      const current = !!(cfg?.config?.auto_trading?.[`auto_execute_${asset}`] ?? true);
+      const newVal = !current;
+      await fetchJson("/api/config/update", {
+        method: "POST",
+        body: JSON.stringify({ path: `auto_trading.auto_execute_${asset}`, value: newVal }),
+      });
+      const dot = document.getElementById(`dot_${asset}`);
+      if (dot) { dot.style.background = newVal ? "#22c55e" : "#ef4444"; }
+      document.getElementById("tradingLastAction").textContent =
+        `${asset} auto-trade ${newVal ? "ON" : "OFF"}`;
+    } catch(e) { console.error("toggle failed", e); }
+  }
+
+  async function loadAutoTradeStates() {
+    try {
+      const cfg = await fetchJson("/api/config");
+      const at = cfg?.config?.auto_trading || {};
+      ["crypto","stocks","futures","options"].forEach(asset => {
+        const enabled = !!(at[`auto_execute_${asset}`] ?? true);
+        const dot = document.getElementById(`dot_${asset}`);
+        if (dot) dot.style.background = enabled ? "#22c55e" : "#ef4444";
+      });
+    } catch(e) {}
+  }
+
   async function updateBotStatusBar() {
     try {
       const snap = await fetchJson("/api/portfolio/snapshot");
@@ -1430,6 +1478,7 @@
 
   async function loadCrypto() {
     updateBotStatusBar().catch(()=>{});
+    loadAutoTradeStates().catch(()=>{});
     const [rotation, signals] = await Promise.all([
       fetchJson("/api/meme_rotation"),
       fetchJson("/api/signals/log?limit=10")

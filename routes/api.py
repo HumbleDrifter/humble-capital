@@ -2386,6 +2386,37 @@ def api_config():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+@api_bp.route("/api/config/update", methods=["POST"])
+@require_api_auth
+def api_config_update():
+    """Update a dot-path key in asset_config.json. e.g. path=auto_trading.auto_execute_stocks value=true"""
+    try:
+        data = request.get_json(silent=True) or {}
+        path_key = str(data.get("path") or "").strip()
+        value = data.get("value")
+        if not path_key:
+            return jsonify({"ok": False, "error": "missing path"}), 400
+        config = load_asset_config() or {}
+        # Navigate dot path and set value
+        keys = path_key.split(".")
+        node = config
+        for k in keys[:-1]:
+            if k not in node or not isinstance(node[k], dict):
+                node[k] = {}
+            node = node[k]
+        node[keys[-1]] = value
+        # Save
+        import json as _json
+        cfg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "asset_config.json")
+        with open(cfg_path, "w") as _f:
+            _json.dump(config, _f, indent=2)
+        # Bust config cache
+        _CACHE.pop("config", None)
+        return jsonify({"ok": True, "path": path_key, "value": value})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @api_bp.route("/api/assets/config", methods=["GET"])
 @require_secret
 def api_assets_config():

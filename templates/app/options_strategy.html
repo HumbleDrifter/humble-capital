@@ -148,6 +148,14 @@
     </aside>
   </div>
 
+  <div id="osbBotPreview" style="display:none;background:rgba(56,189,248,0.05);border:1px solid rgba(56,189,248,0.15);border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <span style="font-size:13px;font-weight:700;color:#38bdf8;">🤖 Bot Scanner Preview</span>
+      <span style="font-size:11px;color:rgba(236,243,255,0.4);">Live OTM opportunities the bot finds for this symbol</span>
+    </div>
+    <div id="osbBotSignals" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;"></div>
+  </div>
+
   <section class="osb-card osb-feed">
     <div class="osb-head">
       <div>
@@ -609,6 +617,53 @@
         }))
       }
     };
+  }
+
+  async function loadBotSignals() {
+    const sym = symbol();
+    const preview = document.getElementById("osbBotPreview");
+    const host = document.getElementById("osbBotSignals");
+    if (!preview || !host) return;
+    preview.style.display = "block";
+    host.innerHTML = '<div style="color:rgba(236,243,255,0.3);font-size:12px;">Scanning bot opportunities for ' + sym + '...</div>';
+    try {
+      const result = await fetchJson("/api/options/scan", {
+        method: "POST",
+        body: JSON.stringify({
+          symbols: [sym],
+          strategies: ["cheap_otm_calls", "cheap_otm_puts"],
+          min_score: 0,
+          max_results: 8,
+          max_capital_per_trade: 200,
+        }),
+      });
+      const opps = result.opportunities || [];
+      if (!opps.length) {
+        host.innerHTML = '<div style="color:rgba(236,243,255,0.3);font-size:12px;">No OTM opportunities under $200 for ' + esc(sym) + '</div>';
+        return;
+      }
+      host.innerHTML = opps.slice(0, 6).map(opp => {
+        const d = opp.details || {};
+        const isCall = (opp.strategy||"").includes("call");
+        const color = isCall ? "#22c55e" : "#ef4444";
+        const arrow = isCall ? "↑" : "↓";
+        const contracts = d.max_contracts || Math.max(1, Math.floor(200 / (d.cost_per_contract || 200)));
+        return `<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:12px;font-weight:700;color:${color};">${arrow} ${isCall?"CALL":"PUT"} $${d.strike||"--"}</span>
+              <span style="font-size:11px;font-weight:700;color:#ecf3ff;">Score ${Math.round(opp.score||0)}</span>
+            </div>
+            <div style="font-size:11px;color:rgba(236,243,255,0.5);">${esc(opp.expiration||"--")} · δ${d.delta||"--"}</div>
+            <div style="font-size:11px;color:rgba(236,243,255,0.5);">$${d.cost_per_contract||"--"}/contract · ~${contracts}x @ $200</div>
+            <button onclick="state.legs=[{id:crypto.randomUUID(),optionType:'${isCall?"call":"put"}',action:'buy',delta:${d.delta||0.15},dte:${d.dte||21},qty:${contracts}}];renderLegs();updateGreeks();"
+              style="margin-top:6px;width:100%;padding:4px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(236,243,255,0.7);font-size:10px;cursor:pointer;font-weight:600;">
+              Use This Setup
+            </button>
+          </div>`;
+      }).join("");
+    } catch(e) {
+      host.innerHTML = '<div style="color:rgba(236,243,255,0.3);font-size:12px;">Bot scan unavailable: ' + esc(String(e.message||e)) + '</div>';
+    }
   }
 
   async function runBacktest() {

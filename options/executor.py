@@ -143,16 +143,22 @@ def _set_cooldown(symbol: str) -> None:
 
 
 def _get_webull_cash() -> float:
+    """Get Webull options buying power from account info."""
     try:
         adapter = WebullAdapter()
-        balance = adapter.get_balance() or {}
-        return _safe_float(
-            balance.get("cash")
-            or balance.get("available_cash")
-            or balance.get("buying_power")
-            or balance.get("cash_balance"),
-            0.0,
-        )
+        info = adapter.get_account_info() or {}
+        raw = info.get("raw") or {}
+        assets = raw.get("account_currency_assets") or []
+        if assets:
+            asset = assets[0]
+            return _safe_float(
+                asset.get("option_buying_power")
+                or asset.get("buying_power")
+                or asset.get("cash_balance"),
+                0.0,
+            )
+        # Fallback to top-level balance
+        return _safe_float(info.get("buying_power") or info.get("balance"), 0.0)
     except Exception:
         return 0.0
 

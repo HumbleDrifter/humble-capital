@@ -287,7 +287,16 @@ def run_options_scan_and_execute() -> dict[str, Any]:
             delta_max = _safe_float(opts_cfg.get("delta_max", 0.35), 0.35)
             otm_screener = OptionsScreener(max_capital_per_trade=max_cost)
             otm_opps = []
-            for symbol in otm_screener.watchlist[:15]:
+            # Favor meme stocks — scan them first
+            meme_list = opts_cfg.get("meme_watchlist", [
+                "GME", "AMC", "MARA", "RIOT", "NIO", "BBAI", "SOFI",
+                "HOOD", "COIN", "PLTR", "IONQ", "SOUN", "AFRM", "RBLX", "SNAP"
+            ])
+            _wl_upper = [w.upper() for w in otm_screener.watchlist]
+            meme_first = [s for s in meme_list if s.upper() in _wl_upper]
+            rest = [s for s in otm_screener.watchlist if s.upper() not in [m.upper() for m in meme_first]]
+            priority_watchlist = meme_first + rest[:max(0, 20 - len(meme_first))]
+            for symbol in priority_watchlist:
                 scan_puts = bool(opts_cfg.get("scan_puts", True))
                 otm_opps.extend(otm_screener.scan_cheap_otm_calls(
                     symbol,

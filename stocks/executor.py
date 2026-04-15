@@ -176,6 +176,28 @@ def run_stock_scan_and_execute() -> dict[str, Any]:
         _log(f"scan skipped: {open_count} open positions >= max {MAX_OPEN_POSITIONS}")
         return {"ok": True, "skipped": True, "reason": "max_positions_reached"}
 
+    # Check Webull allocation — don't add stocks if above target stock %
+    try:
+        import json as _json
+        with open("/root/tradingbot/asset_config.json") as _f:
+            _cfg = _json.load(_f)
+        _alloc = _cfg.get("webull_allocation", {})
+        _target_stock_pct = float(_alloc.get("target_stocks_pct", 25)) / 100.0
+        _threshold = float(_alloc.get("rebalance_threshold", 10)) / 100.0
+        from brokers.webull_adapter import WebullAdapter as _WA
+        _info = _WA().get_account_info() or {}
+        _pos = _info.get("positions", [])
+        _sv = sum(float(p.get("market_value",0)) for p in _pos if str(p.get("asset_type","")).lower()=="stock")
+        _ov = sum(float(p.get("market_value",0)) for p in _pos if str(p.get("asset_type","")).lower()=="option")
+        _total = _sv + _ov
+        if _total > 0:
+            _actual_stock_pct = _sv / _total
+            if _actual_stock_pct > _target_stock_pct + _threshold:
+                _log(f"scan skipped: stocks {_actual_stock_pct*100:.1f}% above target {_target_stock_pct*100:.1f}% — reallocating to options")
+                return {"ok": True, "skipped": True, "reason": "allocation_cap_stocks"}
+    except Exception:
+        pass
+
     _log(
         f"scan starting regime={regime} buying_power=${buying_power:.2f} "
         f"open={open_count}/{MAX_OPEN_POSITIONS}"

@@ -211,6 +211,37 @@
       "neutral"
     ],
     "max_cost_total_per_trade": 1000,
-    "scan_puts": true
+    "scan_puts": true,
+    "meme_priority": true,
+    "meme_watchlist": [
+      "GME",
+      "AMC",
+      "MARA",
+      "RIOT",
+      "NIO",
+      "BBAI",
+      "SOFI",
+      "HOOD",
+      "COIN",
+      "PLTR",
+      "RIVN",
+      "TSLA",
+      "BYND",
+      "OPEN",
+      "SPCE",
+      "IONQ",
+      "SOUN",
+      "RGTI",
+      "AFRM",
+      "UPST",
+      "RBLX",
+      "SNAP"
+    ],
+    "meme_scan_first": 15
+  },
+  "webull_allocation": {
+    "target_options_pct": 75,
+    "target_stocks_pct": 25,
+    "rebalance_threshold": 10
   }
 }

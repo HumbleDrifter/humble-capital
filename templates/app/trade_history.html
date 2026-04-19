@@ -1,124 +1,310 @@
 {% extends "base_app.html" %}
-
+{% block topbar_actions %}{% endblock %}
 {% block content %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  .act-shell { display:flex;flex-direction:column;gap:16px; }
+  .act-kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px; }
+  .act-kpi { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px; }
+  .act-kpi-label { font-size:11px;color:rgba(236,243,255,0.4);margin-bottom:4px; }
+  .act-kpi-value { font-size:22px;font-weight:800;letter-spacing:-0.02em; }
+  .act-kpi-sub { font-size:11px;color:rgba(236,243,255,0.35);margin-top:2px; }
+  .act-filter-bar { display:flex;gap:8px;flex-wrap:wrap;align-items:center; }
+  .act-filter-btn { padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(236,243,255,0.5);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s; }
+  .act-filter-btn.active { background:rgba(56,189,248,0.12);border-color:rgba(56,189,248,0.3);color:#38bdf8; }
+  .act-feed { display:flex;flex-direction:column;gap:6px; }
+  .act-item { display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);transition:background 0.15s; }
+  .act-item:hover { background:rgba(255,255,255,0.04); }
+  .act-icon { width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0; }
+  .act-icon.buy { background:rgba(34,197,94,0.12); }
+  .act-icon.sell { background:rgba(239,68,68,0.12); }
+  .act-icon.options { background:rgba(167,139,250,0.12); }
+  .act-icon.info { background:rgba(56,189,248,0.12); }
+  .act-icon.warn { background:rgba(251,191,36,0.12); }
+  .act-body { flex:1;min-width:0; }
+  .act-title { font-size:13px;font-weight:600;color:#ecf3ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+  .act-sub { font-size:11px;color:rgba(236,243,255,0.4);margin-top:1px; }
+  .act-right { text-align:right;flex-shrink:0; }
+  .act-value { font-size:13px;font-weight:700; }
+  .act-time { font-size:11px;color:rgba(236,243,255,0.3);margin-top:2px; }
+  .act-tag { padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em; }
+  .act-tag.crypto { background:rgba(56,189,248,0.12);color:#38bdf8; }
+  .act-tag.stock { background:rgba(129,140,248,0.12);color:#818cf8; }
+  .act-tag.option { background:rgba(167,139,250,0.12);color:#a78bfa; }
+  .act-tag.futures { background:rgba(245,158,11,0.12);color:#f59e0b; }
+  .act-empty { padding:40px;text-align:center;color:rgba(236,243,255,0.3);font-size:13px; }
+  .act-load-more { width:100%;padding:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:rgba(236,243,255,0.5);font-size:12px;cursor:pointer;font-weight:600; }
+  @media(max-width:640px) { .act-kpi-grid{grid-template-columns:1fr 1fr;} .act-filter-bar{gap:6px;} }
+</style>
 
-<div class="perf-shell">
-  <section class="perf-header perf-observe">
-    <div class="perf-header-copy perf-reveal">
-      <div class="perf-kicker">Performance Analytics</div>
-      <h2 class="perf-title">Trading performance, drawdown behavior, and product-level outcomes in one operator view.</h2>
-      <p class="perf-subtitle" id="perfMeta">Loading performance analytics...</p>
+<div class="act-shell">
+  <!-- KPI Summary -->
+  <div class="act-kpi-grid">
+    <div class="act-kpi">
+      <div class="act-kpi-label">Total Trades</div>
+      <div class="act-kpi-value" id="actTotalTrades">--</div>
+      <div class="act-kpi-sub" id="actTotalSub">Loading...</div>
     </div>
-    <div class="hc-chart-range-group perf-range-group perf-reveal">
-      <button class="hc-range-btn" data-range="7d" type="button">7D</button>
-      <button class="hc-range-btn active" data-range="30d" type="button">30D</button>
-      <button class="hc-range-btn" data-range="90d" type="button">90D</button>
-      <button class="hc-range-btn" data-range="all" type="button">All</button>
+    <div class="act-kpi">
+      <div class="act-kpi-label">Realized P&L</div>
+      <div class="act-kpi-value" id="actRealizedPnl">$--</div>
+      <div class="act-kpi-sub" id="actPnlSub">Crypto fills</div>
     </div>
-  </section>
+    <div class="act-kpi">
+      <div class="act-kpi-label">Win Rate</div>
+      <div class="act-kpi-value" id="actWinRate">--%</div>
+      <div class="act-kpi-sub" id="actWinSub">-- wins / -- trades</div>
+    </div>
+    <div class="act-kpi">
+      <div class="act-kpi-label">Bot Log Entries</div>
+      <div class="act-kpi-value" id="actLogCount">--</div>
+      <div class="act-kpi-sub">Options + Stocks executor</div>
+    </div>
+  </div>
 
-  <section class="perf-kpi-grid perf-observe">
-    <div class="hc-context-card perf-reveal">
-      <div class="hc-context-label">Win Rate</div>
-      <div class="hc-context-value" id="perfWinRate">0%</div>
-      <div class="hc-context-detail" id="perfWinRateDetail">0 winners / 0 trades</div>
+  <!-- Filters -->
+  <div class="act-filter-bar">
+    <span style="font-size:11px;color:rgba(236,243,255,0.3);">Filter:</span>
+    <button class="act-filter-btn active" data-filter="all">All</button>
+    <button class="act-filter-btn" data-filter="crypto">Crypto</button>
+    <button class="act-filter-btn" data-filter="stock">Stocks</button>
+    <button class="act-filter-btn" data-filter="option">Options</button>
+    <button class="act-filter-btn" data-filter="buy">Buys</button>
+    <button class="act-filter-btn" data-filter="sell">Sells</button>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+      <input id="actSearch" type="text" placeholder="Search symbol..." 
+        style="padding:5px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;font-size:12px;width:140px;">
+      <button class="act-filter-btn" id="actRefreshBtn">↻ Refresh</button>
     </div>
-    <div class="hc-context-card perf-reveal">
-      <div class="hc-context-label">Total P&amp;L</div>
-      <div class="hc-context-value" id="perfTotalPnl">$0.00</div>
-      <div class="hc-context-detail" id="perfTotalPnlDetail">Net realized performance</div>
-    </div>
-    <div class="hc-context-card perf-reveal">
-      <div class="hc-context-label">Profit Factor</div>
-      <div class="hc-context-value" id="perfProfitFactor">0.00</div>
-      <div class="hc-context-detail" id="perfProfitFactorDetail">Gross wins / gross losses</div>
-    </div>
-    <div class="hc-context-card perf-reveal">
-      <div class="hc-context-label">Avg Hold Duration</div>
-      <div class="hc-context-value" id="perfHoldDuration">0m</div>
-      <div class="hc-context-detail" id="perfHoldDurationDetail">Average time in trade</div>
-    </div>
-  </section>
+  </div>
 
-  <section class="perf-equity-grid perf-observe">
-    <div class="hc-chart-section perf-reveal">
-      <div class="hc-chart-header">
-        <div>
-          <span class="hc-chart-title">Equity &amp; Drawdown</span>
-          <div class="perf-chart-meta" id="perfEquityMeta">Loading equity curve...</div>
-        </div>
-      </div>
-      <div id="perfEquityChartHost" class="hc-chart-host"></div>
+  <!-- Unified Feed -->
+  <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:700;">Activity Feed</span>
+      <span style="font-size:11px;color:rgba(236,243,255,0.35);" id="actFeedMeta">Loading...</span>
     </div>
+    <div id="actFeed" class="act-feed">
+      <div class="act-empty">Loading activity...</div>
+    </div>
+    <button class="act-load-more" id="actLoadMore" style="display:none;margin-top:10px;">Load More</button>
+  </div>
 
-    <div class="perf-side-stack">
-      <div class="hc-context-card perf-reveal">
-        <div class="hc-context-label">Current Drawdown</div>
-        <div class="hc-context-value" id="perfCurrentDrawdown">0.00%</div>
-        <div class="hc-context-detail" id="perfCurrentDrawdownDetail">$0.00 below HWM</div>
-      </div>
-      <div class="hc-context-card perf-reveal">
-        <div class="hc-context-label">Max Drawdown</div>
-        <div class="hc-context-value" id="perfMaxDrawdown">0.00%</div>
-        <div class="hc-context-detail" id="perfMaxDrawdownDetail">Worst peak-to-trough decline</div>
-      </div>
-      <div class="hc-context-card perf-reveal">
-        <div class="hc-context-label">Days Since HWM</div>
-        <div class="hc-context-value" id="perfDaysSinceHwm">0</div>
-        <div class="hc-context-detail" id="perfDaysSinceHwmDetail">Time since best equity print</div>
-      </div>
-      <div class="hc-context-card perf-reveal">
-        <div class="hc-context-label">Current vs HWM</div>
-        <div class="hc-context-value" id="perfCurrentVsHwm">$0.00</div>
-        <div class="hc-context-detail" id="perfCurrentVsHwmDetail">Current value / high-water mark</div>
+  <!-- Bot Log -->
+  <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:700;">Bot Execution Log</span>
+      <div style="display:flex;gap:6px;">
+        <button class="act-filter-btn active" data-log="options" id="logTabOpt">Options</button>
+        <button class="act-filter-btn" data-log="stocks" id="logTabStocks">Stocks</button>
+        <button class="act-filter-btn" data-log="futures" id="logTabFutures">Futures</button>
       </div>
     </div>
-  </section>
-
-  <section class="perf-section perf-observe">
-    <div class="perf-section-head perf-reveal">
-      <div>
-        <h2 class="perf-section-title">Daily P&amp;L</h2>
-        <p class="perf-section-subtitle" id="perfDailyMeta">Daily closed-trade distribution</p>
-      </div>
+    <div id="actBotLog" style="font-family:monospace;font-size:11px;color:rgba(236,243,255,0.6);line-height:1.6;max-height:300px;overflow-y:auto;">
+      Loading bot log...
     </div>
-    <div class="hc-chart-section perf-reveal">
-      <div id="perfDailyChartHost" class="hc-chart-host"></div>
-    </div>
-  </section>
-
-  <section class="perf-section perf-observe">
-    <div class="perf-section-head perf-reveal">
-      <div>
-        <h2 class="perf-section-title">Product Breakdown</h2>
-        <p class="perf-section-subtitle" id="perfProductMeta">Performance by traded product</p>
-      </div>
-    </div>
-    <div class="perf-product-grid" id="perfProductGrid">
-      <div class="hc-empty-card">Loading product performance...</div>
-    </div>
-  </section>
-
-  <section class="perf-section perf-observe">
-    <div class="perf-section-head perf-reveal">
-      <div>
-        <h2 class="perf-section-title">Recent Round Trips</h2>
-        <p class="perf-section-subtitle" id="perfTripsMeta">Most recent closed trades</p>
-      </div>
-    </div>
-    <div class="perf-trip-feed" id="perfTripFeed">
-      <div class="hc-empty-card">Loading recent round trips...</div>
-    </div>
-  </section>
+  </div>
 </div>
 
 <script>
-  window.PERFORMANCE_CONFIG = {
-    apiSecret: {{ api_secret|tojson }}
-  };
+(() => {
+  const API_SECRET = {{ api_secret|tojson }};
+  let allItems = [];
+  let activeFilter = "all";
+  let activeLog = "options";
+  let page = 0;
+  const PAGE_SIZE = 50;
+
+  function authUrl(path) {
+    if (!API_SECRET) return path;
+    return path + (path.includes("?") ? "&" : "?") + "secret=" + encodeURIComponent(API_SECRET);
+  }
+
+  async function fetchJson(path) {
+    const r = await fetch(authUrl(path), { credentials:"same-origin" });
+    return r.json().catch(() => ({}));
+  }
+
+  function fmtUsd(v) {
+    return Number(v||0).toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:2});
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return "--";
+    const d = typeof ts === "number" ? new Date(ts * 1000) : new Date(ts);
+    if (isNaN(d)) return "--";
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return "just now";
+    if (diff < 3600000) return Math.floor(diff/60000) + "m ago";
+    if (diff < 86400000) return Math.floor(diff/3600000) + "h ago";
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+  }
+
+  function itemTag(type) {
+    const tags = {crypto:"Crypto",stock:"Stock",option:"Option",futures:"Futures"};
+    return `<span class="act-tag ${type}">${tags[type]||type}</span>`;
+  }
+
+  function renderFeed() {
+    const search = document.getElementById("actSearch").value.toLowerCase();
+    let items = allItems.filter(item => {
+      if (search && !item.symbol?.toLowerCase().includes(search)) return false;
+      if (activeFilter === "all") return true;
+      if (activeFilter === "buy") return item.side === "BUY";
+      if (activeFilter === "sell") return item.side === "SELL";
+      return item.type === activeFilter;
+    });
+
+    const feed = document.getElementById("actFeed");
+    const meta = document.getElementById("actFeedMeta");
+    const loadMore = document.getElementById("actLoadMore");
+    const visible = items.slice(0, (page+1) * PAGE_SIZE);
+
+    meta.textContent = `${items.length} entries`;
+
+    if (!items.length) {
+      feed.innerHTML = '<div class="act-empty">No activity found for this filter.</div>';
+      loadMore.style.display = "none";
+      return;
+    }
+
+    feed.innerHTML = visible.map(item => {
+      const isBuy = item.side === "BUY";
+      const iconClass = item.type === "option" ? "options" : isBuy ? "buy" : "sell";
+      const icon = item.type === "option" ? "⚡" : isBuy ? "↑" : "↓";
+      const pnlColor = item.pnl > 0 ? "#22c55e" : item.pnl < 0 ? "#ef4444" : "rgba(236,243,255,0.4)";
+      const valueStr = item.value > 0 ? fmtUsd(item.value) : (item.pnl != null ? `${item.pnl>=0?"+":""}${fmtUsd(item.pnl)}` : "");
+      return `<div class="act-item">
+        <div class="act-icon ${iconClass}">${icon}</div>
+        <div class="act-body">
+          <div class="act-title">${item.side||""} ${item.symbol||"--"} ${itemTag(item.type||"crypto")}</div>
+          <div class="act-sub">${item.detail||""}</div>
+        </div>
+        <div class="act-right">
+          ${valueStr ? `<div class="act-value" style="color:${item.pnl<0?"#ef4444":item.pnl>0?"#22c55e":"#ecf3ff"}">${valueStr}</div>` : ""}
+          <div class="act-time">${fmtTime(item.ts)}</div>
+        </div>
+      </div>`;
+    }).join("");
+
+    loadMore.style.display = visible.length < items.length ? "block" : "none";
+  }
+
+  async function loadBotLog(type) {
+    const el = document.getElementById("actBotLog");
+    el.textContent = "Loading...";
+    try {
+      const data = await fetchJson(`/api/${type}/executor/log?limit=100`);
+      const logs = data.log || [];
+      if (!logs.length) { el.textContent = "No log entries yet."; return; }
+      el.innerHTML = logs.map(l => {
+        const msg = l.msg || l.message || String(l);
+        const ts = l.ts ? fmtTime(l.ts) : "";
+        const color = msg.includes("error") || msg.includes("failed") ? "#ef4444"
+          : msg.includes("executed") || msg.includes("filled") || msg.includes("closed") ? "#22c55e"
+          : msg.includes("HOLD") || msg.includes("holding") ? "#38bdf8"
+          : msg.includes("EXIT") ? "#f59e0b"
+          : "rgba(236,243,255,0.6)";
+        return `<div style="color:${color};padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.03);">${ts ? `<span style="color:rgba(236,243,255,0.25);margin-right:8px;">${ts}</span>` : ""}${msg}</div>`;
+      }).join("");
+      document.getElementById("actLogCount").textContent = logs.length;
+    } catch(e) {
+      el.textContent = "Log unavailable";
+    }
+  }
+
+  async function loadAll() {
+    const feed = document.getElementById("actFeed");
+    feed.innerHTML = '<div class="act-empty">Loading...</div>';
+    allItems = [];
+
+    try {
+      // Crypto orders from DB
+      const orders = await fetchJson("/api/portfolio/history?limit=200");
+      // Fall back to trade history endpoint
+      const tradeData = await fetchJson("/api/trades?page_size=100");
+      const trades = tradeData.orders || tradeData.trades || [];
+
+      let wins = 0, totalPnl = 0;
+      trades.forEach(t => {
+        const price = Number(t.price || 0);
+        const size = Number(t.base_size || t.qty || 0);
+        const value = price * size;
+        allItems.push({
+          ts: t.created_at,
+          symbol: t.product_id || t.symbol || "--",
+          side: (t.side || "").toUpperCase(),
+          type: "crypto",
+          value,
+          detail: `${size.toFixed(4)} @ ${fmtUsd(price)} · ${t.status || ""}`,
+          pnl: null,
+        });
+      });
+
+      // Signal log
+      const sigData = await fetchJson("/api/signals/log?limit=50");
+      (sigData.signals || []).forEach(s => {
+        const isBuy = String(s.side||s.action||"").toUpperCase() === "BUY";
+        allItems.push({
+          ts: s.ts || s.created_at,
+          symbol: s.product_id || s.symbol || "--",
+          side: isBuy ? "BUY" : "SELL",
+          type: "crypto",
+          value: Number(s.notional_usd || s.value || 0),
+          detail: `Score: ${s.score || "--"} · ${s.signal_type || s.reason || ""}`,
+          pnl: Number(s.pnl || 0) || null,
+        });
+      });
+
+      // Sort by time
+      allItems.sort((a, b) => {
+        const ta = typeof a.ts === "number" ? a.ts : new Date(a.ts||0).getTime()/1000;
+        const tb = typeof b.ts === "number" ? b.ts : new Date(b.ts||0).getTime()/1000;
+        return tb - ta;
+      });
+
+      // KPIs
+      const filled = trades.filter(t => t.status === "FILLED" || t.status === "filled");
+      const sells = filled.filter(t => (t.side||"").toUpperCase() === "SELL");
+      document.getElementById("actTotalTrades").textContent = filled.length;
+      document.getElementById("actTotalSub").textContent = `${filled.filter(t=>(t.side||"").toUpperCase()==="BUY").length} buys · ${sells.length} sells`;
+      document.getElementById("actRealizedPnl").textContent = fmtUsd(totalPnl);
+      document.getElementById("actWinRate").textContent = filled.length > 0 ? Math.round(wins/filled.length*100) + "%" : "--%";
+      document.getElementById("actWinSub").textContent = `${filled.length} total fills`;
+
+      renderFeed();
+    } catch(e) {
+      feed.innerHTML = `<div class="act-empty">Error loading activity: ${e.message}</div>`;
+    }
+
+    // Load bot logs
+    loadBotLog(activeLog);
+  }
+
+  // Filter buttons
+  document.querySelectorAll(".act-filter-btn[data-filter]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeFilter = btn.dataset.filter;
+      document.querySelectorAll(".act-filter-btn[data-filter]").forEach(b => b.classList.toggle("active", b === btn));
+      page = 0;
+      renderFeed();
+    });
+  });
+
+  // Log tab buttons
+  document.querySelectorAll(".act-filter-btn[data-log]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeLog = btn.dataset.log;
+      document.querySelectorAll(".act-filter-btn[data-log]").forEach(b => b.classList.toggle("active", b === btn));
+      loadBotLog(activeLog);
+    });
+  });
+
+  document.getElementById("actSearch").addEventListener("input", () => { page = 0; renderFeed(); });
+  document.getElementById("actRefreshBtn").addEventListener("click", loadAll);
+  document.getElementById("actLoadMore").addEventListener("click", () => { page++; renderFeed(); });
+
+  loadAll();
+})();
 </script>
-<script src="{{ url_for('static', filename='js/trade_history.js') }}"></script>
 {% endblock %}

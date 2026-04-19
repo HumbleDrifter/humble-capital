@@ -617,14 +617,15 @@ def run_options_position_monitor() -> dict[str, Any]:
                         continue
                     _PENDING_CLOSES.add(symbol)
                 try:
-                    from notify import _send as _notify
-                    _pnl = round(pnl_pct * 100, 1)
-                    _emoji = "🟢" if _pnl >= 0 else "🔴"
-                    _opt_type = str(pos.get("option_type") or "").upper()
-                    _notify(f"{_emoji} OPTIONS EXIT\n{symbol} {_opt_type}\nReason: {reason}\nP&L: {'+' if _pnl>=0 else ''}{_pnl}%\nValue: ${market_value:.0f}")
-                except Exception:
-                    pass
-                _log(
+                    try:
+                        from notify import _send as _notify
+                        _pnl = round(pnl_pct * 100, 1)
+                        _emoji = "\U0001f7e2" if _pnl >= 0 else "\U0001f534"
+                        _opt_type = str(pos.get("option_type") or "").upper()
+                        _notify(f"{_emoji} OPTIONS EXIT\n{symbol} {_opt_type}\nReason: {reason}\nP&L: {'+' if _pnl>=0 else ''}{_pnl}%\nValue: ${market_value:.0f}")
+                    except Exception:
+                        pass
+                    _log(
                         f"closing {symbol} reason={reason} "
                         f"pnl_pct={pnl_pct*100:.1f}% pnl=${unrealized_pnl:.2f}"
                     )

@@ -152,6 +152,70 @@
     return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
   }
 
+  function updateWebullAllocationBar(webullResp) {
+    try {
+      const stocks = Array.isArray(webullResp?.stocks) ? webullResp.stocks : [];
+      const options = Array.isArray(webullResp?.options) ? webullResp.options : [];
+      const sv = stocks.reduce((s, p) => s + Number(p.market_value || 0), 0);
+      const ov = options.reduce((s, p) => s + Number(p.market_value || 0), 0);
+      const total = sv + ov;
+      const optPct = total > 0 ? (ov / total * 100) : 0;
+      const stockPct = total > 0 ? (sv / total * 100) : 0;
+      const bp = Number(webullResp?.balance?.option_buying_power || webullResp?.balance?.buying_power || 0);
+      const optBar = document.getElementById("wbOptBar");
+      const stockBar = document.getElementById("wbStockBar");
+      if (optBar) optBar.style.width = optPct.toFixed(1) + "%";
+      if (stockBar) stockBar.style.width = stockPct.toFixed(1) + "%";
+      const optEl = document.getElementById("wbOptPct");
+      const stockEl = document.getElementById("wbStockPct");
+      if (optEl) optEl.textContent = optPct.toFixed(1) + "%";
+      if (stockEl) stockEl.textContent = stockPct.toFixed(1) + "%";
+      const bpEl = document.getElementById("wbOptBP");
+      const bpInline = document.getElementById("optBPInline");
+      if (bpEl) bpEl.textContent = fmtUsd(bp);
+      if (bpInline) bpInline.textContent = fmtUsd(bp);
+      const statusEl = document.getElementById("wbAllocStatus");
+      if (statusEl) {
+        const diff = optPct - 75;
+        if (Math.abs(diff) < 10) {
+          statusEl.textContent = "On Target";
+          statusEl.style.cssText = "font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(34,197,94,0.12);color:#22c55e;";
+        } else if (diff < -10) {
+          statusEl.textContent = "Under Options";
+          statusEl.style.cssText = "font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(251,191,36,0.12);color:#fbbf24;";
+        } else {
+          statusEl.textContent = "Over Options";
+          statusEl.style.cssText = "font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(56,189,248,0.12);color:#38bdf8;";
+        }
+      }
+      const optSection = document.getElementById("portfolioOptionsSection");
+      const optGrid = document.getElementById("portfolioOptionsGrid");
+      const optBadge = document.getElementById("optPosBadge");
+      if (options.length && optSection && optGrid) {
+        optSection.style.display = "";
+        if (optBadge) optBadge.textContent = options.length + " open";
+        optGrid.innerHTML = options.map(p => {
+          const pnl = Number(p.unrealized_pnl || 0);
+          const pnlPct = Number(p.unrealized_pnl_pct || 0);
+          const isCall = (p.option_type||"").toLowerCase() === "call";
+          const daysLeft = p.expiration ? Math.max(0, Math.ceil((new Date(p.expiration) - new Date()) / 86400000)) : null;
+          const pnlColor = pnl >= 0 ? "#22c55e" : "#ef4444";
+          return `<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;text-transform:uppercase;background:${isCall?"rgba(34,197,94,0.12)":"rgba(239,68,68,0.12)"};color:${isCall?"#22c55e":"#ef4444"};">${isCall?"↑ CALL":"↓ PUT"}</span>
+                <span style="font-size:13px;font-weight:700;">${p.symbol} $${p.strike}</span>
+              </div>
+              <span style="font-size:13px;font-weight:700;color:${pnlColor};">${pnl>=0?"+":""}${fmtUsd(pnl)}</span>
+            </div>
+            <div style="font-size:11px;color:rgba(236,243,255,0.45);">${p.expiration||"--"} · ${p.qty} contracts · ${daysLeft!=null?daysLeft+"d left":""}</div>
+            <div style="font-size:11px;color:rgba(236,243,255,0.45);">Cost: ${fmtUsd(Number(p.cost_basis||0))} · Now: ${fmtUsd(Number(p.market_value||0))} · <span style="color:${pnlColor}">${pnlPct>=0?"+":""}${pnlPct.toFixed(1)}%</span></div>
+          </div>`;
+        }).join("");
+      }
+    } catch(e) { console.error("alloc bar error", e); }
+  }
+
   function renderBrokerSnapshot() {
     const snapshot = brokerSnapshot || {};
     const brokers = snapshot.brokers || {};
@@ -276,11 +340,43 @@
     showTab(hash);
   }
 
-  fetchJson("/api/portfolio")
-    .then((data) => {
-      brokerSnapshot = data.snapshot || {};
-      renderBrokerSnapshot();
-    })
+  Promise.all([
+    fetchJson("/api/portfolio"),
+    fetchJson("/api/webull/positions").catch(() => ({}))
+  ]).then(([portfolioData, webullData]) => {
+    brokerSnapshot = portfolioData.snapshot || {};
+    renderBrokerSnapshot();
+    updateWebullAllocationBar(webullData);
+    const holdingsGrid = document.getElementById("portfolioHoldingsGrid");
+    if (holdingsGrid && brokerSnapshot.positions) {
+      const positions = Object.entries(brokerSnapshot.positions || {})
+        .map(([id, p]) => ({ id, ...p }))
+        .sort((a, b) => Number(b.value_total_usd||0) - Number(a.value_total_usd||0));
+      if (positions.length) {
+        holdingsGrid.innerHTML = positions.map(p => {
+          const pnl = Number(p.unrealized_pnl || 0);
+          const pnlPct = Number(p.unrealized_pnl_pct || 0) * 100;
+          const val = Number(p.value_total_usd || 0);
+          const pnlColor = pnl >= 0 ? "#22c55e" : "#ef4444";
+          const cls = p.class || "satellite";
+          const clsColor = cls.includes("core") ? "#2dd4bf" : "#60a5fa";
+          return `<div class="hc-pos-card" style="cursor:pointer;" onclick="location.href='/trading?symbol=${encodeURIComponent(p.id||"")}#charts'">
+            <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${clsColor};">${(p.id||"?").replace("-USD","").slice(0,4)}</div>
+            <div style="min-width:0;">
+              <div style="font-size:13px;font-weight:700;">${p.id||"--"}</div>
+              <div style="font-size:11px;color:rgba(236,243,255,0.4);">${Number(p.base_qty_total||0).toFixed(4)} · <span style="color:${pnlColor}">${pnl>=0?"+":""}${pnlPct.toFixed(1)}%</span></div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:13px;font-weight:700;">${fmtUsd(val)}</div>
+              <div style="font-size:11px;color:${pnlColor};">${pnl>=0?"+":""}${fmtUsd(pnl)}</div>
+            </div>
+          </div>`;
+        }).join("");
+        const countEl = document.getElementById("positionsCount");
+        if (countEl) countEl.textContent = positions.length + " positions";
+      }
+    }
+  })
     .catch(() => {
       document.getElementById("portfolioBrokerMeta").textContent = "Portfolio snapshot unavailable.";
       document.getElementById("portfolioBrokerPositions").innerHTML = '<div class="hc-empty-card">Unable to load broker positions.</div>';

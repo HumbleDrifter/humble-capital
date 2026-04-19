@@ -12,211 +12,148 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
-  .hc-options-shell[hidden] { display: none !important; }
-  .hc-options-summary {
-    list-style: none;
-    cursor: pointer;
-  }
-  .hc-options-summary::-webkit-details-marker { display: none; }
-  .hc-options-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-  }
-  .hc-options-card {
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02));
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    min-height: 240px;
-  }
-  .hc-options-card-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .hc-options-card-title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-  }
-  .hc-options-card-note {
-    margin: 0;
-    color: rgba(255,255,255,0.6);
-    font-size: 13px;
-  }
-  .hc-options-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .hc-options-item {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
-    gap: 10px;
-    padding: 12px 14px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-    align-items: center;
-  }
-  .hc-options-item-main {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-  .hc-options-item-main strong,
-  .hc-options-item-meta strong {
-    font-size: 14px;
-  }
-  .hc-options-item-meta,
-  .hc-options-item-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: flex-end;
-  }
-  .hc-options-mini {
-    color: rgba(255,255,255,0.62);
-    font-size: 12px;
-  }
-  .hc-options-profit { color: var(--good); }
-  .hc-options-loss { color: var(--bad); }
-  .hc-options-kpis {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-  .hc-options-kpi {
-    padding: 12px 14px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-  }
-  .hc-options-kpi-label {
-    display: block;
-    color: rgba(255,255,255,0.58);
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
-  .hc-options-kpi-value {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
-  .hc-options-chart {
-    width: 100%;
-    height: 120px;
-    border-radius: 14px;
+  /* ── Mission Control Bar ── */
+  .mc-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 14px; margin-bottom: 16px;
     background: rgba(255,255,255,0.02);
-  }
-  .hc-options-actions-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .hc-options-action {
-    padding: 12px 14px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.06);
-    font-size: 13px;
-    line-height: 1.45;
+    border-radius: 12px; font-size: 12px;
   }
-  .hc-options-hit {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 12px 14px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
+  .mc-bot-status { display:flex;align-items:center;gap:6px;font-weight:700; }
+  .mc-pulse { width:8px;height:8px;border-radius:50%;background:#22c55e;
+    box-shadow:0 0 8px #22c55e;animation:mcPulse 2s infinite; }
+  .mc-pulse.off { background:#ef4444;box-shadow:0 0 8px #ef4444;animation:none; }
+  @keyframes mcPulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+  .mc-divider { width:1px;height:18px;background:rgba(255,255,255,0.08); }
+  .mc-toggle { display:flex;align-items:center;gap:4px;cursor:pointer;
+    padding:3px 8px;border-radius:6px;transition:background 0.15s;
+    border:1px solid rgba(255,255,255,0.08); }
+  .mc-toggle:hover { background:rgba(255,255,255,0.05); }
+  .mc-toggle-dot { width:6px;height:6px;border-radius:50%;transition:background 0.2s; }
+  .mc-toggle-label { font-size:11px;font-weight:700;color:rgba(236,243,255,0.7); }
+  .mc-next-scan { font-size:11px;color:rgba(236,243,255,0.4);margin-left:auto; }
+  .mc-last-action { font-size:11px;color:rgba(236,243,255,0.35);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px; }
+
+  /* ── Positions with momentum ── */
+  .hc-pos-card { position:relative;overflow:hidden; }
+  .momentum-bar { position:absolute;bottom:0;left:0;right:0;height:3px; }
+  .momentum-bull { background:linear-gradient(90deg,#22c55e,#4ade80); }
+  .momentum-bear { background:linear-gradient(90deg,#ef4444,#f87171); }
+  .momentum-neutral { background:rgba(255,255,255,0.08); }
+  .pos-momentum-badge {
+    display:inline-flex;align-items:center;gap:3px;
+    padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;
+    letter-spacing:0.04em;text-transform:uppercase;
   }
-  .hc-options-hit-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+  .pos-momentum-badge.bull { background:rgba(34,197,94,0.12);color:#22c55e; }
+  .pos-momentum-badge.bear { background:rgba(239,68,68,0.12);color:#ef4444; }
+  .pos-momentum-badge.neutral { background:rgba(255,255,255,0.06);color:rgba(236,243,255,0.4); }
+
+  /* ── Bot Activity Feed ── */
+  .bot-feed-item {
+    display:flex;align-items:flex-start;gap:10px;
+    padding:8px 12px;border-radius:8px;
+    background:rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.04);
+    margin-bottom:6px;font-size:12px;
   }
-  .hc-options-score {
-    height: 8px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.08);
-    overflow: hidden;
+  .bot-feed-icon { width:24px;height:24px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;font-size:11px; }
+  .bot-feed-icon.buy { background:rgba(34,197,94,0.15);color:#22c55e; }
+  .bot-feed-icon.sell { background:rgba(239,68,68,0.15);color:#ef4444; }
+  .bot-feed-icon.hold { background:rgba(56,189,248,0.15);color:#38bdf8; }
+  .bot-feed-icon.scan { background:rgba(139,92,246,0.15);color:#a78bfa; }
+
+  /* ── Options positions inline ── */
+  .opt-pos-inline {
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 12px;border-radius:10px;
+    background:rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.05);
+    margin-bottom:8px;gap:10px;
   }
-  .hc-options-score-fill {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 100%);
+  .opt-pos-tag { padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;
+    text-transform:uppercase;letter-spacing:0.06em; }
+  .opt-pos-tag.call { background:rgba(34,197,94,0.12);color:#22c55e; }
+  .opt-pos-tag.put { background:rgba(239,68,68,0.12);color:#ef4444; }
+
+  /* ── Dashboard two-column layout on wide screens ── */
+  .hc-dashboard-main {
+    display:grid;grid-template-columns:1fr;gap:16px;
   }
-  .hc-options-empty {
-      color: rgba(255,255,255,0.58);
-      font-size: 13px;
-    }
-    .broker-breakdown { margin: 12px 0 24px; }
-    .broker-bar {
-      display: flex;
-      height: 8px;
-      border-radius: 4px;
-      overflow: hidden;
-      background: rgba(255,255,255,0.04);
-      margin-bottom: 8px;
-    }
-    .broker-segment.coinbase { background: #38bdf8; }
-    .broker-segment.webull { background: #818cf8; }
-    .broker-legend { display: flex; gap: 24px; flex-wrap: wrap; }
-    .broker-legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(236,243,255,0.6); }
-    .broker-legend-value { font-weight: 600; color: #ecf3ff; }
-    .broker-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .broker-dot.coinbase { background: #38bdf8; }
-    .hc-alloc-futures { background: #f59e0b; }
-    .broker-dot.webull { background: #818cf8; }
-    .holdings-section { margin-bottom: 24px; }
-    .holdings-group-title {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 16px;
-      font-weight: 600;
-      color: #ecf3ff;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-    .holdings-group-value { margin-left: auto; font-variant-numeric: tabular-nums; }
-    .holdings-group-badge {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(56,189,248,0.1);
-      color: rgba(56,189,248,0.8);
-      border: 1px solid rgba(56,189,248,0.2);
-    }
-  @media (max-width: 980px) {
-    .hc-options-grid { grid-template-columns: 1fr; }
-    .hc-options-item { grid-template-columns: 1fr; }
-    .hc-options-item-meta,
-    .hc-options-item-actions { align-items: flex-start; }
+  @media(min-width:1200px) {
+    .hc-dashboard-main { grid-template-columns:1fr 340px; }
+    .hc-dashboard-sidebar { display:flex;flex-direction:column;gap:16px; }
   }
-  @media (max-width: 768px) {
-    .hc-options-kpis { grid-template-columns: 1fr 1fr; }
-    .hc-hero-value { font-size: clamp(28px, 8vw, 48px) !important; }
-    .hc-context-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
-    .broker-legend { gap: 12px; }
+
+  /* ── existing styles preserved ── */
+  .hc-options-shell[hidden] { display: none !important; }
+  .broker-breakdown { margin: 12px 0 24px; }
+  .broker-bar { display:flex;height:8px;border-radius:4px;overflow:hidden;
+    background:rgba(255,255,255,0.04);margin-bottom:8px; }
+  .broker-segment.coinbase { background:#38bdf8; }
+  .broker-segment.webull { background:#818cf8; }
+  .broker-legend { display:flex;gap:24px;flex-wrap:wrap; }
+  .broker-legend-item { display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(236,243,255,0.6); }
+  .broker-legend-value { font-weight:600;color:#ecf3ff; }
+  .broker-dot { width:8px;height:8px;border-radius:50%; }
+  .broker-dot.coinbase { background:#38bdf8; }
+  .hc-alloc-futures { background:#f59e0b; }
+  .broker-dot.webull { background:#818cf8; }
+  .holdings-section { margin-bottom:24px; }
+  .holdings-group-title { display:flex;align-items:center;gap:12px;font-size:16px;
+    font-weight:600;color:#ecf3ff;margin-bottom:12px;padding-bottom:8px;
+    border-bottom:1px solid rgba(255,255,255,0.06); }
+  .holdings-group-value { margin-left:auto;font-variant-numeric:tabular-nums; }
+  .holdings-group-badge { font-size:11px;padding:2px 8px;border-radius:4px;
+    background:rgba(56,189,248,0.1);color:rgba(56,189,248,0.8);
+    border:1px solid rgba(56,189,248,0.2); }
+  @media(max-width:980px) { .hc-options-item{grid-template-columns:1fr;} }
+  @media(max-width:768px) {
+    .hc-hero-value{font-size:clamp(28px,8vw,48px)!important;}
+    .hc-context-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
+    .broker-legend{gap:12px;}
+    .mc-last-action{display:none;}
   }
-  @media (max-width: 480px) {
-    .hc-context-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .hc-context-value { font-size: 20px !important; }
+  @media(max-width:480px) {
+    .hc-context-grid{grid-template-columns:1fr 1fr;gap:8px;}
+    .hc-context-value{font-size:20px!important;}
   }
 </style>
 
 <div class="hc-dashboard-shell">
+
+  <!-- Mission Control Bar -->
+  <div class="mc-bar" id="mcBar">
+    <div class="mc-bot-status">
+      <span class="mc-pulse" id="mcPulseDot"></span>
+      <span id="mcStatusText" style="color:#22c55e;">Bot Active</span>
+    </div>
+    <div class="mc-divider"></div>
+    <div class="mc-toggle" onclick="mcToggle('crypto')" title="Toggle crypto auto-trading">
+      <span class="mc-toggle-dot" id="mcDot_crypto" style="background:#22c55e;"></span>
+      <span class="mc-toggle-label">Crypto</span>
+    </div>
+    <div class="mc-toggle" onclick="mcToggle('stocks')" title="Toggle stocks auto-trading">
+      <span class="mc-toggle-dot" id="mcDot_stocks" style="background:#22c55e;"></span>
+      <span class="mc-toggle-label">Stocks</span>
+    </div>
+    <div class="mc-toggle" onclick="mcToggle('futures')" title="Toggle futures auto-trading">
+      <span class="mc-toggle-dot" id="mcDot_futures" style="background:#22c55e;"></span>
+      <span class="mc-toggle-label">Futures</span>
+    </div>
+    <div class="mc-toggle" onclick="mcToggle('options')" title="Toggle options auto-trading">
+      <span class="mc-toggle-dot" id="mcDot_options" style="background:#22c55e;"></span>
+      <span class="mc-toggle-label">Options</span>
+    </div>
+    <div class="mc-divider"></div>
+    <span class="mc-next-scan">Next scan: <strong id="mcNextScan">--</strong></span>
+    <span class="mc-last-action" id="mcLastAction">Monitoring positions</span>
+  </div>
+
     <div class="hc-hero">
       <div class="hc-hero-label">Total Portfolio Value</div>
       <h1 class="hc-hero-value" id="heroPortfolioValue">$0.00</h1>
@@ -298,6 +235,18 @@
       <div class="hc-context-detail" id="ctxPositionBreakdown">0 core · 0 satellite</div>
     </div>
   </div>
+
+  <!-- Options positions — always visible -->
+  <section class="hc-section" id="dashOptionsSection" style="display:none;">
+    <div class="hc-section-head">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <h2 class="hc-section-title">Options Positions</h2>
+        <span id="dashOptionsBadge" style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(139,92,246,0.12);color:#a78bfa;border:1px solid rgba(139,92,246,0.2);">0 open</span>
+      </div>
+      <a class="btn btn-secondary" href="/options{% if api_secret %}?secret={{ api_secret|urlencode }}{% endif %}" style="font-size:12px;padding:6px 12px;">Scanner →</a>
+    </div>
+    <div id="dashOptionsPositions"></div>
+  </section>
 
   <section class="hc-section">
     <div class="hc-section-head">
@@ -397,6 +346,104 @@
 </div>
 
 <script>
+  // Mission Control JS
+  window._mcConfig = { apiSecret: null };
+
+  function mcAuthUrl(path) {
+    const s = window.DASHBOARD_CONFIG?.apiSecret || window._mcConfig?.apiSecret || "";
+    if (!s) return path;
+    return path + (path.includes("?") ? "&" : "?") + "secret=" + encodeURIComponent(s);
+  }
+
+  async function mcFetch(path, opts) {
+    const r = await fetch(mcAuthUrl(path), { credentials: "same-origin",
+      headers: {"Content-Type":"application/json",...(opts?.headers||{})}, ...opts });
+    return r.json().catch(() => ({}));
+  }
+
+  async function mcToggle(asset) {
+    try {
+      const cfg = await mcFetch("/api/config");
+      const cur = !!(cfg?.config?.auto_trading?.["auto_execute_" + asset] ?? true);
+      const nv = !cur;
+      await mcFetch("/api/config/update", { method:"POST",
+        body: JSON.stringify({ path: "auto_trading.auto_execute_" + asset, value: nv }) });
+      const dot = document.getElementById("mcDot_" + asset);
+      if (dot) dot.style.background = nv ? "#22c55e" : "#ef4444";
+      document.getElementById("mcLastAction").textContent =
+        asset.charAt(0).toUpperCase() + asset.slice(1) + " auto-trade " + (nv ? "ON" : "OFF");
+    } catch(e) { console.error("mcToggle failed", e); }
+  }
+
+  async function mcLoadState() {
+    try {
+      const cfg = await mcFetch("/api/config");
+      const at = cfg?.config?.auto_trading || {};
+      ["crypto","stocks","futures","options"].forEach(a => {
+        const on = !!(at["auto_execute_" + a] ?? true);
+        const d = document.getElementById("mcDot_" + a);
+        if (d) d.style.background = on ? "#22c55e" : "#ef4444";
+      });
+    } catch(e) {}
+  }
+
+  function mcUpdateNextScan() {
+    const now = new Date();
+    const mins = now.getMinutes();
+    // Scans fire at :02 :17 :32 :47
+    const targets = [2, 17, 32, 47];
+    let next = targets.find(t => t > mins);
+    if (next === undefined) next = targets[0] + 60;
+    const wait = next - mins;
+    const el = document.getElementById("mcNextScan");
+    if (el) el.textContent = wait + "m";
+  }
+
+  async function mcLoadOptionsPositions() {
+    try {
+      const data = await mcFetch("/api/options/positions");
+      const positions = data.positions || [];
+      const section = document.getElementById("dashOptionsSection");
+      const badge = document.getElementById("dashOptionsBadge");
+      const host = document.getElementById("dashOptionsPositions");
+      if (!positions.length) { if (section) section.style.display = "none"; return; }
+      if (section) section.style.display = "";
+      if (badge) badge.textContent = positions.length + " open";
+      if (!host) return;
+      host.innerHTML = positions.map(p => {
+        const pnl = Number(p.unrealized_pnl || 0);
+        const pnlPct = Number(p.unrealized_pnl_pct || 0);
+        const isCall = (p.option_type||"").toLowerCase() === "call";
+        const dayPnl = Number(p.day_pnl || 0);
+        const daysLeft = p.expiration ? Math.max(0, Math.ceil((new Date(p.expiration) - new Date()) / 86400000)) : null;
+        return `<div class="opt-pos-inline">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">
+            <span class="opt-pos-tag ${isCall ? 'call' : 'put'}">${isCall ? '↑ CALL' : '↓ PUT'}</span>
+            <div style="min-width:0;">
+              <div style="font-size:13px;font-weight:700;">${p.symbol} $${p.strike} · ${p.expiration||''}</div>
+              <div style="font-size:11px;color:rgba(236,243,255,0.45);">${p.qty} contracts · ${daysLeft != null ? daysLeft + 'd left' : ''} · Day: <span style="color:${dayPnl>=0?'#22c55e':'#ef4444'}">${dayPnl>=0?'+':''}$${dayPnl.toFixed(2)}</span></div>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:13px;font-weight:700;color:${pnl>=0?'#22c55e':'#ef4444'}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</div>
+            <div style="font-size:11px;color:rgba(236,243,255,0.4);">${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%</div>
+          </div>
+        </div>`;
+      }).join("");
+    } catch(e) {}
+  }
+
+  // Init mission control
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+      mcLoadState();
+      mcLoadOptionsPositions();
+      mcUpdateNextScan();
+      setInterval(mcUpdateNextScan, 30000);
+      setInterval(mcLoadOptionsPositions, 30000);
+    }, 500);
+  });
+
   window.DASHBOARD_CONFIG = {
     apiSecret: {{ api_secret|tojson }}
   };

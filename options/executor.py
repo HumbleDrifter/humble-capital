@@ -617,7 +617,6 @@ def run_options_position_monitor() -> dict[str, Any]:
                         continue
                     _PENDING_CLOSES.add(symbol)
                 try:
-                    try:
                     from notify import _send as _notify
                     _pnl = round(pnl_pct * 100, 1)
                     _emoji = "🟢" if _pnl >= 0 else "🔴"

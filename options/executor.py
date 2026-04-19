@@ -344,6 +344,12 @@ def run_options_scan_and_execute() -> dict[str, Any]:
                             "score": score,
                         })
                         _log(f"OTM call executed {symbol} qty={qty} order_id={result.get('order_id')}")
+                        try:
+                            from notify import _send as _notify
+                            _direction = "PUT" if opp.get("strategy","").endswith("put") else "CALL"
+                            _notify(f"\u26a1 OPTIONS BUY\n{symbol} OTM {_direction}\nStrike: ${details.get('strike','--')} \u00b7 {details.get('dte','--')}d\nQty: {qty} contracts @ ${cost_per:.0f}/ea\nTotal: ${cost_per*qty:.0f} \u00b7 Score: {score:.0f}")
+                        except Exception:
+                            pass
                     else:
                         _log(f"OTM call failed {symbol}: {result.get('error')}")
                 else:
@@ -611,7 +617,15 @@ def run_options_position_monitor() -> dict[str, Any]:
                         continue
                     _PENDING_CLOSES.add(symbol)
                 try:
-                    _log(
+                    try:
+                    from notify import _send as _notify
+                    _pnl = round(pnl_pct * 100, 1)
+                    _emoji = "🟢" if _pnl >= 0 else "🔴"
+                    _opt_type = str(pos.get("option_type") or "").upper()
+                    _notify(f"{_emoji} OPTIONS EXIT\n{symbol} {_opt_type}\nReason: {reason}\nP&L: {'+' if _pnl>=0 else ''}{_pnl}%\nValue: ${market_value:.0f}")
+                except Exception:
+                    pass
+                _log(
                         f"closing {symbol} reason={reason} "
                         f"pnl_pct={pnl_pct*100:.1f}% pnl=${unrealized_pnl:.2f}"
                     )

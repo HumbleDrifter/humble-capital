@@ -399,6 +399,7 @@ def run_stock_position_monitor() -> dict[str, Any]:
                 )
                 if result.get("ok"):
                     _set_cooldown(symbol)
+                    pnl_usd = (mark_price - avg_cost) * int(qty)
                     actions.append({
                         "symbol": symbol,
                         "reason": reason,
@@ -409,6 +410,12 @@ def run_stock_position_monitor() -> dict[str, Any]:
                         "order_id": result.get("order_id"),
                     })
                     _log(f"sold {symbol} order_id={result.get('order_id')}")
+                    try:
+                        from notify import _send as _notify
+                        emoji = "🟢" if pnl_usd >= 0 else "🔴"
+                        _notify(f"{emoji} STOCK EXIT\n{symbol}\nReason: {reason}\nEntry: ${avg_cost:.2f} → Exit: ${mark_price:.2f}\nP&L: {'+'if pnl_usd>=0 else ''}${pnl_usd:.2f} ({'+' if pnl_pct>=0 else ''}{pnl_pct*100:.1f}%)")
+                    except Exception:
+                        pass
                 else:
                     _log(f"sell failed {symbol}: {result.get('error')}")
 

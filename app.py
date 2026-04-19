@@ -144,22 +144,24 @@ def _config_proposal_loop():
             if status == "drafted":
                 print(f"[config_proposal_loop] new proposal drafted", flush=True)
 
-            # Auto-approve pending high-confidence proposals
+            # Auto-approve pending proposals — check config for auto_apply setting
+            _auto_apply = True
+            try:
+                import json as _j
+                with open("/root/tradingbot/asset_config.json") as _f:
+                    _cfg = _j.load(_f)
+                _auto_apply = bool(_cfg.get("auto_trading", {}).get("auto_apply_config_proposals", True))
+            except Exception:
+                pass
+
+            if not _auto_apply:
+                _time.sleep(21600)
+                continue
+
             pending = list_pending_config_proposals() or []
             for proposal in pending:
                 proposal_id = str(proposal.get("proposal_id") or "").strip()
-                confidence = str(
-                    (proposal.get("proposal") or {}).get("source", {}).get("confidence")
-                    or proposal.get("confidence")
-                    or ""
-                ).strip().lower()
                 proposal_type = str(proposal.get("proposal_type") or "").strip()
-
-                # Only auto-approve config_guardrail proposals with high confidence
-                if proposal_type != "config_guardrail":
-                    continue
-                if confidence not in {"high"}:
-                    continue
                 if not proposal_id:
                     continue
 

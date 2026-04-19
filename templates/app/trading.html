@@ -479,72 +479,28 @@
   .chart-symbol-pill-group { display: flex; gap: 4px; }
 </style>
 <div class="opp-shell">
-  <section class="opp-hero opp-panel">
-    <div class="opp-hero-copy">
-      <div class="opp-kicker">Unified Trading</div>
-      <h2 class="opp-title">Find, score, and visualize opportunities across crypto and stocks from one workspace.</h2>
-      <p class="opp-subtitle" id="tradingPageMeta">Loading trading workspace...</p>
-    </div>
-  </section>
-
   <div class="page-tabs">
     <button class="page-tab active" data-tab="crypto" type="button">Crypto</button>
     <button class="page-tab" data-tab="stocks" type="button">Stocks</button>
     <button class="page-tab" data-tab="futures" type="button">Futures</button>
-    <button class="page-tab" data-tab="social" type="button">Momentum</button>
-    <button class="page-tab" data-tab="squeeze" style="display:none;" type="button">Squeeze</button>
     <button class="page-tab" data-tab="charts" type="button">Charts</button>
+    <button class="page-tab" data-tab="social" type="button">Momentum</button>
   </div>
 
-  <!-- Bot status bar -->
-  <div id="tradingBotStatusBar" style="
-    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-    padding:7px 12px;margin-bottom:4px;
-    background:rgba(255,255,255,0.02);
-    border:1px solid rgba(255,255,255,0.05);
-    border-radius:8px;font-size:12px;
-  ">
-    <div style="display:flex;align-items:center;gap:6px;">
-      <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;
-        box-shadow:0 0 6px #22c55e;flex-shrink:0;" id="botPulseDot"></span>
-      <span style="color:rgba(236,243,255,0.5);">Bot</span>
-      <span style="font-weight:600;color:#22c55e;" id="botStatusLabel">Active</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:4px;">
-      <span style="color:rgba(236,243,255,0.4);">Regime</span>
-      <span id="tradingRegimeBadge" style="
-        padding:2px 8px;border-radius:10px;font-weight:600;font-size:11px;
-        background:rgba(251,191,36,0.15);color:#fbbf24;
-        border:1px solid rgba(251,191,36,0.25);">neutral</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0;">
-      <span style="color:rgba(236,243,255,0.4);">Last action</span>
-      <span id="tradingLastAction" style="color:rgba(236,243,255,0.6);
-        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-        Monitoring positions
-      </span>
-    </div>
-    <div style="color:rgba(236,243,255,0.35);" id="tradingPortfolioValue">$—</div>
-    <!-- Auto-trade toggles -->
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;">
-      <span style="font-size:10px;color:rgba(236,243,255,0.3);white-space:nowrap;">Auto-Trade:</span>
-      <label id="toggle_crypto" title="Crypto auto-trade" onclick="toggleAutoTrade('crypto')"
-        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#38bdf8;">
-        <span id="dot_crypto" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Crypto
-      </label>
-      <label id="toggle_stocks" title="Stocks auto-trade" onclick="toggleAutoTrade('stocks')"
-        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#818cf8;">
-        <span id="dot_stocks" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Stocks
-      </label>
-      <label id="toggle_futures" title="Futures auto-trade" onclick="toggleAutoTrade('futures')"
-        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#f59e0b;">
-        <span id="dot_futures" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Futures
-      </label>
-      <label id="toggle_options" title="Options auto-trade" onclick="toggleAutoTrade('options')"
-        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#a78bfa;">
-        <span id="dot_options" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Options
-      </label>
-    </div>
+  <!-- Slim status bar -->
+  <div id="tradingBotStatusBar" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 12px;margin-bottom:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;font-size:12px;">
+    <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;flex-shrink:0;" id="botPulseDot"></span>
+    <span style="color:rgba(236,243,255,0.4);">Regime</span>
+    <span id="tradingRegimeBadge" style="padding:2px 8px;border-radius:10px;font-weight:600;font-size:11px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);">neutral</span>
+    <span style="color:rgba(236,243,255,0.3);">·</span>
+    <span id="tradingLastAction" style="color:rgba(236,243,255,0.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">Monitoring positions</span>
+    <span style="color:rgba(236,243,255,0.5);font-weight:600;" id="tradingPortfolioValue">$—</span>
+    <span style="color:rgba(236,243,255,0.3);">·</span>
+    <span style="font-size:11px;color:rgba(236,243,255,0.3);">Auto:</span>
+    <label onclick="toggleAutoTrade('crypto')" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#38bdf8;"><span id="dot_crypto" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Crypto</label>
+    <label onclick="toggleAutoTrade('stocks')" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#818cf8;"><span id="dot_stocks" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Stocks</label>
+    <label onclick="toggleAutoTrade('futures')" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#f59e0b;"><span id="dot_futures" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Futures</label>
+    <label onclick="toggleAutoTrade('options')" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#a78bfa;"><span id="dot_options" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Options</label>
   </div>
 
   <div class="page-tab-content active" id="tab-crypto">
@@ -605,15 +561,29 @@
           <button class="btn btn-secondary trading-stock-tier" data-tier="all" type="button">All</button>
         </div>
       </div>
-      <div class="opp-panel-head" style="margin-top:12px;">
-        <div class="opp-panel-actions" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px;">
-          <div class="form-card"><label for="tradingStockStrategy">Strategy Filter</label><select id="tradingStockStrategy" class="select"><option value="all">All</option><option value="momentum">Momentum</option><option value="mean_reversion">Mean Reversion</option><option value="breakout">Breakout</option><option value="trend_following">Trend Following</option></select></div>
-          <div class="form-card"><label for="tradingStockRegime">Regime Filter</label><select id="tradingStockRegime" class="select"><option value="bull">Bull</option><option value="neutral">Neutral</option><option value="caution">Caution</option></select></div>
-          <div class="form-card"><label for="tradingStockSort">Sort By</label><select id="tradingStockSort" class="select"><option value="score">Score</option><option value="volume">Volume</option><option value="mentions">Social Mentions</option><option value="change">Price Change</option><option value="market_cap">Market Cap</option></select></div>
-          <div class="form-card"><label for="tradingStockSearch">Symbol Search</label><input id="tradingStockSearch" class="form-input" type="text" placeholder="AAPL, NVDA, TSLA..."></div>
-        </div>
+      <!-- Compact filter row -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;">
+        <input id="tradingStockSearch" class="form-input" type="text" placeholder="Symbol search..." style="width:140px;height:34px;font-size:12px;">
+        <select id="tradingStockStrategy" class="select" style="height:34px;font-size:12px;padding:0 8px;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;">
+          <option value="all">All Strategies</option>
+          <option value="momentum">Momentum</option>
+          <option value="mean_reversion">Mean Reversion</option>
+          <option value="breakout">Breakout</option>
+          <option value="trend_following">Trend Following</option>
+        </select>
+        <select id="tradingStockRegime" class="select" style="height:34px;font-size:12px;padding:0 8px;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;">
+          <option value="bull">Bull</option>
+          <option value="neutral">Neutral</option>
+          <option value="caution">Caution</option>
+        </select>
+        <select id="tradingStockSort" class="select" style="height:34px;font-size:12px;padding:0 8px;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;">
+          <option value="score">Sort: Score</option>
+          <option value="volume">Sort: Volume</option>
+          <option value="mentions">Sort: Social</option>
+          <option value="change">Sort: Change</option>
+        </select>
+        <button class="btn btn-primary" id="tradingStockScanBtn" type="button" style="height:34px;">Scan Now</button>
       </div>
-      <div class="opp-panel-actions" style="margin-top:12px;"><button class="btn btn-primary" id="tradingStockScanBtn" type="button">Scan Now</button></div>
     </section>
 
     <section class="opp-panel">
@@ -714,7 +684,6 @@
     </section>
   </div>
 
-  <div class="page-tab-content" id="tab-squeeze" style="display:none;"></div>
   <div class="page-tab-content" id="tab-social">
     <section class="opp-panel">
       <div class="opp-panel-head">
@@ -735,9 +704,6 @@
       </div>
       <div id="memeTrendingGrid" class="futures-grid"><div class="hc-empty-card">Loading meme trending...</div></div>
     </section>
-  </div>
-
-  <div class="page-tab-content" id="tab-squeeze">
     <section class="opp-panel">
       <div class="opp-panel-head">
         <div>
@@ -749,6 +715,8 @@
       <div id="squeezeGrid" class="futures-grid"><div class="hc-empty-card">Loading squeeze candidates...</div></div>
     </section>
   </div>
+
+
 
   <div class="page-tab-content" id="tab-charts">
     <div class="chart-workspace">

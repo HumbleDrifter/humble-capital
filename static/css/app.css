@@ -11949,3 +11949,184 @@ tbody tr:last-child td {
 .opt-reveal, .opt-shell, .opt-header, .opt-controls, .opt-overview, .opt-results, .opt-chain-section, .opt-header-copy, .opt-section-head, .opt-controls-grid, .hc-chart-section, .opt-sentiment { opacity: 1 !important; transform: none !important; visibility: visible !important; }
 .opt-reveal, .opt-shell, .opt-header, .opt-controls, .opt-overview, .opt-results, .opt-chain-section, .opt-header-copy, .opt-section-head, .opt-controls-grid, .hc-chart-section, .opt-sentiment { opacity: 1 !important; transform: none !important; visibility: visible !important; }
 .opt-reveal, .opt-shell, .opt-header, .opt-controls, .opt-overview, .opt-results, .opt-chain-section, .opt-header-copy, .opt-section-head, .opt-controls-grid, .hc-chart-section, .opt-sentiment { opacity: 1 !important; transform: none !important; visibility: visible !important; }
+.opt-reveal, .opt-shell, .opt-header, .opt-controls, .opt-overview, .opt-results, .opt-chain-section, .opt-header-copy, .opt-section-head, .opt-controls-grid, .hc-chart-section, .opt-sentiment { opacity: 1 !important; transform: none !important; visibility: visible !important; }
+
+/* =========================================================
+   MOBILE OPTIMIZATIONS — Humble Capital
+   Added for production mobile layout
+========================================================= */
+
+/* ── Page tabs — scrollable, compact on mobile ── */
+@media (max-width: 768px) {
+  .page-tabs {
+    gap: 0;
+    margin-bottom: 12px;
+    padding-bottom: 0;
+  }
+  .page-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* ── Holdings grid — single column on mobile ── */
+@media (max-width: 640px) {
+  .hc-pos-grid {
+    grid-template-columns: 1fr;
+  }
+  .hc-pos-card {
+    grid-template-columns: 36px 1fr auto;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .hc-pos-card > *:last-child {
+    grid-column: 3;
+  }
+}
+
+/* ── Page content padding ── */
+@media (max-width: 768px) {
+  .page-content {
+    padding: 12px 14px;
+    padding-bottom: 90px;
+  }
+  .hc-dashboard-shell {
+    gap: 12px;
+  }
+  .hc-section {
+    margin-bottom: 12px;
+  }
+}
+
+/* ── Hero values — scale down on small screens ── */
+@media (max-width: 480px) {
+  .hc-hero-value {
+    font-size: clamp(32px, 10vw, 52px) !important;
+  }
+  .hc-context-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .hc-context-value {
+    font-size: 18px !important;
+  }
+  .hc-context-label {
+    font-size: 11px;
+  }
+}
+
+/* ── Options scan cards — single col on phone ── */
+@media (max-width: 640px) {
+  .opt-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .opt-overview-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Mission control bar wrap fix ── */
+@media (max-width: 640px) {
+  #mcBar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .mc-next-scan {
+    display: none;
+  }
+  #tradingBotStatusBar {
+    font-size: 11px;
+    gap: 6px;
+    padding: 5px 10px;
+  }
+}
+
+/* ── Status bar auto-trade labels ── */
+@media (max-width: 480px) {
+  #tradingBotStatusBar .mc-last-action,
+  #tradingLastAction {
+    display: none;
+  }
+}
+
+/* ── Futures table — horizontal scroll ── */
+@media (max-width: 768px) {
+  .futures-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .futures-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Options toolbar compact ── */
+@media (max-width: 640px) {
+  .opt-toolbar-row {
+    flex-direction: column;
+  }
+  #optSymbols {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  #optCapital {
+    width: 100% !important;
+  }
+}
+
+/* ── Chart workspace on mobile ── */
+@media (max-width: 768px) {
+  .chart-topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chart-topbar-center {
+    order: 3;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chart-workspace-main {
+    height: 320px !important;
+  }
+}
+
+/* ── Mobile bottom nav border ── */
+@media (max-width: 900px) {
+  .mobile-bottom-nav {
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .mobile-nav-link {
+    font-size: 10px;
+  }
+}
+
+/* ── opp-panel padding on mobile ── */
+@media (max-width: 640px) {
+  .opp-panel {
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+  }
+  .opp-panel-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .opp-panel-actions {
+    width: 100%;
+  }
+}
+
+/* ── hc-chart-section on mobile ── */
+@media (max-width: 640px) {
+  .hc-chart-section {
+    padding: 12px 14px !important;
+  }
+  .hc-section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

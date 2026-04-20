@@ -157,7 +157,9 @@ def run_agent_cycle() -> dict:
     _log("Starting agent analysis cycle...")
 
     portfolio = _get_portfolio_context()
-    uw = _get_uw_context()
+    # Check uw_enabled from config (not just is_configured)
+    uw_enabled = bool(_agent_config().get("uw_enabled", False))
+    uw = _get_uw_context() if uw_enabled else {"configured": False, "reason": "disabled_in_config"}
     bot_cfg = _get_bot_config()
 
     # Build system prompt
@@ -222,6 +224,54 @@ def run_agent_cycle() -> dict:
 - Options buying power: used for aggressive OTM call/put plays
 - Exit strategy: pure momentum-based (EMA/MACD), no fixed % thresholds
 
+## FULL CONFIG MAP — ALL KEYS YOU CAN CHANGE
+You have FULL authority to change any of these config keys using CONFIG_CHANGE proposals:
+
+**Options Trading:**
+- options_trading.mode → "aggressive_otm" | "income" | "balanced"
+- options_trading.max_cost_per_contract → integer (dollars, e.g. 50-500)
+- options_trading.max_cost_total_per_trade → integer (dollars, e.g. 200-2000)
+- options_trading.min_score → integer (0-100, lower = more trades)
+- options_trading.delta_min → float (0.05-0.5)
+- options_trading.delta_max → float (0.05-0.5)
+- options_trading.dte_min → integer (days, 1-30)
+- options_trading.dte_max → integer (days, 7-180)
+- options_trading.scan_puts → true|false
+- options_trading.meme_priority → true|false
+- options_trading.auto_execute → true|false
+
+**Auto Trading:**
+- auto_trading.auto_execute_stocks → true|false
+- auto_trading.auto_execute_crypto → true|false
+- auto_trading.auto_execute_futures → true|false
+- auto_trading.auto_execute_options → true|false
+- auto_trading.min_entry_score → integer (0-100)
+- auto_trading.min_exit_score → integer (0-100)
+- auto_trading.max_satellites → integer (1-20)
+
+**Webull Allocation:**
+- webull_allocation.target_options_pct → integer (0-100)
+- webull_allocation.target_stocks_pct → integer (0-100)
+- webull_allocation.rebalance_threshold → integer (1-30)
+
+**Agent:**
+- agent.schedule_minutes → integer (15-240)
+- agent.min_confidence → "HIGH"|"MEDIUM"|"LOW"
+
+## EXECUTION AUTHORITY
+You are authorized to execute these proposal types automatically:
+- BUY_OPTION → buy OTM calls/puts on Webull
+- SELL_OPTION → sell/close options positions on Webull
+- EXIT_OPTION → trigger momentum exit on a specific position
+- CRYPTO_BUY → buy crypto on Coinbase
+- CRYPTO_SELL → sell crypto on Coinbase  
+- CRYPTO_ROTATE → sell one crypto, buy another
+- STOCK_BUY → buy stock on Webull
+- STOCK_SELL → sell stock on Webull
+- FUTURES_BUY → trigger futures scan/execution
+- CONFIG_CHANGE → modify any config parameter above
+- HOLD → do nothing (still report analysis)
+
 ## ANALYSIS FRAMEWORK
 For every cycle, you must:
 1. **Read the regime**: Bull/neutral/bear based on SPY/QQQ trend + VIX level
@@ -255,7 +305,7 @@ Format your response as JSON:
   "proposals": [
     {
       "id": "apex_YYYYMMDD_N",
-      "type": "BUY_OPTION|SELL_OPTION|CONFIG_CHANGE|HOLD|CRYPTO_ROTATE",
+      "type": "BUY_OPTION|SELL_OPTION|EXIT_OPTION|CONFIG_CHANGE|HOLD|CRYPTO_BUY|CRYPTO_SELL|CRYPTO_ROTATE|STOCK_BUY|STOCK_SELL|FUTURES_BUY",
       "title": "short title",
       "action": "specific action with exact parameters",
       "symbol": "ticker",
@@ -407,11 +457,12 @@ def _send_proposals_to_telegram(result: dict) -> None:
 
 
 def _execute_proposal(proposal: dict) -> bool:
-    """Execute a single agent proposal."""
+    """Execute a single agent proposal across all asset types."""
     ptype = str(proposal.get("type", "")).upper()
     _log(f"Executing proposal: {proposal.get('title')} type={ptype}")
 
     try:
+        # ── CONFIG CHANGE ──────────────────────────────────────────────────
         if ptype == "CONFIG_CHANGE":
             key = proposal.get("config_key")
             value = proposal.get("config_value")
@@ -427,23 +478,21 @@ def _execute_proposal(proposal: dict) -> bool:
                     json.dump(cfg, f, indent=2)
                 _log(f"Config updated: {key} = {value}")
                 from notify import _send
-                _send(f"✅ Agent applied config: {key} = {value}")
+                _send(f"✅ APEX config: {key} = {value}")
                 return True
 
+        # ── OPTIONS BUY / SELL ─────────────────────────────────────────────
         elif ptype in ("BUY_OPTION", "SELL_OPTION"):
             from brokers.webull_adapter import WebullAdapter
-            from options.screener import OptionsScreener
             symbol = str(proposal.get("symbol", "")).upper()
             opt_type = str(proposal.get("option_type", "call")).lower()
             strike = float(proposal.get("strike", 0))
             expiry = str(proposal.get("expiry", ""))
-            qty = int(proposal.get("qty", 1))
+            qty = abs(int(proposal.get("qty", 1)))
             side = "BUY" if ptype == "BUY_OPTION" else "SELL"
-
             if not all([symbol, strike, expiry, qty]):
                 _log(f"Missing order params: {proposal}")
                 return False
-
             adapter = WebullAdapter()
             order = {
                 "underlying": symbol,
@@ -451,24 +500,86 @@ def _execute_proposal(proposal: dict) -> bool:
                 "strike": strike,
                 "expiration": expiry,
                 "qty": qty,
-                "side": side,
-                "order_type": "LMT",
+                "side": side.lower(),
+                "order_type": "MKT",
             }
             result = adapter.place_options_order(order)
             if result.get("ok"):
                 from notify import _send
-                _send(f"✅ Agent executed: {side} {qty}x {symbol} {opt_type.upper()} ${strike} exp {expiry}")
-                _log(f"Order placed: {result.get('order_id')}")
+                _send(f"✅ APEX options: {side} {qty}x {symbol} {opt_type.upper()} ${strike} exp {expiry}")
+                _log(f"Options order placed: {result.get('order_id')}")
                 return True
             else:
-                _log(f"Order failed: {result.get('error')}")
+                _log(f"Options order failed: {result.get('error')}")
                 return False
 
-    except Exception as e:
-        _log(f"Execute error: {e}")
-        return False
+        # ── CRYPTO BUY / SELL ──────────────────────────────────────────────
+        elif ptype in ("CRYPTO_BUY", "CRYPTO_SELL", "CRYPTO_ROTATE"):
+            from rebalancer import run_rebalance
+            symbol = str(proposal.get("symbol", "")).upper()
+            if not symbol.endswith("-USD"):
+                symbol = f"{symbol}-USD"
+            side = "BUY" if "BUY" in ptype else "SELL"
+            usd_amount = float(proposal.get("estimated_cost") or proposal.get("total_cost") or 0)
+            action = proposal.get("action", "")
+            _log(f"Crypto {side} {symbol} ${usd_amount:.2f}")
+            # Use signal scanner for crypto execution
+            from signal_scanner import score_product
+            from rebalancer import execute_buy, execute_sell
+            if side == "BUY" and usd_amount > 0:
+                result = execute_buy(symbol, usd_amount, signal_type="APEX_BUY")
+            else:
+                result = execute_sell(symbol, signal_type="APEX_SELL")
+            ok = bool(result and result.get("ok"))
+            from notify import _send
+            _send(f"{'✅' if ok else '❌'} APEX crypto: {side} {symbol} ${usd_amount:.0f} — {'filled' if ok else result.get('error','failed')}")
+            return ok
 
-    return False
+        # ── STOCK BUY / SELL ───────────────────────────────────────────────
+        elif ptype in ("STOCK_BUY", "STOCK_SELL"):
+            from brokers.webull_adapter import WebullAdapter
+            symbol = str(proposal.get("symbol", "")).upper()
+            qty = abs(int(proposal.get("qty") or 1))
+            side = "BUY" if ptype == "STOCK_BUY" else "SELL"
+            adapter = WebullAdapter()
+            result = adapter.place_order(
+                symbol=symbol,
+                side=side,
+                qty=qty,
+                order_type="MKT"
+            )
+            ok = bool(result and result.get("ok"))
+            from notify import _send
+            _send(f"{'✅' if ok else '❌'} APEX stock: {side} {qty}x {symbol}")
+            _log(f"Stock order {'placed' if ok else 'failed'}: {symbol} {side} {qty}")
+            return ok
+
+        # ── FUTURES ────────────────────────────────────────────────────────
+        elif ptype in ("FUTURES_BUY", "FUTURES_SELL"):
+            from futures.executor import run_futures_scan_and_execute
+            _log(f"Triggering futures scan for {proposal.get('symbol')}")
+            result = run_futures_scan_and_execute()
+            ok = bool(result and result.get("ok"))
+            from notify import _send
+            _send(f"{'✅' if ok else '❌'} APEX futures scan triggered")
+            return ok
+
+        # ── EXIT POSITION (options) ────────────────────────────────────────
+        elif ptype in ("EXIT_OPTION", "CLOSE_OPTION"):
+            from options.executor import run_options_position_monitor
+            result = run_options_position_monitor(force_symbol=proposal.get("symbol","").upper())
+            ok = bool(result and result.get("ok"))
+            from notify import _send
+            _send(f"{'✅' if ok else '❌'} APEX exit: {proposal.get('symbol','')}")
+            return ok
+
+        else:
+            _log(f"Unknown proposal type: {ptype} — skipping")
+            return False
+
+    except Exception as e:
+        _log(f"Execute error ({ptype}): {e}")
+        return False
 
 
 def approve_proposal(proposal_id: str) -> dict:

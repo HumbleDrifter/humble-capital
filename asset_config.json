@@ -252,11 +252,11 @@
   },
   "agent": {
     "enabled": true,
-    "auto_execute": false,
+    "auto_execute": true,
     "schedule_minutes": 30,
-    "min_confidence": "HIGH",
-    "uw_enabled": false,
-    "max_proposals_per_cycle": 5,
+    "min_confidence": "MEDIUM",
+    "uw_enabled": true,
+    "max_proposals_per_cycle": 8,
     "focus": [
       "meme_flow",
       "darkpool",

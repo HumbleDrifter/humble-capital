@@ -306,7 +306,7 @@ Be specific, aggressive, and data-driven. If UW data is not configured, work wit
         client = anthropic.Anthropic(api_key=api_key)
         response = client.messages.create(
             model="claude-sonnet-4-5",
-            max_tokens=2000,
+            max_tokens=4000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}]
         )
@@ -348,41 +348,55 @@ Be specific, aggressive, and data-driven. If UW data is not configured, work wit
 
 
 def _send_proposals_to_telegram(result: dict) -> None:
-    """Send agent proposals to Telegram with approve/reject options."""
+    """Send agent proposals to Telegram — clean, concise format."""
     try:
         from notify import _send
         auto = _auto_execute()
         proposals = result.get("proposals", [])
-        actionable = [p for p in proposals if p.get("type") != "HOLD"]
+        actionable = [p for p in proposals if p.get("type") not in ("HOLD",)]
+        holds = [p for p in proposals if p.get("type") == "HOLD"]
 
-        lines = [
-            f"🤖 Agent Analysis",
-            f"",
-            f"📊 {result.get('market_assessment', '')}",
-            f"",
-        ]
+        # Header
+        regime = result.get("regime", "neutral").upper()
+        regime_emoji = "🟢" if regime == "BULL" else "🔴" if regime == "BEAR" else "🟡"
+        lines = [f"🤖 APEX — {regime_emoji} {regime}"]
 
+        # Market assessment (truncated)
+        assessment = str(result.get("market_assessment", ""))[:150]
+        if assessment:
+            lines.append(f"📊 {assessment}")
+
+        lines.append("")
+
+        # Actionable proposals
         if actionable:
-            lines.append(f"📋 {len(actionable)} Proposals:")
-            for p in actionable[:5]:
-                conf_emoji = "🟢" if p.get("confidence") == "HIGH" else "🟡" if p.get("confidence") == "MEDIUM" else "🔴"
+            lines.append(f"⚡ {len(actionable)} Action{'s' if len(actionable)>1 else ''}:")
+            for p in actionable[:4]:
+                conf_emoji = "🟢" if p.get("confidence") == "HIGH" else "🟡"
+                ptype = p.get("type","").replace("_"," ")
                 lines.append(f"")
-                lines.append(f"{conf_emoji} {p.get('title', p.get('type', ''))}")
-                lines.append(f"  {p.get('action', '')}")
-                if p.get("estimated_cost"):
-                    lines.append(f"  Cost: ${p.get('estimated_cost', 0):.0f}")
-                lines.append(f"  {p.get('reasoning', '')[:100]}")
+                lines.append(f"{conf_emoji} {p.get('title','')}")
+                lines.append(f"  {p.get('action','')[:120]}")
                 if not auto:
-                    lines.append(f"  APPROVE_{p.get('id', '')} | REJECT_{p.get('id', '')}")
-        else:
-            lines.append("✅ No actionable proposals — current setup looks optimal")
+                    pid = p.get("id","")
+                    lines.append(f"  ✅ APPROVE_{pid}")
+                    lines.append(f"  ❌ REJECT_{pid}")
+                else:
+                    lines.append(f"  ⚡ AUTO-EXECUTING (HIGH confidence)")
 
-        if auto:
+        # Holds summary
+        if holds:
+            hold_names = ", ".join(p.get("symbol","?") for p in holds[:4])
             lines.append(f"")
-            lines.append(f"⚡ Auto-execute ON — HIGH confidence proposals will execute automatically")
+            lines.append(f"⏸ Holding: {hold_names}")
 
-        lines.append(f"")
-        lines.append(f"💬 {result.get('summary', '')[:200]}")
+        # Footer
+        if auto and actionable:
+            lines.append(f"")
+            lines.append(f"⚡ Auto-execute ON — executing HIGH confidence proposals")
+        elif not auto and actionable:
+            lines.append(f"")
+            lines.append(f"Reply APPROVE_[id] or REJECT_[id]")
 
         _send("\n".join(lines))
     except Exception as e:

@@ -918,12 +918,27 @@ def _execute_proposal(proposal: dict) -> bool:
 
 
 def _get_current_options_bp() -> float:
-    """Get current options buying power from Webull."""
+    """
+    Get SETTLED options buying power from Webull.
+    Uses settled_cash to avoid Good Faith Violations (GFV).
+    Options settle T+1 — never buy with unsettled proceeds.
+    """
     try:
         from brokers.webull_adapter import WebullAdapter
         info = WebullAdapter().get_account_info()
         raw = info.get("raw", {}).get("account_currency_assets", [{}])[0]
-        return float(raw.get("option_buying_power") or 0)
+        option_bp = float(raw.get("option_buying_power") or 0)
+        settled = float(raw.get("settled_cash") or 0)
+        # Use the lower of option_bp and settled_cash to avoid GFV
+        # If settled_cash is negative, we have unsettled funds — use 0
+        safe_bp = max(0.0, min(option_bp, settled))
+        if settled < 0:
+            from agent import _log
+            _log(f"GFV WARNING: settled_cash=${settled:.2f} — restricting BP to $0 until funds settle")
+        elif settled < option_bp:
+            from agent import _log
+            _log(f"GFV protection: using settled_cash=${settled:.2f} instead of option_bp=${option_bp:.2f}")
+        return safe_bp
     except Exception:
         return 0.0
 

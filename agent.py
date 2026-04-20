@@ -610,7 +610,15 @@ def _execute_proposal(proposal: dict) -> bool:
             side = "BUY" if "BUY" in ptype else "SELL"
             # Always use positive amount — use position value not P&L
             raw_amount = float(proposal.get("estimated_cost") or proposal.get("total_cost") or 0)
-            usd_amount = abs(raw_amount) if raw_amount != 0 else 50
+            if raw_amount != 0:
+                usd_amount = abs(raw_amount)
+            else:
+                # No amount specified — use 5% of total portfolio as default sizing
+                try:
+                    port_total = float(portfolio.get("total_value") or 0)
+                    usd_amount = max(25, round(port_total * 0.05, 2))
+                except Exception:
+                    usd_amount = 100
             _log(f"Crypto {side} {symbol} ${usd_amount:.2f}")
             try:
                 if side == "BUY":
@@ -758,20 +766,23 @@ def execute_proposals_in_order(proposals: list) -> dict:
         # For BUY orders — check available capital first
         if ptype in ("BUY_OPTION",):
             bp = _get_current_options_bp()
-            cost = float(proposal.get("total_cost") or proposal.get("estimated_cost") or 0)
+            cost_per = float(proposal.get("cost_per_contract") or 0)
+            qty_proposed = int(proposal.get("qty") or 1)
+            cost = float(proposal.get("total_cost") or proposal.get("estimated_cost") or (cost_per * qty_proposed))
+            
+            if cost_per <= 0 and cost > 0:
+                cost_per = cost / max(qty_proposed, 1)
+
             if cost > bp:
-                # Try to resize based on available BP
-                cost_per = float(proposal.get("cost_per_contract") or 0)
                 if cost_per > 0 and bp >= cost_per:
-                    new_qty = max(1, int(bp * 0.8 / cost_per))  # use 80% of BP
-                    old_qty = int(proposal.get("qty") or 1)
-                    if new_qty < old_qty:
-                        proposal = dict(proposal)
-                        proposal["qty"] = new_qty
-                        proposal["total_cost"] = new_qty * cost_per
-                        _log(f"Resized {proposal.get('symbol')} from {old_qty} to {new_qty} contracts (BP: ${bp:.0f})")
-                elif bp < cost_per:
-                    _log(f"Skipping {proposal.get('title')} — cost ${cost:.0f} > BP ${bp:.0f}")
+                    # Resize qty to fit available BP (use 90% of BP)
+                    new_qty = max(1, int(bp * 0.9 / cost_per))
+                    _log(f"Resized {proposal.get('symbol')} from {qty_proposed} to {new_qty} contracts (BP: ${bp:.0f}, cost/contract: ${cost_per:.2f})")
+                    proposal = dict(proposal)
+                    proposal["qty"] = new_qty
+                    proposal["total_cost"] = new_qty * cost_per
+                elif bp < (cost_per or 1):
+                    _log(f"Skipping {proposal.get('title')} — insufficient BP ${bp:.0f} < ${cost_per:.0f}/contract")
                     continue
 
         ok = _execute_proposal(proposal)

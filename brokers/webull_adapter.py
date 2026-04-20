@@ -667,6 +667,14 @@ class WebullAdapter(BrokerAdapter):
             order_type = "LIMIT"
         if not symbol or side not in {"BUY", "SELL"} or qty <= 0:
             return broker_result(False, broker=self.name, mode=self._mode(), error="invalid_options_order")
+        # Reject expired contracts
+        try:
+            from datetime import date as _date
+            _exp = str(order.get('expiration') or '')
+            if _exp and _date.fromisoformat(_exp) < _date.today():
+                return broker_result(False, broker=self.name, mode=self._mode(), error=f'expired_contract:{_exp}')
+        except Exception:
+            pass
         try:
             _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()

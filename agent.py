@@ -144,7 +144,7 @@ def _get_bot_config() -> dict:
         return {}
 
 
-def run_agent_cycle() -> dict:
+def run_agent_cycle(mode: str = "full") -> dict:
     """
     Main agent cycle — analyze portfolio + market data,
     generate proposals, send via Telegram.

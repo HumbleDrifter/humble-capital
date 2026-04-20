@@ -459,13 +459,13 @@ def create_app():
         _is_primary = False
 
     if _is_primary:
-        print(f"[startup] primary worker {_worker_id} — starting Telegram + agent", flush=True)
+        print(f"[startup] primary worker {_worker_id} — starting Telegram", flush=True)
         _telegram_thread = threading.Thread(target=_telegram_polling_loop, daemon=True, name="telegram_polling")
         _telegram_thread.start()
-        _agent_thread = threading.Thread(target=_agent_loop, daemon=True, name="agent_loop")
-        _agent_thread.start()
+        # Agent runs as separate systemd service (tradingbot-agent.service)
+        # This prevents Anthropic API calls from blocking web requests
     else:
-        print(f"[startup] secondary worker {_worker_id} — skipping Telegram + agent", flush=True)
+        print(f"[startup] secondary worker {_worker_id} — skipping Telegram", flush=True)
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

@@ -517,24 +517,27 @@ def _execute_proposal(proposal: dict) -> bool:
 
         # ── CRYPTO BUY / SELL ──────────────────────────────────────────────
         elif ptype in ("CRYPTO_BUY", "CRYPTO_SELL", "CRYPTO_ROTATE"):
-            from rebalancer import run_rebalance
             symbol = str(proposal.get("symbol", "")).upper()
             if not symbol.endswith("-USD"):
                 symbol = f"{symbol}-USD"
             side = "BUY" if "BUY" in ptype else "SELL"
-            usd_amount = float(proposal.get("estimated_cost") or proposal.get("total_cost") or 0)
-            action = proposal.get("action", "")
+            usd_amount = float(proposal.get("estimated_cost") or proposal.get("total_cost") or 50)
             _log(f"Crypto {side} {symbol} ${usd_amount:.2f}")
-            # Use signal scanner for crypto execution
-            from signal_scanner import score_product
-            from rebalancer import execute_buy, execute_sell
-            if side == "BUY" and usd_amount > 0:
-                result = execute_buy(symbol, usd_amount, signal_type="APEX_BUY")
-            else:
-                result = execute_sell(symbol, signal_type="APEX_SELL")
-            ok = bool(result and result.get("ok"))
+            try:
+                if side == "BUY":
+                    from rebalancer import execute_buy
+                    result = execute_buy(symbol, usd_amount, signal_type="APEX_BUY")
+                else:
+                    from rebalancer import execute_trim
+                    from portfolio import get_portfolio_snapshot
+                    snap = get_portfolio_snapshot()
+                    result = execute_trim(symbol, usd_amount, snap, signal_type="APEX_SELL")
+                ok = bool(result and (result.get("ok") or result.get("filled")))
+            except Exception as ce:
+                _log(f"Crypto execute error: {ce}")
+                ok = False
             from notify import _send
-            _send(f"{'✅' if ok else '❌'} APEX crypto: {side} {symbol} ${usd_amount:.0f} — {'filled' if ok else result.get('error','failed')}")
+            _send(f"{'✅' if ok else '❌'} APEX crypto: {side} {symbol} ${usd_amount:.0f}")
             return ok
 
         # ── STOCK BUY / SELL ───────────────────────────────────────────────

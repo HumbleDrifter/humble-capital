@@ -521,21 +521,29 @@ def _execute_proposal(proposal: dict) -> bool:
             if not symbol.endswith("-USD"):
                 symbol = f"{symbol}-USD"
             side = "BUY" if "BUY" in ptype else "SELL"
-            usd_amount = float(proposal.get("estimated_cost") or proposal.get("total_cost") or 50)
+            # Always use positive amount — use position value not P&L
+            raw_amount = float(proposal.get("estimated_cost") or proposal.get("total_cost") or 0)
+            usd_amount = abs(raw_amount) if raw_amount != 0 else 50
             _log(f"Crypto {side} {symbol} ${usd_amount:.2f}")
             try:
                 if side == "BUY":
                     from rebalancer import execute_buy
                     result = execute_buy(symbol, usd_amount, signal_type="APEX_BUY")
                 else:
-                    from rebalancer import execute_trim
+                    # For sells, get actual position value from portfolio
                     from portfolio import get_portfolio_snapshot
                     snap = get_portfolio_snapshot()
-                    result = execute_trim(symbol, usd_amount, snap, signal_type="APEX_SELL")
+                    positions = snap.get("positions", {})
+                    pos_value = float((positions.get(symbol) or {}).get("value_total_usd") or usd_amount)
+                    if pos_value <= 0:
+                        pos_value = usd_amount
+                    from rebalancer import execute_trim
+                    result = execute_trim(symbol, pos_value, snap, signal_type="APEX_SELL")
                 ok = bool(result and (result.get("ok") or result.get("filled")))
             except Exception as ce:
                 _log(f"Crypto execute error: {ce}")
                 ok = False
+                result = {"error": str(ce)}
             from notify import _send
             _send(f"{'✅' if ok else '❌'} APEX crypto: {side} {symbol} ${usd_amount:.0f}")
             return ok

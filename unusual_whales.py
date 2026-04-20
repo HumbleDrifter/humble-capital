@@ -8,7 +8,7 @@ from typing import Optional
 
 _BASE = "https://api.unusualwhales.com"
 _CACHE: dict = {}
-_CACHE_TTL = 60  # 1 minute default cache
+_CACHE_TTL = 300  # 5 minute default cache — reduces API hammering
 
 
 def _key():
@@ -32,7 +32,7 @@ def _get(path: str, params: dict = None, ttl: int = _CACHE_TTL) -> dict:
             f"{_BASE}{path}",
             headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
             params=params or {},
-            timeout=10,
+            timeout=5,
         )
         data = resp.json() if resp.ok else {"error": resp.text, "data": []}
         _CACHE[cache_key] = (data, time.time())
@@ -45,7 +45,7 @@ def _get(path: str, params: dict = None, ttl: int = _CACHE_TTL) -> dict:
 
 def get_flow_alerts(limit: int = 50) -> list:
     """Get recent unusual options flow alerts — sweeps, large prints, whales."""
-    data = _get("/api/option-trades/flow-alerts", {"limit": limit}, ttl=30)
+    data = _get("/api/option-trades/flow-alerts", {"limit": limit}, ttl=120)
     return data.get("data", []) if isinstance(data, dict) else []
 
 

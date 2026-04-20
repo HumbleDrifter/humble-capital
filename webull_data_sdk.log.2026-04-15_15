@@ -1,0 +1,3450 @@
+139917300315712 2026-04-15 16:54:42,066 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:42Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "642004d5-191b-510d-a274-eaf631c83faa",
+    "x-signature": "bLBiOC68Rvu2/YPIuI7J/QqF8To=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "3e203957274549bdbe17ca9933b6b085",
+        "underlying": "WDC",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"3e203957274549bdbe17ca9933b6b085\",\"underlying\":\"WDC\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:42,233 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:42Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "4d6abd22-8a42-5c17-917e-5d1227468dfe",
+    "x-signature": "IWQvIr70to5FwNCzp/+Rv+c6ALw=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "317",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "509fc072f7514e1ab075147564d1abb0",
+        "underlying": "MU",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"509fc072f7514e1ab075147564d1abb0\",\"underlying\":\"MU\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:43,745 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:43Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "921038b0-afc4-5561-a309-a9112f198b2a",
+    "x-signature": "N/0ybvX7KVajifHQie6prB4Uids=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "317",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "9bfbb31975e54c01b3b2dddf1c23a6e2",
+        "underlying": "MU",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"9bfbb31975e54c01b3b2dddf1c23a6e2\",\"underlying\":\"MU\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:44,101 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:44Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "555b4933-2d9e-5504-ab10-ae435d8ba470",
+    "x-signature": "RrPl/KGN/bc8OheUXWI4ayMN+FE=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "320",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "5de01123c58a4b6fbb118351d0860c0a",
+        "underlying": "HOOD",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "CALL",
+        "side": "SELL",
+        "qty": 33,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"5de01123c58a4b6fbb118351d0860c0a\",\"underlying\":\"HOOD\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"CALL\",\"side\":\"SELL\",\"qty\":33,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:45,092 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:45Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "e3720972-a76e-51e3-b8d8-39c4031c5c52",
+    "x-signature": "EHPBJb7lOspg4L/uSOsl+5dO2sc=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "85407960dd36411fa33b4ca6e1ecd8ac",
+        "underlying": "GLW",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"85407960dd36411fa33b4ca6e1ecd8ac\",\"underlying\":\"GLW\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:45,372 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:45Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "6dc1a726-d199-55b2-be6d-757922d25f9b",
+    "x-signature": "vRuPtvbnTb0kBB43kBvcjd+Kw+8=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "320",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "d633a4a5ffa74bc59fd1038d8308ca67",
+        "underlying": "AAPL",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "CALL",
+        "side": "SELL",
+        "qty": 33,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"d633a4a5ffa74bc59fd1038d8308ca67\",\"underlying\":\"AAPL\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"CALL\",\"side\":\"SELL\",\"qty\":33,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:48,306 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:48Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "c17f3082-d3eb-559f-9c80-37f525174656",
+    "x-signature": "wxLhnc7zUm5Q28Lm7sPCfRAryQ0=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "320",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "be8682ab1c2842a0b715e722d1e990cf",
+        "underlying": "RIOT",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "CALL",
+        "side": "SELL",
+        "qty": 33,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"be8682ab1c2842a0b715e722d1e990cf\",\"underlying\":\"RIOT\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"CALL\",\"side\":\"SELL\",\"qty\":33,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:48,602 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:48Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "9215fc8d-5281-5cd9-886b-3d27e40f4c3e",
+    "x-signature": "rfOFDgcIOSX+VNJ7kANdRA8n6o0=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "320",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "d33f0dbaf16b43d1853a1a1acd7a3013",
+        "underlying": "PLTR",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "CALL",
+        "side": "SELL",
+        "qty": 33,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"d33f0dbaf16b43d1853a1a1acd7a3013\",\"underlying\":\"PLTR\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"CALL\",\"side\":\"SELL\",\"qty\":33,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:50,051 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:50Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "8d1c6063-310e-54a2-b1c6-45b340e20cde",
+    "x-signature": "ACTzIiSTpcyevBdz3EiGv0JIqcE=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "752cf64b40ad41a98e6f8bc0406d45fe",
+        "underlying": "PLTR",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"752cf64b40ad41a98e6f8bc0406d45fe\",\"underlying\":\"PLTR\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:51,159 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:51Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "b5780340-4a03-594e-8d68-b8fe3aed43ff",
+    "x-signature": "CKbaFtdgmZlHzRvJ3IfAMhWxiZ0=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "fbf5c1cadd254b62932e4bfc43ec3dd4",
+        "underlying": "PLTR",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"fbf5c1cadd254b62932e4bfc43ec3dd4\",\"underlying\":\"PLTR\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:51,361 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:51Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "cc46bff4-08fe-5d9c-b062-c359db5d3ca6",
+    "x-signature": "qdrAUnkPLSqyrpM+5G99V3I6YEw=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "c9b6893e9f104344a4d22c5f64dd86d6",
+        "underlying": "INTC",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"c9b6893e9f104344a4d22c5f64dd86d6\",\"underlying\":\"INTC\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:51,627 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:51Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "7a6a716d-fa75-5f90-a0da-7dfa1d493fa1",
+    "x-signature": "DzzbPcSkxceVokvMbqZoD7Os/ZU=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "a191414bc2d04692918323d94e99dcf3",
+        "underlying": "ANET",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"a191414bc2d04692918323d94e99dcf3\",\"underlying\":\"ANET\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:52,546 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:52Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "12e35784-e064-5b29-937f-e575fe279bb2",
+    "x-signature": "KSV7Tf+/+ANhEqWm9+MUhXJYTz4=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "87156776fc774276a1b0f1eb00058c61",
+        "underlying": "WDC",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"87156776fc774276a1b0f1eb00058c61\",\"underlying\":\"WDC\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:52,919 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:52Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "5ce00f41-4c63-53fe-ae23-4065f6393026",
+    "x-signature": "kykr2MVw+9FQuf6IC8jYAepawUc=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "4fe94daf3e4f4f0f9837a466f2deca39",
+        "underlying": "AMD",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"4fe94daf3e4f4f0f9837a466f2deca39\",\"underlying\":\"AMD\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:55,875 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:55Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "886138b2-4f74-5a7d-8f33-c5e1d06638b7",
+    "x-signature": "rIadzoF/rafUm8FbpWN0q+6v5UM=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "ec9520a39a364129a14be4c1b1f0b982",
+        "underlying": "MSTR",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"ec9520a39a364129a14be4c1b1f0b982\",\"underlying\":\"MSTR\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:56,732 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:56Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "6cf66d31-c39e-5650-846f-cce0c678ba21",
+    "x-signature": "ndGt648V8ODKI8vBYqkZb81esb8=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "7ff055a2535840c4b396123a2833bb37",
+        "underlying": "LYFT",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"7ff055a2535840c4b396123a2833bb37\",\"underlying\":\"LYFT\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:56,927 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:56Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "31233deb-62a5-5f32-a286-90a3f3f637be",
+    "x-signature": "y73EdKC/TZbh7yhVTIy8LvWn7eQ=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "43ef15568b4843dd9da4ea2cc8bcf040",
+        "underlying": "RGTI",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"43ef15568b4843dd9da4ea2cc8bcf040\",\"underlying\":\"RGTI\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:57,815 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:57Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "30d61a6d-0217-5ab1-9489-fff4acf32dc9",
+    "x-signature": "PTjuovAuW4JHDgJSr70qaQQ/qiU=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "2318dc66add943e6af3b00d8afd04a29",
+        "underlying": "PYPL",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"2318dc66add943e6af3b00d8afd04a29\",\"underlying\":\"PYPL\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:58,822 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:58Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "16127f90-c751-5cb1-a34d-5971fa016157",
+    "x-signature": "bczOe8EbCiSDRZKrbhg+J0k82Y4=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "96ec4a3330ad4f668a6cd6026e2216dd",
+        "underlying": "CMG",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"96ec4a3330ad4f668a6cd6026e2216dd\",\"underlying\":\"CMG\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:59,633 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:59Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "3a0fcae4-5f1c-56fc-9571-17d8312f4c4b",
+    "x-signature": "/Z9CFrCcfRDuow1BMUkhS/q128o=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "218ad37b14b749f18539ea2ef03f2db0",
+        "underlying": "AMZN",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"218ad37b14b749f18539ea2ef03f2db0\",\"underlying\":\"AMZN\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:54:59,818 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:54:59Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "3533733f-2e9c-587a-ba84-4c361750e505",
+    "x-signature": "X9zJyEqDUOl+EuMFNgzSnAWRuqQ=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "ff7a1423ca4b451d983f3e9f396c72ab",
+        "underlying": "CCL",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"ff7a1423ca4b451d983f3e9f396c72ab\",\"underlying\":\"CCL\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:00,629 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:00Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "02006955-20ea-55da-8d76-f74a20a2c4c5",
+    "x-signature": "jnf5+hQ021brw9mTWQXWeyhqfPk=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "ad4de3bc207a4380bc47a23b07037229",
+        "underlying": "AMAT",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"ad4de3bc207a4380bc47a23b07037229\",\"underlying\":\"AMAT\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:02,215 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:02Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "17e4836d-a89f-5abe-86d4-bc15f2d7b73a",
+    "x-signature": "beBACj+PUTRMk922jse30JDT8F0=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "0d6c5cd25c9f4406b7fa42b004d47bc4",
+        "underlying": "MSFT",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"0d6c5cd25c9f4406b7fa42b004d47bc4\",\"underlying\":\"MSFT\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:04,088 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:04Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "75bbd101-6956-555a-aa5d-fc6e54cb415b",
+    "x-signature": "K5nxkkIzwKdkPYV0sKI/7K5PtJI=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "317",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "75352177654d44e7be2e8a1c55ae666f",
+        "underlying": "BX",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"75352177654d44e7be2e8a1c55ae666f\",\"underlying\":\"BX\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:04,547 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:04Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "be8ae67c-8609-54da-bbeb-558b625717c8",
+    "x-signature": "VsWLyZBinxHzNCE917VgLzdU1Nw=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "f4273cd2bf8b407b9e47ba8732227c40",
+        "underlying": "CCL",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"f4273cd2bf8b407b9e47ba8732227c40\",\"underlying\":\"CCL\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:06,559 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:06Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "61ef67f7-88aa-5e10-a960-dfc5e4a4f0df",
+    "x-signature": "b2431Sx8XtkbDYfHosuVgWJE378=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "66c3994281244de89649933e527604e0",
+        "underlying": "ORCL",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"66c3994281244de89649933e527604e0\",\"underlying\":\"ORCL\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:06,851 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:06Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "948af92b-a970-5076-a492-d0791af42ed6",
+    "x-signature": "NPH35nxXnavCOsmxbqCUVw2l+i8=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "4fc953d107464cd784860b6212a19bfe",
+        "underlying": "NET",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"4fc953d107464cd784860b6212a19bfe\",\"underlying\":\"NET\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:08,464 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:08Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "14ac25cb-43b9-588e-b7ea-31579cd13a8b",
+    "x-signature": "vNITZIXjWq2RKxXzuiDpm5EvThs=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "311d3ae200f1432cbc21345b633413aa",
+        "underlying": "CMG",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"311d3ae200f1432cbc21345b633413aa\",\"underlying\":\"CMG\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:09,004 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:08Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "4580256c-cb5a-56fe-8998-84652bef9804",
+    "x-signature": "05jXTR+lnWSEAvLA6CYDfT8f8JA=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "317",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "c0e7e4ba1a1c4efdb138695615285332",
+        "underlying": "MU",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"c0e7e4ba1a1c4efdb138695615285332\",\"underlying\":\"MU\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:10,253 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:10Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "9b3fda93-3095-5dd9-aa3e-d402759c0ff6",
+    "x-signature": "YbPjUPq0h2YCsmtxc2e3rvLXch8=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "0ffda6d0fdb54260a1e79ee58d2e17a2",
+        "underlying": "AMAT",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"0ffda6d0fdb54260a1e79ee58d2e17a2\",\"underlying\":\"AMAT\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:11,282 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:11Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "19f8fcdd-e96d-5d89-a869-89271d978958",
+    "x-signature": "EEp/fcD82/MgzQ+kHgJUWgHidUY=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "320",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "73df71d5dd0047a7b327ccb72d7fb611",
+        "underlying": "PLTR",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "CALL",
+        "side": "SELL",
+        "qty": 33,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"73df71d5dd0047a7b327ccb72d7fb611\",\"underlying\":\"PLTR\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"CALL\",\"side\":\"SELL\",\"qty\":33,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:11,480 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:11Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "89f1040b-df4a-548b-b262-e7f0857ed789",
+    "x-signature": "ZYYJIL4E8kY/vEeBR6zjWeV5/L0=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "a9e7db5df4a244319f2d263ddca6a30a",
+        "underlying": "NET",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"a9e7db5df4a244319f2d263ddca6a30a\",\"underlying\":\"NET\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:14,282 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:14Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "f067d5d8-86a0-5b80-9b1b-c69e7842351f",
+    "x-signature": "Bc9QVQybB25MSlDioSmyBdYI8ec=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "a792896a773b4a8c865bd403d56f6f0a",
+        "underlying": "MSFT",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"a792896a773b4a8c865bd403d56f6f0a\",\"underlying\":\"MSFT\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:14,511 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:14Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "bfbe2243-5d33-557a-9e7d-99d05036198a",
+    "x-signature": "v+Niz7OxyU49yNnLanyalBM89Sw=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "a1d4339febc8451e87e3d21a272c23bb",
+        "underlying": "WDC",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"a1d4339febc8451e87e3d21a272c23bb\",\"underlying\":\"WDC\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:15,673 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:15Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "4e1fe60a-485f-56ca-b2a4-ba2d447a4aa2",
+    "x-signature": "K/eD8PMEl2rmvoJplgYgzb4qYGc=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "e6d30f7642b24a5da8b2933ca4a52aad",
+        "underlying": "INTC",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"e6d30f7642b24a5da8b2933ca4a52aad\",\"underlying\":\"INTC\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:16,000 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:15Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "23f7bf9b-a528-58f8-b58b-8c760833b96b",
+    "x-signature": "cq7nb4i218/Y3RPWrSBlLAFrX5c=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "317",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "a48fa4cfafda40b380ec63f09aabcd24",
+        "underlying": "MU",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"a48fa4cfafda40b380ec63f09aabcd24\",\"underlying\":\"MU\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:16,948 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:16Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "ded064be-3ada-58d1-8755-ead67e784a59",
+    "x-signature": "MdJyGLR+WhzhU6TTXbEdb4OmYas=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "e513f4cb51df46ef85c25b5ab579fe9b",
+        "underlying": "LYFT",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"e513f4cb51df46ef85c25b5ab579fe9b\",\"underlying\":\"LYFT\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:17,848 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:17Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "31d0869d-cba1-5ed2-b7ba-f3a485f6a6a0",
+    "x-signature": "RpWXQsw1n7l0+wsmBloIjyB8rpQ=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "f6686494d6a6477aa188abd9fb1187b6",
+        "underlying": "NEM",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"f6686494d6a6477aa188abd9fb1187b6\",\"underlying\":\"NEM\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:18,220 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:18Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "76c02fa3-d7ff-5205-ad62-55dc24294482",
+    "x-signature": "kv3VYj0/DYxa9up1+G//uq8UCAo=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "20723818ba604b98a6a30c3cb1ad044f",
+        "underlying": "CCL",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"20723818ba604b98a6a30c3cb1ad044f\",\"underlying\":\"CCL\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:19,339 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:19Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "802a9310-3d59-5e7a-9484-fb740f9462f9",
+    "x-signature": "2zj8rTNVdrP0wRs8jm8ooBOynis=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "9a8b1ed82b1041d3902330364b9b52c6",
+        "underlying": "BKNG",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"9a8b1ed82b1041d3902330364b9b52c6\",\"underlying\":\"BKNG\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:20,235 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:20Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "12e352f9-6bb5-53a6-bfbc-a1b1a6486242",
+    "x-signature": "tvHTEV3yFd2P3Z43M7OIJc0h6I4=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "241d66b4c52d4f2098e38b6ae4093783",
+        "underlying": "MSTR",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"241d66b4c52d4f2098e38b6ae4093783\",\"underlying\":\"MSTR\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:20,437 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:20Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "63130736-3cba-53b1-8494-f1c876b948a4",
+    "x-signature": "p1jq0D8coHXqCBU7aQYvXJo30VY=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "317",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "bfa997fdb9794e08bb98d58a70c292f2",
+        "underlying": "MU",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"bfa997fdb9794e08bb98d58a70c292f2\",\"underlying\":\"MU\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:21,523 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:21Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "5e6e8c9b-165f-5ecc-bafc-61300e5d333d",
+    "x-signature": "iI7GuWrpUaxirAu//Zft4cYFv8w=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "317",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "954f5c8a535442a1a9dedf4df82ba75b",
+        "underlying": "MU",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"954f5c8a535442a1a9dedf4df82ba75b\",\"underlying\":\"MU\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:22,504 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:22Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "e7edae02-39aa-50ff-a670-7fe6c2db9d6a",
+    "x-signature": "lMgyQ4pOM1NGtj894rN7is3YfKM=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "72365098183f4a63a1ffa49d17efba71",
+        "underlying": "NFLX",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"72365098183f4a63a1ffa49d17efba71\",\"underlying\":\"NFLX\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:22,836 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:22Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "6cc35444-0201-5fc3-a416-3fbdf6a445b9",
+    "x-signature": "GbgyjJZfA8ZCzFDXIgaaLTtjcH8=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "cd1ab660397d4f8293d8b3bf6c32042d",
+        "underlying": "MRVL",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"cd1ab660397d4f8293d8b3bf6c32042d\",\"underlying\":\"MRVL\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:24,160 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:24Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "154162e0-1f86-5322-9465-74a5e5bbcdae",
+    "x-signature": "dmMraz9jrNkS4uiMuaWMUqZe9O0=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "3be3ecc4ddf948e4b85b2f1789ef5474",
+        "underlying": "AMD",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"3be3ecc4ddf948e4b85b2f1789ef5474\",\"underlying\":\"AMD\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:24,354 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:24Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "51b2e7b4-925f-5040-8b3e-0c788d8c15fa",
+    "x-signature": "EvunZX5Xm7PDznmAb92vUA98kD4=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "36a2c450842045cabd7a46d6114e53e7",
+        "underlying": "UNH",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"36a2c450842045cabd7a46d6114e53e7\",\"underlying\":\"UNH\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:25,922 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:25Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "600e8c22-b4cd-5c7a-8e7d-7642a1ecee82",
+    "x-signature": "UHpQDtY37EleyYLOEf3c3EjdSMc=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "0ec04c4f0d6f42efb6a0e713c493beba",
+        "underlying": "NFLX",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"0ec04c4f0d6f42efb6a0e713c493beba\",\"underlying\":\"NFLX\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:26,123 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:26Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "1d094f37-70c4-5fb2-975d-706d77731369",
+    "x-signature": "E+BgE9Oulz9+GpTwEERA3AqAO28=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "1c6cd0b39168402eb97ec4a6b543b110",
+        "underlying": "ORCL",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"1c6cd0b39168402eb97ec4a6b543b110\",\"underlying\":\"ORCL\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:27,073 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:27Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "34a31099-6326-56fa-92e4-1c862955eb0f",
+    "x-signature": "vmYm3iEBcsDt5Ys9HgSXVbcx0Ys=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "346a8321e55a4ff4955741001c3b65ab",
+        "underlying": "MSTR",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"346a8321e55a4ff4955741001c3b65ab\",\"underlying\":\"MSTR\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:27,859 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:27Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "f92a4fbf-3a70-5ac8-858c-36770414d857",
+    "x-signature": "vJGawACd/NdMg+0LzMdLUcV+Olo=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "cd6df2fa7863463ca464a1343575539c",
+        "underlying": "RIVN",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"cd6df2fa7863463ca464a1343575539c\",\"underlying\":\"RIVN\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:28,058 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:28Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "ab6c8f3f-4e7a-567f-bfb7-6c26226f279a",
+    "x-signature": "7hIf3Y+mdguNbcMGWDBhWmnu8VU=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "b7da77e9f73849dd8d9c2b7b27796c68",
+        "underlying": "PYPL",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"b7da77e9f73849dd8d9c2b7b27796c68\",\"underlying\":\"PYPL\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:29,452 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:29Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "11cd3185-7f09-5faa-81bf-e0c2ebc985b5",
+    "x-signature": "0SvREZo4wmqzwLqbc4hnS/RB76A=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "320",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "1932ebbe4c4949b6bd200c35af7fa0e9",
+        "underlying": "RIOT",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "CALL",
+        "side": "SELL",
+        "qty": 33,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"1932ebbe4c4949b6bd200c35af7fa0e9\",\"underlying\":\"RIOT\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"CALL\",\"side\":\"SELL\",\"qty\":33,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:30,471 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:30Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "8503d329-47c7-560d-b5e6-e79ebe373912",
+    "x-signature": "ALdQLxcTQpPExFNCphWse8k82bg=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "9571922c02984166872fa26e3c7e48a7",
+        "underlying": "QCOM",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"9571922c02984166872fa26e3c7e48a7\",\"underlying\":\"QCOM\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:30,822 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:30Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "23c4e3c0-1ab3-5974-8d0d-a63f70c8dd50",
+    "x-signature": "a6VApBvLHm6oY1xfom0WbKWzwo4=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "320",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "045c647c9e024eb991e33bb85ec3aec9",
+        "underlying": "PLTR",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "CALL",
+        "side": "SELL",
+        "qty": 33,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"045c647c9e024eb991e33bb85ec3aec9\",\"underlying\":\"PLTR\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"CALL\",\"side\":\"SELL\",\"qty\":33,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:32,047 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:32Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "7e123ea9-4307-5034-95fe-be85058662ca",
+    "x-signature": "yfU/GcwZMpetMyJbhNGpdAbul1k=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "304b8c29c12a4d88bb285fe07e8ca454",
+        "underlying": "LRCX",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"304b8c29c12a4d88bb285fe07e8ca454\",\"underlying\":\"LRCX\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:32,303 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:32Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "9bdad529-764a-5d8d-bd40-3553f48154a0",
+    "x-signature": "VI3tCfT4R+ZnmauCNKInsf+qzPs=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "317",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "46df5502009b4d9cbe3b6a0ce13723d9",
+        "underlying": "MU",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"46df5502009b4d9cbe3b6a0ce13723d9\",\"underlying\":\"MU\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:33,796 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:33Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "c6e6227c-d85d-5bc8-baee-8c008c90d97b",
+    "x-signature": "Oprv039QqSW6o8qWMrOKtwJ0LU8=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "3e19e97df6f2471fa045251e02c9d63a",
+        "underlying": "CCL",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"3e19e97df6f2471fa045251e02c9d63a\",\"underlying\":\"CCL\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:34,838 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:34Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "05922358-cca5-5d1a-88f0-ecdd189a28ef",
+    "x-signature": "EQD3s5OaVk9Vq9P5rG/xADOrRLI=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "97abd71b020d4ca18bfa98033931129b",
+        "underlying": "INTC",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"97abd71b020d4ca18bfa98033931129b\",\"underlying\":\"INTC\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:35,208 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:35Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "1955aaac-d33e-508c-adf7-a29454aa7288",
+    "x-signature": "0umrzQGUKylR881ByldoiTbiKBg=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "3a68bfb50abe439fbc3c659b68f7d71a",
+        "underlying": "MSTR",
+        "expiration": "2026-05-22",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"3a68bfb50abe439fbc3c659b68f7d71a\",\"underlying\":\"MSTR\",\"expiration\":\"2026-05-22\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:35,964 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:35Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "494c645f-eafd-50bb-a4f5-0fa28b5f2b70",
+    "x-signature": "rD6wMRy1ten/DxyMlvlNr0uIUis=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "9f8ce8472c8e4ae98f93e312ec2b33c5",
+        "underlying": "ORCL",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"9f8ce8472c8e4ae98f93e312ec2b33c5\",\"underlying\":\"ORCL\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:36,916 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:36Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "af461c35-aa2f-5433-ac04-10c30efd3f1f",
+    "x-signature": "mjn2F+H7eKbS0/xq6NmuTMI/NzI=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "8a0610a61dc140b69adfe645971ee4a3",
+        "underlying": "MSTR",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"8a0610a61dc140b69adfe645971ee4a3\",\"underlying\":\"MSTR\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:37,148 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:37Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "630e4626-a5b5-5d0c-bd00-a09c4f94eb6e",
+    "x-signature": "JFcK9ctqr1pzfFVxikRj+WZWoWY=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "73c6e6637a224497a5642ace6708aed3",
+        "underlying": "PYPL",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"73c6e6637a224497a5642ace6708aed3\",\"underlying\":\"PYPL\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:37,446 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:37Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "94fa2007-663e-5d53-a5a8-926ae888b975",
+    "x-signature": "aLcYJ8kzg78NH0kn3iunsh7ECHE=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "2489e66c52d240319d22c3ed9e1b8d67",
+        "underlying": "NET",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"2489e66c52d240319d22c3ed9e1b8d67\",\"underlying\":\"NET\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:38,735 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:38Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "3b3b9170-454c-56c2-aad0-152b4cd8de82",
+    "x-signature": "PyCWVjrHF5MFb/7MepHqfmPCcJw=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "94a83180a19c49c98cfd7d3754551780",
+        "underlying": "AMZN",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"94a83180a19c49c98cfd7d3754551780\",\"underlying\":\"AMZN\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:39,999 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:39Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "403eda87-6f6a-50c5-a836-5c99986a1681",
+    "x-signature": "fdS3E0rvGFbdBU3COjNVFQZfdK8=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "6f0e4d87e9024f0f8c34e79f12bc611b",
+        "underlying": "AMD",
+        "expiration": "2026-05-01",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"6f0e4d87e9024f0f8c34e79f12bc611b\",\"underlying\":\"AMD\",\"expiration\":\"2026-05-01\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:40,333 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:40Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "ed7dc54f-7b55-57e3-940e-14e4c8bfadba",
+    "x-signature": "IelqCNVCpC97t6AfuAZQZDhMMIk=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "7fb04b117598414398536878f9d191e1",
+        "underlying": "GLW",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"7fb04b117598414398536878f9d191e1\",\"underlying\":\"GLW\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:41,436 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:41Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "1b5a82a3-cd7c-5db2-9b88-3fadd4319618",
+    "x-signature": "gAudA5NN8PrU3PV/D44u0JMcv54=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "318",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "d70c6e33900a4ba1ae42d312b5492d4f",
+        "underlying": "NET",
+        "expiration": "2026-05-08",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"d70c6e33900a4ba1ae42d312b5492d4f\",\"underlying\":\"NET\",\"expiration\":\"2026-05-08\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))
+139917300315712 2026-04-15 16:55:41,762 webull.core.client ERROR HttpError occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/trade/option/order/place",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {},
+  "_method": "POST",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-15T16:55:41Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "6a6c7b34-2f38-5e13-9c41-f25aa5d1421b",
+    "x-signature": "Fuig4gLY1s/eGW1rF1sRudPuHs4=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e",
+    "Content-Length": "319",
+    "Content-Type": "application/json"
+  },
+  "_body_params": {
+    "new_orders": [
+      {
+        "market": "US",
+        "instrument_type": "OPTION",
+        "client_order_id": "40e7a7deec6d4a7e860d2d69b7d6b226",
+        "underlying": "ORCL",
+        "expiration": "2026-05-15",
+        "strike": "",
+        "option_type": "PUT",
+        "side": "SELL",
+        "qty": 44,
+        "tif": "DAY",
+        "order_type": "LIMIT",
+        "extended_hours_trading": false
+      }
+    ],
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": "{\"new_orders\":[{\"market\":\"US\",\"instrument_type\":\"OPTION\",\"client_order_id\":\"40e7a7deec6d4a7e860d2d69b7d6b226\",\"underlying\":\"ORCL\",\"expiration\":\"2026-05-15\",\"strike\":\"\",\"option_type\":\"PUT\",\"side\":\"SELL\",\"qty\":44,\"tif\":\"DAY\",\"order_type\":\"LIMIT\",\"extended_hours_trading\":false}],\"account_id\":\"RLJC7DJJOLQNA6MG39QQ3BRS19\"}",
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} ClientException:SDK.HttpError HTTPSConnectionPool(host='api.webull.com', port=443): Max retries exceeded with url: /openapi/trade/option/order/place (Caused by NewConnectionError("HTTPSConnection(host='api.webull.com', port=443): Failed to establish a new connection: [Errno 24] Too many open files"))

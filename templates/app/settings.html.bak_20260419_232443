@@ -1,0 +1,163 @@
+{% extends "base_embed.html" if embed_mode else "base_app.html" %}
+
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="set-shell">
+  <section class="set-hero">
+    <div class="set-kicker">Operator Settings</div>
+    <h2 class="set-title">Control center for account access, system health, and automation entry points.</h2>
+    <p class="set-subtitle">Use this page as the clean admin landing zone before jumping into deeper diagnostics or automation controls.</p>
+  </section>
+
+  <section class="set-grid">
+    <article class="set-card set-card-primary">
+      <div class="set-card-label">Account</div>
+      <div class="set-card-value">{{ session_username or "Authenticated Operator" }}</div>
+      <div class="set-card-detail">Signed-in access for the Humble Capital trading console.</div>
+      <div class="set-chip-row">
+        <span class="set-chip">Console Access</span>
+        <span class="set-chip">Operator Session</span>
+      </div>
+    </article>
+
+    <article class="set-card">
+      <div class="set-card-label">System Status</div>
+      <div class="set-card-value">Diagnostics</div>
+      <div class="set-card-detail">Inspect service health, caches, runtime state, and operator diagnostics.</div>
+      <a class="set-link-card" href="/system-status">
+        <span>Open System Status</span>
+        <span class="set-link-arrow">→</span>
+      </a>
+    </article>
+
+    <article class="set-card">
+      <div class="set-card-label">Automation</div>
+      <div class="set-card-value">Configuration</div>
+      <div class="set-card-detail">Manage guardrails, proposals, rotation controls, and operator workflows.</div>
+      <a class="set-link-card" href="/configuration">
+        <span>Open Configuration</span>
+        <span class="set-link-arrow">→</span>
+      </a>
+    </article>
+
+    <article class="set-card">
+      <div class="set-card-label">Stock Universe Filters</div>
+      <div class="set-card-value">Tradeable criteria</div>
+      <div class="set-card-detail">Controls which stocks qualify for scanning and execution.</div>
+      <div style="margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="font-size:12px;color:rgba(236,243,255,0.5);">Min Market Cap ($)</label>
+          <input id="suMinMarketCap" type="number" step="50000000" min="0"
+            style="width:100%;margin-top:4px;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;font-size:13px;"
+            placeholder="500000000">
+        </div>
+        <div>
+          <label style="font-size:12px;color:rgba(236,243,255,0.5);">Min Avg Volume</label>
+          <input id="suMinAvgVolume" type="number" step="100000" min="0"
+            style="width:100%;margin-top:4px;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;font-size:13px;"
+            placeholder="1000000">
+        </div>
+        <div>
+          <label style="font-size:12px;color:rgba(236,243,255,0.5);">Min Price ($)</label>
+          <input id="suMinPrice" type="number" step="1" min="0"
+            style="width:100%;margin-top:4px;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;font-size:13px;"
+            placeholder="5">
+        </div>
+        <div>
+          <label style="font-size:12px;color:rgba(236,243,255,0.5);">Max Price ($)</label>
+          <input id="suMaxPrice" type="number" step="10" min="0"
+            style="width:100%;margin-top:4px;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;font-size:13px;"
+            placeholder="500">
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+        <button id="suSaveBtn" type="button"
+          style="padding:8px 20px;background:#2dd4bf;color:#0f172a;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;">
+          Save
+        </button>
+        <span id="suSaveStatus" style="font-size:12px;color:rgba(236,243,255,0.5);"></span>
+      </div>
+    </article>
+
+    <article class="set-card">
+      <div class="set-card-label">Session</div>
+      <div class="set-card-value">Logout</div>
+      <div class="set-card-detail">End the current operator session on this device.</div>
+      <a class="set-link-card danger" href="/logout">
+        <span>Sign Out</span>
+        <span class="set-link-arrow">→</span>
+      </a>
+    </article>
+  </section>
+
+  <section class="set-panel">
+    <div class="set-panel-head">
+      <div>
+        <h3 class="set-section-title">Recommended Navigation</h3>
+        <p class="set-section-subtitle">The most common operator destinations from this page.</p>
+      </div>
+    </div>
+
+    <div class="set-actions-grid">
+      <a class="set-action-tile" href="/analytics">
+        <div class="set-action-title">Portfolio Analytics</div>
+        <div class="set-action-copy">Review holdings, allocation, and portfolio trend context.</div>
+      </a>
+      <a class="set-action-tile" href="/meme-rotation">
+        <div class="set-action-title">Opportunities</div>
+        <div class="set-action-copy">Inspect scanner output, shadow rotation, and live candidate controls.</div>
+      </a>
+      <a class="set-action-tile" href="/trade-history">
+        <div class="set-action-title">Trade Activity</div>
+        <div class="set-action-copy">Browse the execution feed and recent trade history.</div>
+      </a>
+    </div>
+  </section>
+</div>
+<script>
+(async () => {
+  async function fetchJson(path, opts) {
+    const r = await fetch(path, opts);
+    return r.json();
+  }
+  function fmt(n) { return Number(n).toLocaleString(); }
+
+  try {
+    const data = await fetchJson("/api/system/stock_universe_config");
+    if (data.ok) {
+      document.getElementById("suMinMarketCap").value = data.config.min_market_cap;
+      document.getElementById("suMinAvgVolume").value = data.config.min_avg_volume;
+      document.getElementById("suMinPrice").value = data.config.min_price;
+      document.getElementById("suMaxPrice").value = data.config.max_price;
+    }
+  } catch(e) {}
+
+  document.getElementById("suSaveBtn").addEventListener("click", async () => {
+    const status = document.getElementById("suSaveStatus");
+    status.textContent = "Saving...";
+    try {
+      const result = await fetchJson("/api/system/stock_universe_config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          min_market_cap: Number(document.getElementById("suMinMarketCap").value),
+          min_avg_volume: Number(document.getElementById("suMinAvgVolume").value),
+          min_price: Number(document.getElementById("suMinPrice").value),
+          max_price: Number(document.getElementById("suMaxPrice").value),
+        })
+      });
+      status.textContent = result.ok ? "Saved ✓ — restart service to apply" : "Error: " + result.error;
+      status.style.color = result.ok ? "#22c55e" : "#ef4444";
+    } catch(e) {
+      status.textContent = "Save failed";
+      status.style.color = "#ef4444";
+    }
+  });
+})();
+</script>
+{% endblock %}

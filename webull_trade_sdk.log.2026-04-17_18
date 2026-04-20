@@ -1,0 +1,22 @@
+139917325493824 2026-04-18 11:04:01,343 webull.core.http.initializer.client_initializer INFO _check_token_enable result is True
+139917325493824 2026-04-18 11:04:01,698 webull.core.http.initializer.token.token_storage INFO storage_token uses the default configuration, conf.
+139917325493824 2026-04-18 11:04:01,787 webull.core.http.initializer.token.token_storage INFO storage_token initialized path:/root/tradingbot/conf/token.txt.
+139917325493824 2026-04-18 11:04:01,898 webull.core.http.initializer.token.token_storage WARNING storage_token Note: The token file already exists, the latest token configuration will be overwritten and written to the token file after successful 2FA verification. path:/root/tradingbot/conf/token.txt.
+139917325493824 2026-04-18 11:04:01,994 webull.core.http.initializer.token.token_manager INFO load_token_from_local reading token from file...
+139917325493824 2026-04-18 11:04:02,075 webull.core.http.initializer.token.token_manager INFO load_token_from_local read local token result. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:02,211 webull.core.http.initializer.token.token_manager INFO fetch_token_from_server create_token result. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:02,232 webull.core.http.initializer.token.token_manager INFO fetch_token_from_server create_token status is verified, no further check required, returning directly. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:02,253 webull.core.http.initializer.token.token_manager INFO save_token_to_local writing token to local file. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:02,271 webull.core.http.initializer.token.token_manager INFO save_token_to_local writing token to file completed.
+139917325493824 2026-04-18 11:04:02,314 webull.core.http.initializer.token.token_manager INFO init_token finished. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:02,708 webull.core.http.initializer.client_initializer INFO _check_token_enable result is True
+139917325493824 2026-04-18 11:04:02,719 webull.core.http.initializer.token.token_storage INFO storage_token uses the default configuration, conf.
+139917325493824 2026-04-18 11:04:02,729 webull.core.http.initializer.token.token_storage INFO storage_token initialized path:/root/tradingbot/conf/token.txt.
+139917325493824 2026-04-18 11:04:02,739 webull.core.http.initializer.token.token_storage WARNING storage_token Note: The token file already exists, the latest token configuration will be overwritten and written to the token file after successful 2FA verification. path:/root/tradingbot/conf/token.txt.
+139917325493824 2026-04-18 11:04:02,749 webull.core.http.initializer.token.token_manager INFO load_token_from_local reading token from file...
+139917325493824 2026-04-18 11:04:02,761 webull.core.http.initializer.token.token_manager INFO load_token_from_local read local token result. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:02,973 webull.core.http.initializer.token.token_manager INFO fetch_token_from_server create_token result. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:03,054 webull.core.http.initializer.token.token_manager INFO fetch_token_from_server create_token status is verified, no further check required, returning directly. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:03,114 webull.core.http.initializer.token.token_manager INFO save_token_to_local writing token to local file. token:ef855b******82ae2e expires:1777800486367 status:NORMAL
+139917325493824 2026-04-18 11:04:03,171 webull.core.http.initializer.token.token_manager INFO save_token_to_local writing token to file completed.
+139917325493824 2026-04-18 11:04:03,214 webull.core.http.initializer.token.token_manager INFO init_token finished. token:ef855b******82ae2e expires:1777800486367 status:NORMAL

@@ -1,0 +1,191 @@
+{
+  "core_assets": {
+    "BTC-USD": {
+      "target_weight": 0.25,
+      "rebalance_band": 0.04
+    },
+    "ETH-USD": {
+      "target_weight": 0.12,
+      "rebalance_band": 0.03
+    },
+    "SOL-USD": {
+      "target_weight": 0.13,
+      "rebalance_band": 0.03
+    },
+    "XRP-USD": {
+      "target_weight": 0.05,
+      "rebalance_band": 0.02
+    }
+  },
+  "core_buy_fraction_of_shortfall": 0.5,
+  "drawdown_controls": {
+    "warn_level": 0.12,
+    "reduce_level": 0.18,
+    "freeze_level": 0.24
+  },
+  "dust_min_value_usd": 2.0,
+  "trade_min_value_usd": 15.0,
+  "max_quote_per_trade_usd": 60.0,
+  "min_cash_reserve": 0.05,
+  "satellite_mode": "rotation",
+  "satellite_total_target": 0.5,
+  "satellite_total_max": 0.6,
+  "satellite_defaults": {
+    "max_weight": 0.12
+  },
+  "satellite_blocked": [],
+  "satellite_allowed": [
+    "DOGE-USD",
+    "SHIB-USD",
+    "PEPE-USD",
+    "BONK-USD",
+    "SUI-USD",
+    "RENDER-USD",
+    "JASMY-USD",
+    "HYPE-USD",
+    "ICP-USD",
+    "WIF-USD",
+    "PENGU-USD",
+    "NOM-USD",
+    "TNSR-USD",
+    "DASH-USD",
+    "MON-USD",
+    "MDT-USD",
+    "CFG-USD",
+    "RAVE-USD",
+    "EDGE-USD",
+    "TURBO-USD",
+    "MINA-USD",
+    "OXT-USD",
+    "RARE-USD",
+    "RED-USD",
+    "TAO-USD",
+    "ILV-USD",
+    "SAPIEN-USD",
+    "AAVE-USD",
+    "ADA-USD",
+    "AERO-USD",
+    "AKT-USD",
+    "ALGO-USD",
+    "APT-USD",
+    "ARB-USD",
+    "ATH-USD",
+    "ZRO-USD",
+    "ZORA-USD",
+    "ATOM-USD",
+    "AVAX-USD",
+    "AVNT-USD",
+    "BARD-USD"
+  ],
+  "satellite_volatility_map": {},
+  "volatility_buckets": {
+    "very_high": {
+      "max_weight": 0.06
+    },
+    "high": {
+      "max_weight": 0.09
+    },
+    "medium": {
+      "max_weight": 0.12
+    }
+  },
+  "regime_satellite_caps": {
+    "bull": 0.5,
+    "neutral": 0.35,
+    "caution": 0.2,
+    "risk_off": 0.1
+  },
+  "meme_rotation": {
+    "enabled": true,
+    "min_score": 50.0,
+    "entry_score": 55,
+    "hold_score": 25,
+    "max_active": 10,
+    "excluded_products": [
+      "BTC-USD",
+      "ETH-USD",
+      "SOL-USD",
+      "XRP-USD",
+      "PAXG-USD"
+    ],
+    "update_source": "auto_scanner"
+  },
+  "sniper_mode": {
+    "enabled": true,
+    "min_score": 72.0,
+    "buy_scale": 0.5,
+    "allow_in_regimes": [
+      "bull",
+      "neutral"
+    ],
+    "require_sniper_eligible": true,
+    "block_pump_protected": true,
+    "relax_require_sniper_eligible": false
+  },
+  "profit_harvest": {
+    "enabled": true,
+    "satellite_only": true,
+    "cooldown_hours": 8,
+    "min_harvest_usd": 8.0,
+    "tiers": [
+      {
+        "gain_pct": 0.4,
+        "trim_pct": 0.3
+      },
+      {
+        "gain_pct": 0.2,
+        "trim_pct": 0.2
+      },
+      {
+        "gain_pct": 0.1,
+        "trim_pct": 0.1
+      }
+    ],
+    "routes": {
+      "BTC-USD": 0.35,
+      "ETH-USD": 0.25,
+      "SOL-USD": 0.2,
+      "CASH": 0.2
+    }
+  },
+  "sell_policy_defaults": {
+    "core": {
+      "min_meaningful_sell_usd": 5,
+      "allow_full_exit_on_small_remainder": false,
+      "preserve_tradable_remainder": true
+    },
+    "satellite_active": {
+      "min_meaningful_sell_usd": 5,
+      "allow_full_exit_on_small_remainder": false,
+      "preserve_tradable_remainder": true
+    },
+    "satellite_blocked": {
+      "min_meaningful_sell_usd": 5,
+      "allow_full_exit_on_small_remainder": true,
+      "preserve_tradable_remainder": false
+    },
+    "dust": {
+      "min_meaningful_sell_usd": 0,
+      "allow_full_exit_on_small_remainder": true,
+      "preserve_tradable_remainder": false
+    },
+    "nontradable": {
+      "min_meaningful_sell_usd": 0,
+      "allow_full_exit_on_small_remainder": true,
+      "preserve_tradable_remainder": false
+    },
+    "unknown": {
+      "min_meaningful_sell_usd": 5,
+      "allow_full_exit_on_small_remainder": true,
+      "preserve_tradable_remainder": false
+    }
+  },
+  "sell_policy_overrides": {},
+  "max_active_satellites": 10,
+  "min_meme_score": 50.0,
+  "max_new_satellites_per_cycle": 4,
+  "config_proposal_generation_mode": "manual",
+  "config_proposal_apply_mode": "manual",
+  "config_proposal_min_confidence": "high",
+  "rotation_cooldown_minutes": 60
+}

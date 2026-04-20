@@ -1,0 +1,76 @@
+139916948272704 2026-04-18 12:47:25,890 webull.core.client ERROR ServerException occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/assets/balance",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_method": "GET",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-18T12:47:25Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "0e8bdb8a-1996-5aed-bc7f-74d043bf0594",
+    "x-signature": "9ntZ49VyTfMTpN3u7JVl/fiDBdc=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e"
+  },
+  "_body_params": null,
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": null,
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} Response:{'message': 'to many requests', 'error_code': 'TOO_MANY_REQUESTS'} ServerException:HTTP Status: 429, Code: TOO_MANY_REQUESTS, Msg: to many requests, RequestID: 91be80c2-6f20-429d-b16e-0ceb5ce1f6c3
+139916948272704 2026-04-18 12:47:26,449 webull.core.client ERROR get_response exception. {
+  "error_code": "TOO_MANY_REQUESTS",
+  "error_msg": "to many requests",
+  "http_status": 429,
+  "request_id": "91be80c2-6f20-429d-b16e-0ceb5ce1f6c3"
+}
+139916948272704 2026-04-18 12:47:26,572 webull.core.client ERROR ServerException occurred. Host:api.webull.com SDK-Version:2.0.2 Request:{
+  "_version": "v2",
+  "_action_name": "/openapi/assets/positions",
+  "_protocol_type": "https",
+  "_accept_format": "JSON",
+  "_params": {
+    "account_id": "RLJC7DJJOLQNA6MG39QQ3BRS19"
+  },
+  "_method": "GET",
+  "_header": {
+    "x-version": "v2",
+    "Accept-Encoding": "gzip",
+    "x-app-key": "c3a00c28767f5e686f53db43d2e48019",
+    "x-timestamp": "2026-04-18T12:47:26Z",
+    "x-signature-version": "1.0",
+    "x-signature-algorithm": "HMAC-SHA1",
+    "x-signature-nonce": "a8f37e2b-d35b-5f1b-8652-549aae71f635",
+    "x-signature": "z2Rc8gNrjFclcrNkz9AlM9kF1SM=",
+    "User-Agent": "WebullApiSDK (Linux 5.15.0-174-generic;x86_64) Python/3.10.12 Core/2.0.2 python-requests/2.32.5",
+    "x-access-token": "ef855b577e3849c4b7cb588e9a82ae2e"
+  },
+  "_body_params": null,
+  "_uri_pattern": null,
+  "_uri_params": null,
+  "_content": null,
+  "_extra_user_agent": {},
+  "string_to_sign": "",
+  "_request_connect_timeout": null,
+  "_request_read_timeout": null,
+  "endpoint": "api.webull.com",
+  "_signer_spec": "<module 'webull.core.auth.algorithm.sha_hmac1' from '/usr/local/lib/python3.10/dist-packages/webull/core/auth/algorithm/sha_hmac1.py'>"
+} Response:{'error_code': 'TOO_MANY_REQUESTS', 'message': 'to many requests'} ServerException:HTTP Status: 429, Code: TOO_MANY_REQUESTS, Msg: to many requests, RequestID: 690b5127-acfb-4495-8445-b9dec784cc9f
+139916948272704 2026-04-18 12:47:26,590 webull.core.client ERROR get_response exception. {
+  "error_code": "TOO_MANY_REQUESTS",
+  "error_msg": "to many requests",
+  "http_status": 429,
+  "request_id": "690b5127-acfb-4495-8445-b9dec784cc9f"
+}

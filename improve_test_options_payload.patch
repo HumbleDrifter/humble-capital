@@ -1,0 +1,108 @@
+diff --git a/routes/api_options.py b/routes/api_options.py
+--- a/routes/api_options.py
++++ b/routes/api_options.py
+@@ -1,5 +1,6 @@
+ from __future__ import annotations
+ 
++import math
+ import json
+ import os
+ import time
+@@ -34,6 +35,43 @@ def _safe_float(value, default=0.0):
+     except Exception:
+         return float(default)
+ 
++
++def _default_test_underlying(raw: str | None) -> str:
++    symbol = str(raw or "").strip().upper()
++    if symbol:
++        return symbol
++    return "SPY"
++
++
++def _default_test_underlying_price(symbol: str) -> float:
++    defaults = {
++        "SPY": 520.0,
++        "QQQ": 450.0,
++        "AAPL": 220.0,
++    }
++    return float(defaults.get(symbol, 100.0))
++
++
++def _normalize_test_strike(symbol: str, price_hint: float) -> float:
++    """
++    Pick a simple ATM-ish strike for proposal generation.
++    This is only a test/default path and should avoid obviously invalid
++    values like the old hardcoded 100 strike for large-cap underlyings.
++    """
++    px = max(1.0, float(price_hint or 0.0))
++
++    # Keep increments simple and realistic enough for proposal generation.
++    if symbol in {"SPY", "QQQ"}:
++        increment = 1.0
++    elif px >= 500:
++        increment = 5.0
++    elif px >= 200:
++        increment = 2.5
++    elif px >= 50:
++        increment = 1.0
++    else:
++        increment = 0.5
++
++    return float(round(px / increment) * increment)
++
++
+ def _safe_int(value, default=0):
+     try:
+         return int(float(value))
+@@ -50,17 +88,34 @@ def _build_test_options_payload(overrides=None):
+     overrides = overrides or {}
+     risk = get_options_risk_config()
+ 
++    underlying = _default_test_underlying(overrides.get("underlying"))
+     expiry = str(overrides.get("expiry") or "").strip() or _choose_test_expiry(risk)
+-    strike = _safe_float(overrides.get("strike"))
+-    if strike <= 0:
+-        strike = 100.0
+-    right = str(overrides.get("right") or "C").strip().upper() or "C"
++
++    strike = _safe_float(overrides.get("strike"))
++    if strike <= 0:
++        underlying_price = _safe_float(
++            overrides.get("underlying_price")
++            or overrides.get("spot")
++            or overrides.get("mark")
++            or overrides.get("last")
++        )
++        if underlying_price <= 0:
++            underlying_price = _default_test_underlying_price(underlying)
++        strike = _normalize_test_strike(underlying, underlying_price)
++
++    right = str(
++        overrides.get("right")
++        or overrides.get("right_code")
++        or "C"
++    ).strip().upper() or "C"
++
+     quantity = max(1, _safe_int(overrides.get("quantity") or 1, 1))
+     limit_price = max(0.01, _safe_float(overrides.get("limit_price") or 1.0, 1.0))
+ 
+     return {
+-        "underlying": str(overrides.get("underlying") or "").strip().upper(),
++        "underlying": underlying,
+         "strategy": str(overrides.get("strategy") or "long_call").strip().lower(),
++        "source": str(overrides.get("source") or "test_proposal").strip() or "test_proposal",
++        "broker": "ibkr",
++        "asset_class": "option",
+         "order_type": str(overrides.get("order_type") or "LMT").strip().upper(),
+         "limit_price": limit_price,
+         "tif": str(overrides.get("tif") or "DAY").strip().upper(),
+@@ -69,7 +124,7 @@ def _build_test_options_payload(overrides=None):
+                 "expiry": expiry,
+                 "strike": strike,
+                 "right_code": right,
+-                "quantity": quantity,
++                "quantity": int(quantity),
+                 "exchange": str(overrides.get("exchange") or "SMART").strip().upper(),
+                 "currency": str(overrides.get("currency") or "USD").strip().upper(),
+             }

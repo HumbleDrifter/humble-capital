@@ -1,0 +1,836 @@
+{% extends "base_app.html" %}
+
+{% block topbar_actions %}
+<button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Configuration</button>
+{% endblock %}
+
+{% block mobile_topbar_actions %}
+<button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Configuration</button>
+{% endblock %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<div class="cfg-shell">
+<div class="grid cols-12 configuration-grid">
+
+  <section class="panel span-12 configuration-status-panel">
+    <div class="section-header">
+      <div>
+        <h2>Automation Workspace</h2>
+        <p class="section-subtitle">Use this page as the control center for trading posture, approvals, and safety settings. Start with the overview, adjust the everyday controls, and open advanced sections only when you need deeper tuning.</p>
+      </div>
+    </div>
+
+    <div id="configStatus"></div>
+
+    <div class="divider"></div>
+
+    <div class="configuration-overview-grid">
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Automation Status</div>
+        <div class="configuration-shell-title-row">
+          <div class="configuration-shell-title">Proposal engine</div>
+          <div class="configuration-help">
+            <button class="configuration-help-button" type="button" aria-label="Automation status help">i</button>
+            <div class="configuration-help-tooltip" role="tooltip">
+              Shows whether recommendations are drafted automatically or only when you ask for them.
+            </div>
+          </div>
+        </div>
+        <div class="configuration-shell-value" id="configOverviewAutomationStatus">Reviewing</div>
+        <div class="configuration-shell-badge-row">
+          <span class="configuration-shell-badge" id="configOverviewPendingBadge" hidden>No pending recommendations</span>
+        </div>
+        <div class="configuration-shell-micro" id="configOverviewSystemConfidence">System confidence is reviewing the current posture.</div>
+        <div class="configuration-shell-note">Shows whether proposals are generated automatically or only when you trigger them.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Trading Mode</div>
+        <div class="configuration-shell-title">Market coverage</div>
+        <div class="configuration-shell-value mono" id="configOverviewTradingMode">Reviewing</div>
+        <div class="configuration-shell-note">Summarizes tradable markets and how many names are enabled, blocked, or managed as core.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Approval Posture</div>
+        <div class="configuration-shell-title">Operator review</div>
+        <div class="configuration-shell-value" id="configOverviewApprovalPosture">Reviewing</div>
+        <div class="configuration-shell-note">Clarifies whether approved proposals still need a second manual apply step.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Guardrail Status</div>
+        <div class="configuration-shell-title-row">
+          <div class="configuration-shell-title">Current operating limits</div>
+          <div class="configuration-help">
+            <button class="configuration-help-button" type="button" aria-label="Guardrail status help">i</button>
+            <div class="configuration-help-tooltip" role="tooltip">
+              Guardrails are the limits that cap exposure, preserve cash, and filter out trades that are too small.
+            </div>
+          </div>
+        </div>
+        <div class="configuration-shell-value" id="configOverviewGuardrails">Reviewing</div>
+        <div class="configuration-shell-note">Summarizes the current allocation target, hard cap, reserve, and trade floor.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Latest Activity</div>
+        <div class="configuration-shell-title">Recent automation action</div>
+        <div class="configuration-shell-value" id="configOverviewLastAction">No recent automation activity yet.</div>
+        <div class="configuration-shell-note">Shows the most recent proposal outcome or generation result already visible in this workspace.</div>
+      </div>
+      <div class="configuration-shell-card">
+        <div class="configuration-card-kicker">Next Action</div>
+        <div class="configuration-shell-title-row">
+          <div class="configuration-shell-title">What happens next</div>
+          <div class="configuration-help">
+            <button class="configuration-help-button" type="button" aria-label="Next action help">i</button>
+            <div class="configuration-help-tooltip" role="tooltip">
+              This is the most likely next operator step based on pending recommendations and the current operating mode.
+            </div>
+          </div>
+        </div>
+        <div class="configuration-shell-value" id="configOverviewNextAction">Reviewing the next likely operator step.</div>
+        <div class="configuration-shell-note">Plain-language summary of the next likely recommendation or review step.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel span-12 configuration-core-panel" id="config-section-core-controls" data-config-section="core-controls">
+    <div class="section-header">
+      <div>
+        <h2>Primary Controls</h2>
+        <p class="section-subtitle">These are the everyday controls most operators actually use: set the broad posture first, then save when you are comfortable with the limits.</p>
+      </div>
+    </div>
+
+    <div class="configuration-preset-panel">
+      <div class="configuration-preset-copy">
+        <div class="configuration-card-kicker">Investment Style</div>
+        <h3>Choose the overall posture first.</h3>
+        <p class="section-subtitle">Investment styles stage a bundle of the everyday risk and sizing controls. Nothing goes live until you save the configuration.</p>
+      </div>
+      <div class="configuration-preset-actions" role="tablist" aria-label="Investment styles">
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="aggressive" onclick="applyConfigPreset('aggressive')">Aggressive</button>
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="neutral" onclick="applyConfigPreset('neutral')">Neutral</button>
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="conservative" onclick="applyConfigPreset('conservative')">Conservative</button>
+        <button class="btn btn-secondary config-preset-btn" type="button" data-preset="safe_mode" onclick="applyConfigPreset('safe_mode')">Safe Mode / All Cash</button>
+      </div>
+      <div class="configuration-preset-utility">
+        <div class="configuration-search-field">
+          <label for="investmentStyleSelect" class="tiny">Staged investment style</label>
+          <select id="investmentStyleSelect">
+            <option value="">Custom / Manual</option>
+            <option value="aggressive">Aggressive</option>
+            <option value="neutral">Neutral</option>
+            <option value="conservative">Conservative</option>
+            <option value="safe_mode">Safe Mode / All Cash</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary" type="button" onclick="stageSelectedInvestmentStyle()">Stage Selected Style</button>
+      </div>
+      <div class="configuration-primary-note">
+        <div class="configuration-primary-note-title" id="investmentStyleCurrent">Custom</div>
+        <div class="configuration-primary-note-copy" id="investmentStyleSummary">Your current settings do not exactly match a bundled investment style. Manual edits remain available.</div>
+        <div class="field-help" id="investmentStyleBestFor">Use a preset to stage a complete posture bundle, then fine-tune any individual field before saving.</div>
+      </div>
+      <div class="configuration-preset-status" id="presetStatus">No preset staged. Manual edits remain available.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <details class="configuration-advanced-toggle" id="config-section-how-it-works" data-config-section="how-it-works" open>
+      <summary>
+        <div>
+          <strong>How This Works</strong>
+          <span>Plain-English guidance for the settings most operators use when shaping the bot’s behavior.</span>
+        </div>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="risk-form-grid configuration-advanced-grid">
+          <div class="form-card">
+            <div class="configuration-card-kicker">Investment Style</div>
+            <div class="field-help">Aggressive seeks more participation and accepts higher volatility. Neutral is the balanced default. Conservative deploys more slowly and keeps more cash protection. Safe Mode / All Cash stages a defensive no-new-risk posture, but it does not automatically liquidate current holdings.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Max Buy Per Trade</div>
+            <div class="field-help">Caps how much quote currency the bot can commit in a single order attempt. Higher values let the bot move faster, while lower values slow position building and reduce per-trade exposure.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Minimum Cash Reserve</div>
+            <div class="field-help">Keeps a portion of the portfolio in cash after trades. Raising it makes the bot more defensive; lowering it allows more capital to deploy into ideas.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Core / On / Auto / Off</div>
+            <div class="field-help">Core assets are strategic holdings with target weights and rebalance bands. On manually allows a non-core asset. Auto lets the system decide. Off blocks an asset from manual participation while keeping it visible.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Sniper Score and Buy Scale</div>
+            <div class="field-help">Sniper minimum score controls how selective the opportunistic entry engine is. Sniper buy scale controls how much capital a qualifying sniper entry may use relative to normal sizing.</div>
+          </div>
+          <div class="form-card">
+            <div class="configuration-card-kicker">Drawdown Levels</div>
+            <div class="field-help">Warn, Reduce, and Freeze tell the bot how defensive to become as the portfolio drawdown deepens. Lower thresholds react earlier; higher thresholds tolerate more drawdown before tightening behavior.</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <div class="divider"></div>
+
+    <div class="configuration-primary-note configuration-primary-note-safety">
+      <div class="configuration-primary-note-title">Safety Limits</div>
+      <div class="configuration-primary-note-copy">These limits govern how much satellite exposure the system can carry, how much cash stays in reserve, and how small trades should be filtered out.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="configuration-hero-grid">
+      <div class="form-card configuration-focus-card" data-focus-target="satellite_total_target">
+        <div class="configuration-card-kicker">Allocation Target</div>
+        <label for="satellite_total_target">Satellite Total Target</label>
+        <div class="input-unit-wrap">
+          <input id="satellite_total_target" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
+        <div class="field-help">Preferred target for active satellite allocation.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="satellite_total_max">
+        <div class="configuration-card-kicker">Hard Limit</div>
+        <label for="satellite_total_max">Satellite Total Max</label>
+        <div class="input-unit-wrap">
+          <input id="satellite_total_max" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
+        <div class="field-help">Hard ceiling for total satellite exposure.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="min_cash_reserve">
+        <div class="configuration-card-kicker">Liquidity Safety</div>
+        <label for="min_cash_reserve">Minimum Cash Reserve</label>
+        <div class="input-unit-wrap">
+          <input id="min_cash_reserve" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
+        <div class="field-help">Cash that should remain unallocated after trades.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="trade_min_value_usd">
+        <div class="configuration-card-kicker">Execution Floor</div>
+        <label for="trade_min_value_usd">Minimum Trade Value (USD)</label>
+        <input id="trade_min_value_usd" type="number" step="0.01" min="0">
+        <div class="field-help">Ignore proposed trades below this size.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="max_quote_per_trade_usd">
+        <div class="configuration-card-kicker">Trade Sizing</div>
+        <label for="max_quote_per_trade_usd">Max Buy Per Trade (USD)</label>
+        <input id="max_quote_per_trade_usd" type="number" step="0.01" min="0" max="1000000">
+        <div class="field-help">Caps the quote size for a single order attempt.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="core_buy_fraction_of_shortfall">
+        <div class="configuration-card-kicker">Core Rebalance Pace</div>
+        <label for="core_buy_fraction_of_shortfall">Core Buy Fraction of Shortfall</label>
+        <div class="input-unit-wrap">
+          <input id="core_buy_fraction_of_shortfall" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
+        <div class="field-help">Controls how much of a core shortfall the bot closes on each buy cycle.</div>
+      </div>
+
+      <div class="form-card configuration-focus-card" data-focus-target="sniper_buy_scale">
+        <div class="configuration-card-kicker">Sniper Allocation</div>
+        <label for="sniper_buy_scale">Sniper Buy Scale</label>
+        <div class="input-unit-wrap">
+          <input id="sniper_buy_scale" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+          <span class="input-unit-suffix" aria-hidden="true">%</span>
+        </div>
+        <div class="field-help">Scales allowed quote size for SNIPER_BUY entries.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="configuration-action-row">
+      <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Guardrails</button>
+      <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Reload Current Values</button>
+    </div>
+  </section>
+
+  <section class="panel span-12">
+    <div class="section-header">
+      <div>
+        <h2>Recent Buy Decisions</h2>
+        <p class="section-subtitle">This feed explains the most recent buy decisions so you can see whether the bot bought, blocked, ignored, or failed an opportunity.</p>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" type="button" onclick="loadDecisionTrace()">Refresh Decisions</button>
+      </div>
+    </div>
+    <div class="config-proposal-history" id="decisionTraceHistory">
+      <div class="config-proposal-history-empty">No recent buy decisions yet.</div>
+    </div>
+  </section>
+
+  <section class="panel span-12 config-proposal-panel">
+    <div class="section-header">
+      <div>
+        <h2>Recommendations &amp; Approval</h2>
+        <p class="section-subtitle">See whether the system drafts recommendations on its own, whether approval is required, and whether approved changes wait for another confirmation.</p>
+      </div>
+    </div>
+
+    <div class="config-proposal-automation-panel">
+      <div class="config-proposal-automation-head">
+        <div>
+          <div class="config-proposal-eyebrow">Recommendation Controls</div>
+          <div class="config-proposal-automation-copy">Decide whether the system drafts recommendations automatically, what happens after you approve them, and when a fresh recommendation should be generated.</div>
+        </div>
+      </div>
+
+      <div class="config-proposal-automation-grid">
+        <div class="form-card config-proposal-automation-card">
+          <div class="configuration-label-row">
+            <label for="config_proposal_generation_mode">Draft Recommendations</label>
+            <div class="configuration-help">
+              <button class="configuration-help-button" type="button" aria-label="Recommendation drafting help">i</button>
+              <div class="configuration-help-tooltip" role="tooltip">
+                Auto drafting creates a recommendation when the rules qualify a safe change. Manual drafting waits for you to trigger it.
+              </div>
+            </div>
+          </div>
+          <select id="config_proposal_generation_mode">
+            <option value="manual">Manual</option>
+            <option value="auto">Auto</option>
+          </select>
+          <div class="field-help">Manual means nothing is drafted until you ask for it.</div>
+          <div class="field-help">Auto means the system drafts a recommendation when the advisory rules qualify a safe change.</div>
+        </div>
+
+        <div class="form-card config-proposal-automation-card">
+          <div class="configuration-label-row">
+            <label for="config_proposal_apply_mode">After Approval</label>
+            <div class="configuration-help">
+              <button class="configuration-help-button" type="button" aria-label="After approval help">i</button>
+              <div class="configuration-help-tooltip" role="tooltip">
+                Choose whether approved changes apply immediately or wait for a separate confirmation step.
+              </div>
+            </div>
+          </div>
+          <select id="config_proposal_apply_mode">
+            <option value="manual">Wait for confirmation</option>
+            <option value="after_approval">After Approval</option>
+          </select>
+          <div class="field-help">Wait for confirmation keeps approval and apply as two separate operator steps.</div>
+          <div class="field-help">After Approval applies approved changes immediately using the existing safe allowlist.</div>
+        </div>
+
+        <div class="form-card config-proposal-automation-card">
+          <label for="config_proposal_min_confidence">Draft Only When Confidence Is</label>
+          <select id="config_proposal_min_confidence">
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <div class="field-help">Auto drafting only creates recommendations when advisory confidence meets this threshold.</div>
+        </div>
+      </div>
+
+      <div class="configuration-action-row config-proposal-automation-actions">
+        <button class="btn btn-secondary" type="button" onclick="evaluateAutoDraftNow()">Evaluate Recommendations</button>
+        <button class="btn btn-secondary" type="button" onclick="generateProposalNow()">Generate Proposal Now</button>
+      </div>
+      <div class="config-proposal-automation-result" id="configProposalAutomationResult">No proposal generation run yet.</div>
+
+      <div class="divider"></div>
+
+      <div class="config-proposal-automation-head">
+        <div>
+          <div class="config-proposal-eyebrow">Options Paper Trading</div>
+          <div class="config-proposal-automation-copy">Check IBKR paper-trading readiness and create a conservative test-only options proposal that still follows the normal approval and queue workflow.</div>
+        </div>
+      </div>
+
+      <div class="config-proposal-grid">
+        <div>
+          <div class="config-proposal-label">Health Status</div>
+          <div class="config-proposal-value" id="optionsHealthStatus">Not checked</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Paper Mode</div>
+          <div class="config-proposal-value" id="optionsHealthPaperMode">—</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Connected</div>
+          <div class="config-proposal-value" id="optionsHealthConnected">—</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Endpoint</div>
+          <div class="config-proposal-value" id="optionsHealthEndpoint">—</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Account</div>
+          <div class="config-proposal-value" id="optionsHealthAccount">—</div>
+        </div>
+        <div>
+          <div class="config-proposal-label">Reason</div>
+          <div class="config-proposal-value" id="optionsHealthReason">—</div>
+        </div>
+      </div>
+
+      <div class="configuration-action-row config-proposal-automation-actions">
+        <button class="btn btn-secondary" type="button" onclick="loadOptionsHealth()">Refresh IBKR Health</button>
+        <button class="btn btn-secondary" type="button" onclick="createTestOptionsProposal()">Create Test Options Proposal</button>
+        <button class="btn btn-secondary" type="button" onclick="syncOptionsState()">Sync Options State</button>
+      </div>
+      <div class="config-proposal-automation-result" id="optionsHealthResult">Options paper-trading health has not been checked yet.</div>
+
+      <div class="divider"></div>
+
+      <div class="config-proposal-history-panel">
+        <div class="section-header compact-header">
+          <div>
+            <h3 style="margin:0;">Options Telemetry</h3>
+            <p class="section-subtitle" style="margin:4px 0 0 0;">Recent execution attempts, tracked option orders, and the latest open positions snapshot from paper sync.</p>
+          </div>
+        </div>
+
+        <div class="config-proposal-grid">
+          <div>
+            <div class="config-proposal-label">Recent Executions</div>
+            <div class="config-proposal-history" id="optionsExecutionsHistory">
+              <div class="config-proposal-history-empty">No options execution activity yet.</div>
+            </div>
+          </div>
+          <div>
+            <div class="config-proposal-label">Recent Orders</div>
+            <div class="config-proposal-history" id="optionsOrdersHistory">
+              <div class="config-proposal-history-empty">No options order records yet.</div>
+            </div>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <div class="config-proposal-label">Open Positions</div>
+            <div class="config-proposal-history" id="optionsPositionsHistory">
+              <div class="config-proposal-history-empty">No open options positions snapshot yet.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <details class="configuration-advanced-toggle" id="config-section-proposal-status" data-config-section="proposal-status">
+      <summary>
+        <div>
+          <strong>Advanced Proposal Status</strong>
+          <span>Open the full proposal record, audit timeline, and recent proposal history.</span>
+        </div>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="config-proposal-card" id="configProposalLatestCard">
+          <div class="config-proposal-empty" id="configProposalEmptyState">
+            <div class="config-proposal-empty-title">No proposals yet</div>
+            <div class="config-proposal-empty-copy">Advisory-driven config proposals will appear here once generated.</div>
+          </div>
+
+          <div class="config-proposal-latest" id="configProposalLatestContent" hidden>
+            <div class="config-proposal-head">
+              <div>
+                <div class="config-proposal-eyebrow">Latest Proposal</div>
+                <div class="config-proposal-id" id="configProposalId">—</div>
+              </div>
+              <div class="config-proposal-status" id="configProposalStatus">pending</div>
+            </div>
+
+            <div class="config-proposal-summary" id="configProposalSummary">—</div>
+
+            <div class="config-proposal-grid" id="configProposalGrid">
+              <div>
+                <div class="config-proposal-label">Proposal Type</div>
+                <div class="config-proposal-value" id="configProposalType">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Confidence</div>
+                <div class="config-proposal-value" id="configProposalConfidence">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Current Risk</div>
+                <div class="config-proposal-value" id="configProposalCurrentRisk">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Projected Risk</div>
+                <div class="config-proposal-value" id="configProposalProjectedRisk">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Score Delta</div>
+                <div class="config-proposal-value" id="configProposalScoreDelta">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Created</div>
+                <div class="config-proposal-value" id="configProposalCreatedAt">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Expires</div>
+                <div class="config-proposal-value" id="configProposalExpiresAt">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Approved By</div>
+                <div class="config-proposal-value" id="configProposalApprovedBy">—</div>
+              </div>
+              <div>
+                <div class="config-proposal-label">Applied By</div>
+                <div class="config-proposal-value" id="configProposalAppliedBy">—</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="config-proposal-changes">
+              <div class="config-proposal-changes-title" id="configProposalChangesTitle">Changed Controls</div>
+              <div id="configProposalChanges"></div>
+            </div>
+
+            <div class="configuration-action-row config-proposal-review-actions" id="configProposalActions" hidden>
+              <button class="btn btn-primary" type="button" id="configProposalApproveBtn" onclick="approveLatestProposal()">Approve Proposal</button>
+              <button class="btn btn-primary" type="button" id="configProposalApplyBtn" onclick="applyLatestProposal()" hidden>Apply Proposal</button>
+              <button class="btn btn-primary" type="button" id="configProposalExecuteOptionsBtn" onclick="executeLatestOptionsProposal()" hidden>Execute Options Proposal</button>
+              <button class="btn btn-secondary" type="button" id="configProposalRejectBtn" onclick="rejectLatestProposal()">Reject Proposal</button>
+            </div>
+            <div class="config-proposal-action-result" id="configProposalActionResult" hidden></div>
+
+            <div class="config-proposal-note" id="configProposalNote">This proposal is awaiting operator review.</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="config-proposal-history-panel">
+          <div class="section-header compact-header">
+            <div>
+              <h3 style="margin:0;">Recent Proposal History</h3>
+              <p class="section-subtitle" style="margin:4px 0 0 0;">Latest 5 config proposal records with status and timeline context.</p>
+            </div>
+          </div>
+          <div class="config-proposal-history" id="configProposalHistory">
+            <div class="config-proposal-history-empty">No recent proposal history yet.</div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel span-12 configuration-advisory-panel">
+    <div class="section-header">
+      <div>
+        <h2>Advanced Workspace</h2>
+        <p class="section-subtitle">Open the technical guidance and deeper operational controls only when you need to review advisory internals or tune the underlying engine.</p>
+      </div>
+    </div>
+
+    <details class="configuration-advanced-toggle" id="config-section-risk-intelligence" data-config-section="risk-intelligence">
+      <summary>
+        <div>
+          <strong>Risk Intelligence</strong>
+          <span>Detailed adaptive guidance, preset recommendations, and simulated guardrail impact.</span>
+        </div>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="configuration-advisory-note">
+          <div class="configuration-advisory-note-title">Advisory Workspace</div>
+          <div class="configuration-advisory-note-copy">Adaptive suggestions, preset recommendations, and projected guardrail impact are reviewed here. Presets can be staged from this section, but nothing is applied until you save manually.</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="configuration-advisory-grid">
+          <div class="adaptive-suggestions-card" id="configAdaptiveSuggestionsCard">
+            <div class="adaptive-suggestions-head">
+              <div class="adaptive-suggestions-eyebrow">Adaptive Suggestions</div>
+              <div class="adaptive-suggestions-priority" id="configAdaptiveSuggestionsPriority">Reviewing</div>
+            </div>
+            <div class="adaptive-suggestions-summary" id="configAdaptiveSuggestionsSummary">
+              Advisory guidance will appear once analytics and risk inputs are available.
+            </div>
+            <div class="adaptive-suggestions-list" id="configAdaptiveSuggestionsList">
+              <div class="adaptive-suggestion-item">
+                <div class="adaptive-suggestion-title">Waiting for inputs</div>
+                <div class="adaptive-suggestion-detail">Suggestions remain read-only and use the current portfolio, reserve, drawdown, and regime picture.</div>
+              </div>
+            </div>
+            <div class="adaptive-suggestions-notes" id="configAdaptiveSuggestionsNotes"></div>
+          </div>
+
+          <div class="auto-adaptive-card" id="configAutoAdaptiveCard">
+            <div class="auto-adaptive-head">
+              <div>
+                <div class="auto-adaptive-eyebrow">Auto-Adaptive Mode</div>
+                <div class="auto-adaptive-preset" id="configAutoAdaptivePreset">Reviewing current preset fit...</div>
+              </div>
+              <div class="auto-adaptive-confidence" id="configAutoAdaptiveConfidence">low confidence</div>
+            </div>
+            <div class="auto-adaptive-summary" id="configAutoAdaptiveSummary">
+              Recommendation-only intelligence is evaluating the current portfolio posture.
+            </div>
+            <div class="auto-adaptive-reasons" id="configAutoAdaptiveReasons"></div>
+            <div class="auto-adaptive-simulation" id="configAutoAdaptiveSimulation">
+              <div class="auto-adaptive-simulation-head">
+                <div class="auto-adaptive-simulation-eyebrow">Preset Impact Simulation</div>
+                <div class="auto-adaptive-simulation-band" id="configAutoAdaptiveSimulationBand">Projected band pending</div>
+              </div>
+              <div class="auto-adaptive-simulation-line" id="configAutoAdaptiveProjectionLine">
+                Current score -- → projected score --
+              </div>
+              <div class="auto-adaptive-simulation-summary" id="configAutoAdaptiveSimulationSummary">
+                Projected guardrail pressure will appear once the recommended preset is available.
+              </div>
+              <div class="auto-adaptive-simulation-controls" id="configAutoAdaptiveChangedControls"></div>
+              <div class="auto-adaptive-simulation-notes" id="configAutoAdaptiveSimulationNotes"></div>
+            </div>
+            <div class="auto-adaptive-actions" id="configAutoAdaptiveActions"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+    <div class="divider"></div>
+    <details class="configuration-advanced-toggle" id="config-section-advanced-controls" data-config-section="advanced-controls">
+      <summary>
+        <div>
+          <strong>Advanced Controls</strong>
+          <span>Open these sections when you want deeper tuning for capacity, risk thresholds, asset controls, and runtime visibility.</span>
+        </div>
+      </summary>
+      <div class="configuration-advanced-body">
+        <div class="configuration-advanced-stack">
+      <details class="advanced-config-group" id="config-section-capacity-controls" data-config-section="capacity-controls">
+        <summary>
+          <div>
+            <strong>Capacity and Rotation Controls</strong>
+            <span>Detailed limits for how many satellite names can be active or newly introduced.</span>
+          </div>
+        </summary>
+
+        <div class="risk-form-grid configuration-advanced-grid">
+          <div class="form-card" data-focus-target="max_active_satellites">
+            <label for="max_active_satellites">Max Active Satellites</label>
+            <input id="max_active_satellites" type="number" step="1" min="0">
+            <div class="field-help">Maximum number of active rotation assets held at once.</div>
+          </div>
+
+          <div class="form-card" data-focus-target="max_new_satellites_per_cycle">
+            <label for="max_new_satellites_per_cycle">Max New Satellites Per Cycle</label>
+            <input id="max_new_satellites_per_cycle" type="number" step="1" min="0">
+            <div class="field-help">Limit how many new meme positions can open in one cycle.</div>
+          </div>
+        </div>
+
+        <div class="configuration-action-row">
+          <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Advanced Controls</button>
+        </div>
+      </details>
+
+      <details class="advanced-config-group" id="config-section-risk-controls" data-config-section="risk-controls">
+        <summary>
+          <div>
+            <strong>Risk and Threshold Controls</strong>
+            <span>Drawdown posture, harvest thresholds, sniper scoring, and rotation screening.</span>
+          </div>
+        </summary>
+
+        <div class="risk-form-grid configuration-advanced-grid">
+          <div class="form-card" data-focus-target="drawdown_warn_level">
+            <label for="drawdown_warn_level">Drawdown Warn Level</label>
+            <div class="input-unit-wrap">
+              <input id="drawdown_warn_level" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+              <span class="input-unit-suffix" aria-hidden="true">%</span>
+            </div>
+          </div>
+
+          <div class="form-card" data-focus-target="drawdown_reduce_level">
+            <label for="drawdown_reduce_level">Drawdown Reduce Level</label>
+            <div class="input-unit-wrap">
+              <input id="drawdown_reduce_level" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+              <span class="input-unit-suffix" aria-hidden="true">%</span>
+            </div>
+          </div>
+
+          <div class="form-card" data-focus-target="drawdown_freeze_level">
+            <label for="drawdown_freeze_level">Drawdown Freeze Level</label>
+            <div class="input-unit-wrap">
+              <input id="drawdown_freeze_level" class="percent-field" data-percent-field="true" type="number" step="0.01" min="0" max="100">
+              <span class="input-unit-suffix" aria-hidden="true">%</span>
+            </div>
+          </div>
+
+          <div class="form-card" data-focus-target="min_harvest_usd">
+            <label for="min_harvest_usd">Profit Harvest Minimum (USD)</label>
+            <input id="min_harvest_usd" type="number" step="0.01" min="0" max="1000000">
+          </div>
+
+          <div class="form-card" data-focus-target="sniper_min_score">
+            <label for="sniper_min_score">Sniper Minimum Score</label>
+            <input id="sniper_min_score" type="number" step="0.1" min="0" max="100">
+            <div class="field-help">Minimum score required before a sniper candidate can open a new buy.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="sniper_enabled">Sniper Enabled</label>
+            <select id="sniper_enabled">
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </select>
+            <div class="field-help">Turns the opportunistic sniper-buy lane on or off.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="sniper_block_pump_protected">Pump Protection</label>
+            <select id="sniper_block_pump_protected">
+              <option value="true">Block pump-protected buys</option>
+              <option value="false">Allow despite pump protection</option>
+            </select>
+            <div class="field-help">Keeps the sniper lane from opening buys on assets marked pump-protected.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="sniper_require_sniper_eligible">Require Sniper Eligible</label>
+            <select id="sniper_require_sniper_eligible">
+              <option value="true">Required</option>
+              <option value="false">Not Required</option>
+            </select>
+            <div class="field-help">Only allows sniper buys for assets explicitly marked sniper-eligible by the rotation/scoring system.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="sniper_relax_require_sniper_eligible">Relax Require Sniper Eligible</label>
+            <select id="sniper_relax_require_sniper_eligible">
+              <option value="false">Off</option>
+              <option value="true">On</option>
+            </select>
+            <div class="field-help">Lets high-scoring assets pass even if they are not explicitly flagged sniper-eligible.</div>
+          </div>
+
+          <div class="form-card" style="grid-column: 1 / -1;">
+            <label>Allowed Regimes</label>
+            <div class="configuration-inline-actions" style="gap:16px; flex-wrap:wrap; align-items:flex-start;">
+              <label class="tiny" style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="sniper_allowed_regimes" value="bull">
+                <span>Risk On</span>
+              </label>
+              <label class="tiny" style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="sniper_allowed_regimes" value="neutral">
+                <span>Neutral</span>
+              </label>
+              <label class="tiny" style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="sniper_allowed_regimes" value="risk_off">
+                <span>Risk Off</span>
+              </label>
+            </div>
+            <div class="field-help">Controls which market regimes are allowed to open new sniper buys: Risk On, Neutral, and Risk Off.</div>
+            <div class="field-help">Allowing sniper buys during risk-off can increase participation, but also increases downside exposure.</div>
+          </div>
+
+          <div class="form-card" data-focus-target="min_meme_score">
+            <label for="min_meme_score">Rotation Minimum Score</label>
+            <input id="min_meme_score" type="number" step="0.1" min="0" max="100">
+          </div>
+
+          <div class="form-card" data-focus-target="rotation_cooldown_minutes">
+            <label for="rotation_cooldown_minutes">Rotation Cooldown (Minutes)</label>
+            <input id="rotation_cooldown_minutes" type="number" step="1" min="0" max="10080">
+          </div>
+        </div>
+
+        <div class="configuration-action-row">
+          <button class="btn btn-primary" type="button" onclick="saveRiskControls()">Save Risk Thresholds</button>
+        </div>
+      </details>
+
+      <details class="advanced-config-group" id="config-section-runtime-controls" data-config-section="runtime-controls">
+        <summary>
+          <div>
+            <strong>Runtime-Only Visibility</strong>
+            <span>Current env-backed duplicate and alert-age settings are shown here for operator visibility.</span>
+          </div>
+        </summary>
+
+        <div class="risk-form-grid configuration-advanced-grid">
+          <div class="form-card">
+            <label for="duplicate_window_sec">Duplicate Window (sec)</label>
+            <input id="duplicate_window_sec" type="number" step="1" disabled>
+            <div class="field-help">Env-backed runtime value. Update deploy config if this needs to change.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="max_alert_age_sec">Max Alert Age (sec)</label>
+            <input id="max_alert_age_sec" type="number" step="1" disabled>
+            <div class="field-help">Env-backed runtime value. Update deploy config if this needs to change.</div>
+          </div>
+
+          <div class="form-card">
+            <label for="profit_harvest_cooldown_hours">Harvest Cooldown (hours)</label>
+            <input id="profit_harvest_cooldown_hours" type="number" step="1" disabled>
+            <div class="field-help">Shown for visibility. Profit harvest minimum remains editable above.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="advanced-config-group" id="config-section-asset-universe-section" data-config-section="asset-universe-section">
+        <summary>
+          <div>
+            <strong>Asset Universe Controls</strong>
+            <span>Search valid products, allow or block assets, and control active rotation candidates.</span>
+          </div>
+        </summary>
+
+        <div class="configuration-search-row">
+          <div class="configuration-search-field" data-focus-target="asset-universe-section">
+            <label for="assetSearch" class="tiny">Search assets</label>
+            <input
+              id="assetSearch"
+              type="text"
+              placeholder="Search symbol or product id..."
+              oninput="renderAssetRows()"
+            >
+          </div>
+          <div class="topbar-actions configuration-inline-actions">
+            <button class="btn btn-secondary" type="button" onclick="refreshAssets()">Refresh Assets</button>
+          </div>
+        </div>
+
+        <div class="configuration-meta-row tiny">
+          <div id="assetSearchMeta">Loading asset universe...</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="table-wrap">
+          <table class="configuration-table">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Status</th>
+                <th class="right">Held Value</th>
+                <th class="right">Weight</th>
+                <th>Controls</th>
+              </tr>
+            </thead>
+            <tbody id="assetRows"></tbody>
+          </table>
+        </div>
+      </details>
+        </div>
+      </div>
+    </details>
+  </section>
+
+</div>
+</div>
+
+<script>
+  window.CONFIGURATION_CONFIG = {
+    apiSecret: {{ api_secret|tojson }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/configuration.js') }}"></script>
+{% endblock %}

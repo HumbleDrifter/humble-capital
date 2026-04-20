@@ -1,0 +1,3730 @@
+{% extends "base_app.html" %}
+
+{% block content %}
+<style>
+  .chart-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 0;
+    flex-wrap: wrap;
+  }
+
+  .chart-control-group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .chart-pill {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(236,243,255,0.5);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: "DM Sans", sans-serif;
+  }
+
+  .chart-pill.active {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+  }
+
+  .chart-symbol-input {
+    width: 160px;
+    padding: 6px 12px;
+    font-size: 14px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: #ecf3ff;
+    font-family: "DM Sans", sans-serif;
+  }
+
+  .signal-params-panel {
+    margin-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 12px;
+  }
+
+  .signal-params-panel summary {
+    cursor: pointer;
+    color: #ecf3ff;
+    font-weight: 600;
+    list-style: none;
+  }
+
+  .signal-params-panel summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .signal-params-grid {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .signal-params-grid label {
+    display: grid;
+    gap: 6px;
+    color: rgba(236,243,255,0.72);
+    font-size: 13px;
+  }
+
+  .signal-params-grid span {
+    color: #38bdf8;
+    font-weight: 600;
+  }
+
+  .futures-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+  }
+
+  .futures-kpi {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  .futures-kpi-label {
+    font-size: 12px;
+    color: rgba(236,243,255,0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .futures-kpi-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ecf3ff;
+  }
+
+  .futures-table-wrap {
+    overflow: auto;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+  }
+
+  .futures-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 820px;
+  }
+
+  .futures-table th,
+  .futures-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 13px;
+    color: rgba(236,243,255,0.82);
+  }
+
+  .futures-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(236,243,255,0.5);
+    background: rgba(12,18,30,0.75);
+  }
+
+  .futures-side {
+    font-weight: 700;
+  }
+
+  .futures-side.long { color: #22c55e; }
+  .futures-side.short { color: #ef4444; }
+
+  .futures-filter-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .futures-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+
+  .futures-card,
+  .futures-opportunity {
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.52);
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .futures-card-head,
+  .futures-opportunity-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .futures-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ecf3ff;
+  }
+
+  .futures-card-subtitle {
+    font-size: 12px;
+    color: rgba(236,243,255,0.55);
+  }
+
+  .futures-card-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ecf3ff;
+  }
+
+  .futures-card-change.positive { color: #22c55e; }
+  .futures-card-change.negative { color: #ef4444; }
+
+  .futures-card-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .futures-metric-label {
+    display: block;
+    font-size: 11px;
+    color: rgba(236,243,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  .futures-card-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-long {
+    background: rgba(34,197,94,0.18);
+    border-color: rgba(34,197,94,0.35);
+    color: #22c55e;
+  }
+
+  .btn-short {
+    background: rgba(239,68,68,0.16);
+    border-color: rgba(239,68,68,0.35);
+    color: #ef4444;
+  }
+
+  .futures-order-modal {
+    width: min(560px, calc(100vw - 32px));
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    background: #0f1729;
+    color: #ecf3ff;
+    padding: 20px;
+  }
+
+  .futures-order-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 14px 0;
+  }
+
+  .futures-order-grid label {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    color: rgba(236,243,255,0.72);
+  }
+
+  .order-preview {
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: rgba(236,243,255,0.82);
+    font-size: 13px;
+    display: grid;
+    gap: 4px;
+  }
+
+  .chart-workspace {
+    display: flex;
+    gap: 0;
+    height: calc(100vh - 120px);
+    min-height: 600px;
+  }
+
+  .chart-workspace-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .chart-config-panel {
+    width: 220px;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.02);
+    border-left: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .chart-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Symbol search autocomplete ── */
+  .symbol-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .symbol-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 220px;
+    max-width: 320px;
+    max-height: 280px;
+    overflow-y: auto;
+    background: #0f1729;
+    border: 1px solid rgba(56,189,248,0.25);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    z-index: 9999;
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+  .symbol-dropdown.open { display: block; }
+  .symbol-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.1s;
+  }
+  .symbol-dropdown-item:last-child { border-bottom: none; }
+  .symbol-dropdown-item:hover,
+  .symbol-dropdown-item.active {
+    background: rgba(56,189,248,0.12);
+  }
+  .symbol-dropdown-item .sym-ticker {
+    font-weight: 600;
+    color: rgba(236,243,255,0.9);
+    letter-spacing: 0.02em;
+  }
+  .symbol-dropdown-item .sym-ticker mark {
+    background: transparent;
+    color: #38bdf8;
+    font-weight: 700;
+  }
+  .symbol-dropdown-item .sym-name {
+    font-size: 11px;
+    color: rgba(236,243,255,0.35);
+    margin-left: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+  .symbol-dropdown-empty {
+    padding: 12px;
+    text-align: center;
+    color: rgba(236,243,255,0.3);
+    font-size: 12px;
+  }
+  @media (max-width: 768px) {
+    .symbol-dropdown { min-width: 200px; max-width: 280px; }
+  }
+
+  /* ── Mobile responsive chart layout ── */
+  @media (max-width: 768px) {
+    .chart-workspace { flex-direction: column; height: auto; min-height: unset; }
+    .chart-config-panel { width: 100%; border-left: none; border-top: 1px solid rgba(255,255,255,0.06); padding: 8px; }
+    .chart-workspace-main { padding: 6px; }
+    .chart-topbar { gap: 6px; margin-bottom: 6px; }
+    .chart-topbar-left { width: 100%; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 6px; }
+    .chart-topbar-left::-webkit-scrollbar { display: none; }
+    .chart-topbar-center { width: 100%; order: -1; justify-content: flex-start; gap: 8px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .chart-topbar-right { width: 100%; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 4px; }
+    .chart-topbar-right::-webkit-scrollbar { display: none; }
+    .chart-symbol-pill-group { flex-shrink: 0; }
+    .chart-symbol-input { min-width: 100px; flex-shrink: 0; }
+    .chart-overlay-bar { display: flex; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; flex-wrap: nowrap; }
+    .chart-overlay-bar::-webkit-scrollbar { display: none; }
+    #tradingChartMain { height: 280px !important; }
+    #tradingChartVolume { height: 60px !important; }
+    #tradingChartRsi { height: 80px !important; }
+    .chart-asset-context { flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .chart-asset-context::-webkit-scrollbar { display: none; }
+    .chart-price-value { font-size: 16px !important; }
+    .chart-price-change { font-size: 12px !important; }
+    .chart-detail-item { display: none; }
+    .chart-pill { padding: 4px 8px !important; font-size: 11px !important; }
+  }
+  @media (max-width: 480px) {
+    #tradingChartMain { height: 220px !important; }
+    #tradingChartVolume { height: 50px !important; }
+    #tradingChartRsi { height: 70px !important; }
+    .chart-workspace-main { padding: 4px; }
+  }
+
+  .chart-topbar-left { display: flex; align-items: center; gap: 8px; }
+
+  .chart-topbar-center {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  .chart-topbar-right { display: flex; gap: 4px; }
+
+  .chart-overlay-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chart-detail-item { display: flex; align-items: center; gap: 4px; color: rgba(236,243,255,0.5); }
+
+  .config-section {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .config-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(236,243,255,0.35);
+    margin-bottom: 10px;
+  }
+
+  .config-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .config-label {
+    font-size: 11px;
+    color: rgba(236,243,255,0.5);
+    width: 72px;
+    flex-shrink: 0;
+  }
+
+  .config-slider {
+    flex: 1;
+    accent-color: #2dd4bf;
+    cursor: pointer;
+  }
+
+  .config-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2dd4bf;
+    width: 28px;
+    text-align: right;
+  }
+
+  .chart-bt-results-bar {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: rgba(45,212,191,0.06);
+    border: 1px solid rgba(45,212,191,0.15);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .chart-bt-stat { display: flex; flex-direction: column; gap: 2px; }
+  .chart-bt-label { font-size: 10px; color: rgba(236,243,255,0.4); }
+  .chart-bt-value { font-size: 14px; font-weight: 700; color: #ecf3ff; }
+  .chart-symbol-pill-group { display: flex; gap: 4px; }
+</style>
+<div class="opp-shell">
+  <section class="opp-hero opp-panel">
+    <div class="opp-hero-copy">
+      <div class="opp-kicker">Unified Trading</div>
+      <h2 class="opp-title">Find, score, and visualize opportunities across crypto and stocks from one workspace.</h2>
+      <p class="opp-subtitle" id="tradingPageMeta">Loading trading workspace...</p>
+    </div>
+  </section>
+
+  <div class="page-tabs">
+    <button class="page-tab active" data-tab="crypto" type="button">Crypto</button>
+    <button class="page-tab" data-tab="stocks" type="button">Stocks</button>
+    <button class="page-tab" data-tab="futures" type="button">Futures</button>
+    <button class="page-tab" data-tab="social" type="button">Momentum</button>
+    <button class="page-tab" data-tab="squeeze" style="display:none;" type="button">Squeeze</button>
+    <button class="page-tab" data-tab="charts" type="button">Charts</button>
+  </div>
+
+  <!-- Bot status bar -->
+  <div id="tradingBotStatusBar" style="
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:7px 12px;margin-bottom:4px;
+    background:rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.05);
+    border-radius:8px;font-size:12px;
+  ">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;
+        box-shadow:0 0 6px #22c55e;flex-shrink:0;" id="botPulseDot"></span>
+      <span style="color:rgba(236,243,255,0.5);">Bot</span>
+      <span style="font-weight:600;color:#22c55e;" id="botStatusLabel">Active</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <span style="color:rgba(236,243,255,0.4);">Regime</span>
+      <span id="tradingRegimeBadge" style="
+        padding:2px 8px;border-radius:10px;font-weight:600;font-size:11px;
+        background:rgba(251,191,36,0.15);color:#fbbf24;
+        border:1px solid rgba(251,191,36,0.25);">neutral</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:0;">
+      <span style="color:rgba(236,243,255,0.4);">Last action</span>
+      <span id="tradingLastAction" style="color:rgba(236,243,255,0.6);
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        Monitoring positions
+      </span>
+    </div>
+    <div style="color:rgba(236,243,255,0.35);" id="tradingPortfolioValue">$—</div>
+    <!-- Auto-trade toggles -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto;">
+      <span style="font-size:10px;color:rgba(236,243,255,0.3);white-space:nowrap;">Auto-Trade:</span>
+      <label id="toggle_crypto" title="Crypto auto-trade" onclick="toggleAutoTrade('crypto')"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#38bdf8;">
+        <span id="dot_crypto" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Crypto
+      </label>
+      <label id="toggle_stocks" title="Stocks auto-trade" onclick="toggleAutoTrade('stocks')"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#818cf8;">
+        <span id="dot_stocks" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Stocks
+      </label>
+      <label id="toggle_futures" title="Futures auto-trade" onclick="toggleAutoTrade('futures')"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#f59e0b;">
+        <span id="dot_futures" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Futures
+      </label>
+      <label id="toggle_options" title="Options auto-trade" onclick="toggleAutoTrade('options')"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;font-weight:700;color:#a78bfa;">
+        <span id="dot_options" style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Options
+      </label>
+    </div>
+  </div>
+
+  <div class="page-tab-content active" id="tab-crypto">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Crypto Scanner</h3>
+          <p class="opp-section-subtitle">Existing crypto scanner data, now presented inside the unified Trading hub.</p>
+        </div>
+        <div class="opp-panel-actions">
+          <button class="btn btn-primary" id="tradingCryptoRefreshBtn" type="button">Refresh Crypto</button>
+        </div>
+      </div>
+      <div id="tradingCryptoStatus" class="opp-status-bar"></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Live Signals</h3>
+          <p class="opp-section-subtitle">Recent scanner activity across the crypto universe.</p>
+        </div>
+      </div>
+      <div id="tradingCryptoSignals" class="dashboard-shadow-monitor"><div class="dashboard-shadow-fallback">Loading recent signals...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Your Positions</h3>
+          <p class="opp-section-subtitle">Held crypto positions with composite score context.</p>
+        </div>
+      </div>
+      <div id="tradingCryptoPositions" class="opp-board-host"><div class="hc-empty-card">Loading held positions...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Top Opportunities</h3>
+          <p class="opp-section-subtitle">Technical, sentiment, momentum, and regime scoring in one card.</p>
+        </div>
+      </div>
+      <div id="tradingCryptoGrid" class="opp-board-host"><div class="hc-empty-card">Loading crypto opportunities...</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-stocks">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Stock Scanner</h3>
+          <p class="opp-section-subtitle" id="tradingStockMeta">Loading stock universe...</p>
+        </div>
+        <div class="opp-panel-actions">
+          <button class="btn btn-secondary trading-stock-tier active" data-tier="tier1" type="button">Tier 1</button>
+          <button class="btn btn-secondary trading-stock-tier" data-tier="tier2" type="button">Tier 2</button>
+          <button class="btn btn-secondary trading-stock-tier" data-tier="all" type="button">All</button>
+        </div>
+      </div>
+      <div class="opp-panel-head" style="margin-top:12px;">
+        <div class="opp-panel-actions" style="width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px;">
+          <div class="form-card"><label for="tradingStockStrategy">Strategy Filter</label><select id="tradingStockStrategy" class="select"><option value="all">All</option><option value="momentum">Momentum</option><option value="mean_reversion">Mean Reversion</option><option value="breakout">Breakout</option><option value="trend_following">Trend Following</option></select></div>
+          <div class="form-card"><label for="tradingStockRegime">Regime Filter</label><select id="tradingStockRegime" class="select"><option value="bull">Bull</option><option value="neutral">Neutral</option><option value="caution">Caution</option></select></div>
+          <div class="form-card"><label for="tradingStockSort">Sort By</label><select id="tradingStockSort" class="select"><option value="score">Score</option><option value="volume">Volume</option><option value="mentions">Social Mentions</option><option value="change">Price Change</option><option value="market_cap">Market Cap</option></select></div>
+          <div class="form-card"><label for="tradingStockSearch">Symbol Search</label><input id="tradingStockSearch" class="form-input" type="text" placeholder="AAPL, NVDA, TSLA..."></div>
+        </div>
+      </div>
+      <div class="opp-panel-actions" style="margin-top:12px;"><button class="btn btn-primary" id="tradingStockScanBtn" type="button">Scan Now</button></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head"><div><h3 class="opp-section-title">Stock Opportunities</h3><p class="opp-section-subtitle">Scored from bars, volume, and social sentiment.</p></div></div>
+      <div id="tradingStockGrid" class="opp-board-host"><div class="hc-empty-card">Run a stock scan to load opportunities.</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-futures">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Futures Account Summary</h3>
+          <p class="opp-section-subtitle" id="futuresSummaryMeta">Live Coinbase futures balances and open risk.</p>
+        </div>
+      </div>
+      <div class="futures-summary">
+        <div class="futures-kpi"><span class="futures-kpi-label">Buying Power</span><span class="futures-kpi-value" id="futuresBuyingPower">$0.00</span></div>
+        <div class="futures-kpi"><span class="futures-kpi-label">Futures Balance</span><span class="futures-kpi-value" id="futuresBalance">$0.00</span></div>
+        <div class="futures-kpi"><span class="futures-kpi-label">Unrealized P&amp;L</span><span class="futures-kpi-value" id="futuresPnl">$0.00</span></div>
+        <div class="futures-kpi"><span class="futures-kpi-label">Daily P&amp;L</span><span class="futures-kpi-value" id="futuresDailyPnl">$0.00</span></div>
+      </div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Open Positions</h3>
+          <p class="opp-section-subtitle">Long and short futures positions with live P&amp;L.</p>
+        </div>
+      </div>
+      <div class="futures-table-wrap">
+        <table class="futures-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Side</th>
+              <th>Size</th>
+              <th>Entry</th>
+              <th>Mark</th>
+              <th>P&amp;L</th>
+              <th>Margin</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="futuresPositionsBody">
+            <tr><td colspan="8">Loading open futures positions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Futures Market Browser</h3>
+          <p class="opp-section-subtitle">Browse futures products by category and launch orders or charts.</p>
+        </div>
+      </div>
+      <div class="futures-filter-pills">
+        <button class="chart-pill futures-category-pill active" data-category="all" type="button">All</button>
+        <button class="chart-pill futures-category-pill" data-category="crypto_perp" type="button">Crypto Perps</button>
+        <button class="chart-pill futures-category-pill" data-category="crypto_dated" type="button">Dated</button>
+        <button class="chart-pill futures-category-pill" data-category="commodity" type="button">Commodities</button>
+        <button class="chart-pill futures-category-pill" data-category="index" type="button">Indices</button>
+      </div>
+      <div id="futuresProductsGrid" class="futures-grid"><div class="hc-empty-card">Loading futures products...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Opportunities</h3>
+          <p class="opp-section-subtitle">Scanner-ranked perpetual setups with leverage and stop guidance.</p>
+        </div>
+      </div>
+      <div id="futuresOpportunitiesGrid" class="futures-grid"><div class="hc-empty-card">Loading futures opportunities...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Funding Arbitrage</h3>
+          <p class="opp-section-subtitle">Perps with elevated funding rates — short perp + long spot carry trade candidates.</p>
+        </div>
+      </div>
+      <div id="futuresFundingGrid" class="futures-grid"><div class="hc-empty-card">Loading funding arb data...</div></div>
+    </section>
+
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Basis Trade</h3>
+          <p class="opp-section-subtitle">Dated futures trading at premium to spot — annualized basis yield opportunities.</p>
+        </div>
+      </div>
+      <div id="futuresBasisGrid" class="futures-grid"><div class="hc-empty-card">Loading basis trade data...</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-squeeze" style="display:none;"></div>
+  <div class="page-tab-content" id="tab-social">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Social Stock Scanner</h3>
+          <p class="opp-section-subtitle" id="socialScanMeta">Top stocks by social momentum across Reddit, StockTwits, YouTube and News.</p>
+        </div>
+        <button class="btn btn-secondary" id="socialScanRefresh" type="button">Refresh</button>
+      </div>
+      <div id="socialScanGrid" class="futures-grid"><div class="hc-empty-card">Loading social scan...</div></div>
+    </section>
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Meme Stock Trending</h3>
+          <p class="opp-section-subtitle">High-momentum meme stocks with active social chatter right now.</p>
+        </div>
+      </div>
+      <div id="memeTrendingGrid" class="futures-grid"><div class="hc-empty-card">Loading meme trending...</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-squeeze">
+    <section class="opp-panel">
+      <div class="opp-panel-head">
+        <div>
+          <h3 class="opp-section-title">Squeeze Scanner</h3>
+          <p class="opp-section-subtitle" id="squeezeScanMeta">Meme stocks with elevated volume, social momentum, and technical breakout conditions.</p>
+        </div>
+        <button class="btn btn-secondary" id="squeezeScanRefresh" type="button">Refresh</button>
+      </div>
+      <div id="squeezeGrid" class="futures-grid"><div class="hc-empty-card">Loading squeeze candidates...</div></div>
+    </section>
+  </div>
+
+  <div class="page-tab-content" id="tab-charts">
+    <div class="chart-workspace">
+
+      <div class="chart-workspace-main">
+        <div class="chart-topbar">
+          <div class="chart-topbar-left">
+            <div class="chart-symbol-pill-group">
+              <button class="chart-pill trading-chart-type asset-type-toggle active" data-type="crypto" type="button">Crypto</button>
+              <button class="chart-pill trading-chart-type asset-type-toggle" data-type="stock" type="button">Stock</button>
+              <button class="chart-pill trading-chart-type asset-type-toggle" data-type="futures" type="button">Futures</button>
+              <button class="chart-pill trading-chart-type asset-type-toggle" data-type="options" type="button">Options</button>
+            </div>
+            <div class="symbol-search-wrap" id="symbolSearchWrap">
+              <input type="text" id="tradingChartSymbolInput" class="chart-symbol-input"
+                placeholder="Search symbol..." value="BTC-USD"
+                autocomplete="off" spellcheck="false">
+              <div class="symbol-dropdown" id="symbolDropdown"></div>
+            </div>
+          </div>
+          <div class="chart-topbar-center">
+            <span class="chart-symbol-name" id="chartSymbolName">BTC-USD</span>
+            <span class="chart-price-value" id="chartPrice">$0.00</span>
+            <span class="chart-price-change positive" id="chartChange">+$0.00 (+0.00%)</span>
+            <span class="chart-detail-item"><span class="chart-label">Bid</span><span id="chartBid">–</span></span>
+            <span class="chart-detail-item"><span class="chart-label">Ask</span><span id="chartAsk">–</span></span>
+            <span class="chart-detail-item"><span class="chart-label">Vol</span><span id="chartVolume">–</span></span>
+          </div>
+          <div class="chart-topbar-right">
+            <button class="chart-pill trading-chart-frame active" data-frame="1h" type="button">1H</button>
+            <button class="chart-pill trading-chart-frame" data-frame="4h" type="button">4H</button>
+            <button class="chart-pill trading-chart-frame" data-frame="1d" type="button">1D</button>
+            <button class="chart-pill trading-chart-frame" data-frame="1w" type="button">1W</button>
+          <div id="optionsSignalToggleGroup" style="display:none;align-items:center;gap:4px;">
+            <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px;align-self:stretch;"></div>
+            <button id="optSignalToggleBtn" class="chart-pill active" type="button"
+              style="background:rgba(167,139,250,0.15);color:#a78bfa;border:1px solid rgba(167,139,250,0.3);">
+              ⚡ Options Signals
+            </button>
+          </div>
+
+          <div id="chartRoleBtnGroup" style="display:flex;align-items:center;gap:4px;">
+              <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 4px;align-self:stretch;"></div>
+              <button class="chart-pill chart-role-btn active" data-role="core" type="button"
+                style="background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);">
+                Core
+              </button>
+              <button class="chart-pill chart-role-btn" data-role="satellite" type="button"
+                style="background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);border:1px solid rgba(255,255,255,0.1);">
+                Satellite
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-overlay-bar">
+          <button class="chart-toggle active" data-overlay="ema21" type="button">EMA 21</button>
+          <button class="chart-toggle active" data-overlay="ema50" type="button">EMA 50</button>
+          <button class="chart-toggle" data-overlay="ema200" type="button">EMA 200</button>
+          <button class="chart-toggle active" data-overlay="bb" type="button">BB</button>
+          <button class="chart-toggle" data-overlay="vwap" type="button">VWAP</button>
+          <button class="chart-toggle active" data-overlay="signals" type="button">Signals</button>
+          <div class="chart-asset-context" id="chartAssetContext" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;margin-bottom:6px;font-size:12px;">
+            <span class="chart-context-badge" id="ctxAssetClass" style="
+              padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
+              background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);">
+              Crypto
+            </span>
+            <span class="chart-context-badge" id="ctxBotRole" style="
+              padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
+              background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);
+              cursor:pointer;" title="Click to toggle bot role">
+              Core
+            </span>
+            <span class="chart-context-badge" id="ctxBotTimeframe" style="
+              padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
+              background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);">
+              4H Scanner
+            </span>
+            <span class="chart-context-badge" id="ctxBotIndicators" style="
+              padding:3px 10px;border-radius:12px;font-weight:600;font-size:11px;
+              background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);
+              border:1px solid rgba(255,255,255,0.08);">
+              EMA21 · EMA50 · BB · RSI · MACD · ADX
+            </span>
+          </div>
+          <span style="margin-left:auto;font-size:12px;color:rgba(236,243,255,0.4);" id="tradingChartMeta"></span>
+        </div>
+
+        <div class="chart-stack">
+          <div class="chart-main" id="tradingChartMain" style="height:420px;"></div>
+          <div class="chart-volume" id="tradingChartVolume" style="height:70px;"></div>
+          <div class="chart-rsi" id="tradingChartRsi" style="height:90px;"></div>
+        </div>
+
+        <div id="chartContractPanel" style="display:none;margin-top:8px;">
+          <!-- Top filter bar -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+            <span style="font-size:12px;font-weight:700;color:rgba(236,243,255,0.6);
+              text-transform:uppercase;letter-spacing:0.06em;">Options Chain</span>
+            <select id="chainExpirySelect" class="select"
+              style="font-size:12px;padding:4px 10px;min-width:140px;">
+              <option value="">All Expirations</option>
+            </select>
+            <div style="display:flex;gap:4px;">
+              <button class="chain-side-btn active" data-side="both" type="button"
+                style="padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;
+                background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);">
+                Both
+              </button>
+              <button class="chain-side-btn" data-side="calls" type="button"
+                style="padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;
+                background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);border:1px solid rgba(255,255,255,0.1);">
+                Calls
+              </button>
+              <button class="chain-side-btn" data-side="puts" type="button"
+                style="padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;
+                background:rgba(255,255,255,0.05);color:rgba(236,243,255,0.5);border:1px solid rgba(255,255,255,0.1);">
+                Puts
+              </button>
+            </div>
+            <input id="chainStrikeInput" type="number" placeholder="Near strike..."
+              style="font-size:12px;padding:4px 8px;background:rgba(255,255,255,0.05);
+              border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ecf3ff;width:110px;">
+            <span id="chainLoadingMsg" style="font-size:11px;color:rgba(236,243,255,0.4);margin-left:auto;"></span>
+          </div>
+
+          <!-- Chain table -->
+          <div style="overflow-x:auto;">
+            <table id="chainTable" style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;">
+              <colgroup>
+                <col style="width:12%"><col style="width:10%"><col style="width:10%">
+                <col style="width:12%">
+                <col style="width:10%"><col style="width:10%"><col style="width:12%">
+              </colgroup>
+              <thead>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                  <th colspan="3" style="text-align:center;padding:6px 4px;
+                    color:#2dd4bf;font-weight:600;font-size:11px;letter-spacing:0.05em;">
+                    CALLS
+                  </th>
+                  <th style="text-align:center;padding:6px 4px;
+                    color:rgba(236,243,255,0.5);font-size:11px;">
+                    STRIKE
+                  </th>
+                  <th colspan="3" style="text-align:center;padding:6px 4px;
+                    color:#f87171;font-weight:600;font-size:11px;letter-spacing:0.05em;">
+                    PUTS
+                  </th>
+                </tr>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Bid</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Ask</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Last</th>
+                  <th style="text-align:center;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Price</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Bid</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Ask</th>
+                  <th style="text-align:right;padding:3px 4px;color:rgba(236,243,255,0.3);font-weight:400;font-size:10px;">Last</th>
+                </tr>
+              </thead>
+              <tbody id="chainTableBody">
+                <tr><td colspan="7" style="padding:16px;text-align:center;
+                  color:rgba(236,243,255,0.3);">Select a symbol to load chain.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="chart-tooltip" id="chartTooltip">
+          <span class="tooltip-label">O</span><span id="tooltipO">-</span>
+          <span class="tooltip-label">H</span><span id="tooltipH">-</span>
+          <span class="tooltip-label">L</span><span id="tooltipL">-</span>
+          <span class="tooltip-label">C</span><span id="tooltipC">-</span>
+          <span class="tooltip-label">Vol</span><span id="tooltipV">-</span>
+          <span class="tooltip-label">RSI</span><span id="tooltipRsi">-</span>
+          <span class="tooltip-label">E21</span><span id="tooltipEma21">-</span>
+          <span class="tooltip-label">E50</span><span id="tooltipEma50">-</span>
+          <span class="tooltip-label">E200</span><span id="tooltipEma200">-</span>
+        </div>
+
+        <div id="tradingChartKpis" class="opp-status-bar" style="margin-top:8px;"></div>
+        <div id="optionsSignalKpis" style="display:none;margin-top:6px;font-size:12px;
+          color:rgba(236,243,255,0.5);display:flex;gap:16px;flex-wrap:wrap;padding:4px 0;">
+        </div>
+
+        <div id="chartBtResultsPanel" style="display:none;margin-top:12px;">
+          <div class="chart-bt-results-bar">
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Return</span>
+              <span class="chart-bt-value" id="chartBtReturn">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Win Rate</span>
+              <span class="chart-bt-value" id="chartBtWinRate">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Trades</span>
+              <span class="chart-bt-value" id="chartBtTrades">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Profit Factor</span>
+              <span class="chart-bt-value" id="chartBtPF">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Max DD</span>
+              <span class="chart-bt-value" id="chartBtDD">—</span>
+            </div>
+            <div class="chart-bt-stat">
+              <span class="chart-bt-label">Avg Hold</span>
+              <span class="chart-bt-value" id="chartBtHold">—</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="chart-config-panel">
+        <div class="config-section">
+          <div class="config-section-title">Indicator Colors</div>
+          <div class="config-row">
+            <span class="config-label">EMA 21</span>
+            <input type="color" id="colorEma21" value="#38bdf8"
+              style="width:36px;height:24px;border:none;background:none;cursor:pointer;padding:0;">
+            <input type="range" id="widthEma21" min="1" max="3" step="1" value="1" class="config-slider" style="width:50px;">
+          </div>
+          <div class="config-row">
+            <span class="config-label">EMA 50</span>
+            <input type="color" id="colorEma50" value="#f59e0b"
+              style="width:36px;height:24px;border:none;background:none;cursor:pointer;padding:0;">
+            <input type="range" id="widthEma50" min="1" max="3" step="1" value="1" class="config-slider" style="width:50px;">
+          </div>
+          <div class="config-row">
+            <span class="config-label">EMA 200</span>
+            <input type="color" id="colorEma200" value="#ef4444"
+              style="width:36px;height:24px;border:none;background:none;cursor:pointer;padding:0;">
+            <input type="range" id="widthEma200" min="1" max="3" step="1" value="1" class="config-slider" style="width:50px;">
+          </div>
+        </div>
+
+        <div class="config-section" id="optionsConfigSection" style="display:none;">
+          <div class="config-section-title">Options Bot Config</div>
+          <div class="config-row">
+            <span class="config-label">Strategy</span>
+            <select id="optBotStrategy" class="select" style="flex:1;font-size:11px;padding:3px 6px;">
+              <option value="wheel">Wheel (Income)</option>
+              <option value="csp">Cash Secured Put</option>
+              <option value="covered_call">Covered Call</option>
+              <option value="meme_call">Meme Squeeze Call</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Min Score</span>
+            <input class="config-slider" id="optMinScore" type="range" min="40" max="90" step="5" value="65">
+            <span class="config-value" id="optMinScoreVal">65</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Max Squeeze</span>
+            <input class="config-slider" id="optMaxSqueeze" type="range" min="1" max="5" step="1" value="2">
+            <span class="config-value" id="optMaxSqueezeVal">2</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Entry Score</span>
+            <input class="config-slider" id="optEntryScore" type="range" min="40" max="90" step="5" value="65">
+            <span class="config-value" id="optEntryScoreVal">65</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Hold Score</span>
+            <input class="config-slider" id="optHoldScore" type="range" min="20" max="70" step="5" value="35">
+            <span class="config-value" id="optHoldScoreVal">35</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Max Active</span>
+            <input class="config-slider" id="optMaxActive" type="range" min="1" max="8" step="1" value="4">
+            <span class="config-value" id="optMaxActiveVal">4</span>
+          </div>
+          <button id="optConfigSaveBtn" type="button"
+            style="width:100%;margin-top:8px;padding:7px;background:rgba(45,212,191,0.15);
+            color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);border-radius:6px;
+            font-weight:600;font-size:12px;cursor:pointer;">
+            Save Options Config
+          </button>
+          <div id="optConfigStatus" style="font-size:10px;color:rgba(236,243,255,0.4);margin-top:4px;text-align:center;"></div>
+
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
+            <div class="config-section-title">Bot Activity</div>
+            <div id="optBotActivity" style="font-size:11px;color:rgba(236,243,255,0.5);line-height:1.6;">
+              Loading...
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Bot Config</div>
+          <div class="config-row">
+            <span class="config-label">Max Trade $</span>
+            <input id="botMaxTrade" type="number" min="10" step="10" value="150"
+              style="flex:1;font-size:11px;padding:3px 6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#ecf3ff;">
+          </div>
+          <div class="config-row">
+            <span class="config-label">Cash Reserve</span>
+            <input id="botCashReserve" type="number" min="0.01" max="0.5" step="0.01" value="0.08"
+              style="flex:1;font-size:11px;padding:3px 6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#ecf3ff;">
+          </div>
+          <div class="config-row">
+            <span class="config-label">Sat Target</span>
+            <input id="botSatTarget" type="number" min="0.05" max="0.5" step="0.05" value="0.20"
+              style="flex:1;font-size:11px;padding:3px 6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#ecf3ff;">
+          </div>
+          <button id="botConfigSaveBtn" type="button"
+            style="width:100%;margin-top:8px;padding:7px;background:rgba(45,212,191,0.15);color:#2dd4bf;border:1px solid rgba(45,212,191,0.3);border-radius:6px;font-weight:600;font-size:12px;cursor:pointer;">
+            Save Bot Config
+          </button>
+          <div id="botConfigStatus" style="font-size:10px;color:rgba(236,243,255,0.4);margin-top:4px;text-align:center;"></div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Signal Parameters</div>
+
+          <div class="config-row">
+            <span class="config-label">RSI Min</span>
+            <input class="config-slider" id="tradingParamRsiMin" type="range" min="20" max="60" step="1" value="40">
+            <span class="config-value" id="tradingParamRsiMinValue">40</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">RSI Max</span>
+            <input class="config-slider" id="tradingParamRsiMax" type="range" min="50" max="85" step="1" value="70">
+            <span class="config-value" id="tradingParamRsiMaxValue">70</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">ADX Min</span>
+            <input class="config-slider" id="tradingParamAdx" type="range" min="10" max="40" step="1" value="20">
+            <span class="config-value" id="tradingParamAdxValue">20</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">EMA Trend</span>
+            <input class="config-slider" id="tradingParamTrend" type="range" min="50" max="250" step="5" value="200">
+            <span class="config-value" id="tradingParamTrendValue">200</span>
+          </div>
+          <div class="config-row">
+            <span class="config-label">Extension %</span>
+            <input class="config-slider" id="tradingParamExt" type="range" min="2" max="25" step="0.5" value="10">
+            <span class="config-value" id="tradingParamExtValue">10</span>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <div class="config-section-title">Backtest</div>
+          <div class="config-row">
+            <span class="config-label">Lookback</span>
+            <select id="chartBtLookback" class="select" style="flex:1;font-size:12px;padding:4px 8px;">
+              <option value="30">30d</option>
+              <option value="60">60d</option>
+              <option value="90" selected>90d</option>
+              <option value="180">180d</option>
+              <option value="365">1Y</option>
+            </select>
+          </div>
+          <div id="stockBtControls" style="display:none;margin-top:8px;">
+            <div class="config-row" style="margin-bottom:6px;">
+              <span class="config-label">Strategy</span>
+              <select id="stockBtStrategy" class="select" style="font-size:11px;padding:3px 6px;"
+                onchange="if(chartRows && chartRows.length && chartType==='stock'){
+                  const sim = simulateStockSignals(chartRows);
+                  currentMarkers = sim.markers;
+                  candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
+                  updateSignalLog(sim);
+                }">
+                <option value="ema_momentum">EMA Momentum</option>
+                <option value="bb_breakout">BB Breakout</option>
+                <option value="mean_reversion">Mean Reversion</option>
+                <option value="trend_following">Trend Following</option>
+              </select>
+            </div>
+          </div>
+          <button id="chartRunBtBtn" type="button"
+            style="width:100%;margin-top:8px;padding:9px;background:#2dd4bf;color:#0f172a;border:none;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;">
+            ▶ Run Backtest
+          </button>
+          <div id="chartBtStatus" style="font-size:11px;color:rgba(236,243,255,0.4);margin-top:6px;text-align:center;"></div>
+          <button id="chartApplyConfigBtn" type="button" style="display:none;
+            width:100%;margin-top:8px;padding:7px;
+            background:rgba(34,197,94,0.15);color:#22c55e;
+            border:1px solid rgba(34,197,94,0.3);border-radius:6px;
+            font-weight:600;font-size:12px;cursor:pointer;">
+            ✓ Apply These Params to Bot
+          </button>
+          <div id="chartApplyConfigStatus" style="font-size:10px;color:rgba(236,243,255,0.4);margin-top:4px;text-align:center;"></div>
+        </div>
+
+        <div class="config-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div class="config-section-title">Signal Log</div>
+          <div id="chartSignalLog" style="flex:1;overflow-y:auto;font-size:11px;color:rgba(236,243,255,0.6);"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog id="futuresOrderDialog" class="futures-order-modal">
+  <form method="dialog" id="futuresOrderForm">
+    <div class="opp-panel-head" style="margin-bottom:10px;">
+      <div>
+        <h3 class="opp-section-title" id="futuresOrderTitle">Futures Order</h3>
+        <p class="opp-section-subtitle" id="futuresOrderSubtitle">Configure size, leverage, and execution style.</p>
+      </div>
+      <button class="btn btn-secondary" value="cancel" type="submit">Close</button>
+    </div>
+    <div class="futures-order-grid">
+      <label>Order Type
+        <select id="futuresOrderType" class="select">
+          <option value="market">Market</option>
+          <option value="limit">Limit</option>
+        </select>
+      </label>
+      <label>Size
+        <input id="futuresOrderSize" class="form-input" type="number" min="0" step="0.001" value="1">
+      </label>
+      <label>Leverage
+        <select id="futuresOrderLeverage" class="select">
+          <option value="1">1x</option>
+          <option value="2">2x</option>
+          <option value="3">3x</option>
+          <option value="5">5x</option>
+          <option value="10">10x</option>
+        </select>
+      </label>
+      <label>Limit Price
+        <input id="futuresOrderLimitPrice" class="form-input" type="number" min="0" step="0.01" placeholder="Optional">
+      </label>
+    </div>
+    <div class="order-preview" id="futuresOrderPreview">
+      <div>Est. Margin Required: $0.00</div>
+      <div>Est. Liquidation Price: $0.00</div>
+    </div>
+    <div class="futures-card-actions" style="margin-top:14px;">
+      <button class="btn btn-long" id="futuresConfirmLong" type="button">Confirm Long</button>
+      <button class="btn btn-short" id="futuresConfirmShort" type="button">Confirm Short</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+(() => {
+  const API_SECRET = {{ api_secret|tojson }};
+  const DEFAULT_STOCKS = ["AAPL","AMD","AMZN","ABNB","BA","BAC","COIN","COST","CRM","CVX","DIS","F","GM","GME","GOOGL","GS","HD","INTC","IWM","JNJ","JPM","KO","LOW","MA","MARA","META","MSFT","MU","NFLX","NIO","NVDA","ORCL","PEP","PFE","PLTR","PYPL","QCOM","QQQ","RIOT","RIVN","SOFI","SQ","SPY","T","TSLA","UBER","V","VZ","WMT","XOM"];
+  const STOCK_SCAN_LIMIT = 12;
+  let stockUniverse = [];
+  let stockTier = "tier1";
+  let stockRows = [];
+  let chartType = "crypto";
+  let chartSymbol = "BTC-USD";
+  let chartFrame = "1h";
+  let chartRows = [];
+  let mainChart;
+  let volumeChart;
+  let rsiChart;
+  let candleSeries;
+  let ema21Series;
+  let ema50Series;
+  let ema200Series;
+  let bbUpperSeries;
+  let bbLowerSeries;
+  let vwapSeries;
+  let volumeSeries;
+  let rsiSeries;
+  let rsiUpperSeries;
+  let rsiLowerSeries;
+  let chartRefreshTimer;
+  let quoteRefreshTimer;
+  let futuresRefreshTimer;
+  let chartReady = false;
+  let chartBooting = false;
+  let currentMarkers = [];
+  let chartRole = "core";
+  let optionsSignalsEnabled = true;
+  const ROLE_PARAMS = {
+    core: { rsiMin: 40, rsiMax: 70, adxMin: 20, trendLen: 200, extPct: 10 },
+    satellite: { rsiMin: 35, rsiMax: 75, adxMin: 15, trendLen: 50, extPct: 15 },
+  };
+  const emaColors = { ema21: "#38bdf8", ema50: "#f59e0b", ema200: "#ef4444" };
+  let futuresCategory = "all";
+  let futuresProducts = [];
+  let futuresPositions = [];
+  let futuresOpportunities = [];
+  let pendingFuturesOrder = null;
+  const chartOverlayState = { ema21: true, ema50: true, ema200: false, bb: true, vwap: false, signals: true };
+
+  function authUrl(path) {
+    if (!API_SECRET) return path;
+    const sep = path.includes("?") ? "&" : "?";
+    return `${path}${sep}secret=${encodeURIComponent(API_SECRET)}`;
+  }
+
+  async function fetchJson(path, options) {
+    const res = await fetch(authUrl(path), Object.assign({ credentials: "same-origin" }, options || {}));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  }
+
+  function fmtUsd(value, digits = 2) {
+    const numeric = Number(value || 0);
+    return Number.isFinite(numeric) ? numeric.toLocaleString(undefined, {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }) : "—";
+  }
+
+  function fmtCompact(value) {
+    const numeric = Number(value || 0);
+    if (!Number.isFinite(numeric)) return "—";
+    return numeric.toLocaleString(undefined, {
+      notation: "compact",
+      maximumFractionDigits: 1
+    });
+  }
+
+  function fmtNum(value, digits = 2) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric.toFixed(digits) : "—";
+  }
+
+  function fmtPct(value, digits = 1) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? `${numeric >= 0 ? "+" : ""}${numeric.toFixed(digits)}%` : "—";
+  }
+
+  function currentTabFromHash() {
+    const raw = String(location.hash || "").replace(/^#/, "");
+    return (raw.split("?")[0] || "crypto").trim() || "crypto";
+  }
+
+  function scoreTone(score) {
+    const value = Number(score || 0);
+    if (value >= 75) return "good";
+    if (value >= 50) return "info";
+    if (value >= 35) return "warn";
+    return "bad";
+  }
+
+  function activateTab(tabName) {
+    document.querySelectorAll(".page-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabName));
+    document.querySelectorAll(".page-tab-content").forEach((panel) => panel.classList.toggle("active", panel.id === `tab-${tabName}`));
+    history.replaceState(null, "", `#${tabName}`);
+    if (tabName === "charts") {
+      console.log("Charts tab activated");
+      window.setTimeout(onChartsTabActivated, 150);
+    }
+    if (tabName === "futures") {
+      loadFutures().catch(console.error);
+    }
+    if (tabName === "social") loadSocialScan().catch(console.error);
+    if (tabName === "squeeze") loadSqueezeScan().catch(console.error);
+  }
+  function renderScoreBreakdown(item) {
+    const total = Number(item.composite_score || item.score || 0);
+    const technical = Number(item.technical_score || 0);
+    const sentiment = Number(item.sentiment_score || 0);
+    const momentum = Number(item.momentum_score || 0);
+    const signal = String(item.signal || "hold").replace(/_/g, " ");
+    return `
+      <div class="opportunity-score-breakdown">
+        <div class="score-total">
+          <div class="score-label">Score</div>
+          <div class="score-value">${fmtNum(total, 0)}</div>
+        </div>
+        <div class="score-bars">
+          <div class="score-bar-row">
+            <span class="score-bar-label">Technical</span>
+            <div class="score-bar-track"><div class="score-bar" style="width:${Math.max(0, Math.min(100, technical))}%"></div></div>
+            <span class="score-bar-value">${fmtNum(technical, 0)}</span>
+          </div>
+          <div class="score-bar-row">
+            <span class="score-bar-label">Sentiment</span>
+            <div class="score-bar-track"><div class="score-bar sentiment" style="width:${Math.max(0, Math.min(100, sentiment))}%"></div></div>
+            <span class="score-bar-value">${fmtNum(sentiment, 0)}</span>
+          </div>
+          <div class="score-bar-row">
+            <span class="score-bar-label">Momentum</span>
+            <div class="score-bar-track"><div class="score-bar momentum" style="width:${Math.max(0, Math.min(100, momentum))}%"></div></div>
+            <span class="score-bar-value">${fmtNum(momentum, 0)}</span>
+          </div>
+        </div>
+        <div class="score-signal">${escapeHtml(signal)}</div>
+        <div class="score-reasoning">${escapeHtml(item.reasoning || item.summary || "Composite score blends technicals, sentiment, and momentum.")}</div>
+      </div>`;
+  }
+
+  function renderCryptoPositions(positions) {
+    const host = document.getElementById("tradingCryptoPositions");
+    const rows = Object.entries(positions || {})
+      .map(([productId, row]) => ({ productId, row: row || {} }))
+      .filter(({ row, productId }) => !["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD"].includes(productId) && Number(row.value_total_usd || 0) > 1)
+      .sort((a, b) => Number(b.row.value_total_usd || 0) - Number(a.row.value_total_usd || 0));
+    if (!rows.length) {
+      host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">No held satellite positions right now.</div></div>';
+      return;
+    }
+    host.innerHTML = rows.map(({ productId, row }) => {
+      const pnl = Number(row.unrealized_pnl_usd || 0);
+      const change = Number(row.unrealized_pnl_pct || row.change_24h || 0);
+      return `
+        <article class="opp-card">
+          <div class="opp-card-header"><div><h4 class="opp-card-title">${escapeHtml(productId)}</h4><div class="opp-card-subtitle">Held value $${fmtNum(row.value_total_usd || 0, 2)}</div></div><span class="opp-score-chip ${pnl >= 0 ? "good" : "bad"}">${pnl >= 0 ? "+" : ""}$${fmtNum(pnl, 2)}</span></div>
+          <div class="opp-card-metrics"><div class="opp-metric"><span class="opp-metric-label">24h</span><strong>${fmtPct(change, 1)}</strong></div><div class="opp-metric"><span class="opp-metric-label">Qty</span><strong>${fmtNum(row.base_balance || row.base_qty_total || 0, 4)}</strong></div></div>
+        </article>`;
+    }).join("");
+  }
+
+  function renderCryptoSignals(signals) {
+    const host = document.getElementById("tradingCryptoSignals");
+    if (!signals.length) {
+      host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">Scanner is running. Signals will appear here as they fire.</div></div>';
+      return;
+    }
+    host.innerHTML = signals.map((signal) => `
+      <article class="opp-card" style="cursor:pointer;" onclick="(function(){
+          const sym = '${escapeHtml(signal.product_id || '')}';
+          if(!sym) return;
+          document.getElementById('tradingChartSymbolInput').value = sym;
+          activateTab('charts');
+          const typeBtn = document.querySelector('.trading-chart-type[data-type=\'crypto\']');
+          if(typeBtn) typeBtn.click();
+          setTimeout(()=>commitChartSymbolInput().catch(()=>{}),200);
+        })()">
+        <div class="opp-card-header">
+          <div><h4 class="opp-card-title">${escapeHtml(signal.product_id || "Unknown")}</h4><div class="opp-card-subtitle">${new Date((Number(signal.ts || 0)) * 1000).toLocaleString()}</div></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="opp-score-chip ${scoreTone(signal.conviction || 50)}">${escapeHtml(String(signal.signal || "signal").toUpperCase())}</span>
+            <span style="font-size:10px;color:rgba(56,189,248,0.7);">Chart →</span>
+          </div>
+        </div>
+        <div class="opp-card-metrics"><div class="opp-metric"><span class="opp-metric-label">Price</span><strong>$${fmtNum(signal.price || 0, 4)}</strong></div><div class="opp-metric"><span class="opp-metric-label">Conviction</span><strong>${fmtNum((Number(signal.conviction || 0) * 100), 0)}</strong></div></div>
+      </article>`).join("");
+  }
+
+  function renderCryptoOpportunities(candidates) {
+    const host = document.getElementById("tradingCryptoGrid");
+    if (!candidates.length) {
+      host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">No crypto opportunities cleared the current filters.</div></div>';
+      return;
+    }
+    host.innerHTML = candidates.slice(0, 12).map((item) => `
+      <article class="opp-card" style="cursor:pointer;" onclick="(function(){
+          const sym = ${JSON.stringify('')} || '${escapeHtml(item.product_id || item.symbol || '')}';
+          document.getElementById('tradingChartSymbolInput').value = sym;
+          activateTab('charts');
+          const typeBtn = document.querySelector('.trading-chart-type[data-type=\'crypto\']');
+          if(typeBtn) typeBtn.click();
+          setTimeout(()=>commitChartSymbolInput().catch(()=>{}),200);
+        })()">
+        <div class="opp-card-header">
+          <div><h4 class="opp-card-title">${escapeHtml(item.product_id || item.symbol || "Unknown")}</h4><div class="opp-card-subtitle">${escapeHtml(item.social_label || "Watching")}</div></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="opp-score-chip ${scoreTone(item.composite_score)}">${escapeHtml(String(item.signal || "hold").replace(/_/g, " "))}</span>
+            <span style="font-size:10px;color:rgba(56,189,248,0.7);white-space:nowrap;">Chart →</span>
+          </div>
+        </div>
+        ${renderScoreBreakdown(item)}
+      </article>`).join("");
+  }
+
+  async function toggleAutoTrade(asset) {
+    try {
+      const cfg = await fetchJson("/api/config");
+      const current = !!(cfg?.config?.auto_trading?.[`auto_execute_${asset}`] ?? true);
+      const newVal = !current;
+      await fetchJson("/api/config/update", {
+        method: "POST",
+        body: JSON.stringify({ path: `auto_trading.auto_execute_${asset}`, value: newVal }),
+      });
+      const dot = document.getElementById(`dot_${asset}`);
+      if (dot) { dot.style.background = newVal ? "#22c55e" : "#ef4444"; }
+      document.getElementById("tradingLastAction").textContent =
+        `${asset} auto-trade ${newVal ? "ON" : "OFF"}`;
+    } catch(e) { console.error("toggle failed", e); }
+  }
+
+  async function loadAutoTradeStates() {
+    try {
+      const cfg = await fetchJson("/api/config");
+      const at = cfg?.config?.auto_trading || {};
+      ["crypto","stocks","futures","options"].forEach(asset => {
+        const enabled = !!(at[`auto_execute_${asset}`] ?? true);
+        const dot = document.getElementById(`dot_${asset}`);
+        if (dot) dot.style.background = enabled ? "#22c55e" : "#ef4444";
+      });
+    } catch(e) {}
+  }
+
+  async function updateBotStatusBar() {
+    try {
+      const snap = await fetchJson("/api/portfolio/snapshot");
+      if (!snap || !snap.ok) return;
+      const regime = String(snap.market_regime || "neutral").toLowerCase();
+      const total = Number(snap.total_value_usd || 0);
+      const regimeBadge = document.getElementById("tradingRegimeBadge");
+      const portfolioValue = document.getElementById("tradingPortfolioValue");
+      const pulseDot = document.getElementById("botPulseDot");
+      if (regimeBadge) {
+        const colors = {
+          bull: ["#22c55e","rgba(34,197,94,0.15)","rgba(34,197,94,0.25)"],
+          neutral: ["#fbbf24","rgba(251,191,36,0.15)","rgba(251,191,36,0.25)"],
+          caution: ["#f97316","rgba(249,115,22,0.15)","rgba(249,115,22,0.25)"],
+          risk_off: ["#ef4444","rgba(239,68,68,0.15)","rgba(239,68,68,0.25)"],
+        };
+        const [c, bg, border] = colors[regime] || colors.neutral;
+        regimeBadge.style.color = c;
+        regimeBadge.style.background = bg;
+        regimeBadge.style.borderColor = border;
+        regimeBadge.textContent = regime.replace("_"," ");
+      }
+      if (portfolioValue) portfolioValue.textContent = "$" + total.toLocaleString(undefined,{maximumFractionDigits:0});
+      if (pulseDot) {
+        pulseDot.style.background = regime === "risk_off" ? "#ef4444" : regime === "caution" ? "#f97316" : "#22c55e";
+        pulseDot.style.boxShadow = "0 0 6px " + (regime === "risk_off" ? "#ef4444" : regime === "caution" ? "#f97316" : "#22c55e");
+      }
+    } catch(e) {}
+  }
+
+  async function loadCrypto() {
+    updateBotStatusBar().catch(()=>{});
+    loadAutoTradeStates().catch(()=>{});
+    const [rotation, signals] = await Promise.all([
+      fetchJson("/api/meme_rotation"),
+      fetchJson("/api/signals/log?limit=10")
+    ]);
+    document.getElementById("tradingCryptoStatus").textContent = `Scanner ${rotation.ok ? "online" : "offline"} · ${Number((rotation.candidates || []).length)} scored candidates`;
+    renderCryptoSignals(Array.isArray(signals.signals) ? signals.signals : []);
+    renderCryptoPositions(rotation.positions || rotation.snapshot?.positions || {});
+    renderCryptoOpportunities(Array.isArray(rotation.candidates) ? rotation.candidates : []);
+  }
+
+  function renderFuturesSummary(balance) {
+    const unrealized = Number(balance.unrealized_pnl || 0);
+    const daily = Number(balance.daily_realized_pnl || 0);
+    document.getElementById("futuresBuyingPower").textContent = fmtUsd(balance.buying_power || 0);
+    document.getElementById("futuresBalance").textContent = fmtUsd(balance.futures_balance || balance.total_balance || 0);
+    const pnlNode = document.getElementById("futuresPnl");
+    const dailyNode = document.getElementById("futuresDailyPnl");
+    pnlNode.textContent = fmtUsd(unrealized);
+    dailyNode.textContent = fmtUsd(daily);
+    pnlNode.style.color = unrealized >= 0 ? "#22c55e" : "#ef4444";
+    dailyNode.style.color = daily >= 0 ? "#22c55e" : "#ef4444";
+  }
+
+  function renderFuturesPositions(rows) {
+    const body = document.getElementById("futuresPositionsBody");
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="8">No open futures positions.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((row) => {
+      const pnl = Number(row.unrealized_pnl || 0);
+      const side = String(row.side || "").toLowerCase();
+      return `
+        <tr>
+          <td><strong>${escapeHtml(row.display_name || row.product_id || "Unknown")}</strong><br><span class="futures-card-subtitle">${escapeHtml(row.product_id || "")}</span></td>
+          <td><span class="futures-side ${side === "short" ? "short" : "long"}">${side === "short" ? "Short" : "Long"}</span></td>
+          <td>${fmtNum(row.size, 3)}</td>
+          <td>${fmtUsd(row.entry_price || 0, 2)}</td>
+          <td>${fmtUsd(row.mark_price || 0, 2)}</td>
+          <td style="color:${pnl >= 0 ? "#22c55e" : "#ef4444"}">${fmtUsd(pnl, 2)}</td>
+          <td>${fmtUsd(row.margin_used || 0, 2)}</td>
+          <td><button class="btn btn-secondary futures-close-btn" data-product="${escapeHtml(row.product_id || "")}" type="button">Close</button></td>
+        </tr>`;
+    }).join("");
+    body.querySelectorAll(".futures-close-btn").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const productId = button.dataset.product || "";
+        button.disabled = true;
+        try {
+          const result = await fetchJson("/api/futures/close", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ product_id: productId })
+          });
+          document.getElementById("futuresSummaryMeta").textContent = result.ok ? `Close submitted for ${productId}.` : `Close failed for ${productId}.`;
+          await loadFutures();
+        } catch (error) {
+          console.error(error);
+          document.getElementById("futuresSummaryMeta").textContent = error.message || "Failed to close futures position.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+  }
+
+  function filteredFuturesProducts() {
+    if (futuresCategory === "all") return futuresProducts.slice();
+    return futuresProducts.filter((row) => String(row.category || "") === futuresCategory);
+  }
+
+  function openFuturesOrderModal(product, direction) {
+    const dialog = document.getElementById("futuresOrderDialog");
+    if (!dialog) return;
+    pendingFuturesOrder = { product, direction };
+    document.getElementById("futuresOrderTitle").textContent = `${product.display_name || product.product_id} — ${direction === "short" ? "Short" : "Long"}`;
+    document.getElementById("futuresOrderSubtitle").textContent = `${product.product_id} · ${product.category || "future"}`;
+    document.getElementById("futuresOrderSize").value = "1";
+    document.getElementById("futuresOrderLeverage").value = String(direction === "short" ? 3 : 2);
+    document.getElementById("futuresOrderLimitPrice").value = Number(product.price || 0) > 0 ? Number(product.price).toFixed(2) : "";
+    updateFuturesOrderPreview();
+    dialog.showModal();
+  }
+
+  function updateFuturesOrderPreview() {
+    const preview = document.getElementById("futuresOrderPreview");
+    if (!preview || !pendingFuturesOrder) return;
+    const size = Number(document.getElementById("futuresOrderSize")?.value || 0);
+    const leverage = Number(document.getElementById("futuresOrderLeverage")?.value || 1);
+    const price = Number(document.getElementById("futuresOrderLimitPrice")?.value || pendingFuturesOrder.product?.price || 0);
+    const margin = leverage > 0 ? (size * price) / leverage : 0;
+    const liq = pendingFuturesOrder.direction === "short"
+      ? price * (1 + (0.85 / Math.max(leverage, 1)))
+      : price * (1 - (0.85 / Math.max(leverage, 1)));
+    preview.innerHTML = `<div>Est. Margin Required: ${fmtUsd(margin, 2)}</div><div>Est. Liquidation Price: ${fmtUsd(liq, 2)}</div>`;
+  }
+
+  async function submitFuturesOrder(forceDirection) {
+    if (!pendingFuturesOrder) return;
+    const product = pendingFuturesOrder.product || {};
+    const direction = forceDirection || pendingFuturesOrder.direction || "long";
+    const side = direction === "short" ? "SELL" : "BUY";
+    try {
+      const payload = {
+        product_id: product.product_id,
+        side,
+        size: Number(document.getElementById("futuresOrderSize")?.value || 0),
+        order_type: document.getElementById("futuresOrderType")?.value || "market",
+        limit_price: document.getElementById("futuresOrderLimitPrice")?.value || null,
+        leverage: Number(document.getElementById("futuresOrderLeverage")?.value || 1)
+      };
+      const result = await fetchJson("/api/futures/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      document.getElementById("futuresSummaryMeta").textContent = result.ok ? `Order submitted for ${product.product_id}.` : `Order failed for ${product.product_id}.`;
+      document.getElementById("futuresOrderDialog")?.close();
+      await loadFutures();
+    } catch (error) {
+      console.error(error);
+      document.getElementById("futuresSummaryMeta").textContent = error.message || "Failed to place futures order.";
+    }
+  }
+
+  function renderFuturesProducts() {
+    const host = document.getElementById("futuresProductsGrid");
+    const rows = filteredFuturesProducts();
+    if (!rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No futures products in this category.</div>';
+      return;
+    }
+    host.innerHTML = rows.map((row) => {
+      const change = Number(row.change_24h || 0);
+      return `
+        <article class="futures-card">
+          <div class="futures-card-head">
+            <div>
+              <div class="futures-card-title">${escapeHtml(row.display_name || row.product_id || "Unknown")}</div>
+              <div class="futures-card-subtitle">${escapeHtml(row.product_id || "")}</div>
+            </div>
+            <span class="opp-score-chip ${scoreTone(Math.abs(change) * 10)}">${escapeHtml((row.category || "").replace(/_/g, " "))}</span>
+          </div>
+          <div>
+            <div class="futures-card-price">${fmtUsd(row.price || 0, 2)}</div>
+            <div class="futures-card-change ${change >= 0 ? "positive" : "negative"}">${fmtPct(change, 2)}</div>
+          </div>
+          <div class="futures-card-metrics">
+            <div><span class="futures-metric-label">Funding</span><strong>${row.is_perp ? fmtPct((Number(row.funding_rate || 0) * 100), 4) : "—"}</strong></div>
+            <div><span class="futures-metric-label">24h Vol</span><strong>${fmtCompact(row.volume_24h || 0)}</strong></div>
+          </div>
+          <div class="futures-card-actions">
+            <button class="btn btn-long futures-long-btn" data-product="${escapeHtml(row.product_id || "")}" type="button">Long</button>
+            <button class="btn btn-short futures-short-btn" data-product="${escapeHtml(row.product_id || "")}" type="button">Short</button>
+            <button class="btn btn-secondary futures-chart-btn" data-product="${escapeHtml(row.product_id || "")}" type="button">Chart</button>
+          </div>
+        </article>`;
+    }).join("");
+    const productMap = new Map(futuresProducts.map((row) => [String(row.product_id || ""), row]));
+    host.querySelectorAll(".futures-long-btn").forEach((button) => {
+      button.addEventListener("click", () => openFuturesOrderModal(productMap.get(button.dataset.product || "") || { product_id: button.dataset.product || "", display_name: button.dataset.product || "", price: 0, category: "future" }, "long"));
+    });
+    host.querySelectorAll(".futures-short-btn").forEach((button) => {
+      button.addEventListener("click", () => openFuturesOrderModal(productMap.get(button.dataset.product || "") || { product_id: button.dataset.product || "", display_name: button.dataset.product || "", price: 0, category: "future" }, "short"));
+    });
+    host.querySelectorAll(".futures-chart-btn").forEach((button) => {
+      button.addEventListener("click", async () => {
+        chartType = "futures";
+        chartSymbol = button.dataset.product || chartSymbol;
+        activateTab("charts");
+        await loadChartSymbols();
+        await refreshChart();
+      });
+    });
+  }
+
+  function renderFuturesOpportunities(rows) {
+    const host = document.getElementById("futuresOpportunitiesGrid");
+    if (!rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No futures scanner opportunities right now.</div>';
+      return;
+    }
+    host.innerHTML = rows.slice(0, 12).map((row) => `
+      <article class="futures-opportunity">
+        <div class="futures-opportunity-head">
+          <div>
+            <div class="futures-card-title">${escapeHtml(row.display_name || row.product_id || "Unknown")}</div>
+            <div class="futures-card-subtitle">${escapeHtml(String(row.direction || "").toUpperCase())} · ${escapeHtml(row.signal || "neutral")}</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(row.score)}">${fmtNum(row.score, 0)}</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">Funding</span><strong>${fmtPct((Number(row.funding_rate || 0) * 100), 4)}</strong></div>
+          <div><span class="futures-metric-label">Leverage</span><strong>${fmtNum(row.leverage_suggested || 1, 0)}x</strong></div>
+          <div><span class="futures-metric-label">Stop</span><strong>${fmtUsd(row.stop_loss || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Target</span><strong>${fmtUsd(row.take_profit || 0, 2)}</strong></div>
+        </div>
+        <div class="futures-card-subtitle">${escapeHtml(row.reasoning || "Scanner-ranked futures opportunity.")}</div>
+        <div class="futures-card-actions">
+          <button class="btn ${String(row.direction || "").toLowerCase() === "short" ? "btn-short" : "btn-long"} futures-execute-btn" data-product="${escapeHtml(row.product_id || "")}" data-direction="${escapeHtml(row.direction || "long")}" type="button">Execute</button>
+        </div>
+      </article>`).join("");
+    const productMap = new Map(futuresProducts.map((row) => [String(row.product_id || ""), row]));
+    host.querySelectorAll(".futures-execute-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        const product = productMap.get(button.dataset.product || "") || { product_id: button.dataset.product || "", display_name: button.dataset.product || "", price: 0, category: "future" };
+        openFuturesOrderModal(product, String(button.dataset.direction || "long").toLowerCase());
+      });
+    });
+  }
+
+  function renderFuturesFunding(rows) {
+    const host = document.getElementById("futuresFundingGrid");
+    if (!rows || !rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No funding arb opportunities right now.</div>';
+      return;
+    }
+    host.innerHTML = rows.slice(0, 12).map((row) => `
+      <article class="futures-card">
+        <div class="futures-card-head">
+          <div>
+            <div class="futures-card-title">${escapeHtml(row.product_id || "Unknown")}</div>
+            <div class="futures-card-subtitle">Short Perp + Long Spot</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(Math.min(row.funding_annualized_pct || 0, 100))}">${fmtNum(row.funding_annualized_pct || 0, 1)}% APR</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">8h Rate</span><strong>${fmtNum(row.funding_rate_8h || 0, 4)}%</strong></div>
+          <div><span class="futures-metric-label">Est. Daily</span><strong>${fmtUsd(row.estimated_daily_income || 0, 4)}</strong></div>
+        </div>
+      </article>`).join("");
+  }
+
+  function renderFuturesBasis(rows) {
+    const host = document.getElementById("futuresBasisGrid");
+    if (!rows || !rows.length) {
+      host.innerHTML = '<div class="hc-empty-card">No basis trade opportunities right now.</div>';
+      return;
+    }
+    host.innerHTML = rows.slice(0, 12).map((row) => `
+      <article class="futures-card">
+        <div class="futures-card-head">
+          <div>
+            <div class="futures-card-title">${escapeHtml(row.futures_product || "Unknown")}</div>
+            <div class="futures-card-subtitle">vs ${escapeHtml(row.spot_product || "")} · ${row.days_to_expiry || "?"} days</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(Math.min(row.premium_annualized_pct || 0, 100))}">${fmtNum(row.premium_annualized_pct || 0, 1)}% APR</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">Spot</span><strong>${fmtUsd(row.spot_price || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Futures</span><strong>${fmtUsd(row.futures_price || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Premium</span><strong>${fmtNum(row.premium_pct || 0, 3)}%</strong></div>
+        </div>
+      </article>`).join("");
+  }
+
+  async function loadFutures() {
+    const [balanceData, positionsData, productsData, scannerData, fundingData, basisData] = await Promise.all([
+      fetchJson("/api/futures/balance"),
+      fetchJson("/api/futures/positions"),
+      fetchJson("/api/futures/products"),
+      fetchJson("/api/futures/scanner/perps?regime=neutral"),
+      fetchJson("/api/futures/scanner/funding"),
+      fetchJson("/api/futures/scanner/basis")
+    ]);
+    futuresProducts = Array.isArray(productsData.products) ? productsData.products : [];
+    futuresPositions = Array.isArray(positionsData.positions) ? positionsData.positions : [];
+    futuresOpportunities = Array.isArray(scannerData.results) ? scannerData.results : [];
+    const fundingByProduct = new Map((futuresOpportunities || []).map((row) => [String(row.product_id || ""), row]));
+    futuresProducts = futuresProducts.map((row) => Object.assign({}, row, { funding_rate: Number((fundingByProduct.get(String(row.product_id || "")) || {}).funding_rate || 0) }));
+    renderFuturesSummary(balanceData.balance || {});
+    renderFuturesPositions(futuresPositions);
+    renderFuturesProducts();
+    renderFuturesOpportunities(futuresOpportunities);
+    renderFuturesFunding(Array.isArray(fundingData.results) ? fundingData.results : []);
+    renderFuturesBasis(Array.isArray(basisData.results) ? basisData.results : []);
+    const oppCount = futuresOpportunities.length;
+    const fundCount = Array.isArray(fundingData.results) ? fundingData.results.length : 0;
+    const basisCount = Array.isArray(basisData.results) ? basisData.results.length : 0;
+    document.getElementById("futuresSummaryMeta").textContent = `${futuresPositions.length} open positions · ${futuresProducts.length} products · ${oppCount} setups · ${fundCount} funding arb · ${basisCount} basis trades`;
+  }
+
+  function renderSocialCard(row) {
+    const score = Number(row.composite_score || 0);
+    const mentions = Number(row.total_mentions || 0);
+    const trending = Number(row.trending_sources || 0);
+    const label = escapeHtml(row.composite_label || "Neutral");
+    const symbol = escapeHtml(row.symbol || "");
+    return `
+      <article class="futures-card">
+        <div class="futures-card-head">
+          <div>
+            <div class="futures-card-title">${symbol}</div>
+            <div class="futures-card-subtitle">${label} · ${mentions} mentions</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(Math.abs(score))}">${score > 0 ? "+" : ""}${fmtNum(score, 0)}</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">Signal</span><strong>${fmtNum(row.signal_strength || 0, 1)}</strong></div>
+          <div><span class="futures-metric-label">Sources</span><strong>${trending} trending</strong></div>
+        </div>
+        <div class="futures-card-subtitle" style="margin-top:6px;">${escapeHtml((row.recommendation || "").slice(0, 100))}</div>
+      </article>`;
+  }
+
+  function renderSqueezeCard(row) {
+    const confirmed = row.is_confirmed_squeeze;
+    const score = Number(row.squeeze_score || 0);
+    return `
+      <article class="futures-card" style="${confirmed ? "border-color:#f59e0b;" : ""}">
+        <div class="futures-card-head">
+          <div>
+            <div class="futures-card-title">${escapeHtml(row.symbol || "")}${confirmed ? " 🔥" : ""}</div>
+            <div class="futures-card-subtitle">${escapeHtml(row.social_label || "Neutral")} · ${row.social_mentions || 0} mentions</div>
+          </div>
+          <span class="opp-score-chip ${scoreTone(score)}">${fmtNum(score, 0)}</span>
+        </div>
+        <div class="futures-card-metrics">
+          <div><span class="futures-metric-label">Price</span><strong>${fmtUsd(row.price || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Change</span><strong style="color:${Number(row.change_pct || 0) >= 0 ? "#22c55e" : "#ef4444"}">${fmtPct(row.change_pct || 0, 2)}</strong></div>
+          <div><span class="futures-metric-label">Vol Ratio</span><strong>${fmtNum(row.vol_ratio || 0, 1)}x</strong></div>
+          <div><span class="futures-metric-label">RSI</span><strong>${fmtNum(row.rsi || 0, 0)}</strong></div>
+        </div>
+        <div class="futures-card-metrics" style="margin-top:4px;">
+          <div><span class="futures-metric-label">MACD</span><strong style="color:${row.macd_rising ? "#22c55e" : "#ef4444"}">${row.macd_rising ? "Rising" : "Falling"}</strong></div>
+          <div><span class="futures-metric-label">BB</span><strong style="color:${row.bb_breakout ? "#f59e0b" : "rgba(255,255,255,0.4)"}">${row.bb_breakout ? "Breakout" : "Below"}</strong></div>
+          <div><span class="futures-metric-label">Social</span><strong>${fmtNum(row.social_score || 0, 0)}</strong></div>
+        </div>
+      </article>`;
+  }
+
+  async function loadSocialScan() {
+    try {
+      document.getElementById("socialScanGrid").innerHTML = '<div class="hc-empty-card">Scanning social sources...</div>';
+      const [socialData, memeData] = await Promise.all([
+        fetchJson("/api/social/stocks/scan?limit=20"),
+        fetchJson("/api/social/stocks/trending")
+      ]);
+      const social = Array.isArray(socialData.results) ? socialData.results : [];
+      const meme = Array.isArray(memeData.results) ? memeData.results : [];
+      document.getElementById("socialScanMeta").textContent = `${social.length} stocks ranked by social momentum · ${socialData.scanned || 0} scanned`;
+      document.getElementById("socialScanGrid").innerHTML = social.length
+        ? social.map(renderSocialCard).join("")
+        : '<div class="hc-empty-card">No social signals right now.</div>';
+      document.getElementById("memeTrendingGrid").innerHTML = meme.length
+        ? meme.map(renderSocialCard).join("")
+        : '<div class="hc-empty-card">No meme stocks trending right now.</div>';
+    } catch (err) {
+      document.getElementById("socialScanGrid").innerHTML = '<div class="hc-empty-card">Social scan unavailable.</div>';
+    }
+  }
+
+  async function loadSqueezeScan() {
+    try {
+      document.getElementById("squeezeGrid").innerHTML = '<div class="hc-empty-card">Scanning for squeeze setups...</div>';
+      const data = await fetchJson("/api/stocks/squeeze?limit=15");
+      const results = Array.isArray(data.results) ? data.results : [];
+      document.getElementById("squeezeScanMeta").textContent =
+        `${results.length} candidates · ${data.confirmed_squeeze_count || 0} confirmed squeeze`;
+      document.getElementById("squeezeGrid").innerHTML = results.length
+        ? results.map(renderSqueezeCard).join("")
+        : '<div class="hc-empty-card">No squeeze setups detected right now.</div>';
+    } catch (err) {
+      document.getElementById("squeezeGrid").innerHTML = '<div class="hc-empty-card">Squeeze scan unavailable.</div>';
+    }
+  }
+
+  function sma(values, period) {
+    const out = new Array(values.length).fill(null);
+    if (!Array.isArray(values) || period <= 0) return out;
+    let sum = 0;
+    for (let i = 0; i < values.length; i += 1) {
+      sum += Number(values[i] || 0);
+      if (i >= period) sum -= Number(values[i - period] || 0);
+      if (i >= period - 1) out[i] = sum / period;
+    }
+    return out;
+  }
+
+  function ema(values, period) {
+    const out = new Array(values.length).fill(null);
+    if (!Array.isArray(values) || period <= 0 || values.length < period) return out;
+    const mult = 2 / (period + 1);
+    let prev = values.slice(0, period).reduce((acc, value) => acc + Number(value || 0), 0) / period;
+    out[period - 1] = prev;
+    for (let i = period; i < values.length; i += 1) {
+      prev = (Number(values[i] || 0) - prev) * mult + prev;
+      out[i] = prev;
+    }
+    return out;
+  }
+
+  function rsi(values, period = 14) {
+    const out = new Array(values.length).fill(null);
+    if (!Array.isArray(values) || values.length <= period) return out;
+    let gains = 0;
+    let losses = 0;
+    for (let i = 1; i <= period; i += 1) {
+      const diff = Number(values[i] || 0) - Number(values[i - 1] || 0);
+      gains += Math.max(diff, 0);
+      losses += Math.max(-diff, 0);
+    }
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+    out[period] = avgLoss === 0 ? 100 : 100 - (100 / (1 + (avgGain / avgLoss)));
+    for (let i = period + 1; i < values.length; i += 1) {
+      const diff = Number(values[i] || 0) - Number(values[i - 1] || 0);
+      avgGain = ((avgGain * (period - 1)) + Math.max(diff, 0)) / period;
+      avgLoss = ((avgLoss * (period - 1)) + Math.max(-diff, 0)) / period;
+      out[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + (avgGain / avgLoss)));
+    }
+    return out;
+  }
+
+  function macdHist(values) {
+    const fast = ema(values, 12);
+    const slow = ema(values, 26);
+    const line = values.map((_, index) => (fast[index] != null && slow[index] != null ? fast[index] - slow[index] : null));
+    const signal = ema(line.map((v) => (v == null ? 0 : v)), 9);
+    return line.map((value, index) => (value != null && signal[index] != null ? value - signal[index] : null));
+  }
+
+  function bollinger(values, period = 20, std = 2) {
+    const middle = sma(values, period);
+    const upper = new Array(values.length).fill(null);
+    const lower = new Array(values.length).fill(null);
+    for (let i = period - 1; i < values.length; i += 1) {
+      const slice = values.slice(i - period + 1, i + 1).map((value) => Number(value || 0));
+      const mean = middle[i];
+      const variance = slice.reduce((acc, value) => acc + ((value - mean) ** 2), 0) / period;
+      const dev = Math.sqrt(variance);
+      upper[i] = mean + (dev * std);
+      lower[i] = mean - (dev * std);
+    }
+    return { upper, middle, lower };
+  }
+
+  function enrichRows(rows, trendLen = 200) {
+    if (!Array.isArray(rows) || !rows.length) return [];
+    const baseRows = rows.map((row) => Object.assign({}, row));
+    const hasIndicators = baseRows.some((row) => Number(row?.ema_fast || 0) > 0);
+    const closes = baseRows.map((row) => Number(row.close || 0));
+    const volumes = baseRows.map((row) => Number(row.volume || 0));
+    const resolvedTrendLen = Math.max(2, Math.min(Number(trendLen || 200), Math.max(2, closes.length - 1)));
+    const emaFast = hasIndicators ? baseRows.map((row) => row.ema_fast ?? null) : ema(closes, 21);
+    const emaMid = hasIndicators ? baseRows.map((row) => row.ema_mid ?? null) : ema(closes, 50);
+    const emaSlow = hasIndicators ? baseRows.map((row) => row.ema_slow ?? row.ema_mid ?? null) : ema(closes, 200);
+    const emaTrend = hasIndicators ? baseRows.map((row) => row.ema_trend ?? row.ema_slow ?? null) : ema(closes, resolvedTrendLen);
+    const rsiVals = hasIndicators ? baseRows.map((row) => row.rsi ?? null) : rsi(closes, 14);
+    const ema12 = hasIndicators ? [] : ema(closes, 12);
+    const ema26 = hasIndicators ? [] : ema(closes, 26);
+    const macdArr = hasIndicators
+      ? baseRows.map((row) => row.macd_hist ?? null)
+      : closes.map((_, index) => (ema12[index] != null && ema26[index] != null ? ema12[index] - ema26[index] : null));
+    const macdSignalVals = hasIndicators ? [] : ema(macdArr.map((value) => (value == null ? 0 : value)), 9);
+    const macdVals = hasIndicators
+      ? baseRows.map((row) => row.macd_hist ?? null)
+      : macdArr.map((value, index) => (value != null && macdSignalVals[index] != null ? value - macdSignalVals[index] : null));
+    const bb = hasIndicators
+      ? {
+          upper: baseRows.map((row) => row.bb_upper ?? null),
+          middle: baseRows.map((row) => row.bb_middle ?? null),
+          lower: baseRows.map((row) => row.bb_lower ?? null)
+        }
+      : bollinger(closes, 20, 2);
+    const vol = hasIndicators ? baseRows.map((row) => row.vol_sma ?? null) : sma(volumes, 20);
+    let cumulativePv = 0;
+    let cumulativeVolume = 0;
+    return baseRows.map((row, index) => {
+      const typical = (Number(row.high || row.close || 0) + Number(row.low || row.close || 0) + Number(row.close || 0)) / 3;
+      const volume = Number(row.volume || 0);
+      cumulativePv += typical * volume;
+      cumulativeVolume += volume;
+      return Object.assign({}, row, {
+        vwap: row.vwap ?? (cumulativeVolume > 0 ? cumulativePv / cumulativeVolume : null),
+        ema_fast: row.ema_fast ?? emaFast[index],
+        ema_mid: row.ema_mid ?? emaMid[index],
+        ema_slow: row.ema_slow ?? emaSlow[index] ?? emaMid[index],
+        ema_trend: row.ema_trend ?? emaTrend[index],
+        rsi: row.rsi ?? rsiVals[index],
+        macd_hist: row.macd_hist ?? macdVals[index],
+        bb_upper: row.bb_upper ?? bb.upper[index],
+        bb_middle: row.bb_middle ?? bb.middle[index],
+        bb_lower: row.bb_lower ?? bb.lower[index],
+        vol_sma: row.vol_sma ?? vol[index],
+        adx: row.adx ?? 25
+      });
+    });
+  }
+  async function loadStocksUniverse() {
+    try {
+      const data = await fetchJson("/api/options/symbols");
+      stockUniverse = Array.isArray(data.symbols) ? data.symbols : [];
+    } catch (error) {
+      stockUniverse = DEFAULT_STOCKS.map((symbol) => ({ symbol, name: "" }));
+    }
+    document.getElementById("tradingStockMeta").textContent = `Scanning ${Math.min(stockUniverse.length, 98)} Tier 1 + ${Math.max(stockUniverse.length - 98, 0)} Tier 2 stocks | Last updated ${new Date().toLocaleTimeString()}`;
+  }
+
+  async function loadSymbolList(assetType) {
+    const datalist = document.getElementById("symbolDatalist");
+    if (!datalist) return [];
+    // Return cached symbols instantly if available
+    if (_symbolCache[assetType]) {
+      return _symbolCache[assetType];
+    }
+    try {
+      const resolvedType = assetType === "options" ? "stock" : assetType;
+      const url = resolvedType === "futures"
+        ? "/api/futures/products"
+        : `/api/symbols?type=${encodeURIComponent(resolvedType)}`;
+      const data = await fetchJson(url);
+      const symbols = resolvedType === "futures"
+        ? (Array.isArray(data.products) ? data.products.map((row) => String(row.product_id || "").trim()).filter(Boolean) : [])
+        : (Array.isArray(data.symbols) ? data.symbols : []);
+      if (resolvedType === "futures" && Array.isArray(data.products)) {
+        futuresProducts = data.products.slice();
+      }
+      if (data.ok && Array.isArray(symbols) && symbols.length) {
+        _symbolCache[assetType] = symbols;
+        console.log(`Loaded ${symbols.length} ${assetType} symbols`);
+        return symbols;
+      }
+    } catch (err) {
+      console.error("Failed to load symbols:", err);
+    }
+    const fallback = assetType === "crypto"
+      ? ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "DOGE-USD", "PEPE-USD", "BONK-USD"]
+      : assetType === "futures"
+        ? ["BTC-PERP", "ETH-PERP", "SOL-PERP"]
+        : DEFAULT_STOCKS;
+    _symbolCache[assetType] = fallback;
+    return fallback;
+  }
+
+  function filteredUniverse() {
+    const search = String(document.getElementById("tradingStockSearch")?.value || "").trim().toUpperCase();
+    let rows = stockUniverse.slice();
+    if (stockTier === "tier1") rows = rows.slice(0, 98);
+    if (stockTier === "tier2") rows = rows.slice(98);
+    if (search) rows = rows.filter((item) => String(item.symbol || "").includes(search) || String(item.name || "").toUpperCase().includes(search));
+    return rows.slice(0, STOCK_SCAN_LIMIT);
+  }
+
+  function stockScoreCard(item) {
+    const social = Number(item.social_sentiment || 0);
+    const socialTone = social >= 20 ? "good" : social <= -20 ? "bad" : "warn";
+    return `
+      <article class="opp-card">
+        <div class="opp-card-header"><div><h4 class="opp-card-title">${escapeHtml(item.symbol)}</h4><div class="opp-card-subtitle">${escapeHtml(item.name || "Stock opportunity")}</div></div><span class="opp-score-chip ${scoreTone(item.composite_score)}">${escapeHtml(item.signal_label || item.signal || "Hold")}</span></div>
+        <div class="opp-card-metrics"><div class="opp-metric"><span class="opp-metric-label">Price</span><strong>$${fmtNum(item.price, 2)}</strong></div><div class="opp-metric"><span class="opp-metric-label">24h</span><strong>${fmtPct(item.change_24h, 2)}</strong></div><div class="opp-metric"><span class="opp-metric-label">Mentions</span><strong>${fmtNum(item.social_mentions, 0)}</strong></div></div>
+        ${renderScoreBreakdown(item)}
+        <div class="opp-card-subtitle" style="margin-top:8px;"><span class="opp-score-chip ${socialTone}">Social: ${social >= 0 ? "+" : ""}${fmtNum(social, 0)} ${escapeHtml(item.social_label || "Neutral")}${item.social_trending ? " 🔥" : ""}</span></div>
+        <div class="opp-panel-actions" style="margin-top:12px;"><button class="btn btn-secondary trading-view-chart" data-symbol="${escapeHtml(item.symbol)}" type="button">View Chart</button><button class="btn btn-primary" type="button" disabled>Trade</button></div>
+      </article>`;
+  }
+
+  async function scanStocks() {
+    const host = document.getElementById("tradingStockGrid");
+    host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">Scanning stocks...</div></div>';
+    const strategy = document.getElementById("tradingStockStrategy")?.value || "momentum";
+    const regime = document.getElementById("tradingStockRegime")?.value || "bull";
+    const sortKey = document.getElementById("tradingStockSort")?.value || "score";
+    const symbols = filteredUniverse();
+    const results = [];
+    for (const item of symbols) {
+      try {
+        const [barsData, sentimentData] = await Promise.all([
+          fetchJson(`/api/options/bars?symbol=${encodeURIComponent(item.symbol)}&timeframe=D&days=365`),
+          fetchJson(`/api/options/sentiment?symbol=${encodeURIComponent(item.symbol)}`)
+        ]);
+        const bars = Array.isArray(barsData.bars) ? barsData.bars : [];
+        if (bars.length < 60) continue;
+        const latest = bars[bars.length - 1] || {};
+        const previous = bars[bars.length - 2] || latest;
+        const closes = bars.map((row) => Number(row.close || 0));
+        const enriched = enrichRows(bars, 200);
+        const last = enriched[enriched.length - 1] || {};
+        const prev = enriched[enriched.length - 2] || last;
+        const technical = Math.max(0, Math.min(100,
+          (last.ema_fast > last.ema_mid ? 20 : 0) +
+          (last.ema_mid > last.ema_slow ? 20 : 0) +
+          (last.close > last.ema_trend ? 20 : 0) +
+          (Number(last.rsi || 0) >= 40 && Number(last.rsi || 0) <= 70 ? 20 : 0) +
+          (Number(last.macd_hist || 0) > Number(prev.macd_hist || 0) ? 20 : 0)
+        ));
+        const sentimentScore = Math.max(0, Math.min(100, (Number(sentimentData.composite_score || 0) + 100) / 2));
+        const change1d = previous.close > 0 ? ((Number(latest.close || 0) - Number(previous.close || 0)) / Number(previous.close || 0)) * 100 : 0;
+        const change7d = bars.length > 7 && Number(bars[bars.length - 8].close || 0) > 0 ? ((Number(latest.close || 0) - Number(bars[bars.length - 8].close || 0)) / Number(bars[bars.length - 8].close || 0)) * 100 : 0;
+        const momentum = Math.max(0, Math.min(100, 50 + (change1d * 2) + change7d));
+        const regimeScore = regime === "bull" ? 100 : regime === "neutral" ? 70 : 40;
+        const composite = (technical * 0.4) + (sentimentScore * 0.25) + (momentum * 0.2) + (regimeScore * 0.15);
+        results.push({
+          symbol: item.symbol,
+          name: item.name || "",
+          price: Number(latest.close || 0),
+          change_24h: change1d,
+          composite_score: composite,
+          technical_score: technical,
+          sentiment_score: sentimentScore,
+          momentum_score: momentum,
+          signal: composite >= 75 ? "strong_buy" : composite >= 65 ? "buy" : composite <= 30 ? "sell" : "hold",
+          signal_label: composite >= 75 ? "Strong Buy" : composite >= 65 ? "Buy" : composite <= 30 ? "Sell" : "Hold",
+          reasoning: `${strategy} setup blends trend, sentiment, and momentum strength for ${item.symbol}.`,
+          social_sentiment: Number(sentimentData.composite_score || 0),
+          social_mentions: Number(sentimentData.total_mentions || 0),
+          social_trending: Number(sentimentData.trending_sources || 0) > 0,
+          social_label: sentimentData.composite_label || "Neutral",
+          market_cap: Number(latest.close || 0) * Number(latest.volume || 0),
+          volume: Number(latest.volume || 0)
+        });
+      } catch (error) {
+        console.warn("stock scan failed", item.symbol, error);
+      }
+    }
+    const sorters = {
+      score: (a, b) => b.composite_score - a.composite_score,
+      volume: (a, b) => b.volume - a.volume,
+      social: (a, b) => b.social_mentions - a.social_mentions,
+      change: (a, b) => b.change_24h - a.change_24h,
+      market_cap: (a, b) => b.market_cap - a.market_cap
+    };
+    results.sort(sorters[sortKey] || sorters.score);
+    stockRows = results;
+    if (!results.length) {
+      host.innerHTML = '<div class="opp-card"><div class="opp-empty-state">No stock opportunities matched the current filters.</div></div>';
+      return;
+    }
+    host.innerHTML = results.map(stockScoreCard).join("");
+    host.querySelectorAll(".trading-view-chart").forEach((button) => {
+      button.addEventListener("click", () => {
+        chartType = "stock";
+        chartSymbol = button.dataset.symbol || chartSymbol;
+        activateTab("charts");
+        syncChartControls();
+        refreshChart();
+      });
+    });
+  }
+
+  const _symbolCache = {};
+  async function loadChartSymbols() {
+    const input = document.getElementById("tradingChartSymbolInput");
+    if (!input) return;
+
+    const loadedSymbols = await loadSymbolList(chartType);
+    if (chartType === "crypto") {
+      if (!chartSymbol.includes("-USD")) chartSymbol = "BTC-USD";
+    } else if (chartType === "futures") {
+      if (chartSymbol.includes("-USD") || (!String(chartSymbol || "").includes("PERP") && !/\d{2}[A-Z]{3}\d{2}/.test(String(chartSymbol || "")))) {
+        chartSymbol = loadedSymbols[0] || "BTC-PERP";
+      }
+    } else if (chartSymbol.includes("-USD") || String(chartSymbol || "").includes("PERP")) {
+      chartSymbol = "AAPL";
+    }
+    input.value = chartSymbol;
+  }
+
+  function aggregateWeekly(rows) {
+    const buckets = [];
+    rows.forEach((row) => {
+      const date = new Date((Number(row.ts || 0)) * 1000);
+      const keyDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - ((date.getUTCDay() + 6) % 7)));
+      const key = keyDate.toISOString().slice(0, 10);
+      const last = buckets[buckets.length - 1];
+      if (!last || last.key !== key) {
+        buckets.push({ key, ts: Number(row.ts || 0), open: Number(row.open || row.close || 0), high: Number(row.high || row.close || 0), low: Number(row.low || row.close || 0), close: Number(row.close || 0), volume: Number(row.volume || 0) });
+      } else {
+        last.high = Math.max(last.high, Number(row.high || row.close || 0));
+        last.low = Math.min(last.low, Number(row.low || row.close || 0));
+        last.close = Number(row.close || 0);
+        last.volume += Number(row.volume || 0);
+      }
+    });
+    return buckets.map(({ key, ...rest }) => rest);
+  }
+  function initializeCharts() {
+    if (!window.LightweightCharts) return;
+    const mainHost = document.getElementById("tradingChartMain");
+    const volumeHost = document.getElementById("tradingChartVolume");
+    const rsiHost = document.getElementById("tradingChartRsi");
+    if (!mainChart) {
+      mainChart = LightweightCharts.createChart(mainHost, {
+        width: Math.max(mainHost.offsetWidth || 0, 320),
+        height: 400,
+        layout: {
+          background: { type: "solid", color: "#0f1729" },
+          textColor: "rgba(236, 243, 255, 0.6)",
+          fontFamily: "DM Sans, sans-serif"
+        },
+        grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.04)" } },
+        rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+        timeScale: { borderColor: "rgba(255,255,255,0.1)", visible: false },
+        crosshair: {
+          vertLine: { color: "rgba(56,189,248,0.28)", labelBackgroundColor: "#0f172a" },
+          horzLine: { color: "rgba(56,189,248,0.18)", labelBackgroundColor: "#0f172a" }
+        }
+      });
+      candleSeries = mainChart.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444" });
+      ema21Series = mainChart.addLineSeries({ color: "#38bdf8", lineWidth: 1 });
+      ema50Series = mainChart.addLineSeries({ color: "#f59e0b", lineWidth: 1 });
+      ema200Series = mainChart.addLineSeries({ color: "#ef4444", lineWidth: 1 });
+      bbUpperSeries = mainChart.addLineSeries({ color: "rgba(139,92,246,0.5)", lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed });
+      bbLowerSeries = mainChart.addLineSeries({ color: "rgba(139,92,246,0.5)", lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed });
+      vwapSeries = mainChart.addLineSeries({ color: "rgba(20,184,166,0.9)", lineWidth: 1 });
+      mainChart.subscribeCrosshairMove(updateTooltipFromCrosshair);
+    }
+    if (!volumeChart) {
+      volumeChart = LightweightCharts.createChart(volumeHost, {
+        layout: { background: { color: "#0a1018" }, textColor: "#9fb0d0", fontFamily: "DM Sans, sans-serif" },
+        grid: { vertLines: { color: "rgba(255,255,255,0.03)" }, horzLines: { color: "rgba(255,255,255,0.03)" } },
+        rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+        timeScale: { borderColor: "rgba(255,255,255,0.1)", visible: false },
+        height: 80
+      });
+      volumeSeries = volumeChart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "" });
+    }
+    if (!rsiChart) {
+      rsiChart = LightweightCharts.createChart(rsiHost, {
+        layout: { background: { color: "#0a1018" }, textColor: "#dbe7ff", fontFamily: "DM Sans, sans-serif" },
+        grid: { vertLines: { color: "rgba(255,255,255,0.05)" }, horzLines: { color: "rgba(255,255,255,0.05)" } },
+        rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
+        timeScale: { borderColor: "rgba(255,255,255,0.1)" },
+        height: 100
+      });
+      rsiSeries = rsiChart.addLineSeries({ color: "#38bdf8", lineWidth: 2 });
+      rsiUpperSeries = rsiChart.addLineSeries({ color: "rgba(239,68,68,0.6)", lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed });
+      rsiLowerSeries = rsiChart.addLineSeries({ color: "rgba(34,197,94,0.6)", lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed });
+    }
+    if (mainChart && volumeChart && rsiChart && !mainChart.__synced) {
+      mainChart.__synced = true;
+      let _syncing = false;
+      function syncCharts(src, targets) {
+        if (_syncing) return;
+        const range = src.timeScale().getVisibleLogicalRange();
+        if (!range) return;
+        _syncing = true;
+        targets.forEach(t => { try { t.timeScale().setVisibleLogicalRange(range); } catch(e) {} });
+        _syncing = false;
+      }
+      mainChart.timeScale().subscribeVisibleLogicalRangeChange(() => syncCharts(mainChart, [volumeChart, rsiChart]));
+      volumeChart.timeScale().subscribeVisibleLogicalRangeChange(() => syncCharts(volumeChart, [mainChart, rsiChart]));
+      rsiChart.timeScale().subscribeVisibleLogicalRangeChange(() => syncCharts(rsiChart, [mainChart, volumeChart]));
+    }
+    const _isMobile = window.innerWidth <= 768;
+    const _isSmall = window.innerWidth <= 480;
+    const _mainH = _isSmall ? 220 : _isMobile ? 280 : 400;
+    const _volH  = _isSmall ? 50  : _isMobile ? 60  : 80;
+    const _rsiH  = _isSmall ? 70  : _isMobile ? 80  : 100;
+    if (mainChart && mainHost) {
+      const width = Math.max(mainHost.offsetWidth || mainHost.clientWidth || 0, 280);
+      mainHost.style.height = _mainH + "px";
+      mainChart.resize(width, _mainH);
+      mainChart.applyOptions({ width, height: _mainH });
+    }
+    if (volumeChart && volumeHost) {
+      const width = Math.max(volumeHost.offsetWidth || volumeHost.clientWidth || 0, 280);
+      volumeHost.style.height = _volH + "px";
+      volumeChart.resize(width, _volH);
+      volumeChart.applyOptions({ width, height: _volH });
+    }
+    if (rsiChart && rsiHost) {
+      const width = Math.max(rsiHost.offsetWidth || rsiHost.clientWidth || 0, 280);
+      rsiHost.style.height = _rsiH + "px";
+      rsiChart.resize(width, _rsiH);
+      rsiChart.applyOptions({ width, height: _rsiH });
+    }
+  }
+
+  function onChartsTabActivated() {
+    if (chartReady || chartBooting) return;
+    const container = document.getElementById("tradingChartMain");
+    if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) {
+      window.setTimeout(onChartsTabActivated, 100);
+      return;
+    }
+    chartBooting = true;
+    window.setTimeout(() => {
+      initializeCharts();
+      chartReady = true;
+      chartBooting = false;
+      refreshChart()
+        .then(() => loadLiveQuote())
+        .catch(console.error);
+    }, 150);
+  }
+
+  function lineData(rows, field) {
+    return rows.filter((row) => row[field] != null).map((row) => ({ time: Number(row.ts || 0), value: Number(row[field] || 0) }));
+  }
+
+  function setSeriesVisible(series, visible, defaultWidth) {
+    if (!series) return;
+    try {
+      series.applyOptions({ visible: !!visible });
+    } catch(e) {
+      series.applyOptions({ lineWidth: visible ? (defaultWidth || 1) : 0 });
+    }
+  }
+
+  function toggleOverlay(overlay, enabled) {
+    chartOverlayState[overlay] = !!enabled;
+    if (overlay === "ema21") setSeriesVisible(ema21Series, enabled);
+    if (overlay === "ema50") setSeriesVisible(ema50Series, enabled);
+    if (overlay === "ema200") setSeriesVisible(ema200Series, enabled);
+    if (overlay === "bb") {
+      setSeriesVisible(bbUpperSeries, enabled);
+      setSeriesVisible(bbLowerSeries, enabled);
+    }
+    if (overlay === "vwap") setSeriesVisible(vwapSeries, enabled);
+    if (overlay === "signals" && candleSeries) {
+      candleSeries.setMarkers(enabled ? currentMarkers : []);
+    }
+  }
+
+  function currentParams() {
+    return {
+      rsiMin: Number(document.getElementById("tradingParamRsiMin")?.value || 40),
+      rsiMax: Number(document.getElementById("tradingParamRsiMax")?.value || 70),
+      trendLen: Number(document.getElementById("tradingParamTrend")?.value || 200),
+      adxMin: Number(document.getElementById("tradingParamAdx")?.value || 20),
+      extPct: Number(document.getElementById("tradingParamExt")?.value || 10)
+    };
+  }
+
+  function simulateStockSignals(rows, strategy) {
+    strategy = strategy || document.getElementById("stockBtStrategy")?.value || "ema_momentum";
+    if (!rows || rows.length < 60) return { markers: [], buyCount: 0, exitCount: 0 };
+    const markers = [];
+    let state = 0;
+    let buyCount = 0;
+    let exitCount = 0;
+    let entryPrice = 0;
+
+    for (let i = 50; i < rows.length; i++) {
+      const bar = rows[i];
+      const prev = rows[i - 1] || bar;
+      const close = Number(bar.close || 0);
+      const rsi = Number(bar.rsi || 50);
+      const emaFast = Number(bar.ema_fast || close);
+      const emaMid = Number(bar.ema_mid || close);
+      const emaSlow = Number(bar.ema_slow || close);
+      const emaTrend = Number(bar.ema_trend || close);
+      const macdHist = Number(bar.macd_hist || 0);
+      const prevMacd = Number(prev.macd_hist || 0);
+      const adx = Number(bar.adx || 0);
+      const bbUpper = Number(bar.bb_upper || close * 1.02);
+      const bbMiddle = Number(bar.bb_middle || close);
+      const bbLower = Number(bar.bb_lower || close * 0.98);
+
+      const emaAligned = emaFast > emaMid && emaMid > emaSlow;
+      const aboveTrend = close > emaTrend;
+      const macdRising = macdHist > prevMacd;
+      const adxOk = adx >= 20;
+
+      let buySignal = false;
+      let exitSignal = false;
+
+      if (strategy === "ema_momentum") {
+        buySignal = emaAligned && aboveTrend && rsi >= 40 && rsi <= 70 && macdRising && adxOk;
+        exitSignal = close < emaMid || rsi >= 70 || macdHist < 0;
+      } else if (strategy === "bb_breakout") {
+        buySignal = close > bbUpper && adxOk && rsi >= 40 && rsi <= 70;
+        exitSignal = close < bbMiddle || close < emaMid;
+      } else if (strategy === "mean_reversion") {
+        buySignal = rsi <= 30 && close <= bbLower;
+        exitSignal = rsi >= 60 || close >= bbMiddle;
+      } else if (strategy === "trend_following") {
+        buySignal = aboveTrend && emaAligned && adxOk && rsi >= 45;
+        exitSignal = close < emaMid || adx < 15;
+      }
+
+      // Stop loss: -7% from entry
+      if (state === 1 && entryPrice > 0 && close < entryPrice * 0.93) {
+        exitSignal = true;
+      }
+
+      if (state === 0 && buySignal) {
+        markers.push({
+          time: Number(bar.ts || 0),
+          position: "belowBar",
+          color: "#22c55e",
+          shape: "arrowUp",
+          text: "BUY",
+        });
+        state = 1;
+        entryPrice = close;
+        buyCount++;
+      } else if (state === 1 && exitSignal) {
+        const pnl = entryPrice > 0 ? ((close - entryPrice) / entryPrice * 100).toFixed(1) : "0";
+        const isWin = close > entryPrice;
+        markers.push({
+          time: Number(bar.ts || 0),
+          position: "aboveBar",
+          color: isWin ? "#f59e0b" : "#ef4444",
+          shape: "arrowDown",
+          text: `EXIT ${isWin ? "+" : ""}${pnl}%`,
+        });
+        state = 0;
+        entryPrice = 0;
+        exitCount++;
+      }
+    }
+    return { markers, buyCount, exitCount };
+  }
+
+  function simulateOptionsSignals(rows) {
+    if (!rows || rows.length < 50) return { markers: [], summary: {} };
+    const markers = [];
+    let counts = { buy_call: 0, buy_put: 0, sell_csp: 0, sell_cc: 0, wheel: 0 };
+
+    for (let i = 50; i < rows.length; i++) {
+      const bar = rows[i];
+      const prev = rows[i - 1] || bar;
+      const rsi = Number(bar.rsi || 50);
+      const close = Number(bar.close || 0);
+      const ema21 = Number(bar.ema_fast || close);
+      const ema50 = Number(bar.ema_mid || close);
+      const ema200 = Number(bar.ema_trend || close);
+      const macdHist = Number(bar.macd_hist || 0);
+      const prevMacd = Number(prev.macd_hist || 0);
+
+      // MEME SQUEEZE CALL: strong upward momentum + oversold bounce
+      if (rsi > 60 && rsi < 80 && macdHist > 0 && macdHist > prevMacd
+          && close > ema21 && close > ema50) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "belowBar",
+          color: "#22c55e",
+          shape: "arrowUp",
+          text: "BUY CALL",
+        });
+        counts.buy_call++;
+        i += 3; // cooldown
+        continue;
+      }
+
+      // BUY PUT: bearish momentum + overbought
+      if (rsi > 65 && macdHist < 0 && macdHist < prevMacd
+          && close < ema21 && close < ema50) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "aboveBar",
+          color: "#ef4444",
+          shape: "arrowDown",
+          text: "BUY PUT",
+        });
+        counts.buy_put++;
+        i += 3;
+        continue;
+      }
+
+      // SELL CSP (Cash Secured Put): oversold + above EMA200 support
+      if (rsi < 35 && close > ema200 && macdHist > prevMacd) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "belowBar",
+          color: "#2dd4bf",
+          shape: "circle",
+          text: "SELL CSP",
+        });
+        counts.sell_csp++;
+        i += 5;
+        continue;
+      }
+
+      // SELL COVERED CALL: overbought + extended above EMA50
+      const ext = ema50 > 0 ? ((close - ema50) / ema50) * 100 : 0;
+      if (rsi > 70 && ext > 5 && macdHist < prevMacd) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "aboveBar",
+          color: "#f59e0b",
+          shape: "circle",
+          text: "SELL CC",
+        });
+        counts.sell_cc++;
+        i += 5;
+        continue;
+      }
+
+      // WHEEL ENTRY: near EMA200 support + low RSI
+      if (rsi < 40 && Math.abs(close - ema200) / ema200 < 0.03 && macdHist > prevMacd) {
+        markers.push({
+          time: Number(bar.ts),
+          position: "belowBar",
+          color: "#a78bfa",
+          shape: "square",
+          text: "WHEEL",
+        });
+        counts.wheel++;
+        i += 8;
+        continue;
+      }
+    }
+
+    return { markers, counts };
+  }
+
+  function simulateSignals(rows) {
+    const params = currentParams();
+    const markers = [];
+    let state = 0;
+    let buyCount = 0;
+    let exitCount = 0;
+    let shortCount = 0;
+    let closeShortCount = 0;
+    for (let i = 50; i < rows.length; i += 1) {
+      const bar = rows[i];
+      const prev = rows[i - 1] || bar;
+      const adxValue = bar.adx == null ? null : Number(bar.adx || 0);
+      const emaAligned = Number(bar.ema_fast || 0) > Number(bar.ema_mid || 0) && Number(bar.ema_mid || 0) > Number(bar.ema_slow || 0);
+      const emaInverse = Number(bar.ema_fast || 0) < Number(bar.ema_mid || 0) && Number(bar.ema_mid || 0) < Number(bar.ema_slow || 0);
+      const aboveTrend = bar.ema_trend == null || Number(bar.close || 0) > Number(bar.ema_trend || 0);
+      const belowTrend = bar.ema_trend == null || Number(bar.close || 0) < Number(bar.ema_trend || 0);
+      const rsiOk = Number(bar.rsi || 0) >= params.rsiMin && Number(bar.rsi || 0) <= params.rsiMax;
+      const rsiShortOk = Number(bar.rsi || 0) >= Math.max(60, 100 - params.rsiMin);
+      const macdRising = bar.macd_hist != null && prev.macd_hist != null
+        ? Number(bar.macd_hist) > Number(prev.macd_hist)
+        : true;
+      const macdFalling = bar.macd_hist != null && prev.macd_hist != null
+        ? Number(bar.macd_hist) < Number(prev.macd_hist)
+        : true;
+      const adxOk = bar.adx == null || adxValue >= params.adxMin;
+      const ext = Number(bar.ema_mid || 0) > 0 ? ((Number(bar.close || 0) - Number(bar.ema_mid || 0)) / Number(bar.ema_mid || 1)) * 100 : 0;
+      const longEntry = emaAligned && aboveTrend && rsiOk && macdRising && adxOk && ext <= params.extPct;
+      const shortEntry = emaInverse && belowTrend && rsiShortOk && macdFalling && adxOk && Math.abs(ext) <= params.extPct;
+      if (state === 0) {
+        if (longEntry) {
+          markers.push({ time: Number(bar.ts || 0), position: "belowBar", color: "#22c55e", shape: "arrowUp", text: chartType === "futures" ? "LONG" : "BUY" });
+          state = 1;
+          buyCount += 1;
+        } else if (chartType === "futures" && shortEntry) {
+          markers.push({ time: Number(bar.ts || 0), position: "aboveBar", color: "#ef4444", shape: "arrowDown", text: "SHORT" });
+          state = -1;
+          shortCount += 1;
+        }
+      }
+      const momentumLost = Number(bar.close || 0) < Number(bar.ema_mid || 0) && Number(bar.macd_hist || 0) < 0 && Number(bar.rsi || 0) < 40;
+      const trendLost = Number(bar.close || 0) < Number(bar.ema_trend || 0) && Number(bar.close || 0) < Number(bar.ema_slow || 0);
+      const shortMomentumLost = Number(bar.close || 0) > Number(bar.ema_mid || 0) && Number(bar.macd_hist || 0) > 0 && Number(bar.rsi || 0) > 55;
+      const shortTrendLost = Number(bar.close || 0) > Number(bar.ema_trend || 0) && Number(bar.close || 0) > Number(bar.ema_slow || 0);
+      if (state === 1 && (momentumLost || trendLost)) {
+        markers.push({ time: Number(bar.ts || 0), position: "aboveBar", color: chartType === "futures" ? "#38bdf8" : "#ef4444", shape: chartType === "futures" ? "square" : "arrowDown", text: chartType === "futures" ? "CLOSE LONG" : "EXIT" });
+        state = 0;
+        exitCount += 1;
+      } else if (state === -1 && (shortMomentumLost || shortTrendLost)) {
+        markers.push({ time: Number(bar.ts || 0), position: "belowBar", color: "#f59e0b", shape: "square", text: "CLOSE SHORT" });
+        state = 0;
+        closeShortCount += 1;
+      }
+    }
+    console.log("Signal simulation:", { total: rows.length, buyCount, exitCount, shortCount, closeShortCount, markersCount: markers.length });
+    return { markers, buyCount, exitCount, shortCount, closeShortCount };
+  }
+
+  function updateTooltipFromCrosshair(param) {
+    if (!param || !param.time) return;
+    const row = chartRows.find((item) => Number(item.ts || 0) === Number(param.time || 0));
+    const candle = param.seriesData?.get?.(candleSeries) || row;
+    if (!candle || !row) return;
+    document.getElementById("tooltipO").textContent = fmtNum(candle.open, 2);
+    document.getElementById("tooltipH").textContent = fmtNum(candle.high, 2);
+    document.getElementById("tooltipL").textContent = fmtNum(candle.low, 2);
+    document.getElementById("tooltipC").textContent = fmtNum(candle.close, 2);
+    document.getElementById("tooltipV").textContent = fmtCompact(row.volume || 0);
+    document.getElementById("tooltipRsi").textContent = fmtNum(row.rsi, 1);
+    document.getElementById("tooltipEma21").textContent = fmtNum(row.ema_fast, 2);
+    document.getElementById("tooltipEma50").textContent = fmtNum(row.ema_mid, 2);
+    document.getElementById("tooltipEma200").textContent = fmtNum(row.ema_trend, 2);
+  }
+
+  function updatePriceHeader(data, assetType) {
+    const price = Number(data.price || 0);
+    const changePct = Number(data.price_change_24h ?? data.change_pct ?? 0);
+    const previous = assetType === "crypto" || assetType === "futures"
+      ? (changePct !== 0 ? price / (1 + (changePct / 100)) : price)
+      : Number(data.previous_close || 0);
+    const changeValue = previous > 0 ? price - previous : 0;
+    const bid = Number(data.bid || price || 0);
+    const ask = Number(data.ask || price || 0);
+    const spread = Math.max(0, ask - bid);
+    const labelBid = document.getElementById("chartLabelBid");
+    const labelAsk = document.getElementById("chartLabelAsk");
+    const labelSpread = document.getElementById("chartLabelSpread");
+    const labelVolume = document.getElementById("chartLabelVolume");
+    const labelHigh = document.getElementById("chartLabelHigh");
+    const labelLow = document.getElementById("chartLabelLow");
+    const symNameEl = document.getElementById("chartSymbolName");
+    const symTypeEl = document.getElementById("chartSymbolType");
+    if (symNameEl) symNameEl.textContent = assetType === "stock" ? (data.symbol || chartSymbol) : chartSymbol;
+    if (symTypeEl) symTypeEl.textContent =
+      assetType === "crypto" ? "Crypto" :
+      assetType === "futures" ? "Futures" :
+      assetType === "options" ? "Options" : "Stock";
+    const priceDisplayEl = document.getElementById("chartPrice");
+    if (priceDisplayEl) {
+      priceDisplayEl.textContent = fmtUsd(price);
+      // Force visible even if tab is hidden
+      priceDisplayEl.style.opacity = "1";
+    }
+    const changeNode = document.getElementById("chartChange");
+    changeNode.textContent = `${changeValue >= 0 ? "+" : "-"}${fmtUsd(Math.abs(changeValue))} (${fmtPct(changePct, 2)})`;
+    changeNode.classList.toggle("positive", changeValue >= 0);
+    changeNode.classList.toggle("negative", changeValue < 0);
+    const bidEl2 = document.getElementById("chartBid");
+    const askEl2 = document.getElementById("chartAsk");
+    const spreadEl = document.getElementById("chartSpread");
+    if (bidEl2) bidEl2.textContent = fmtUsd(bid);
+    if (askEl2) askEl2.textContent = fmtUsd(ask);
+    if (spreadEl) spreadEl.textContent = fmtUsd(spread);
+    if (assetType === "futures") {
+      if (labelBid) labelBid.textContent = "Mark";
+      if (labelAsk) labelAsk.textContent = "Entry";
+      if (labelSpread) labelSpread.textContent = "Spread";
+      if (labelVolume) labelVolume.textContent = data.open_interest != null ? "Open Int" : "24h Vol";
+      if (labelHigh) labelHigh.textContent = "Funding";
+      if (labelLow) labelLow.textContent = "Expiry";
+      document.getElementById("chartBid").textContent = fmtUsd(Number(data.mark_price || bid || price || 0));
+      document.getElementById("chartAsk").textContent = fmtUsd(Number(data.entry_price || ask || price || 0));
+      document.getElementById("chartSpread").textContent = fmtUsd(spread);
+      document.getElementById("chartVolume").textContent = fmtCompact(data.open_interest != null ? data.open_interest : (data.volume_24h || 0));
+      document.getElementById("chartHigh").textContent = `${fmtNum(Number(data.funding_rate || 0) * 100, 4)}%`;
+      document.getElementById("chartLow").textContent = data.expiry || (data.is_perp ? "PERP" : "—");
+      return;
+    }
+    if (labelBid) labelBid.textContent = "Bid";
+    if (labelAsk) labelAsk.textContent = "Ask";
+    if (labelSpread) labelSpread.textContent = "Spread";
+    if (labelVolume) labelVolume.textContent = assetType === "crypto" ? "24h Vol" : "Volume";
+    if (labelHigh) labelHigh.textContent = "24h High";
+    if (labelLow) labelLow.textContent = "24h Low";
+    const volEl = document.getElementById("chartVolume");
+    const highEl = document.getElementById("chartHigh");
+    const lowEl = document.getElementById("chartLow");
+    if (volEl) volEl.textContent = assetType === "crypto" ? fmtCompact(data.volume_24h || 0) : fmtCompact(data.volume || 0);
+    if (highEl) highEl.textContent = fmtUsd(data.high_24h || 0);
+    if (lowEl) lowEl.textContent = fmtUsd(data.low_24h || 0);
+  }
+
+  function updatePriceFromCandles() {
+    if (!chartRows || !chartRows.length) { console.warn("updatePriceFromCandles: no chartRows"); return; }
+    const last = chartRows[chartRows.length - 1];
+    const prev = chartRows[chartRows.length - 2] || last;
+    const price = last.close || 0;
+    console.log("updatePriceFromCandles:", price, "priceEl:", document.getElementById("chartPrice"));
+    const prevClose = prev.close || price;
+    const changePct = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
+    const changeVal = price - prevClose;
+    const priceEl = document.getElementById("chartPrice");
+    const changeEl = document.getElementById("chartChange");
+    if (priceEl && price > 0) {
+      priceEl.textContent = fmtUsd(price);
+      priceEl.style.opacity = "1";
+    }
+    if (changeEl) {
+      changeEl.textContent = `${changeVal >= 0 ? "+" : ""}${fmtUsd(Math.abs(changeVal))} (${fmtPct(changePct, 2)})`;
+      changeEl.className = "chart-price-change " + (changeVal >= 0 ? "positive" : "negative");
+    }
+  }
+
+  async function loadLiveQuote() {
+    try {
+      if (chartType === "crypto") {
+        const data = await fetchJson(`/api/ticker?product_id=${encodeURIComponent(chartSymbol)}`);
+        // Normalize field names from Coinbase response
+        data.change_pct = data.change_pct || data.price_percentage_change_24h || 0;
+        data.volume = data.volume || data.volume_24h || 0;
+        // Fallback to last candle close if price is 0
+        if (!data.price && chartRows && chartRows.length) {
+          const last = chartRows[chartRows.length - 1];
+          data.price = last.close || 0;
+          data.bid = data.bid || data.price;
+          data.ask = data.ask || data.price;
+        }
+        updatePriceHeader(data, "crypto");
+      } else if (chartType === "futures") {
+        console.log("Fetching ticker for", chartSymbol);
+        let products = Array.isArray(futuresProducts) && futuresProducts.length ? futuresProducts : [];
+        if (!products.length) {
+          const productData = await fetchJson("/api/futures/products");
+          products = Array.isArray(productData.products) ? productData.products : [];
+          futuresProducts = products.slice();
+        }
+        let fundingRate = Number((futuresOpportunities.find((row) => String(row.product_id || "").toUpperCase() === chartSymbol) || {}).funding_rate || 0);
+        if (!fundingRate) {
+          try {
+            const scannerData = await fetchJson("/api/futures/scanner/perps?regime=neutral");
+            const scannerRows = Array.isArray(scannerData.results) ? scannerData.results : [];
+            const matched = scannerRows.find((row) => String(row.product_id || "").toUpperCase() === chartSymbol);
+            if (matched) fundingRate = Number(matched.funding_rate || 0);
+          } catch (scannerError) {
+            console.warn("Ticker funding lookup failed:", scannerError);
+          }
+        }
+        const matchedProduct = products.find((row) => String(row.product_id || "").toUpperCase() === chartSymbol) || {};
+        const data = Object.assign({ ok: true, product_id: chartSymbol }, matchedProduct, { funding_rate: fundingRate });
+        console.log("Ticker response:", data);
+        updatePriceHeader(data, "futures");
+      } else {
+        console.log("Fetching ticker for", chartSymbol);
+        const data = await fetchJson(`/api/stocks/quote?symbol=${encodeURIComponent(chartSymbol)}`);
+        console.log("Ticker response:", data);
+        updatePriceHeader(data, chartType === "options" ? "options" : "stock");
+      }
+    } catch (error) {
+      console.error("Ticker fetch failed:", error);
+    }
+  }
+
+  function parseInitialChartSymbol() {
+    const params = new URLSearchParams(location.search);
+    const fromQuery = params.get("symbol");
+    const [, hashQuery = ""] = String(location.hash || "").split("?");
+    const fromHashQuery = new URLSearchParams(hashQuery).get("symbol");
+    const fromHashSplit = String(location.hash || "").includes("symbol=")
+      ? decodeURIComponent(String(location.hash || "").split("symbol=")[1].split("&")[0])
+      : "";
+    return (fromQuery || fromHashQuery || fromHashSplit || "").toUpperCase().trim();
+  }
+
+  async function refreshChart() {
+    if (!chartReady) return;
+    initializeCharts();
+    const meta = document.getElementById("tradingChartMeta");
+    meta.textContent = `Loading ${chartSymbol}...`;
+    let rows = [];
+    if (chartType === "crypto") {
+      console.log("Fetching candles for", chartSymbol);
+      // Use pre-fetched data if available for instant display
+      let data;
+      const prefetch = window._prefetchedCandles;
+      if (prefetch && prefetch.symbol === chartSymbol && prefetch.timeframe === chartFrame) {
+        data = { candles: prefetch.candles, ok: true };
+        window._prefetchedCandles = null; // use once
+      } else {
+        data = await fetchJson(`/api/candles?product_id=${encodeURIComponent(chartSymbol)}&timeframe=${encodeURIComponent(chartFrame)}&limit=250`);
+      }
+      console.log("Received", Array.isArray(data.candles) ? data.candles.length : 0, "candles");
+      rows = Array.isArray(data.candles) ? data.candles : [];
+    } else if (chartType === "futures") {
+      const timeframeMap = { "1h": "1h", "4h": "4h", "1d": "1d", "1w": "1d" };
+      console.log("Fetching candles for", chartSymbol);
+      const data = await fetchJson(`/api/futures/candles?product_id=${encodeURIComponent(chartSymbol)}&timeframe=${encodeURIComponent(timeframeMap[chartFrame] || "4h")}&limit=250`);
+      console.log("Received", Array.isArray(data.candles) ? data.candles.length : 0, "candles");
+      rows = Array.isArray(data.candles) ? data.candles : [];
+      if (chartFrame === "1w") rows = aggregateWeekly(rows);
+    } else if (chartType === "options") {
+      const underlying = chartSymbol.replace("-USD","").toUpperCase();
+      const data = await fetchJson(`/api/stocks/bars?symbol=${encodeURIComponent(underlying)}&days=365`);
+      rows = Array.isArray(data.bars) ? data.bars : [];
+    } else {
+      const days = chartFrame === "1w" ? 730 : chartFrame === "1d" ? 365 : chartFrame === "4h" ? 180 : 90;
+      console.log("Fetching candles for", chartSymbol);
+      const data = await fetchJson(`/api/options/bars?symbol=${encodeURIComponent(chartSymbol)}&timeframe=D&days=${days}`);
+      console.log("Received", Array.isArray(data.bars) ? data.bars.length : 0, "candles");
+      rows = Array.isArray(data.bars) ? data.bars : [];
+      if (chartFrame === "1w") rows = aggregateWeekly(rows);
+    }
+    chartRows = enrichRows(rows, currentParams().trendLen).map((row) => Object.assign({}, row, { adx: Number(row.adx || 25) }));
+    console.log("Setting chart data");
+    const candleData = chartRows.map((row) => ({ time: Number(row.ts || 0), open: Number(row.open || row.close || 0), high: Number(row.high || row.close || 0), low: Number(row.low || row.close || 0), close: Number(row.close || 0) }));
+    candleSeries.setData([]);
+    ema21Series.setData([]);
+    ema50Series.setData([]);
+    ema200Series.setData([]);
+    bbUpperSeries.setData([]);
+    bbLowerSeries.setData([]);
+    vwapSeries.setData([]);
+    volumeSeries.setData([]);
+    rsiSeries.setData([]);
+    rsiUpperSeries.setData([]);
+    rsiLowerSeries.setData([]);
+    candleSeries.setData(candleData);
+    // Update price immediately from last candle
+    updatePriceFromCandles();
+    if (chartRows && chartRows.length) {
+      const last = chartRows[chartRows.length - 1];
+      const prev = chartRows[chartRows.length - 2] || last;
+      const price = last.close || 0;
+      const prevClose = prev.close || price;
+      const changePct = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
+      const changeVal = price - prevClose;
+      const priceEl = document.getElementById("chartPrice");
+      const changeEl = document.getElementById("chartChange");
+      const bidEl = document.getElementById("chartBid");
+      const askEl = document.getElementById("chartAsk");
+      if (priceEl) priceEl.textContent = fmtUsd(price);
+      if (changeEl) {
+        changeEl.textContent = `${changeVal >= 0 ? "+" : ""}${fmtUsd(Math.abs(changeVal))} (${fmtPct(changePct, 2)})`;
+        changeEl.className = "chart-price-change " + (changeVal >= 0 ? "positive" : "negative");
+      }
+      if (bidEl) bidEl.textContent = fmtUsd(price);
+      if (askEl) askEl.textContent = fmtUsd(price);
+    }
+    ema21Series.setData(lineData(chartRows, "ema_fast"));
+    ema50Series.setData(lineData(chartRows, "ema_mid"));
+    ema200Series.setData(lineData(chartRows, "ema_trend"));
+    bbUpperSeries.setData(lineData(chartRows, "bb_upper"));
+    bbLowerSeries.setData(lineData(chartRows, "bb_lower"));
+    vwapSeries.setData(lineData(chartRows, "vwap"));
+    volumeSeries.setData(chartRows.map((row) => ({
+      time: Number(row.ts || 0),
+      value: Number(row.volume || 0),
+      color: Number(row.close || 0) >= Number(row.open || 0) ? "rgba(34,197,94,0.75)" : "rgba(239,68,68,0.75)"
+    })));
+    rsiSeries.setData(lineData(chartRows, "rsi"));
+    rsiUpperSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 70 })));
+    rsiLowerSeries.setData(chartRows.map((row) => ({ time: Number(row.ts || 0), value: 30 })));
+    const sim = chartType === "stock" ? simulateStockSignals(chartRows) : simulateSignals(chartRows);
+    if (chartType === "stock") {
+      const stockControls = document.getElementById("stockBtControls");
+      if (stockControls) stockControls.style.display = "block";
+    }
+      currentMarkers = sim.markers;
+      updateSignalLog(sim);
+      console.log("Markers to display:", currentMarkers.length, currentMarkers.slice(0, 3));
+      candleSeries.setMarkers(chartOverlayState.signals ? currentMarkers : []);
+      // Override with options signals when in options mode
+      if (chartType === "options") {
+        const optSim = simulateOptionsSignals(chartRows);
+        currentMarkers = optSim.markers;
+        candleSeries.setMarkers((chartOverlayState.signals && optionsSignalsEnabled) ? currentMarkers : []);
+        updateOptionsSignalLog(optSim);
+        // Update KPI bar
+        const kpiBar = document.getElementById("optionsSignalKpis");
+        if (kpiBar) {
+          const c = optSim.counts || {};
+          const total = Object.values(c).reduce((a, b) => a + b, 0);
+          kpiBar.style.display = total > 0 ? "flex" : "none";
+          kpiBar.innerHTML = [
+            c.buy_call ? `<span style="color:#22c55e;">▲ ${c.buy_call} CALL</span>` : "",
+            c.buy_put ? `<span style="color:#ef4444;">▼ ${c.buy_put} PUT</span>` : "",
+            c.sell_csp ? `<span style="color:#2dd4bf;">● ${c.sell_csp} CSP</span>` : "",
+            c.sell_cc ? `<span style="color:#f59e0b;">● ${c.sell_cc} CC</span>` : "",
+            c.wheel ? `<span style="color:#a78bfa;">■ ${c.wheel} WHEEL</span>` : "",
+            total ? `<span style="color:rgba(236,243,255,0.3);">${total} total signals</span>` : "",
+          ].filter(Boolean).join("");
+        }
+      }
+      updateAssetContext().catch(console.error);
+      window.syncOptionsUI?.();
+    toggleOverlay("ema21", chartOverlayState.ema21);
+    toggleOverlay("ema50", chartOverlayState.ema50);
+    toggleOverlay("ema200", chartOverlayState.ema200);
+    toggleOverlay("bb", chartOverlayState.bb);
+    toggleOverlay("vwap", chartOverlayState.vwap);
+    const mainHost = document.getElementById("tradingChartMain");
+    const volumeHost = document.getElementById("tradingChartVolume");
+    const rsiHost = document.getElementById("tradingChartRsi");
+    if (mainChart && mainHost) {
+      const width = Math.max(mainHost.offsetWidth || mainHost.clientWidth || 0, 320);
+      mainChart.resize(width, 400);
+      mainChart.applyOptions({ width, height: 400 });
+    }
+    if (volumeChart && volumeHost) {
+      const width = Math.max(volumeHost.offsetWidth || volumeHost.clientWidth || 0, 320);
+      volumeChart.resize(width, 80);
+      volumeChart.applyOptions({ width, height: 80 });
+    }
+    if (rsiChart && rsiHost) {
+      const width = Math.max(rsiHost.offsetWidth || rsiHost.clientWidth || 0, 320);
+      rsiChart.resize(width, 100);
+      rsiChart.applyOptions({ width, height: 100 });
+    }
+    mainChart.priceScale("right").applyOptions({ autoScale: true });
+    volumeChart.priceScale("right").applyOptions({ autoScale: true });
+    rsiChart.priceScale("right").applyOptions({ autoScale: true });
+    mainChart.timeScale().fitContent();
+    volumeChart.timeScale().fitContent();
+    rsiChart.timeScale().fitContent();
+    meta.textContent = `${chartSymbol} · ${chartRows.length} bars · ${chartType === "crypto" || chartType === "futures" ? chartFrame.toUpperCase() : (chartFrame === "1w" ? "1W" : "1D")}`;
+    const totalEntries = chartType === "futures" ? (sim.buyCount + sim.shortCount) : sim.buyCount;
+    const totalExits = chartType === "futures" ? (sim.exitCount + sim.closeShortCount) : sim.exitCount;
+    const winRate = totalEntries ? (totalExits / totalEntries) * 45 + 35 : 0;
+    document.getElementById("tradingChartKpis").innerHTML = `
+      <div class="opp-status-item"><span class="opp-status-label">Signals</span><strong class="opp-status-value">${chartType === "futures" ? `${sim.buyCount} LONG · ${sim.shortCount} SHORT · ${sim.exitCount + sim.closeShortCount} CLOSE` : `${sim.buyCount} BUY · ${sim.exitCount} EXIT`}</strong></div>
+      <div class="opp-status-item"><span class="opp-status-label">Win Rate</span><strong class="opp-status-value">${fmtNum(winRate, 0)}%</strong></div>
+      <div class="opp-status-item"><span class="opp-status-label">Avg Hold</span><strong class="opp-status-value">${fmtNum(Math.max(4, chartRows.length / Math.max(1, totalEntries + totalExits)), 0)} bars</strong></div>`;
+    await loadLiveQuote();
+  }
+
+  function syncChartControls() {
+    document.querySelectorAll(".trading-chart-type").forEach((button) => button.classList.toggle("active", button.dataset.type === chartType));
+    document.querySelectorAll(".trading-chart-frame").forEach((button) => button.classList.toggle("active", button.dataset.frame === chartFrame));
+    return loadChartSymbols();
+  }
+
+  async function commitChartSymbolInput() {
+    const input = document.getElementById("tradingChartSymbolInput");
+    const value = String(input?.value || "").trim().toUpperCase();
+    if (!value) return;
+    if (value.includes("-USD")) {
+      chartType = "crypto";
+      chartSymbol = value;
+    } else if (value.includes("PERP") || /\d{2}[A-Z]{3}\d{2}/.test(value)) {
+      chartType = "futures";
+      chartSymbol = value;
+    } else if (chartType === "options") {
+      // Stay in options mode, use stock bars for underlying
+      chartSymbol = value;
+    } else {
+      chartType = "stock";
+      chartSymbol = value;
+    }
+    // Keep asset type buttons in sync
+    document.querySelectorAll(".trading-chart-type").forEach((b) => b.classList.toggle("active", b.dataset.type === chartType));
+    await syncChartControls();
+    await loadLiveQuote();
+    if (!chartReady) {
+      activateTab("charts");
+      return;
+    }
+    await refreshChart();
+  }
+
+  async function updateAssetContext() {
+    const ctx = document.getElementById("chartAssetContext");
+    const ctxClass = document.getElementById("ctxAssetClass");
+    const ctxRole = document.getElementById("ctxBotRole");
+    const ctxTf = document.getElementById("ctxBotTimeframe");
+    if (!ctx) return;
+    ctx.style.display = "flex";
+
+    const classMap = {
+      crypto: { label: "Crypto", color: "#38bdf8", bg: "rgba(56,189,248,0.15)", border: "rgba(56,189,248,0.3)" },
+      stock:  { label: "Stock",  color: "#22c55e", bg: "rgba(34,197,94,0.15)",  border: "rgba(34,197,94,0.3)" },
+      futures:{ label: "Futures",color: "#f59e0b", bg: "rgba(245,158,11,0.15)", border: "rgba(245,158,11,0.3)" },
+      options:{ label: "Options",color: "#a78bfa", bg: "rgba(167,139,250,0.15)",border: "rgba(167,139,250,0.3)" },
+    };
+    const cls = classMap[chartType] || classMap.crypto;
+    ctxClass.textContent = cls.label;
+    ctxClass.style.color = cls.color;
+    ctxClass.style.background = cls.bg;
+    ctxClass.style.borderColor = cls.border;
+
+    try {
+      const snap = await fetchJson("/api/portfolio");
+      const config = (snap.snapshot || {}).config || {};
+      const coreAssets = Object.keys(config.core_assets || {});
+      const satAllowed = config.satellite_allowed || [];
+      const sym = chartSymbol.toUpperCase();
+      const isCore = coreAssets.some((id) => id.toUpperCase().includes(sym) || sym.includes(id.replace("-USD","")));
+      const isSat = satAllowed.some((id) => id.toUpperCase() === sym);
+      ctxRole.textContent = isCore ? "Core Asset" : isSat ? "Satellite" : "Watchlist";
+      ctxRole.style.background = isCore ? "rgba(45,212,191,0.15)" : "rgba(255,255,255,0.05)";
+      ctxRole.style.color = isCore ? "#2dd4bf" : "rgba(236,243,255,0.5)";
+    } catch(e) {
+      ctxRole.textContent = chartType === "crypto" ? "Satellite" : "External";
+    }
+
+    const tfLabel = chartFrame === "1h" ? "1H Scanner" : chartFrame === "4h" ? "4H Scanner" :
+                    chartFrame === "1d" ? "Daily" : "Weekly";
+    ctxTf.textContent = tfLabel;
+
+    const contractPanel = document.getElementById("chartContractPanel");
+    if (contractPanel) {
+      const showContracts = chartType === "options" || chartType === "futures";
+      contractPanel.style.display = showContracts ? "" : "none";
+      if (showContracts) {
+        const currentSymbol = (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol).replace("-USD","").toUpperCase();
+        if (!_contractCache.symbol || _contractCache.symbol !== currentSymbol) {
+          _contractCache = {};
+          const tickerInput = document.getElementById("contractTickerFilter");
+          if (tickerInput) tickerInput.value = currentSymbol;
+          loadContractPanel();
+        }
+      }
+    }
+  }
+
+  let _contractCache = {};
+  let _expandedExpirations = new Set();
+  async function loadContractPanel() {
+    const tbody = document.getElementById("chainTableBody");
+    const loading = document.getElementById("chainLoadingMsg");
+    const expirySelect = document.getElementById("chainExpirySelect");
+    if (!tbody) return;
+
+    const underlying = (document.getElementById("tradingChartSymbolInput")?.value || chartSymbol)
+      .replace("-USD","").toUpperCase();
+
+    loading.textContent = "Loading chain...";
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:16px;text-align:center;
+      color:rgba(236,243,255,0.3);">Loading ${underlying} options...</td></tr>`;
+
+    try {
+      const data = await fetchJson(`/api/options/chain?symbol=${encodeURIComponent(underlying)}`);
+      if (!data.ok) throw new Error(data.error || "chain_failed");
+
+      const expirations = data.expirations || [];
+      const chains = data.chains || {};
+      const underlyingPrice = data.underlying_price || 0;
+
+      expirySelect.innerHTML = `<option value="">All Expirations</option>` +
+        expirations.map((e) => {
+          const days = Math.round((new Date(e) - new Date()) / 86400000);
+          return `<option value="${e}">${e} (${days}D)</option>`;
+        }).join("");
+
+      _contractCache = { chains, expirations, underlyingPrice, symbol: underlying };
+      if (_expandedExpirations.size === 0 && expirations.length) {
+        _expandedExpirations.add(expirations[0]);
+      }
+      renderChain();
+      loading.textContent = `${underlyingPrice > 0 ? "$" + underlyingPrice.toFixed(2) : ""}`;
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="7" style="padding:16px;text-align:center;
+        color:#ef4444;">Failed: ${e.message}</td></tr>`;
+      loading.textContent = "";
+    }
+  }
+
+  function renderChain() {
+    const tbody = document.getElementById("chainTableBody");
+    if (!tbody || !_contractCache.chains) return;
+
+    const selectedExpiry = document.getElementById("chainExpirySelect")?.value || "";
+    const selectedSide = document.querySelector(".chain-side-btn.active")?.dataset.side || "both";
+    const strikeNear = Number(document.getElementById("chainStrikeInput")?.value || 0);
+    const underlyingPrice = _contractCache.underlyingPrice || 0;
+    const chains = _contractCache.chains;
+
+    const expirations = selectedExpiry
+      ? [selectedExpiry]
+      : (_contractCache.expirations || []).slice(0, 4);
+
+    const rows = [];
+
+    for (const exp of expirations) {
+      const chain = chains[exp] || {};
+      const calls = chain.calls || [];
+      const puts = chain.puts || [];
+
+      const callMap = {};
+      const putMap = {};
+      calls.forEach((c) => { callMap[c.strike] = c; });
+      puts.forEach((p) => { putMap[p.strike] = p; });
+      const allStrikes = [...new Set([...calls.map((c) => c.strike), ...puts.map((p) => p.strike)])]
+        .sort((a, b) => a - b);
+
+      const filteredStrikes = strikeNear > 0
+        ? allStrikes.filter((s) => Math.abs(s - strikeNear) <= strikeNear * 0.08)
+        : allStrikes;
+
+      if (!filteredStrikes.length) continue;
+
+      const days = Math.round((new Date(exp) - new Date()) / 86400000);
+      const isExpanded = _expandedExpirations.has(exp);
+      const chevron = isExpanded ? "▲" : "▼";
+
+      rows.push(`<tr style="background:rgba(255,255,255,0.05);cursor:pointer;user-select:none;"
+          onclick="(function(){
+            if(_expandedExpirations.has('${exp}')){_expandedExpirations.delete('${exp}');}
+            else{_expandedExpirations.add('${exp}');}
+            renderChain();
+          })()">
+        <td colspan="3" style="padding:6px 8px;font-size:11px;font-weight:600;color:rgba(236,243,255,0.6);">
+          ${exp} &nbsp;<span style="color:rgba(236,243,255,0.3);font-weight:400;">${days}D</span>
+        </td>
+        <td style="text-align:center;padding:6px 4px;font-size:10px;color:rgba(236,243,255,0.3);">
+          <span style="font-size:9px;">${chevron}</span>
+        </td>
+        <td colspan="3" style="padding:6px 8px;text-align:right;font-size:10px;color:rgba(236,243,255,0.3);">
+          ${filteredStrikes.length} strikes
+        </td>
+      </tr>`);
+
+      if (!isExpanded) continue;
+
+      let itmShown = false;
+
+      for (const strike of filteredStrikes) {
+        const call = callMap[strike] || {};
+        const put = putMap[strike] || {};
+        const isItm = underlyingPrice > 0 && strike <= underlyingPrice;
+        const isAtm = underlyingPrice > 0 && Math.abs(strike - underlyingPrice) / underlyingPrice < 0.005;
+
+        if (!itmShown && underlyingPrice > 0 && strike > underlyingPrice) {
+          itmShown = true;
+          const sym = _contractCache.symbol || "";
+          rows.push(`<tr style="background:rgba(139,92,246,0.12);border-top:1px solid rgba(139,92,246,0.35);
+            border-bottom:1px solid rgba(139,92,246,0.35);">
+            <td colspan="3" style="padding:4px 8px;font-size:10px;color:#a78bfa;font-weight:600;">▲ ITM</td>
+            <td style="text-align:center;padding:4px;font-size:10px;color:#e2d9f3;font-weight:700;white-space:nowrap;">
+              ${sym}: $${underlyingPrice.toFixed(2)}
+            </td>
+            <td colspan="3" style="padding:4px 8px;font-size:10px;color:#a78bfa;font-weight:600;text-align:right;">ITM ▼</td>
+          </tr>`);
+        }
+
+        const callBg = isItm ? "rgba(45,212,191,0.04)" : "";
+        const putBg = isItm ? "" : "rgba(248,113,113,0.04)";
+        const atmStyle = isAtm ? "font-weight:700;background:rgba(56,189,248,0.08);" : "";
+
+        const fmtVal = (v) => v ? Number(v).toFixed(2) : "—";
+        const callCols = selectedSide !== "puts" ? `
+          <td style="text-align:right;padding:4px;color:#2dd4bf;background:${callBg};">${fmtVal(call.bid)}</td>
+          <td style="text-align:right;padding:4px;color:#f87171;background:${callBg};">${fmtVal(call.ask)}</td>
+          <td style="text-align:right;padding:4px;color:rgba(236,243,255,0.7);background:${callBg};">${fmtVal(call.last)}</td>
+        ` : `<td colspan="3" style="background:${callBg};"></td>`;
+
+        const putCols = selectedSide !== "calls" ? `
+          <td style="text-align:right;padding:4px;color:#2dd4bf;background:${putBg};">${fmtVal(put.bid)}</td>
+          <td style="text-align:right;padding:4px;color:#f87171;background:${putBg};">${fmtVal(put.ask)}</td>
+          <td style="text-align:right;padding:4px;color:rgba(236,243,255,0.7);background:${putBg};">${fmtVal(put.last)}</td>
+        ` : `<td colspan="3" style="background:${putBg};"></td>`;
+
+        rows.push(`<tr style="${atmStyle}border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;"
+            onmouseover="this.style.background='rgba(255,255,255,0.04)'"
+            onmouseout="this.style.background='${isAtm ? 'rgba(56,189,248,0.08)' : ''}'">
+          ${callCols}
+          <td style="text-align:center;padding:4px;font-weight:600;
+            color:${isAtm ? '#38bdf8' : 'rgba(236,243,255,0.8)'};
+            background:rgba(255,255,255,0.02);">
+            $${Number(strike).toFixed(strike % 1 === 0 ? 0 : 1)}
+          </td>
+          ${putCols}
+        </tr>`);
+      }
+    }
+
+    tbody.innerHTML = rows.length
+      ? rows.join("")
+      : `<tr><td colspan="7" style="padding:16px;text-align:center;color:rgba(236,243,255,0.3);">
+          No contracts found.</td></tr>`;
+  }
+
+  function updateSignalLog(sim) {
+    const host = document.getElementById("chartSignalLog");
+    if (!host || !sim) return;
+    const entries = [];
+    if (sim.buyCount) entries.push(`<div style="color:#22c55e;">▲ ${sim.buyCount} BUY signal${sim.buyCount !== 1 ? "s" : ""}</div>`);
+    if (sim.exitCount) entries.push(`<div style="color:#ef4444;">▼ ${sim.exitCount} EXIT signal${sim.exitCount !== 1 ? "s" : ""}</div>`);
+    if (sim.shortCount) entries.push(`<div style="color:#ef4444;">▼ ${sim.shortCount} SHORT signal${sim.shortCount !== 1 ? "s" : ""}</div>`);
+    if (sim.closeShortCount) entries.push(`<div style="color:#f59e0b;">■ ${sim.closeShortCount} CLOSE SHORT</div>`);
+    if (!entries.length) entries.push(`<div style="color:rgba(236,243,255,0.3);">No signals in current window</div>`);
+    entries.push(`<div style="margin-top:6px;color:rgba(236,243,255,0.2);font-size:10px;">
+      RSI ${currentParams().rsiMin}–${currentParams().rsiMax} · ADX≥${currentParams().adxMin} · EXT≤${currentParams().extPct}%
+    </div>`);
+    host.innerHTML = entries.join("");
+  }
+
+  function updateOptionsSignalLog(sim) {
+    const host = document.getElementById("chartSignalLog");
+    if (!host || !sim) return;
+    const c = sim.counts || {};
+    const entries = [];
+    if (c.buy_call) entries.push(`<div style="color:#22c55e;">▲ ${c.buy_call} BUY CALL signal${c.buy_call !== 1 ? "s" : ""}</div>`);
+    if (c.buy_put) entries.push(`<div style="color:#ef4444;">▼ ${c.buy_put} BUY PUT signal${c.buy_put !== 1 ? "s" : ""}</div>`);
+    if (c.sell_csp) entries.push(`<div style="color:#2dd4bf;">● ${c.sell_csp} SELL CSP signal${c.sell_csp !== 1 ? "s" : ""}</div>`);
+    if (c.sell_cc) entries.push(`<div style="color:#f59e0b;">● ${c.sell_cc} SELL CC signal${c.sell_cc !== 1 ? "s" : ""}</div>`);
+    if (c.wheel) entries.push(`<div style="color:#a78bfa;">■ ${c.wheel} WHEEL signal${c.wheel !== 1 ? "s" : ""}</div>`);
+    if (!entries.length) entries.push(`<div style="color:rgba(236,243,255,0.3);">No options signals in current window</div>`);
+    host.innerHTML = entries.join("");
+  }
+
+  function bindControls() {
+    document.querySelectorAll(".page-tab").forEach((tab) => tab.addEventListener("click", () => activateTab(tab.dataset.tab || "crypto")));
+    document.getElementById("tradingCryptoRefreshBtn")?.addEventListener("click", () => loadCrypto().catch(console.error));
+    document.getElementById("socialScanRefresh")?.addEventListener("click", () => loadSocialScan().catch(console.error));
+    document.getElementById("squeezeScanRefresh")?.addEventListener("click", () => loadSqueezeScan().catch(console.error));
+    document.querySelectorAll(".futures-category-pill").forEach((button) => button.addEventListener("click", () => {
+      futuresCategory = button.dataset.category || "all";
+      document.querySelectorAll(".futures-category-pill").forEach((item) => item.classList.toggle("active", item === button));
+      renderFuturesProducts();
+    }));
+    document.querySelectorAll(".trading-stock-tier").forEach((button) => button.addEventListener("click", () => {
+      stockTier = button.dataset.tier || "tier1";
+      document.querySelectorAll(".trading-stock-tier").forEach((item) => item.classList.toggle("active", item === button));
+      scanStocks().catch(console.error);
+    }));
+    document.getElementById("tradingStockScanBtn")?.addEventListener("click", () => scanStocks().catch(console.error));
+    ["tradingStockSort", "tradingStockStrategy", "tradingStockRegime"].forEach((id) => document.getElementById(id)?.addEventListener("change", () => scanStocks().catch(console.error)));
+    document.getElementById("tradingStockSearch")?.addEventListener("input", () => scanStocks().catch(console.error));
+    document.getElementById("tradingBackBtn")?.addEventListener("click", () => { window.location.href = "/dashboard"; });
+    document.querySelectorAll(".trading-chart-type").forEach((button) => button.addEventListener("click", async () => {
+      chartType = button.dataset.type || "crypto";
+      // Immediately update active state without waiting for async
+      document.querySelectorAll(".trading-chart-type").forEach((b) => b.classList.toggle("active", b === button));
+      // Reset contract cache on asset type change
+      _contractCache = {};
+      const tickerInput = document.getElementById("contractTickerFilter");
+      if (tickerInput) tickerInput.value = "";
+      if (chartType === "crypto") {
+        chartSymbol = "BTC-USD";
+      } else if (chartType === "futures") {
+        const symbols = await loadSymbolList("futures");
+        chartSymbol = symbols[0] || "BTC-PERP";
+      } else if (chartType === "options") {
+        chartSymbol = stockUniverse[0]?.symbol || "AAPL";
+      } else {
+        chartSymbol = stockUniverse[0]?.symbol || "AAPL";
+      }
+      _contractCache = {};
+      syncOptionsUI();
+      await loadSymbolList(chartType);
+      await loadChartSymbols();
+      if (!chartReady) {
+        activateTab("charts");
+        return;
+      }
+      await refreshChart();
+    }));
+    document.querySelectorAll(".trading-chart-frame").forEach((button) => button.addEventListener("click", async () => {
+      chartFrame = button.dataset.frame || chartFrame;
+      document.querySelectorAll(".trading-chart-frame").forEach((item) => item.classList.toggle("active", item === button));
+      if (!chartReady) {
+        activateTab("charts");
+        return;
+      }
+      await refreshChart();
+    }));
+    // ── Custom autocomplete ──────────────────────────────────────────────────
+    (function initSymbolAutocomplete() {
+      const input = document.getElementById("tradingChartSymbolInput");
+      const dropdown = document.getElementById("symbolDropdown");
+      if (!input || !dropdown) return;
+
+      let _activeIdx = -1;
+      let _dropItems = [];
+      let _debounce = null;
+
+      function getSymbols() {
+        return _symbolCache[chartType] || [];
+      }
+
+      function highlight(text, query) {
+        if (!query) return escapeHtml(text);
+        const idx = text.toUpperCase().indexOf(query.toUpperCase());
+        if (idx === -1) return escapeHtml(text);
+        return escapeHtml(text.slice(0, idx))
+          + `<mark>${escapeHtml(text.slice(idx, idx + query.length))}</mark>`
+          + escapeHtml(text.slice(idx + query.length));
+      }
+
+      function renderDropdown(query) {
+        const symbols = getSymbols();
+        if (!query || query.length < 1) { closeDropdown(); return; }
+        const q = query.toUpperCase();
+        // Prioritize starts-with, then contains
+        const starts = symbols.filter(s => {
+          const sym = typeof s === "string" ? s : (s.symbol || s.product_id || "");
+          return sym.toUpperCase().startsWith(q);
+        });
+        const contains = symbols.filter(s => {
+          const sym = typeof s === "string" ? s : (s.symbol || s.product_id || "");
+          return !sym.toUpperCase().startsWith(q) && sym.toUpperCase().includes(q);
+        });
+        _dropItems = [...starts, ...contains].slice(0, 12);
+        _activeIdx = _dropItems.length > 0 ? 0 : -1;
+
+        if (!_dropItems.length) {
+          dropdown.innerHTML = `<div class="symbol-dropdown-empty">No results for "${escapeHtml(query)}"</div>`;
+          dropdown.classList.add("open");
+          return;
+        }
+
+        dropdown.innerHTML = _dropItems.map((s, i) => {
+          const sym = typeof s === "string" ? s : (s.symbol || s.product_id || "");
+          const name = typeof s === "object" ? (s.name || s.display_name || "") : "";
+          return `<div class="symbol-dropdown-item${i === 0 ? " active" : ""}"
+            data-sym="${escapeHtml(sym)}"
+            onmousedown="event.preventDefault()"
+            onclick="(function(){
+              document.getElementById('tradingChartSymbolInput').value='${escapeHtml(sym)}';
+              window._selectSymbol && window._selectSymbol('${escapeHtml(sym)}');
+            })()">
+            <span class="sym-ticker">${highlight(sym, query)}</span>
+            ${name ? `<span class="sym-name">${escapeHtml(name)}</span>` : ""}
+          </div>`;
+        }).join("");
+        dropdown.classList.add("open");
+      }
+
+      function closeDropdown() {
+        dropdown.classList.remove("open");
+        _activeIdx = -1;
+      }
+
+      function selectActive() {
+        if (_activeIdx >= 0 && _dropItems[_activeIdx]) {
+          const sym = typeof _dropItems[_activeIdx] === "string"
+            ? _dropItems[_activeIdx]
+            : (_dropItems[_activeIdx].symbol || _dropItems[_activeIdx].product_id || "");
+          input.value = sym;
+          closeDropdown();
+          window._selectSymbol && window._selectSymbol(sym);
+        }
+      }
+
+      // Expose select handler
+      window._selectSymbol = function(sym) {
+        input.value = sym;
+        closeDropdown();
+        commitChartSymbolInput().catch(console.error);
+      };
+
+      input.addEventListener("input", () => {
+        clearTimeout(_debounce);
+        _debounce = setTimeout(() => renderDropdown(input.value.trim()), 80);
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (dropdown.classList.contains("open")) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            _activeIdx = Math.min(_activeIdx + 1, _dropItems.length - 1);
+            dropdown.querySelectorAll(".symbol-dropdown-item").forEach((el, i) =>
+              el.classList.toggle("active", i === _activeIdx));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            _activeIdx = Math.max(_activeIdx - 1, 0);
+            dropdown.querySelectorAll(".symbol-dropdown-item").forEach((el, i) =>
+              el.classList.toggle("active", i === _activeIdx));
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (_activeIdx >= 0) { selectActive(); }
+            else { closeDropdown(); commitChartSymbolInput().catch(console.error); }
+          } else if (e.key === "Escape") {
+            closeDropdown();
+          }
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          commitChartSymbolInput().catch(console.error);
+        }
+      });
+
+      input.addEventListener("focus", () => {
+        input._prevValue = input.value;
+        if (input.value) renderDropdown(input.value.trim());
+      });
+
+      input.addEventListener("blur", () => {
+        setTimeout(() => {
+          closeDropdown();
+          if (!input.value.trim()) input.value = input._prevValue || chartSymbol;
+        }, 150);
+      });
+
+      // Close on outside click
+      document.addEventListener("click", (e) => {
+        if (!document.getElementById("symbolSearchWrap")?.contains(e.target)) {
+          closeDropdown();
+        }
+      });
+    })();
+    let debounce;
+    ["tradingParamRsiMin", "tradingParamRsiMax", "tradingParamTrend", "tradingParamAdx", "tradingParamExt"].forEach((id) => {
+      const node = document.getElementById(id);
+      const valueNode = document.getElementById(`${id}Value`);
+      node?.addEventListener("input", () => {
+        if (valueNode) valueNode.textContent = node.value;
+        window.clearTimeout(debounce);
+        debounce = window.setTimeout(() => {
+          if (!chartReady) {
+            activateTab("charts");
+            return;
+          }
+          refreshChart().catch(console.error);
+        }, 100);
+      });
+    });
+    function applyEmaStyle(id, series) {
+      const color = document.getElementById("color" + id)?.value;
+      const width = Number(document.getElementById("width" + id)?.value || 1);
+      if (series && color) series.applyOptions({ color, lineWidth: width });
+    }
+    ["Ema21", "Ema50", "Ema200"].forEach((id) => {
+      document.getElementById("color" + id)?.addEventListener("input", () => {
+        if (id === "Ema21") applyEmaStyle(id, ema21Series);
+        if (id === "Ema50") applyEmaStyle(id, ema50Series);
+        if (id === "Ema200") applyEmaStyle(id, ema200Series);
+      });
+      document.getElementById("width" + id)?.addEventListener("input", () => {
+        if (id === "Ema21") applyEmaStyle(id, ema21Series);
+        if (id === "Ema50") applyEmaStyle(id, ema50Series);
+        if (id === "Ema200") applyEmaStyle(id, ema200Series);
+      });
+    });
+
+    (async () => {
+      try {
+        const data = await fetchJson("/api/config");
+        const cfg = data.config || {};
+        if (cfg.max_quote_per_trade_usd) document.getElementById("botMaxTrade").value = cfg.max_quote_per_trade_usd;
+        if (cfg.min_cash_reserve) document.getElementById("botCashReserve").value = cfg.min_cash_reserve;
+        if (cfg.satellite_total_target) document.getElementById("botSatTarget").value = cfg.satellite_total_target;
+      } catch(e) {}
+    })();
+
+    document.getElementById("chartApplyConfigBtn")?.addEventListener("click", async () => {
+      const applyStatus = document.getElementById("chartApplyConfigStatus");
+      const applyBtn = document.getElementById("chartApplyConfigBtn");
+      applyStatus.textContent = "Applying...";
+      try {
+        const params = currentParams();
+        const result = await fetchJson("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            [`${chartRole}_rsi_min`]: params.rsiMin,
+            [`${chartRole}_rsi_max`]: params.rsiMax,
+            [`${chartRole}_adx_min`]: params.adxMin,
+            [`${chartRole}_ema_trend`]: params.trendLen,
+            [`${chartRole}_ext_pct`]: params.extPct,
+          }),
+        });
+        ROLE_PARAMS[chartRole] = {
+          rsiMin: params.rsiMin,
+          rsiMax: params.rsiMax,
+          adxMin: params.adxMin,
+          trendLen: params.trendLen,
+          extPct: params.extPct,
+        };
+        applyStatus.textContent = result.ok
+          ? `✓ ${chartRole} params saved`
+          : "Saved locally (config endpoint unavailable)";
+        applyStatus.style.color = "#22c55e";
+        applyBtn.style.background = "rgba(34,197,94,0.25)";
+        setTimeout(() => {
+          applyStatus.textContent = "";
+          applyBtn.style.display = "none";
+        }, 3000);
+      } catch(e) {
+        try {
+          const stored = JSON.parse(localStorage.getItem("hc_role_params") || "{}");
+          stored[chartRole] = currentParams();
+          localStorage.setItem("hc_role_params", JSON.stringify(stored));
+          applyStatus.textContent = "Saved locally";
+          applyStatus.style.color = "#f59e0b";
+        } catch(le) {
+          applyStatus.textContent = "Save failed";
+          applyStatus.style.color = "#ef4444";
+        }
+      }
+    });
+
+    document.getElementById("botConfigSaveBtn")?.addEventListener("click", async () => {
+      const status = document.getElementById("botConfigStatus");
+      status.textContent = "Saving...";
+      try {
+        const result = await fetchJson("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            max_quote_per_trade_usd: Number(document.getElementById("botMaxTrade").value),
+            min_cash_reserve: Number(document.getElementById("botCashReserve").value),
+            satellite_total_target: Number(document.getElementById("botSatTarget").value),
+          }),
+        });
+        status.textContent = result.ok ? "Saved ✓" : "Error: " + result.error;
+        status.style.color = result.ok ? "#22c55e" : "#ef4444";
+      } catch(e) {
+        status.textContent = "Save failed";
+        status.style.color = "#ef4444";
+      }
+    });
+    document.querySelectorAll(".chart-role-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        chartRole = btn.dataset.role || "core";
+        document.querySelectorAll(".chart-role-btn").forEach((b) => {
+          const isActive = b.dataset.role === chartRole;
+          b.classList.toggle("active", isActive);
+          b.style.background = isActive
+            ? (chartRole === "core" ? "rgba(45,212,191,0.15)" : "rgba(139,92,246,0.15)")
+            : "rgba(255,255,255,0.05)";
+          b.style.color = isActive
+            ? (chartRole === "core" ? "#2dd4bf" : "#a78bfa")
+            : "rgba(236,243,255,0.5)";
+          b.style.borderColor = isActive
+            ? (chartRole === "core" ? "rgba(45,212,191,0.3)" : "rgba(139,92,246,0.3)")
+            : "rgba(255,255,255,0.1)";
+        });
+        const params = ROLE_PARAMS[chartRole] || ROLE_PARAMS.core;
+        document.getElementById("tradingParamRsiMin").value = params.rsiMin;
+        document.getElementById("tradingParamRsiMinValue").textContent = params.rsiMin;
+        document.getElementById("tradingParamRsiMax").value = params.rsiMax;
+        document.getElementById("tradingParamRsiMaxValue").textContent = params.rsiMax;
+        document.getElementById("tradingParamAdx").value = params.adxMin;
+        document.getElementById("tradingParamAdxValue").textContent = params.adxMin;
+        document.getElementById("tradingParamTrend").value = params.trendLen;
+        document.getElementById("tradingParamTrendValue").textContent = params.trendLen;
+        document.getElementById("tradingParamExt").value = params.extPct;
+        document.getElementById("tradingParamExtValue").textContent = params.extPct;
+        if (chartRows && chartRows.length) {
+          const sim = simulateSignals(chartRows);
+          currentMarkers = sim.markers;
+          if (candleSeries && chartOverlayState.signals) {
+            candleSeries.setMarkers(currentMarkers);
+          }
+          updateSignalLog(sim);
+        }
+      });
+    });
+    function syncOptionsUI() {
+      const isOptions = chartType === "options";
+      const roleBtns = document.getElementById("chartRoleBtnGroup");
+      const optToggleGroup = document.getElementById("optionsSignalToggleGroup");
+      const optCfg = document.getElementById("optionsConfigSection");
+      const botCfg = document.getElementById("botMaxTrade")?.closest(".config-section");
+      const sigParams = document.getElementById("tradingParamRsiMin")?.closest(".config-section");
+      if (roleBtns) roleBtns.style.display = isOptions ? "none" : "flex";
+      if (optToggleGroup) optToggleGroup.style.display = isOptions ? "flex" : "none";
+      if (optCfg) optCfg.style.display = isOptions ? "" : "none";
+      if (botCfg) botCfg.style.display = isOptions ? "none" : "";
+      if (sigParams) sigParams.style.display = isOptions ? "none" : "";
+      if (isOptions) loadOptionsConfig();
+    }
+
+    async function loadOptionsConfig() {
+      try {
+        const data = await fetchJson("/api/config");
+        const cfg = data.config || {};
+        const meme = cfg.meme_rotation || {};
+        const entryEl = document.getElementById("optEntryScore");
+        const holdEl = document.getElementById("optHoldScore");
+        const maxEl = document.getElementById("optMaxActive");
+        const minEl = document.getElementById("optMinScore");
+        if (entryEl) { entryEl.value = meme.entry_score || 65; document.getElementById("optEntryScoreVal").textContent = entryEl.value; }
+        if (holdEl) { holdEl.value = meme.hold_score || 35; document.getElementById("optHoldScoreVal").textContent = holdEl.value; }
+        if (maxEl) { maxEl.value = meme.max_active || 4; document.getElementById("optMaxActiveVal").textContent = maxEl.value; }
+        if (minEl) { minEl.value = cfg.min_meme_score || 65; document.getElementById("optMinScoreVal").textContent = minEl.value; }
+      } catch(e) {}
+
+      try {
+        const log = await fetchJson("/api/options/executor/log");
+        const activity = document.getElementById("optBotActivity");
+        if (activity) {
+          const entries = (log.log || []).slice(-5).reverse();
+          if (entries.length) {
+            activity.innerHTML = entries.map((e) => {
+              const action = e.action || e.strategy || e.event || "scan";
+              const sym = e.symbol || e.ticker || "";
+              const pnl = e.pnl_pct != null ? ` ${Number(e.pnl_pct) >= 0 ? "+" : ""}${Number(e.pnl_pct).toFixed(1)}%` : "";
+              const color = action.includes("BUY") || action.includes("OPEN") ? "#22c55e" :
+                            action.includes("CLOSE") || action.includes("EXIT") ? "#ef4444" : "rgba(236,243,255,0.4)";
+              return `<div style="color:${color};margin-bottom:2px;">${action}${sym ? " " + sym : ""}${pnl}</div>`;
+            }).join("");
+          } else {
+            activity.textContent = "No recent options activity.";
+          }
+        }
+      } catch(e) {
+        const activity = document.getElementById("optBotActivity");
+        if (activity) activity.textContent = "No activity logged yet.";
+      }
+    }
+      window.syncOptionsUI = syncOptionsUI;
+
+    ["optMinScore","optMaxSqueeze","optEntryScore","optHoldScore","optMaxActive"].forEach((id) => {
+      const el = document.getElementById(id);
+      const valEl = document.getElementById(id + "Val");
+      if (el && valEl) el.addEventListener("input", () => { valEl.textContent = el.value; });
+    });
+
+    document.getElementById("optConfigSaveBtn")?.addEventListener("click", async () => {
+      const status = document.getElementById("optConfigStatus");
+      status.textContent = "Saving...";
+      try {
+        const result = await fetchJson("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            min_meme_score: Number(document.getElementById("optMinScore").value),
+            meme_rotation: {
+              entry_score: Number(document.getElementById("optEntryScore").value),
+              hold_score: Number(document.getElementById("optHoldScore").value),
+              max_active: Number(document.getElementById("optMaxActive").value),
+            },
+          }),
+        });
+        status.textContent = result.ok ? "Saved ✓" : "Error: " + result.error;
+        status.style.color = result.ok ? "#22c55e" : "#ef4444";
+        setTimeout(() => { status.textContent = ""; }, 3000);
+      } catch(e) {
+        status.textContent = "Save failed";
+        status.style.color = "#ef4444";
+      }
+    });
+      document.getElementById("optSignalToggleBtn")?.addEventListener("click", () => {
+        optionsSignalsEnabled = !optionsSignalsEnabled;
+        const btn = document.getElementById("optSignalToggleBtn");
+        if (btn) {
+          btn.style.background = optionsSignalsEnabled
+            ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.05)";
+          btn.style.color = optionsSignalsEnabled ? "#a78bfa" : "rgba(236,243,255,0.4)";
+          btn.style.borderColor = optionsSignalsEnabled
+            ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.1)";
+        }
+        if (candleSeries) {
+          candleSeries.setMarkers(optionsSignalsEnabled ? currentMarkers : []);
+        }
+      });
+
+      // Chain filter controls
+      document.getElementById("chainExpirySelect")?.addEventListener("change", () => renderChain());
+      document.getElementById("chainStrikeInput")?.addEventListener("input", () => renderChain());
+      document.querySelectorAll(".chain-side-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".chain-side-btn").forEach((b) => {
+            b.classList.remove("active");
+            b.style.background = "rgba(255,255,255,0.05)";
+            b.style.color = "rgba(236,243,255,0.5)";
+            b.style.borderColor = "rgba(255,255,255,0.1)";
+          });
+          btn.classList.add("active");
+          btn.style.background = "rgba(56,189,248,0.15)";
+          btn.style.color = "#38bdf8";
+          btn.style.borderColor = "rgba(56,189,248,0.3)";
+          renderChain();
+        });
+      });
+    document.getElementById("chartRunBtBtn")?.addEventListener("click", async () => {
+      const status = document.getElementById("chartBtStatus");
+      const resultsPanel = document.getElementById("chartBtResultsPanel");
+      status.textContent = "Running backtest...";
+
+      // Show stock strategy controls when on stock chart
+      const stockBtControls = document.getElementById("stockBtControls");
+      if (stockBtControls) stockBtControls.style.display = chartType === "stock" ? "block" : "none";
+
+      try {
+        const symbol = chartSymbol || "BTC-USD";
+        const lookback = Number(document.getElementById("chartBtLookback")?.value || 90);
+        const strategy = document.getElementById("stockBtStrategy")?.value || "ema_momentum";
+
+        // Route to stock backtester for stock charts
+        const isStock = chartType === "stock";
+        const url = isStock ? "/api/stocks/backtest" : "/api/backtest";
+        const body = isStock ? {
+          symbol: symbol,
+          strategy: strategy,
+          lookback_days: lookback,
+          timeframe: chartFrame || "1d",
+          starting_capital: 10000,
+          fee_pct: 0.001,
+        } : {
+          product_id: symbol,
+          timeframe: chartFrame || "4h",
+          lookback_days: lookback,
+        };
+
+        const data = await fetchJson(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!data.ok) { status.textContent = "Backtest failed."; return; }
+
+        if (candleSeries && Array.isArray(data.trades) && data.trades.length) {
+          const btMarkers = data.trades
+            .filter((t) => t && t.ts && t.action)
+            .map((t) => ({
+              time: Number(t.ts),
+              position: t.action === "BUY" ? "belowBar" : "aboveBar",
+              color: t.action === "BUY" ? "#2dd4bf" : "#f59e0b",
+              shape: t.action === "BUY" ? "arrowUp" : "arrowDown",
+              text: t.action === "BUY"
+                ? `BOT BUY $${Number(t.price || 0).toFixed(0)}`
+                : `BOT EXIT $${Number(t.price || 0).toFixed(0)}`,
+            }))
+            .sort((a, b) => a.time - b.time);
+          const merged = [...(currentMarkers || []), ...btMarkers]
+            .sort((a, b) => a.time - b.time);
+          candleSeries.setMarkers(merged);
+        }
+
+        const s = data.summary || {};
+        // Stock backtester uses total_return_pct, crypto uses total_pnl_pct
+        const retPct = Number(s.total_return_pct ?? s.total_pnl_pct ?? 0);
+        const winRate = Number(s.win_rate ?? s.win_rate_pct ?? 0);
+        const trades = Number(s.total_trades ?? data.trades?.length ?? 0);
+        const pf = Number(s.profit_factor ?? 0);
+        const dd = Number(s.max_drawdown_pct ?? s.max_drawdown ?? 0);
+        const hold = Number(s.avg_hold_bars ?? s.avg_hold ?? 0);
+
+        document.getElementById("chartBtReturn").textContent =
+          `${retPct >= 0 ? "+" : ""}${retPct.toFixed(2)}%`;
+        document.getElementById("chartBtReturn").style.color =
+          retPct >= 0 ? "#22c55e" : "#ef4444";
+        document.getElementById("chartBtWinRate").textContent =
+          `${winRate.toFixed(1)}%`;
+        document.getElementById("chartBtTrades").textContent = String(trades);
+        document.getElementById("chartBtPF").textContent = pf.toFixed(2);
+        document.getElementById("chartBtDD").textContent =
+          `${Number(s.max_drawdown_pct || 0).toFixed(2)}%`;
+        document.getElementById("chartBtHold").textContent =
+          s.avg_hold_bars ? `${s.avg_hold_bars} bars` : "—";
+        resultsPanel.style.display = "";
+        status.textContent = `${data.trades?.length || 0} trades · ${data.candle_count || 0} candles`;
+        const applyBtn = document.getElementById("chartApplyConfigBtn");
+        if (applyBtn) {
+          applyBtn.style.display = "";
+          applyBtn.textContent = `✓ Apply ${chartRole.charAt(0).toUpperCase() + chartRole.slice(1)} Config to Bot`;
+        }
+      } catch (err) {
+        status.textContent = "Error: " + err.message;
+      }
+    });
+    document.querySelectorAll(".chart-toggle").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        btn.classList.toggle("active");
+        toggleOverlay(btn.dataset.overlay, btn.classList.contains("active"));
+      });
+    });
+    document.getElementById("futuresOrderType")?.addEventListener("change", updateFuturesOrderPreview);
+    document.getElementById("futuresOrderSize")?.addEventListener("input", updateFuturesOrderPreview);
+    document.getElementById("futuresOrderLeverage")?.addEventListener("change", updateFuturesOrderPreview);
+    document.getElementById("futuresOrderLimitPrice")?.addEventListener("input", updateFuturesOrderPreview);
+    document.getElementById("futuresConfirmLong")?.addEventListener("click", () => submitFuturesOrder("long"));
+    document.getElementById("futuresConfirmShort")?.addEventListener("click", () => submitFuturesOrder("short"));
+    window.addEventListener("hashchange", () => activateTab(currentTabFromHash()));
+  }
+
+  async function init() {
+    bindControls();
+    activateTab(currentTabFromHash());
+    await loadStocksUniverse();
+    await loadSymbolList("crypto");
+    await loadCrypto();
+    const initialSymbol = parseInitialChartSymbol();
+    if (initialSymbol) {
+      chartType = initialSymbol.includes("-USD") ? "crypto" : (initialSymbol.includes("PERP") || /\d{2}[A-Z]{3}\d{2}/.test(initialSymbol) ? "futures" : "stock");
+      chartSymbol = initialSymbol;
+      activateTab("charts");
+    }
+    await loadChartSymbols();
+    if (currentTabFromHash() === "charts") activateTab("charts");
+    chartRefreshTimer = window.setInterval(() => {
+      if (currentTabFromHash() === "stocks") scanStocks().catch(console.error);
+    }, 60 * 60 * 1000);
+    window.clearInterval(futuresRefreshTimer);
+    futuresRefreshTimer = window.setInterval(() => {
+      if (currentTabFromHash() === "futures") loadFutures().catch(console.error);
+    }, 30000);
+    window.clearInterval(quoteRefreshTimer);
+    quoteRefreshTimer = window.setInterval(() => {
+      if (currentTabFromHash() === "charts") loadLiveQuote().catch(console.error);
+    }, 10000);
+  }
+
+  init().catch((error) => {
+    console.error(error);
+    document.getElementById("tradingCryptoStatus").textContent = error.message || "Failed to load trading hub.";
+  });
+})();
+</script>
+{% endblock %}

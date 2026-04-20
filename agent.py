@@ -570,6 +570,23 @@ def _execute_proposal(proposal: dict) -> bool:
                     _log(f'Skipping {ptype} {symbol} — expired: {expiry}')
                     return False
             except Exception:
+            # Validate contract exists via UW before placing
+            if ptype == 'BUY_OPTION':
+                try:
+                    from unusual_whales import _get as _uw_get
+                    contracts = (_uw_get(f'/api/stock/{symbol}/option-contracts', ttl=60) or {}).get('data', [])
+                    if contracts:
+                        valid = any(
+                            abs(float(c.get('nbbo_ask') or 0) - 0) > 0 and
+                            str(strike) in str(c.get('option_symbol','')) and
+                            expiry.replace('-','') in str(c.get('option_symbol',''))
+                            for c in contracts
+                        )
+                        if not valid:
+                            _log(f'Skipping {symbol} {strike} {expiry} — contract not found in UW')
+                            return False
+                except Exception as _ve:
+                    _log(f'Contract validation error: {_ve}')
                 pass
             qty = abs(int(proposal.get("qty", 1)))
             side = "BUY" if ptype == "BUY_OPTION" else "SELL"
@@ -697,7 +714,10 @@ def _execute_proposal(proposal: dict) -> bool:
                 _log(f"EXIT_OPTION: no open position found for {symbol}")
                 return False
             pos = opts[0]
-            qty = abs(int(pos.get("qty") or 0))
+            # Use actual held qty — never sell more than we hold
+            held_qty = abs(int(pos.get("qty") or 0))
+            proposed_qty = abs(int(proposal.get("qty") or held_qty))
+            qty = min(held_qty, proposed_qty)
             if qty <= 0:
                 return False
             # Use LMT at bid price — Webull doesn't support MARKET for options

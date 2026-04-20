@@ -246,13 +246,19 @@ def _agent_loop():
                     mode = "crypto"  # weekend — crypto only
 
                 print(f"[agent_loop] running {mode} cycle in subprocess", flush=True)
-                subprocess.Popen(
+                proc = subprocess.Popen(
                     [sys.executable, "-c",
                      f"from agent import run_agent_cycle; run_agent_cycle(mode='{mode}')"],
                     cwd="/root/tradingbot",
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL
                 )
+                # Wait max 3 minutes then kill
+                try:
+                    proc.wait(timeout=180)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    print("[agent_loop] subprocess timed out after 3 min — killed", flush=True)
             else:
                 print("[agent_loop] agent disabled — sleeping", flush=True)
         except Exception as exc:

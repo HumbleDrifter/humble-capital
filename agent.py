@@ -354,6 +354,7 @@ Be specific, aggressive, and data-driven. If UW data is not configured, work wit
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
+        import httpx
         response = client.messages.create(
             model="claude-sonnet-4-5",
             max_tokens=6000,
@@ -361,7 +362,8 @@ Be specific, aggressive, and data-driven. If UW data is not configured, work wit
             messages=[
                 {"role": "user", "content": user_message},
                 {"role": "assistant", "content": "{"}  # prefill forces raw JSON
-            ]
+            ],
+            timeout=httpx.Timeout(120.0)  # 2 min max
         )
         raw = "{" + response.content[0].text
         # Parse JSON response

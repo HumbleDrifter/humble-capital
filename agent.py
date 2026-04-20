@@ -382,7 +382,10 @@ Format your response as JSON:
         "darkpool_count": len(uw.get("darkpool") or []),
     }
 
+    from datetime import date as _today_date
+    today_str = _today_date.today().isoformat()
     user_message = f"""Analyze this portfolio and market data, then propose actions:
+TODAY: {today_str} — All option expiry dates must be AFTER this date, minimum 7 DTE.
 
 PORTFOLIO STATE:
 {json.dumps(portfolio_slim, indent=2, default=str)}

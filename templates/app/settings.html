@@ -183,6 +183,45 @@
     </div>
   </div>
 
+  <!-- AI Agent -->
+  <div class="cfg-card">
+    <div class="cfg-card-title">
+      🧠 AI Agent
+      <span style="background:rgba(239,68,68,0.12);color:#ef4444;" id="agentStatusBadge">Disabled</span>
+    </div>
+    <div class="cfg-toggle-row">
+      <div><div class="cfg-toggle-label">Enable Agent</div><div class="cfg-toggle-sub">Claude Sonnet analyzes portfolio + market data on schedule</div></div>
+      <label class="cfg-switch"><input type="checkbox" id="tog_agent" onchange="saveToggle('agent.enabled',this.checked);updateAgentBadge()"><div class="cfg-switch-track"></div><div class="cfg-switch-thumb"></div></label>
+    </div>
+    <div class="cfg-toggle-row">
+      <div><div class="cfg-toggle-label">Auto-Execute Proposals</div><div class="cfg-toggle-sub">HIGH confidence proposals execute without Telegram approval</div></div>
+      <label class="cfg-switch"><input type="checkbox" id="tog_agent_auto" onchange="saveToggle('agent.auto_execute',this.checked);updateAgentBadge()"><div class="cfg-switch-track"></div><div class="cfg-switch-thumb"></div></label>
+    </div>
+    <div class="cfg-toggle-row">
+      <div><div class="cfg-toggle-label">Unusual Whales Data</div><div class="cfg-toggle-sub">Use UW flow alerts + dark pool in agent analysis</div></div>
+      <label class="cfg-switch"><input type="checkbox" id="tog_uw" onchange="saveToggle('agent.uw_enabled',this.checked)"><div class="cfg-switch-track"></div><div class="cfg-switch-thumb"></div></label>
+    </div>
+    <div class="cfg-grid" style="margin-top:10px;">
+      <div class="cfg-field">
+        <label class="cfg-label">Run Every (minutes)</label>
+        <input class="cfg-input" type="number" id="agent_schedule" min="15" max="240" step="15" placeholder="30">
+      </div>
+      <div class="cfg-field">
+        <label class="cfg-label">Anthropic API Key</label>
+        <input class="cfg-input" type="password" id="agent_api_key" placeholder="sk-ant-...">
+      </div>
+      <div class="cfg-field">
+        <label class="cfg-label">Unusual Whales API Key</label>
+        <input class="cfg-input" type="password" id="uw_api_key" placeholder="uw-...">
+      </div>
+    </div>
+    <div class="cfg-section-actions">
+      <button class="cfg-save-btn" onclick="saveAgentConfig()">Save Agent Config</button>
+      <button class="cfg-save-btn" style="background:rgba(139,92,246,0.2);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);" onclick="runAgentNow()">▶ Run Now</button>
+      <span class="cfg-status" id="agentSaveStatus"></span>
+    </div>
+  </div>
+
   <!-- Account & Session -->
   <div class="cfg-card">
     <div class="cfg-card-title">👤 Account</div>

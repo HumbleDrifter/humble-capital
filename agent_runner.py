@@ -59,6 +59,19 @@ while True:
         except Exception:
             pass
         run_agent_cycle(mode=mode)
+
+        # Cancel any stale unfilled Webull orders after each cycle
+        try:
+            from brokers.webull_adapter import WebullAdapter
+            cancelled = WebullAdapter().cancel_stale_orders(max_age_minutes=5)
+            if cancelled:
+                from notify import _send
+                for c in cancelled:
+                    _send(f"🔄 Cancelled stale order: {c.get('symbol')} ({c.get('status')})")
+                print(f"[agent_runner] cancelled {len(cancelled)} stale orders", flush=True)
+        except Exception as e:
+            print(f"[agent_runner] stale order cleanup error: {e}", flush=True)
+
         print(f"[agent_runner] cycle complete, sleeping {sleep_mins}min", flush=True)
         # Sleep but check for manual trigger every 30s
         slept = 0

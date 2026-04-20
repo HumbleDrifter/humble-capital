@@ -726,6 +726,71 @@ class WebullAdapter(BrokerAdapter):
             _log_webull_event("place_options_order_failed", {"symbol": symbol, "error": str(exc)})
             return broker_result(False, broker=self.name, mode=self._mode(), error=str(exc))
 
+    def get_open_orders(self) -> list:
+        """Get all open/pending orders from Webull."""
+        try:
+            _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
+            account_id = self._get_account_id()
+            response = trade_client.order_v2.get_order_open(account_id, page_size=50)
+            payload = _response_json(response)
+            orders = payload.get("items") or payload.get("orders") or []
+            if isinstance(payload, list):
+                orders = payload
+            return [
+                {
+                    "order_id": str(o.get("client_order_id") or o.get("orderId") or ""),
+                    "symbol": str(o.get("symbol") or o.get("underlying") or ""),
+                    "status": str(o.get("status") or o.get("orderStatus") or ""),
+                    "order_type": str(o.get("order_type") or o.get("orderType") or ""),
+                    "side": str(o.get("side") or ""),
+                    "qty": _safe_float(o.get("qty") or o.get("quantity")),
+                    "filled_qty": _safe_float(o.get("filled_qty") or o.get("filledQty")),
+                    "limit_price": _safe_float(o.get("limit_price") or o.get("limitPrice")),
+                    "create_time": str(o.get("create_time") or o.get("createTime") or ""),
+                    "raw": o,
+                }
+                for o in orders
+            ]
+        except Exception as exc:
+            _log_webull_event("get_open_orders_failed", {"error": str(exc)})
+            return []
+
+    def cancel_stale_orders(self, max_age_minutes: int = 5) -> list:
+        """Cancel any open orders older than max_age_minutes. Returns list of cancelled order_ids."""
+        from datetime import datetime, timezone, timedelta
+        cancelled = []
+        try:
+            open_orders = self.get_open_orders()
+            now = datetime.now(timezone.utc)
+            for order in open_orders:
+                order_id = order.get("order_id")
+                if not order_id:
+                    continue
+                # Try to parse create time
+                create_str = order.get("create_time", "")
+                try:
+                    if create_str:
+                        create_time = datetime.fromisoformat(create_str.replace("Z", "+00:00"))
+                        age_minutes = (now - create_time).total_seconds() / 60
+                    else:
+                        age_minutes = max_age_minutes + 1  # assume stale if no time
+                except Exception:
+                    age_minutes = max_age_minutes + 1
+
+                if age_minutes >= max_age_minutes:
+                    result = self.cancel_order(order_id)
+                    status = "cancelled" if result.get("ok") else f"cancel_failed:{result.get('error')}"
+                    _log_webull_event("stale_order_cancelled", {
+                        "order_id": order_id,
+                        "symbol": order.get("symbol"),
+                        "age_minutes": round(age_minutes, 1),
+                        "status": status,
+                    })
+                    cancelled.append({"order_id": order_id, "symbol": order.get("symbol"), "status": status})
+        except Exception as exc:
+            _log_webull_event("cancel_stale_orders_failed", {"error": str(exc)})
+        return cancelled
+
     def cancel_order(self, order_id) -> dict:
         order_id = str(order_id or "").strip()
         if not order_id:

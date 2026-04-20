@@ -83,6 +83,15 @@ def _get_portfolio_context() -> dict:
     import time as _time
     _time.sleep(5)  # rate limit buffer before Webull calls
 
+    # Check and cancel stale orders before building context
+    try:
+        from brokers.webull_adapter import WebullAdapter as _WBA
+        _stale = _WBA().cancel_stale_orders(max_age_minutes=5)
+        if _stale:
+            _log(f"Cancelled {len(_stale)} stale orders before cycle")
+    except Exception:
+        pass
+
     try:
         from brokers.webull_adapter import WebullAdapter
         info = WebullAdapter().get_account_info()

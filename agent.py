@@ -525,6 +525,24 @@ def _execute_proposal(proposal: dict) -> bool:
             key = proposal.get("config_key")
             value = proposal.get("config_value")
             if key and value is not None:
+                # Safety guardrails — prevent APEX from disabling itself or breaking limits
+                BLOCKED_CHANGES = {
+                    "agent.enabled": None,  # can't disable itself
+                    "agent.auto_execute": None,  # can't disable auto-execute
+                    "options_trading.auto_execute": False,  # can't turn off options
+                    "auto_trading.auto_execute_options": False,
+                    "auto_trading.auto_execute_crypto": False,
+                }
+                if key in BLOCKED_CHANGES and value == BLOCKED_CHANGES[key]:
+                    _log(f"BLOCKED config change: {key} = {value} (safety guardrail)")
+                    return False
+                # Sanity checks on numeric values
+                if key == "options_trading.max_cost_per_contract" and float(value) < 50:
+                    _log(f"BLOCKED: max_cost_per_contract={value} too low (min 50)")
+                    return False
+                if key == "options_trading.min_score" and float(value) > 90:
+                    _log(f"BLOCKED: min_score={value} too high (max 90)")
+                    return False
                 with open("/root/tradingbot/asset_config.json") as f:
                     cfg = json.load(f)
                 keys = key.split(".")

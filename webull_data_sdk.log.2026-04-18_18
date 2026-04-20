@@ -1,6 +1,0 @@
-139916538758720 2026-04-18 23:18:51,559 webull.core.client ERROR get_response exception. {
-  "error_code": "Unauthorized",
-  "error_msg": "Insufficient permission, please subscribe to stock quotes.",
-  "http_status": 401,
-  "request_id": "c7e92f24-f01d-49a4-b525-c62937398d36"
-}

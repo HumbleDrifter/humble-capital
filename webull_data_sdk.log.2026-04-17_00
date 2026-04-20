@@ -1,6 +1,0 @@
-139916948272704 2026-04-17 02:47:31,748 webull.core.client ERROR get_response exception. {
-  "error_code": "TOO_MANY_REQUESTS",
-  "error_msg": "to many requests",
-  "http_status": 429,
-  "request_id": "0f011504-a24b-4d35-98c7-420e86924bdd"
-}

@@ -1,17 +1,28 @@
-.env
-*.env
-deploy/managed_env.local.toml
-deploy/*.preview.json
-deploy/*.deploy-report.json
+# Logs
 *.log
-*.db
+*.log.*
+
+# Backups
+*.bak
+*.bak_*
+*.save
+
+# Sensitive
+conf/token.txt
+did.bin
+.env
+.env.*
+
+# Data files
+data/
+satellite_rotation_shadow.jsonl
+
+# Python
 __pycache__/
 *.pyc
-gunicorn.ctl
-telegram_listener_state.json
-advisor_export/*.json
-meme_rotation.json
-*.bak
-*_backup*/
-archive_*/
-env_runtime.py
+*.pyo
+
+# Misc
+FETCH_HEAD
+=*
+*.patch

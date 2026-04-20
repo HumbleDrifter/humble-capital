@@ -1,3 +1,0 @@
-[2026-03-15 05:05:48] [meme_scanner] starting meme scan
-127.0.0.1 - - [15/Mar/2026 05:05:48] "GET /api/valid_products?quote=USD&tradable_only=true&secret=bbSPKexd9afn7USQKxtzj1Uysibbb1a2ZF%2BsaxI6fbcuaPTUOzpvPlqp8%2BOwXukD HTTP/1.1" 200 -
-[2026-03-15 05:05:48] [meme_scanner] scanner failure: 'str' object has no attribute 'get'

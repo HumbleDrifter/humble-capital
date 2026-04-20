@@ -71,6 +71,18 @@ def _get_portfolio_context() -> dict:
     except Exception as e:
         ctx["error"] = str(e)
 
+    # Futures context
+    try:
+        from futures.executor import get_executor_log as get_futures_log, run_futures_position_monitor
+        futures_log = get_futures_log(limit=10)
+        futures_positions = run_futures_position_monitor()
+        ctx["futures_log"] = [l.get("msg","") for l in futures_log[:5]]
+        ctx["futures_positions"] = futures_positions.get("positions", [])
+        ctx["futures_actions"] = futures_positions.get("actions", [])
+    except Exception as fe:
+        ctx["futures_log"] = []
+        ctx["futures_positions"] = []
+
     try:
         from brokers.webull_adapter import WebullAdapter
         info = WebullAdapter().get_account_info()
@@ -258,6 +270,13 @@ You have FULL authority to change any of these config keys using CONFIG_CHANGE p
 - agent.schedule_minutes → integer (15-240)
 - agent.min_confidence → "HIGH"|"MEDIUM"|"LOW"
 
+**Futures:**
+- auto_trading.auto_execute_futures → true|false
+- Futures trade Coinbase perpetual contracts (BTC-PERP, ETH-PERP)
+- Use FUTURES_BUY proposal type to trigger futures scan and execution
+- Futures are best in strong directional regimes (bull or bear)
+- Monitor futures_positions and futures_log in portfolio context
+
 ## EXECUTION AUTHORITY
 You are authorized to execute these proposal types automatically:
 - BUY_OPTION → buy OTM calls/puts on Webull
@@ -338,6 +357,8 @@ Format your response as JSON:
         "options_buying_power": portfolio.get("options_buying_power"),
         "webull_balance": portfolio.get("webull_balance"),
         "options_positions": portfolio.get("options_positions", []),
+        "futures_positions": portfolio.get("futures_positions", []),
+        "futures_log": portfolio.get("futures_log", []),
         "positions": {k: {
             "value": v.get("value"),
             "pnl_pct": v.get("pnl_pct"),

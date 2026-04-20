@@ -134,11 +134,23 @@ def _config_proposal_loop():
     _time.sleep(300)  # wait 5 min after startup
     while True:
         try:
-            # Generate new proposals if auto mode is enabled
+            # Config proposal auto-draft disabled — APEX agent handles proposals
+            _auto_draft = True
+            try:
+                import json as _j
+                with open("/root/tradingbot/asset_config.json") as _f:
+                    _cfg = _j.load(_f)
+                _auto_draft = bool(_cfg.get("auto_trading", {}).get("auto_draft_config_proposals", False))
+            except Exception:
+                pass
+
+            if not _auto_draft:
+                _time.sleep(21600)
+                continue
+
             result = evaluate_auto_draft_review_proposals()
             status = result.get("status", "")
             if status == "manual_mode":
-                # Auto mode not enabled — check again in 1 hour
                 _time.sleep(3600)
                 continue
             if status == "drafted":

@@ -180,7 +180,9 @@
     "auto_execute_stocks": true,
     "auto_execute_crypto": true,
     "auto_execute_futures": true,
-    "auto_execute_options": true
+    "auto_execute_options": true,
+    "auto_apply_config_proposals": false,
+    "auto_draft_config_proposals": false
   },
   "max_active_satellites": 10,
   "min_meme_score": 65.0,

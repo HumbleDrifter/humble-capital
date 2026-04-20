@@ -674,6 +674,7 @@ class WebullAdapter(BrokerAdapter):
             new_order = {
                 "market": "US",
                 "combo_type": "NORMAL",
+                "option_strategy": "SINGLE",
                 "instrument_type": "OPTION",
                 "client_order_id": str(_uuid.uuid4()).replace("-", "")[:32],
                 "underlying": symbol,

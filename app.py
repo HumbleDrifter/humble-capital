@@ -191,6 +191,29 @@ def _config_proposal_loop():
         _time.sleep(21600)
 
 
+
+def _daily_summary_loop():
+    """Fires daily at 4:05 PM ET on weekdays."""
+    import time as _time
+    from datetime import datetime, timezone, timedelta
+    print("[daily_summary_loop] thread started", flush=True)
+    _time.sleep(60)
+    _last_sent_date = None
+    while True:
+        try:
+            et_offset = timedelta(hours=-4)
+            now = datetime.now(timezone(et_offset))
+            if (now.weekday() < 5 and
+                now.hour == 16 and now.minute == 5 and
+                now.date() != _last_sent_date):
+                from notify import send_daily_summary
+                send_daily_summary()
+                _last_sent_date = now.date()
+                print(f"[daily_summary_loop] summary sent for {_last_sent_date}", flush=True)
+        except Exception as exc:
+            print(f"[daily_summary_loop] error: {exc}", flush=True)
+        _time.sleep(30)
+
 def _stocks_execution_loop():
     import time as _time
     print("[stocks_execution_loop] thread started", flush=True)
@@ -331,6 +354,8 @@ def create_app():
     _stocks_thread.start()
     _proposal_thread = threading.Thread(target=_config_proposal_loop, daemon=True, name="config_proposal")
     _proposal_thread.start()
+    _summary_thread = threading.Thread(target=_daily_summary_loop, daemon=True, name="daily_summary")
+    _summary_thread.start()
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

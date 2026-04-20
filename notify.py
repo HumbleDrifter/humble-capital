@@ -401,6 +401,112 @@ def render_config_proposal_status_text(proposal_id, result, proposal_record=None
     return "\n".join(lines).strip()
 
 
+def send_daily_summary():
+    """Send end-of-day summary at market close (4:05 PM ET)."""
+    try:
+        import sqlite3, json, os
+        from datetime import datetime, timezone, timedelta
+
+        # Get today's crypto fills
+        db_path = DB_PATH
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        # Today's orders (ET timezone)
+        et_offset = timedelta(hours=-4)
+        now_et = datetime.now(timezone(et_offset))
+        today_start = now_et.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_ts = int(today_start.timestamp())
+
+        cur.execute("""
+            SELECT product_id, side, base_size, price, status
+            FROM orders
+            WHERE created_at >= ? AND status = 'FILLED'
+            ORDER BY created_at DESC
+        """, (today_ts,))
+        fills = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        # Get portfolio snapshot
+        portfolio_val = 0.0
+        day_pnl = 0.0
+        positions = 0
+        try:
+            from portfolio import get_portfolio_snapshot
+            snap = get_portfolio_snapshot()
+            portfolio_val = float(snap.get("total_value_usd") or 0)
+            day_pnl = float(snap.get("day_pnl_usd") or 0)
+            positions = len(snap.get("positions") or {})
+        except Exception:
+            pass
+
+        # Get options positions
+        opt_summary = []
+        try:
+            from brokers.webull_adapter import WebullAdapter
+            info = WebullAdapter().get_account_info()
+            opts = [p for p in (info.get("positions") or [])
+                    if str(p.get("asset_type","")).lower() == "option"]
+            for o in opts:
+                pnl = float(o.get("unrealized_pnl") or 0)
+                opt_summary.append(
+                    f"  {o.get('symbol')} {o.get('option_type','').upper()} "
+                    f"${o.get('strike')} · {float(o.get('unrealized_pnl_pct',0)):.1f}% "
+                    f"({'+'if pnl>=0 else ''}{_fmt_usd(pnl)})"
+                )
+        except Exception:
+            pass
+
+        # Get executor logs for today
+        exec_actions = []
+        try:
+            from options.executor import get_executor_log
+            for entry in get_executor_log(limit=100):
+                msg = str(entry.get("msg",""))
+                if any(k in msg for k in ["executed","closed","sold","EXIT signal","stop_loss"]):
+                    exec_actions.append(f"  {msg[:80]}")
+        except Exception:
+            pass
+
+        # Build message
+        pnl_emoji = "🟢" if day_pnl >= 0 else "🔴"
+        lines = [
+            f"📊 Daily Summary — {now_et.strftime('%b %d, %Y')}",
+            f"",
+            f"{pnl_emoji} Day P&L: {'+' if day_pnl>=0 else ''}{_fmt_usd(day_pnl)}",
+            f"💼 Portfolio: {_fmt_usd(portfolio_val)}",
+            f"📍 Positions: {positions}",
+        ]
+
+        if fills:
+            lines.append(f"")
+            lines.append(f"📋 Today's Fills ({len(fills)}):")
+            buys = [f for f in fills if f["side"]=="BUY"]
+            sells = [f for f in fills if f["side"]=="SELL"]
+            if buys:
+                lines.append(f"  Buys: {', '.join(f['product_id'] for f in buys[:5])}")
+            if sells:
+                lines.append(f"  Sells: {', '.join(f['product_id'] for f in sells[:5])}")
+        else:
+            lines.append(f"")
+            lines.append(f"📋 No crypto fills today")
+
+        if opt_summary:
+            lines.append(f"")
+            lines.append(f"⚡ Options Positions ({len(opt_summary)}):")
+            lines.extend(opt_summary[:6])
+
+        if exec_actions:
+            lines.append(f"")
+            lines.append(f"🤖 Bot Actions Today:")
+            lines.extend(exec_actions[:5])
+
+        return _send("\n".join(lines))
+    except Exception as e:
+        return _send(f"📊 Daily Summary unavailable: {e}")
+
+
 def send_telegram(text):
     # Compatibility shim for older code paths like services/execution_service.py.
     # Disabled by default to prevent duplicate order alerts.

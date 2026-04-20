@@ -71,17 +71,17 @@ def _get_portfolio_context() -> dict:
     except Exception as e:
         ctx["error"] = str(e)
 
-    # Futures context
+    # Futures context — use cached log only, no API call
     try:
-        from futures.executor import get_executor_log as get_futures_log, run_futures_position_monitor
-        futures_log = get_futures_log(limit=10)
-        futures_positions = run_futures_position_monitor()
-        ctx["futures_log"] = [l.get("msg","") for l in futures_log[:5]]
-        ctx["futures_positions"] = futures_positions.get("positions", [])
-        ctx["futures_actions"] = futures_positions.get("actions", [])
-    except Exception as fe:
+        from futures.executor import get_executor_log as get_futures_log
+        futures_log = get_futures_log(limit=5)
+        ctx["futures_log"] = [l.get("msg","") for l in futures_log[:3]]
+    except Exception:
         ctx["futures_log"] = []
-        ctx["futures_positions"] = []
+    ctx["futures_positions"] = []
+
+    import time as _time
+    _time.sleep(2)  # rate limit buffer before Webull calls
 
     try:
         from brokers.webull_adapter import WebullAdapter

@@ -337,17 +337,13 @@ Format your response as JSON:
       "config_key": "dot.path if config change",
       "config_value": null,
       "confidence": "HIGH|MEDIUM|LOW",
-      "signals": ["list of signals supporting this trade"],
-      "reasoning": "detailed reasoning with specific data",
-      "estimated_cost": 0.0,
-      "max_gain": "estimated max gain scenario",
-      "risk": "specific risk factors",
-      "exit_signal": "what momentum signal would trigger exit"
+      "reasoning": "brief reason max 30 words",
+      "estimated_cost": 0.0
     }
   ],
-  "positions_review": "assessment of current open positions",
-  "summary": "executive summary of market read and top recommendations"
-}"""
+  "summary": "one sentence"
+}
+"""  # end system prompt
 
     # Trim portfolio data to reduce token count
     portfolio_slim = {

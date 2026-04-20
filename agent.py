@@ -306,11 +306,14 @@ Be specific, aggressive, and data-driven. If UW data is not configured, work wit
         client = anthropic.Anthropic(api_key=api_key)
         response = client.messages.create(
             model="claude-sonnet-4-5",
-            max_tokens=4000,
+            max_tokens=6000,
             system=system_prompt,
-            messages=[{"role": "user", "content": user_message}]
+            messages=[
+                {"role": "user", "content": user_message},
+                {"role": "assistant", "content": "{"}  # prefill forces raw JSON
+            ]
         )
-        raw = response.content[0].text
+        raw = "{" + response.content[0].text
         # Parse JSON response
         try:
             # Extract JSON if wrapped in markdown

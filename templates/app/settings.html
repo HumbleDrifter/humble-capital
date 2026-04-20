@@ -207,12 +207,12 @@
         <input class="cfg-input" type="number" id="agent_schedule" min="15" max="240" step="15" placeholder="30">
       </div>
       <div class="cfg-field">
-        <label class="cfg-label">Anthropic API Key</label>
-        <input class="cfg-input" type="password" id="agent_api_key" placeholder="sk-ant-...">
+        <label class="cfg-label">Anthropic API Key <span id="antKeyStatus" style="color:#22c55e;font-size:10px;"></span></label>
+        <input class="cfg-input" type="password" id="agent_api_key" placeholder="sk-ant-... (leave blank to keep existing)">
       </div>
       <div class="cfg-field">
-        <label class="cfg-label">Unusual Whales API Key</label>
-        <input class="cfg-input" type="password" id="uw_api_key" placeholder="uw-...">
+        <label class="cfg-label">Unusual Whales API Key <span id="uwKeyStatus" style="color:#22c55e;font-size:10px;"></span></label>
+        <input class="cfg-input" type="password" id="uw_api_key" placeholder="uw-... (leave blank to keep existing)">
       </div>
     </div>
     <div class="cfg-section-actions">
@@ -293,8 +293,20 @@
       await fetchJson("/api/config/update", { method:"POST", body: JSON.stringify({ path:"agent.schedule_minutes", value: schedVal }) });
       const antKey = document.getElementById("agent_api_key")?.value.trim();
       const uwKey = document.getElementById("uw_api_key")?.value.trim();
-      if (antKey) await fetchJson("/api/config/update", { method:"POST", body: JSON.stringify({ path:"_env.ANTHROPIC_API_KEY", value: antKey }) });
-      if (uwKey) await fetchJson("/api/config/update", { method:"POST", body: JSON.stringify({ path:"_env.UNUSUAL_WHALES_API_KEY", value: uwKey }) });
+      if (antKey) {
+        await fetchJson("/api/config/update", { method:"POST", body: JSON.stringify({ path:"_env.ANTHROPIC_API_KEY", value: antKey }) });
+        document.getElementById("agent_api_key").value = "";
+        document.getElementById("agent_api_key").placeholder = "sk-ant-... (key saved ✓)";
+        const s = document.getElementById("antKeyStatus");
+        if (s) s.textContent = "✓ Saved";
+      }
+      if (uwKey) {
+        await fetchJson("/api/config/update", { method:"POST", body: JSON.stringify({ path:"_env.UNUSUAL_WHALES_API_KEY", value: uwKey }) });
+        document.getElementById("uw_api_key").value = "";
+        document.getElementById("uw_api_key").placeholder = "uw-... (key saved ✓)";
+        const s = document.getElementById("uwKeyStatus");
+        if (s) s.textContent = "✓ Saved";
+      }
       setStatus("agentSaveStatus", "Saved ✓", true);
       updateAgentBadge();
     } catch(e) { setStatus("agentSaveStatus", "Error: " + e.message, false); }
@@ -391,6 +403,22 @@
     if (togUw) togUw.checked = !!(ag.uw_enabled ?? false);
     if (ag.schedule_minutes) document.getElementById("agent_schedule").value = ag.schedule_minutes;
     updateAgentBadge();
+    // Check if API keys are already saved
+    fetchJson("/api/uw/status").then(r => {
+      if (r.configured) {
+        const s = document.getElementById("uwKeyStatus");
+        if (s) s.textContent = "✓ Configured";
+        document.getElementById("uw_api_key").placeholder = "uw-... (key saved ✓)";
+      }
+    }).catch(()=>{});
+    // Check Anthropic key via agent log (if it ran, key is set)
+    fetchJson("/api/agent/log?limit=1").then(r => {
+      if (r.ok && r.log && r.log.length > 0) {
+        const s = document.getElementById("antKeyStatus");
+        if (s) s.textContent = "✓ Configured";
+        document.getElementById("agent_api_key").placeholder = "sk-ant-... (key saved ✓)";
+      }
+    }).catch(()=>{});
 
     // Options config
     if (ot.mode) document.getElementById("opt_mode").value = ot.mode;

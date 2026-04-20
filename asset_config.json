@@ -251,7 +251,7 @@
     "rebalance_threshold": 10
   },
   "agent": {
-    "enabled": false,
+    "enabled": true,
     "auto_execute": false,
     "schedule_minutes": 30,
     "min_confidence": "HIGH",

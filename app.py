@@ -213,30 +213,38 @@ def _telegram_polling_loop():
 def _agent_loop():
     """AI agent loop — runs analysis on schedule during market hours."""
     import time as _time
+    import subprocess
+    import sys
     from datetime import datetime, timezone, timedelta
     print("[agent_loop] thread started", flush=True)
-    _time.sleep(120)  # wait 2 min after startup
+    _time.sleep(180)  # wait 3 min after startup
     while True:
         try:
-            from agent import _is_enabled, run_agent_cycle, _agent_config
+            from agent import _is_enabled, _agent_config
             if _is_enabled():
                 et_offset = timedelta(hours=-4)
                 now = datetime.now(timezone(et_offset))
-                # Only run during market hours Mon-Fri 9:30-16:00 ET
                 is_market = (
                     now.weekday() < 5 and
                     (now.hour > 9 or (now.hour == 9 and now.minute >= 30)) and
                     now.hour < 16
                 )
                 if is_market:
-                    run_agent_cycle()
+                    print("[agent_loop] running agent cycle in subprocess", flush=True)
+                    # Run agent in subprocess to avoid blocking gunicorn
+                    subprocess.Popen(
+                        [sys.executable, "-c",
+                         "from agent import run_agent_cycle; run_agent_cycle()"],
+                        cwd="/root/tradingbot",
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
                 else:
                     print("[agent_loop] market closed — skipping", flush=True)
             else:
                 print("[agent_loop] agent disabled — sleeping", flush=True)
         except Exception as exc:
             print(f"[agent_loop] error: {exc}", flush=True)
-        # Sleep for configured interval (default 30 min)
         try:
             from agent import _agent_config
             mins = int(_agent_config().get("schedule_minutes", 30))

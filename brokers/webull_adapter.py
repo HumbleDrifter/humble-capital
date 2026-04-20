@@ -683,7 +683,7 @@ class WebullAdapter(BrokerAdapter):
                 "option_type": str(order.get("option_type") or "call").upper(),
                 "side": side,
                 "qty": int(qty),
-                "tif": "DAY",
+                "tif": "GTC" if order_type == "MARKET" else "DAY",
                 "order_type": order_type,
                 "extended_hours_trading": False,
             }

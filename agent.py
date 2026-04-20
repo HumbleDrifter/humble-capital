@@ -652,8 +652,7 @@ def _execute_proposal(proposal: dict) -> bool:
             from notify import _send
             pnl = float(pos.get("unrealized_pnl") or 0)
             pnl_pct = float(pos.get("unrealized_pnl_pct") or 0)
-            _send(f"{'✅' if ok else '❌'} APEX exit: {symbol} {qty}x @ market
-P&L: {'+' if pnl>=0 else ''}{pnl:.0f} ({pnl_pct:.1f}%)")
+            _send(f"{chr(9989) if ok else chr(10060)} APEX exit: {symbol} {qty}x @ market | P&L: {'+' if pnl>=0 else ''}{pnl:.0f} ({pnl_pct:.1f}%)")
             return ok
 
         else:

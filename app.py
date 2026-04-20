@@ -224,30 +224,49 @@ def _agent_loop():
             if _is_enabled():
                 et_offset = timedelta(hours=-4)
                 now = datetime.now(timezone(et_offset))
-                is_market = (
+                # Determine what mode to run based on time
+                is_market_hours = (
                     now.weekday() < 5 and
                     (now.hour > 9 or (now.hour == 9 and now.minute >= 30)) and
                     now.hour < 16
                 )
-                if is_market:
-                    print("[agent_loop] running agent cycle in subprocess", flush=True)
-                    # Run agent in subprocess to avoid blocking gunicorn
-                    subprocess.Popen(
-                        [sys.executable, "-c",
-                         "from agent import run_agent_cycle; run_agent_cycle()"],
-                        cwd="/root/tradingbot",
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL
-                    )
+                is_after_hours = (
+                    now.weekday() < 5 and
+                    (now.hour >= 16 or now.hour < 9)
+                )
+                is_weekend = now.weekday() >= 5
+
+                # Always run for crypto (24/7)
+                # Run full analysis during market hours
+                if is_market_hours:
+                    mode = "full"  # options + crypto + stocks + config
+                elif is_after_hours:
+                    mode = "crypto"  # crypto + config only
                 else:
-                    print("[agent_loop] market closed — skipping", flush=True)
+                    mode = "crypto"  # weekend — crypto only
+
+                print(f"[agent_loop] running {mode} cycle in subprocess", flush=True)
+                subprocess.Popen(
+                    [sys.executable, "-c",
+                     f"from agent import run_agent_cycle; run_agent_cycle(mode='{mode}')"],
+                    cwd="/root/tradingbot",
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
             else:
                 print("[agent_loop] agent disabled — sleeping", flush=True)
         except Exception as exc:
             print(f"[agent_loop] error: {exc}", flush=True)
         try:
             from agent import _agent_config
-            mins = int(_agent_config().get("schedule_minutes", 30))
+            base_mins = int(_agent_config().get("schedule_minutes", 30))
+            # After hours / weekend — run less frequently to save API costs
+            from datetime import datetime, timezone, timedelta
+            _now = datetime.now(timezone(timedelta(hours=-4)))
+            _is_mkt = (_now.weekday() < 5 and
+                      (_now.hour > 9 or (_now.hour == 9 and _now.minute >= 30)) and
+                      _now.hour < 16)
+            mins = base_mins if _is_mkt else max(base_mins * 2, 60)
         except Exception:
             mins = 30
         _time.sleep(mins * 60)

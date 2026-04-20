@@ -330,16 +330,39 @@ Format your response as JSON:
   "summary": "executive summary of market read and top recommendations"
 }"""
 
+    # Trim portfolio data to reduce token count
+    portfolio_slim = {
+        "total_value": portfolio.get("total_value"),
+        "day_pnl": portfolio.get("day_pnl"),
+        "regime": portfolio.get("regime"),
+        "options_buying_power": portfolio.get("options_buying_power"),
+        "webull_balance": portfolio.get("webull_balance"),
+        "options_positions": portfolio.get("options_positions", []),
+        "positions": {k: {
+            "value": v.get("value"),
+            "pnl_pct": v.get("pnl_pct"),
+            "class": v.get("class")
+        } for k, v in (portfolio.get("positions") or {}).items()}
+    }
+    # Trim UW data
+    uw_slim = {
+        "configured": uw.get("configured"),
+        "market_tide": uw.get("market_tide", {}),
+        "meme_flow": (uw.get("meme_flow") or [])[:10],
+        "darkpool": (uw.get("darkpool") or [])[:5],
+        "flow_alerts": (uw.get("flow_alerts") or [])[:10],
+    }
+
     user_message = f"""Analyze this portfolio and market data, then propose actions:
 
 PORTFOLIO STATE:
-{json.dumps(portfolio, indent=2, default=str)}
+{json.dumps(portfolio_slim, indent=2, default=str)}
 
 BOT CONFIGURATION:
 {json.dumps(bot_cfg, indent=2)}
 
 UNUSUAL WHALES DATA:
-{json.dumps(uw, indent=2, default=str)}
+{json.dumps(uw_slim, indent=2, default=str)}
 
 Focus on:
 1. Any unusual flow on meme stocks in our watchlist (MARA, RIOT, NIO, AMC, BBAI, GME, SOFI, PLTR)

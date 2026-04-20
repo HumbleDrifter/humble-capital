@@ -110,6 +110,75 @@ def _get_portfolio_context() -> dict:
     return ctx
 
 
+def _get_available_contracts(watchlist: list, max_per_symbol: int = 5) -> dict:
+    """
+    Fetch real available option contracts from UW for APEX to choose from.
+    Returns dict of symbol -> list of valid contracts with bid/ask/strike/expiry.
+    """
+    import re
+    from datetime import date
+    today = date.today()
+
+    def parse_symbol(sym):
+        m = re.match(r'^([A-Z0-9]+?)(\d{6})([CP])(\d{8})$', sym)
+        if not m:
+            return None
+        ticker, date6, cp, strike_raw = m.groups()
+        expiry = f"20{date6[:2]}-{date6[2:4]}-{date6[4:]}"
+        try:
+            if date.fromisoformat(expiry) < today:
+                return None
+        except Exception:
+            return None
+        dte = (date.fromisoformat(expiry) - today).days
+        if dte < 7:
+            return None
+        strike = int(strike_raw) / 1000
+        return {
+            "symbol": ticker,
+            "expiry": expiry,
+            "dte": dte,
+            "option_type": "call" if cp == "C" else "put",
+            "strike": strike,
+            "option_symbol": sym,
+        }
+
+    result = {}
+    try:
+        from unusual_whales import _get
+        for sym in watchlist[:10]:  # limit API calls
+            try:
+                data = _get(f"/api/stock/{sym}/option-contracts", ttl=300)
+                contracts = (data or {}).get("data", [])
+                parsed = []
+                for c in contracts:
+                    osym = c.get("option_symbol", "")
+                    p = parse_symbol(osym)
+                    if not p:
+                        continue
+                    bid = float(c.get("nbbo_bid") or 0)
+                    ask = float(c.get("nbbo_ask") or 0)
+                    if bid <= 0 or ask <= 0:
+                        continue
+                    mid = round((bid + ask) / 2, 2)
+                    if mid > 2.0:  # skip expensive contracts
+                        continue
+                    p["bid"] = bid
+                    p["ask"] = ask
+                    p["mid"] = mid
+                    p["oi"] = int(c.get("open_interest") or 0)
+                    parsed.append(p)
+                # Sort by OI descending, take top N
+                parsed.sort(key=lambda x: x["oi"], reverse=True)
+                if parsed:
+                    result[sym] = parsed[:max_per_symbol]
+            except Exception:
+                continue
+    except Exception as e:
+        _log(f"Contract fetch error: {e}")
+    return result
+
+
 def _get_uw_context() -> dict:
     """Gather Unusual Whales data for agent context."""
     from unusual_whales import (
@@ -384,6 +453,11 @@ Format your response as JSON:
 
     from datetime import date as _today_date
     today_str = _today_date.today().isoformat()
+
+    # Fetch real available contracts for APEX to choose from
+    watchlist = ["MARA","RIOT","GME","AMC","BBAI","NIO","SOFI","PLTR","NVDA","COIN","TSLA","HOOD"]
+    available_contracts = _get_available_contracts(watchlist, max_per_symbol=5)
+
     user_message = f"""Analyze this portfolio and market data, then propose actions:
 TODAY: {today_str} — All option expiry dates must be AFTER this date, minimum 7 DTE.
 
@@ -395,6 +469,9 @@ BOT CONFIGURATION:
 
 UNUSUAL WHALES DATA:
 {json.dumps(uw_slim, indent=2, default=str)}
+
+AVAILABLE OPTIONS CONTRACTS (real contracts from UW — ONLY use these for BUY_OPTION proposals):
+{json.dumps(available_contracts, indent=2)}
 
 Focus on:
 1. Any unusual flow on meme stocks in our watchlist (MARA, RIOT, NIO, AMC, BBAI, GME, SOFI, PLTR)

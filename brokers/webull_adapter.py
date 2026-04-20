@@ -673,6 +673,7 @@ class WebullAdapter(BrokerAdapter):
             import uuid as _uuid
             new_order = {
                 "market": "US",
+                "combo_type": "NORMAL",
                 "instrument_type": "OPTION",
                 "client_order_id": str(_uuid.uuid4()).replace("-", "")[:32],
                 "underlying": symbol,

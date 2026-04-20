@@ -623,11 +623,37 @@ def _execute_proposal(proposal: dict) -> bool:
 
         # ── EXIT POSITION (options) ────────────────────────────────────────
         elif ptype in ("EXIT_OPTION", "CLOSE_OPTION"):
-            from options.executor import run_options_position_monitor
-            result = run_options_position_monitor(force_symbol=proposal.get("symbol","").upper())
+            # Sell the position directly via place_options_order
+            from brokers.webull_adapter import WebullAdapter
+            symbol = str(proposal.get("symbol","")).upper()
+            adapter = WebullAdapter()
+            info = adapter.get_account_info()
+            opts = [p for p in (info.get("positions") or [])
+                    if str(p.get("asset_type","")).lower() == "option"
+                    and str(p.get("symbol","")).upper() == symbol]
+            if not opts:
+                _log(f"EXIT_OPTION: no open position found for {symbol}")
+                return False
+            pos = opts[0]
+            qty = abs(int(pos.get("qty") or 0))
+            if qty <= 0:
+                return False
+            order = {
+                "underlying": symbol,
+                "option_type": str(pos.get("option_type","call")).lower(),
+                "strike": float(pos.get("strike") or 0),
+                "expiration": str(pos.get("expiration") or ""),
+                "qty": qty,
+                "side": "sell",
+                "order_type": "MKT",
+            }
+            result = adapter.place_options_order(order)
             ok = bool(result and result.get("ok"))
             from notify import _send
-            _send(f"{'✅' if ok else '❌'} APEX exit: {proposal.get('symbol','')}")
+            pnl = float(pos.get("unrealized_pnl") or 0)
+            pnl_pct = float(pos.get("unrealized_pnl_pct") or 0)
+            _send(f"{'✅' if ok else '❌'} APEX exit: {symbol} {qty}x @ market
+P&L: {'+' if pnl>=0 else ''}{pnl:.0f} ({pnl_pct:.1f}%)")
             return ok
 
         else:

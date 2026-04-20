@@ -17,14 +17,16 @@
   {% set options_url = '/options?secret=' ~ (secret_value|urlencode) if secret_value else '/options' %}
   {% set backtesting_url = '/backtesting?secret=' ~ (secret_value|urlencode) if secret_value else '/backtesting' %}
   {% set activity_url = '/activity?secret=' ~ (secret_value|urlencode) if secret_value else '/activity' %}
+  {% set flow_url = '/flow?secret=' ~ (secret_value|urlencode) if secret_value else '/flow' %}
+  {% set flow_active = request.path == '/flow' %}
   {% set settings_url = '/settings?secret=' ~ (secret_value|urlencode) if secret_value else '/settings' %}
-  {% set dashboard_active = current_path == '/dashboard' %}
-  {% set portfolio_active = current_path == '/portfolio' %}
-  {% set trading_active = current_path == '/trading' %}
-  {% set options_active = current_path == '/options' %}
-  {% set backtesting_active = current_path == '/backtesting' %}
-  {% set activity_active = current_path == '/activity' %}
-  {% set settings_active = current_path == '/settings' %}
+  {% set dashboard_active = request.path == '/dashboard' %}
+  {% set portfolio_active = request.path == '/portfolio' %}
+  {% set trading_active = request.path == '/trading' %}
+  {% set options_active = request.path == '/options' %}
+  {% set backtesting_active = request.path == '/backtesting' %}
+  {% set activity_active = request.path == '/activity' %}
+  {% set settings_active = request.path == '/settings' %}
   {% set more_active = backtesting_active or activity_active or settings_active or flow_active %}
 
   <div class="app-shell">

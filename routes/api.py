@@ -2496,13 +2496,11 @@ def api_config_update():
                 found = False
                 for i, line in enumerate(lines):
                     if line.startswith(f"{env_key}="):
-                        lines[i] = f"{env_key}={value}
-"
+                        lines[i] = f"{env_key}={value}\n"
                         found = True
                         break
                 if not found:
-                    lines.append(f"{env_key}={value}
-")
+                    lines.append(f"{env_key}={value}\n")
                 with open(env_path, "w") as ef:
                     ef.writelines(lines)
                 return jsonify({"ok": True, "path": path_key, "value": "***"})

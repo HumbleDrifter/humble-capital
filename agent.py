@@ -437,11 +437,9 @@ Be specific, aggressive, and data-driven. If UW data is not configured, work wit
         # Send to Telegram
         _send_proposals_to_telegram(result)
 
-        # Auto-execute if enabled
+        # Auto-execute if enabled — use priority ordering and BP checks
         if _auto_execute():
-            for proposal in proposals:
-                if proposal.get("confidence") == "HIGH":
-                    _execute_proposal(proposal)
+            execute_proposals_in_order(proposals)
         else:
             # Store pending for manual approval
             with _AGENT_LOCK:
@@ -690,6 +688,79 @@ def _execute_proposal(proposal: dict) -> bool:
     except Exception as e:
         _log(f"Execute error ({ptype}): {e}")
         return False
+
+
+def _get_current_options_bp() -> float:
+    """Get current options buying power from Webull."""
+    try:
+        from brokers.webull_adapter import WebullAdapter
+        info = WebullAdapter().get_account_info()
+        raw = info.get("raw", {}).get("account_currency_assets", [{}])[0]
+        return float(raw.get("option_buying_power") or 0)
+    except Exception:
+        return 0.0
+
+
+def execute_proposals_in_order(proposals: list) -> dict:
+    """
+    Execute proposals in priority order:
+    1. EXITS first (free up capital)
+    2. CONFIG changes
+    3. BUYS (using available capital after exits)
+    """
+    from notify import _send
+
+    # Sort proposals by priority
+    def priority(p):
+        ptype = str(p.get("type","")).upper()
+        if ptype in ("EXIT_OPTION","SELL_OPTION","CLOSE_OPTION"): return 0
+        if ptype in ("CRYPTO_SELL","STOCK_SELL"): return 1
+        if ptype == "CONFIG_CHANGE": return 2
+        if ptype in ("CRYPTO_ROTATE",): return 3
+        if ptype in ("BUY_OPTION","CRYPTO_BUY","STOCK_BUY","FUTURES_BUY"): return 4
+        return 5  # HOLD last
+
+    sorted_proposals = sorted(
+        [p for p in proposals if p.get("type","").upper() != "HOLD"],
+        key=priority
+    )
+
+    results = []
+    for proposal in sorted_proposals:
+        ptype = str(proposal.get("type","")).upper()
+        conf = str(proposal.get("confidence","")).upper()
+        min_conf = str(_agent_config().get("min_confidence","MEDIUM")).upper()
+        conf_rank = {"HIGH":0,"MEDIUM":1,"LOW":2}
+        if conf_rank.get(conf,2) > conf_rank.get(min_conf,1):
+            _log(f"Skipping {proposal.get('title')} — confidence {conf} below threshold {min_conf}")
+            continue
+
+        # For BUY orders — check available capital first
+        if ptype in ("BUY_OPTION",):
+            bp = _get_current_options_bp()
+            cost = float(proposal.get("total_cost") or proposal.get("estimated_cost") or 0)
+            if cost > bp:
+                # Try to resize based on available BP
+                cost_per = float(proposal.get("cost_per_contract") or 0)
+                if cost_per > 0 and bp >= cost_per:
+                    new_qty = max(1, int(bp * 0.8 / cost_per))  # use 80% of BP
+                    old_qty = int(proposal.get("qty") or 1)
+                    if new_qty < old_qty:
+                        proposal = dict(proposal)
+                        proposal["qty"] = new_qty
+                        proposal["total_cost"] = new_qty * cost_per
+                        _log(f"Resized {proposal.get('symbol')} from {old_qty} to {new_qty} contracts (BP: ${bp:.0f})")
+                elif bp < cost_per:
+                    _log(f"Skipping {proposal.get('title')} — cost ${cost:.0f} > BP ${bp:.0f}")
+                    continue
+
+        ok = _execute_proposal(proposal)
+        results.append({"proposal": proposal.get("id"), "ok": ok})
+        # Small delay between orders to avoid rate limits
+        import time
+        time.sleep(1)
+
+    return {"ok": True, "results": results}
 
 
 def approve_proposal(proposal_id: str) -> dict:

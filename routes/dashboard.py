@@ -152,6 +152,13 @@ def activity_page():
     return render_template("app/trade_history.html", **_page_context("Activity"))
 
 
+@dashboard_bp.route("/settings/bot", methods=["GET"])
+@require_dashboard_auth
+def settings_bot():
+    embed_mode = request.args.get("embed") == "1"
+    return render_template("app/settings.html", embed_mode=embed_mode, **_page_context("Bot Controls"))
+
+
 @dashboard_bp.route("/settings", methods=["GET"])
 @require_dashboard_auth
 def settings():

@@ -13,12 +13,25 @@
   </section>
 
   <div class="page-tabs">
-    <button class="page-tab active" data-tab="accounts" type="button">Accounts</button>
+    <button class="page-tab active" data-tab="bot" type="button">🤖 Bot Controls</button>
+    <button class="page-tab" data-tab="accounts" type="button">Accounts</button>
     <button class="page-tab" data-tab="automation" type="button">Automation</button>
     <button class="page-tab" data-tab="system" type="button">System</button>
   </div>
 
-  <div class="page-tab-content active" id="tab-accounts">
+  <!-- Bot Controls Tab — our new settings.html content -->
+  <div class="page-tab-content active" id="tab-bot">
+    <div class="hc-chart-section" style="padding:0; overflow:hidden;">
+      <iframe
+        title="Bot Controls"
+        src="{{ '/settings/bot?embed=1&secret=' ~ (secret_value|urlencode) if secret_value else '/settings/bot?embed=1' }}"
+        style="width:100%; min-height:2400px; border:0; background:#0a1018; display:block;"
+        id="botControlsFrame"
+        loading="lazy"></iframe>
+    </div>
+  </div>
+
+  <div class="page-tab-content" id="tab-accounts">
     <div class="hc-chart-section" style="padding:0; overflow:hidden;">
       <iframe
         title="Accounts"

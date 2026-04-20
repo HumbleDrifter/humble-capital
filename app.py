@@ -192,6 +192,47 @@ def _config_proposal_loop():
 
 
 
+def _telegram_polling_loop():
+    """Telegram polling — handles APPROVE/REJECT and commands."""
+    from telegram_bot import run_polling_loop
+    run_polling_loop()
+
+
+def _agent_loop():
+    """AI agent loop — runs analysis on schedule during market hours."""
+    import time as _time
+    from datetime import datetime, timezone, timedelta
+    print("[agent_loop] thread started", flush=True)
+    _time.sleep(120)  # wait 2 min after startup
+    while True:
+        try:
+            from agent import _is_enabled, run_agent_cycle, _agent_config
+            if _is_enabled():
+                et_offset = timedelta(hours=-4)
+                now = datetime.now(timezone(et_offset))
+                # Only run during market hours Mon-Fri 9:30-16:00 ET
+                is_market = (
+                    now.weekday() < 5 and
+                    (now.hour > 9 or (now.hour == 9 and now.minute >= 30)) and
+                    now.hour < 16
+                )
+                if is_market:
+                    run_agent_cycle()
+                else:
+                    print("[agent_loop] market closed — skipping", flush=True)
+            else:
+                print("[agent_loop] agent disabled — sleeping", flush=True)
+        except Exception as exc:
+            print(f"[agent_loop] error: {exc}", flush=True)
+        # Sleep for configured interval (default 30 min)
+        try:
+            from agent import _agent_config
+            mins = int(_agent_config().get("schedule_minutes", 30))
+        except Exception:
+            mins = 30
+        _time.sleep(mins * 60)
+
+
 def _daily_summary_loop():
     """Fires daily at 4:05 PM ET on weekdays."""
     import time as _time
@@ -356,6 +397,10 @@ def create_app():
     _proposal_thread.start()
     _summary_thread = threading.Thread(target=_daily_summary_loop, daemon=True, name="daily_summary")
     _summary_thread.start()
+    _telegram_thread = threading.Thread(target=_telegram_polling_loop, daemon=True, name="telegram_polling")
+    _telegram_thread.start()
+    _agent_thread = threading.Thread(target=_agent_loop, daemon=True, name="agent_loop")
+    _agent_thread.start()
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

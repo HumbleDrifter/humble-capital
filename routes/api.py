@@ -2386,6 +2386,95 @@ def api_config():
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
+# ── Agent endpoints ──────────────────────────────────────────────────────────
+@api_bp.route("/api/agent/run", methods=["POST"])
+@require_api_auth
+def api_agent_run():
+    try:
+        import threading
+        from agent import run_agent_cycle
+        threading.Thread(target=run_agent_cycle, daemon=True).start()
+        return jsonify({"ok": True, "status": "started"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@api_bp.route("/api/agent/proposals", methods=["GET"])
+@require_api_auth
+def api_agent_proposals():
+    try:
+        from agent import get_pending_proposals
+        return jsonify({"ok": True, "proposals": get_pending_proposals()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@api_bp.route("/api/agent/approve/<proposal_id>", methods=["POST"])
+@require_api_auth
+def api_agent_approve(proposal_id):
+    try:
+        from agent import approve_proposal
+        result = approve_proposal(proposal_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@api_bp.route("/api/agent/reject/<proposal_id>", methods=["POST"])
+@require_api_auth
+def api_agent_reject(proposal_id):
+    try:
+        from agent import reject_proposal
+        result = reject_proposal(proposal_id)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@api_bp.route("/api/agent/log", methods=["GET"])
+@require_api_auth
+def api_agent_log():
+    try:
+        from agent import get_agent_log
+        limit = int(request.args.get("limit", 50))
+        return jsonify({"ok": True, "log": get_agent_log(limit)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@api_bp.route("/api/uw/flow", methods=["GET"])
+@require_api_auth
+def api_uw_flow():
+    try:
+        from unusual_whales import get_flow_alerts, get_meme_flow, is_configured
+        if not is_configured():
+            return jsonify({"ok": False, "error": "UW API key not configured"})
+        ticker = request.args.get("ticker", "").upper()
+        flow = get_meme_flow() if not ticker else get_flow_alerts(50)
+        if ticker:
+            flow = [f for f in flow if str(f.get("ticker","")).upper() == ticker]
+        return jsonify({"ok": True, "flow": flow, "count": len(flow)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@api_bp.route("/api/uw/darkpool", methods=["GET"])
+@require_api_auth
+def api_uw_darkpool():
+    try:
+        from unusual_whales import get_darkpool_recent, get_darkpool_ticker, is_configured
+        if not is_configured():
+            return jsonify({"ok": False, "error": "UW API key not configured"})
+        ticker = request.args.get("ticker", "").upper()
+        data = get_darkpool_ticker(ticker) if ticker else get_darkpool_recent()
+        return jsonify({"ok": True, "data": data})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@api_bp.route("/api/uw/status", methods=["GET"])
+@require_api_auth
+def api_uw_status():
+    try:
+        from unusual_whales import is_configured
+        return jsonify({"ok": True, "configured": is_configured()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @api_bp.route("/api/config/update", methods=["POST"])
 @require_api_auth
 def api_config_update():
@@ -2397,6 +2486,29 @@ def api_config_update():
         if not path_key:
             return jsonify({"ok": False, "error": "missing path"}), 400
         config = load_asset_config() or {}
+        # Special case: _env.KEY writes to .env file
+        if path_key.startswith("_env."):
+            env_key = path_key[5:]
+            env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+            try:
+                with open(env_path) as ef:
+                    lines = ef.readlines()
+                found = False
+                for i, line in enumerate(lines):
+                    if line.startswith(f"{env_key}="):
+                        lines[i] = f"{env_key}={value}
+"
+                        found = True
+                        break
+                if not found:
+                    lines.append(f"{env_key}={value}
+")
+                with open(env_path, "w") as ef:
+                    ef.writelines(lines)
+                return jsonify({"ok": True, "path": path_key, "value": "***"})
+            except Exception as env_exc:
+                return jsonify({"ok": False, "error": str(env_exc)}), 500
+
         # Navigate dot path and set value
         keys = path_key.split(".")
         node = config

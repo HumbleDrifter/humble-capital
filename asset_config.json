@@ -247,5 +247,19 @@
     "target_options_pct": 75,
     "target_stocks_pct": 25,
     "rebalance_threshold": 10
+  },
+  "agent": {
+    "enabled": false,
+    "auto_execute": false,
+    "schedule_minutes": 30,
+    "min_confidence": "HIGH",
+    "uw_enabled": false,
+    "max_proposals_per_cycle": 5,
+    "focus": [
+      "meme_flow",
+      "darkpool",
+      "momentum",
+      "config_optimization"
+    ]
   }
 }

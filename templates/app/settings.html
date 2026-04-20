@@ -304,6 +304,16 @@
     });
     const togOpt = document.getElementById("tog_options");
     if (togOpt) togOpt.checked = !!(ot.auto_execute ?? true);
+    // Agent config
+    const ag = c.agent || {};
+    const togAgent = document.getElementById("tog_agent");
+    const togAgentAuto = document.getElementById("tog_agent_auto");
+    const togUw = document.getElementById("tog_uw");
+    if (togAgent) togAgent.checked = !!(ag.enabled ?? false);
+    if (togAgentAuto) togAgentAuto.checked = !!(ag.auto_execute ?? false);
+    if (togUw) togUw.checked = !!(ag.uw_enabled ?? false);
+    if (ag.schedule_minutes) document.getElementById("agent_schedule").value = ag.schedule_minutes;
+    updateAgentBadge();
 
     // Options config
     if (ot.mode) document.getElementById("opt_mode").value = ot.mode;

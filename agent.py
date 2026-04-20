@@ -81,7 +81,7 @@ def _get_portfolio_context() -> dict:
     ctx["futures_positions"] = []
 
     import time as _time
-    _time.sleep(2)  # rate limit buffer before Webull calls
+    _time.sleep(5)  # rate limit buffer before Webull calls
 
     try:
         from brokers.webull_adapter import WebullAdapter
@@ -778,7 +778,7 @@ def execute_proposals_in_order(proposals: list) -> dict:
         results.append({"proposal": proposal.get("id"), "ok": ok})
         # Small delay between orders to avoid rate limits
         import time
-        time.sleep(1)
+        time.sleep(3)  # longer delay to avoid Webull rate limits
 
     return {"ok": True, "results": results}
 

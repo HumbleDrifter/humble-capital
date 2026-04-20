@@ -748,6 +748,15 @@ def _execute_proposal(proposal: dict) -> bool:
                 "limit_price": limit_price,
             }
             _log(f"Order: {symbol} {opt_type} ${strike} {expiry} x{qty} @ ${limit_price} ({side})")
+            # Record entry in position journal for hold time tracking
+            if side == "BUY":
+                try:
+                    from position_journal import record_entry
+                    record_entry(symbol, asset_type="option", option_type=opt_type,
+                                strike=strike, expiration=expiry,
+                                entry_price=limit_price, qty=qty)
+                except Exception:
+                    pass
             result = adapter.place_options_order(order)
             if result.get("ok"):
                 from notify import _send
@@ -856,6 +865,17 @@ def _execute_proposal(proposal: dict) -> bool:
                 _log(f"EXIT_OPTION: no open position found for {symbol}")
                 return False
             pos = opts[0]
+            # Check minimum hold time (4 hours) before allowing exit
+            pos_strike = float(pos.get("strike") or 0)
+            pos_expiry = str(pos.get("expiration") or "")
+            try:
+                from position_journal import is_min_hold_met, get_hold_hours
+                hold_h = get_hold_hours(symbol, strike=pos_strike, expiration=pos_expiry)
+                if not is_min_hold_met(symbol, min_hours=4.0, strike=pos_strike, expiration=pos_expiry):
+                    _log(f"EXIT blocked: {symbol} only held {hold_h:.1f}h < 4h minimum")
+                    return False
+            except Exception:
+                pass
             # Use actual held qty — never sell more than we hold
             held_qty = abs(int(pos.get("qty") or 0))
             proposed_qty = abs(int(proposal.get("qty") or held_qty))
@@ -880,6 +900,12 @@ def _execute_proposal(proposal: dict) -> bool:
             pnl = float(pos.get("unrealized_pnl") or 0)
             pnl_pct = float(pos.get("unrealized_pnl_pct") or 0)
             _send(f"{chr(9989) if ok else chr(10060)} APEX exit: {symbol} {qty}x @ market | P&L: {'+' if pnl>=0 else ''}{pnl:.0f} ({pnl_pct:.1f}%)")
+            if ok:
+                try:
+                    from position_journal import clear_position
+                    clear_position(symbol, strike=pos_strike, expiration=pos_expiry)
+                except Exception:
+                    pass
             return ok
 
         else:

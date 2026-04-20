@@ -366,12 +366,24 @@ Format your response as JSON:
         } for k, v in (portfolio.get("positions") or {}).items()}
     }
     # Trim UW data
+    # Very slim UW — just key signals
+    raw_tide = uw.get("market_tide") or []
+    if isinstance(raw_tide, list) and raw_tide:
+        last_tide = raw_tide[-1]
+        call_prem = float(last_tide.get("net_call_premium") or 0)
+        put_prem = float(last_tide.get("net_put_premium") or 0)
+        tide_bias = "bullish" if call_prem > put_prem else "bearish"
+    else:
+        tide_bias = "unknown"
+
+    meme_flow = (uw.get("meme_flow") or [])[:5]
+    meme_summary = [{"ticker": f.get("ticker"), "type": f.get("type"), "premium": f.get("total_premium"), "sweep": f.get("has_sweep")} for f in meme_flow]
+
     uw_slim = {
         "configured": uw.get("configured"),
-        "market_tide": uw.get("market_tide", {}),
-        "meme_flow": (uw.get("meme_flow") or [])[:10],
-        "darkpool": (uw.get("darkpool") or [])[:5],
-        "flow_alerts": (uw.get("flow_alerts") or [])[:10],
+        "market_tide_bias": tide_bias,
+        "meme_flow": meme_summary,
+        "darkpool_count": len(uw.get("darkpool") or []),
     }
 
     user_message = f"""Analyze this portfolio and market data, then propose actions:
@@ -401,13 +413,13 @@ Be specific, aggressive, and data-driven. If UW data is not configured, work wit
         import httpx
         response = client.messages.create(
             model="claude-sonnet-4-5",
-            max_tokens=6000,
+            max_tokens=3000,
             system=system_prompt,
             messages=[
                 {"role": "user", "content": user_message},
                 {"role": "assistant", "content": "{"}  # prefill forces raw JSON
             ],
-            timeout=httpx.Timeout(120.0)  # 2 min max
+            timeout=httpx.Timeout(60.0)  # 1 min max
         )
         raw = "{" + response.content[0].text
         # Parse JSON response

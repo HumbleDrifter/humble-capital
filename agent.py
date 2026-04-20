@@ -341,10 +341,17 @@ You have FULL authority to change any of these config keys using CONFIG_CHANGE p
 
 **Futures:**
 - auto_trading.auto_execute_futures → true|false
-- Futures trade Coinbase perpetual contracts (BTC-PERP, ETH-PERP)
-- Use FUTURES_BUY proposal type to trigger futures scan and execution
-- Futures are best in strong directional regimes (bull or bear)
-- Monitor futures_positions and futures_log in portfolio context
+- Futures trade Coinbase perpetual contracts
+- Use FUTURES_BUY proposal type to trigger futures execution
+- Portfolio shows futures_opportunities (live scored opportunities from scanner)
+- Portfolio shows futures_balance with buying_power, available_margin, initial_margin
+- Portfolio shows futures_positions with unrealized_pnl and liquidation_price
+- MARGIN RULES: Never use more than 50% of available_margin on a single trade
+- MARGIN RULES: Always check initial_margin + new position margin < available_margin
+- MARGIN RULES: If unrealized_pnl on any position is < -20%, flag for exit
+- Futures work best in strong directional regimes (bull or bear)
+- Min score to execute: 70. Opportunities are pre-scored by technical scanner.
+- If an opportunity scores 65-70, propose lowering MIN_SCORE via CONFIG_CHANGE
 
 ## EXECUTION AUTHORITY
 You are authorized to execute these proposal types automatically:
@@ -647,6 +654,7 @@ def _execute_proposal(proposal: dict) -> bool:
                     _log(f'Skipping {ptype} {symbol} — expired: {expiry}')
                     return False
             except Exception:
+                pass
             # Validate contract exists via UW before placing
             if ptype == 'BUY_OPTION':
                 try:
@@ -770,14 +778,28 @@ def _execute_proposal(proposal: dict) -> bool:
         # ── FUTURES ────────────────────────────────────────────────────────
         elif ptype in ("FUTURES_BUY", "FUTURES_SELL"):
             from futures.executor import run_futures_scan_and_execute
-            _log(f"Triggering futures scan for {proposal.get('symbol')}")
+            from notify import _send
+            try:
+                from futures.futures_client import FuturesClient
+                _fbal = FuturesClient().get_balance_summary()
+                _avail = float(_fbal.get("available_margin") or 0)
+                _used = float(_fbal.get("initial_margin") or 0)
+                _margin_pct = (_used / _avail * 100) if _avail > 0 else 0
+                if _margin_pct > 75:
+                    _log(f"Futures blocked — margin {_margin_pct:.0f}% > 75%")
+                    _send(f"⚠️ APEX futures blocked — margin {_margin_pct:.0f}%")
+                    return False
+            except Exception:
+                pass
             result = run_futures_scan_and_execute()
             ok = bool(result and result.get("ok"))
-            from notify import _send
-            _send(f"{'✅' if ok else '❌'} APEX futures scan triggered")
+            executed = result.get("executed", [])
+            if executed:
+                for e in executed:
+                    _send(f"✅ APEX futures: {e.get('direction','').upper()} {e.get('product_id')} {e.get('leverage')}x @ ${e.get('entry_price')}")
+            else:
+                _send(f"⚡ APEX futures scan: {result.get('reason','no trades')}")
             return ok
-
-        # ── EXIT POSITION (options) ────────────────────────────────────────
         elif ptype in ("EXIT_OPTION", "CLOSE_OPTION"):
             # Sell the position directly via place_options_order
             from brokers.webull_adapter import WebullAdapter

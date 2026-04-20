@@ -671,25 +671,33 @@ class WebullAdapter(BrokerAdapter):
             _api_client, trade_client, _data_client = self._get_clients(force_reset=False)
             account_id = self._get_account_id()
             import uuid as _uuid
+            import uuid as _uuid
+            # Correct Webull US options format per SDK docs
+            option_side = "SELL" if side == "SELL" else "BUY"
             new_order = {
-                "market": "US",
-                "combo_type": "NORMAL",
-                "option_strategy": "SINGLE",
-                "instrument_type": "OPTION",
                 "client_order_id": str(_uuid.uuid4()).replace("-", "")[:32],
-                "underlying": symbol,
-                "expiration": str(order.get("expiration") or ""),
-                "strike": str(order.get("strike") or ""),
-                "option_type": str(order.get("option_type") or "call").upper(),
-                "side": side,
-                "qty": int(qty),
-                "tif": "IOC" if order_type == "MARKET" else "DAY",
+                "combo_type": "NORMAL",
                 "order_type": order_type,
-                "extended_hours_trading": False,
+                "quantity": str(int(qty)),
+                "option_strategy": "SINGLE",
+                "side": option_side,
+                "time_in_force": "GTC",
+                "entrust_type": "QTY",
+                "orders": [
+                    {
+                        "side": option_side,
+                        "quantity": str(int(qty)),
+                        "symbol": symbol,
+                        "strike_price": str(order.get("strike") or ""),
+                        "init_exp_date": str(order.get("expiration") or ""),
+                        "instrument_type": "OPTION",
+                        "option_type": str(order.get("option_type") or "call").upper(),
+                        "market": "US",
+                    }
+                ],
             }
             if order_type == "LIMIT" and order.get("limit_price"):
-                new_order["limit_price"] = round(_safe_float(order.get("limit_price"), 0.0), 2)
-            # order_v2 = US options endpoint
+                new_order["limit_price"] = str(round(_safe_float(order.get("limit_price"), 0.0), 2))
             response = trade_client.order_v2.place_option(account_id, [new_order])
             payload = _response_json(response)
             status_code = _response_status_code(response)

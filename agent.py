@@ -917,6 +917,12 @@ def execute_proposals_in_order(proposals: list) -> dict:
         key=priority
     )
 
+    # Per-cycle BP budget — never deploy more than 50% of BP in one cycle
+    cycle_bp_start = _get_current_options_bp()
+    cycle_bp_budget = cycle_bp_start * 0.50  # max 50% per cycle
+    cycle_bp_spent = 0.0
+    _log(f"Cycle BP budget: ${cycle_bp_budget:.0f} (50% of ${cycle_bp_start:.0f})")
+
     results = []
     for proposal in sorted_proposals:
         ptype = str(proposal.get("type","")).upper()
@@ -933,24 +939,37 @@ def execute_proposals_in_order(proposals: list) -> dict:
             cost_per = float(proposal.get("cost_per_contract") or 0)
             qty_proposed = int(proposal.get("qty") or 1)
             cost = float(proposal.get("total_cost") or proposal.get("estimated_cost") or (cost_per * qty_proposed))
-            
+
             if cost_per <= 0 and cost > 0:
                 cost_per = cost / max(qty_proposed, 1)
 
-            if cost > bp:
-                if cost_per > 0 and bp >= cost_per:
-                    # Resize qty to fit available BP (use 90% of BP)
-                    new_qty = max(1, int(bp * 0.9 / cost_per))
-                    _log(f"Resized {proposal.get('symbol')} from {qty_proposed} to {new_qty} contracts (BP: ${bp:.0f}, cost/contract: ${cost_per:.2f})")
+            # Check cycle budget remaining
+            cycle_remaining = cycle_bp_budget - cycle_bp_spent
+            if cycle_remaining < (cost_per or 1):
+                _log(f"Skipping {proposal.get('title')} — cycle BP budget exhausted (spent ${cycle_bp_spent:.0f} of ${cycle_bp_budget:.0f})")
+                continue
+
+            # Resize to fit both available BP and cycle budget
+            effective_bp = min(bp * 0.9, cycle_remaining)
+            if cost > effective_bp:
+                if cost_per > 0 and effective_bp >= cost_per:
+                    new_qty = max(1, int(effective_bp / cost_per))
+                    _log(f"Resized {proposal.get('symbol')} from {qty_proposed} to {new_qty} contracts (effective_bp: ${effective_bp:.0f})")
                     proposal = dict(proposal)
                     proposal["qty"] = new_qty
                     proposal["total_cost"] = new_qty * cost_per
-                elif bp < (cost_per or 1):
-                    _log(f"Skipping {proposal.get('title')} — insufficient BP ${bp:.0f} < ${cost_per:.0f}/contract")
+                    cost = new_qty * cost_per
+                elif effective_bp < (cost_per or 1):
+                    _log(f"Skipping {proposal.get('title')} — insufficient BP ${effective_bp:.0f} < ${cost_per:.0f}/contract")
                     continue
 
         ok = _execute_proposal(proposal)
         results.append({"proposal": proposal.get("id"), "ok": ok})
+        # Track BP spent this cycle
+        if ok and ptype in ("BUY_OPTION",):
+            spent = float(proposal.get("total_cost") or proposal.get("estimated_cost") or 0)
+            cycle_bp_spent += spent
+            _log(f"Cycle BP spent: ${cycle_bp_spent:.0f} / ${cycle_bp_budget:.0f}")
         # Small delay between orders to avoid rate limits
         import time
         time.sleep(3)  # longer delay to avoid Webull rate limits

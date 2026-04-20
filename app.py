@@ -397,10 +397,30 @@ def create_app():
     _proposal_thread.start()
     _summary_thread = threading.Thread(target=_daily_summary_loop, daemon=True, name="daily_summary")
     _summary_thread.start()
-    _telegram_thread = threading.Thread(target=_telegram_polling_loop, daemon=True, name="telegram_polling")
-    _telegram_thread.start()
-    _agent_thread = threading.Thread(target=_agent_loop, daemon=True, name="agent_loop")
-    _agent_thread.start()
+    # Only run polling/agent in one worker to avoid duplicate messages
+    import os as _os
+    _worker_id = _os.getpid()
+    # Use a lock file to ensure only one worker runs these
+    _lock_file = "/tmp/hc_primary_worker.lock"
+    _is_primary = False
+    try:
+        import fcntl
+        _lock_fd = open(_lock_file, "w")
+        fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _lock_fd.write(str(_worker_id))
+        _lock_fd.flush()
+        _is_primary = True
+    except (IOError, OSError):
+        _is_primary = False
+
+    if _is_primary:
+        print(f"[startup] primary worker {_worker_id} — starting Telegram + agent", flush=True)
+        _telegram_thread = threading.Thread(target=_telegram_polling_loop, daemon=True, name="telegram_polling")
+        _telegram_thread.start()
+        _agent_thread = threading.Thread(target=_agent_loop, daemon=True, name="agent_loop")
+        _agent_thread.start()
+    else:
+        print(f"[startup] secondary worker {_worker_id} — skipping Telegram + agent", flush=True)
 
     app.register_blueprint(public_bp)
     app.register_blueprint(webhook_bp)

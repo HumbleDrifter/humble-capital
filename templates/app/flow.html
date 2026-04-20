@@ -1,0 +1,366 @@
+{% extends "base_app.html" %}
+{% block topbar_actions %}{% endblock %}
+{% block content %}
+<style>
+  .flow-shell { display:flex;flex-direction:column;gap:14px; }
+  .flow-kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px; }
+  .flow-kpi { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px; }
+  .flow-kpi-label { font-size:11px;color:rgba(236,243,255,0.4);margin-bottom:4px; }
+  .flow-kpi-value { font-size:22px;font-weight:800;letter-spacing:-0.02em; }
+  .flow-kpi-sub { font-size:11px;color:rgba(236,243,255,0.35);margin-top:2px; }
+  .flow-grid { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+  .flow-panel { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px; }
+  .flow-panel-title { font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between; }
+  .flow-item { display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04); }
+  .flow-item:last-child { border-bottom:none; }
+  .flow-badge { padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;text-transform:uppercase;flex-shrink:0; }
+  .flow-badge.call { background:rgba(34,197,94,0.12);color:#22c55e; }
+  .flow-badge.put { background:rgba(239,68,68,0.12);color:#ef4444; }
+  .flow-badge.sweep { background:rgba(251,191,36,0.12);color:#fbbf24; }
+  .flow-badge.block { background:rgba(139,92,246,0.12);color:#a78bfa; }
+  .flow-ticker { font-size:13px;font-weight:700;min-width:50px; }
+  .flow-detail { font-size:11px;color:rgba(236,243,255,0.45);flex:1;min-width:0; }
+  .flow-prem { font-size:12px;font-weight:700;flex-shrink:0; }
+  .tide-bar { height:8px;border-radius:4px;overflow:hidden;background:rgba(239,68,68,0.2);margin:8px 0; }
+  .tide-fill { height:100%;border-radius:4px;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width 0.6s ease; }
+  .meme-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px; }
+  .meme-card { background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;cursor:pointer;transition:border-color 0.15s; }
+  .meme-card:hover { border-color:rgba(56,189,248,0.3); }
+  .meme-card.bullish { border-color:rgba(34,197,94,0.2); }
+  .meme-card.bearish { border-color:rgba(239,68,68,0.2); }
+  .meme-ticker { font-size:13px;font-weight:800; }
+  .meme-signal { font-size:10px;margin-top:2px; }
+  .meme-prem { font-size:12px;font-weight:700;margin-top:4px; }
+  .flow-refresh { font-size:11px;color:rgba(236,243,255,0.3); }
+  .oi-item { display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04); }
+  .oi-item:last-child { border-bottom:none; }
+  @media(max-width:768px) { .flow-grid{grid-template-columns:1fr;} .flow-kpi-grid{grid-template-columns:1fr 1fr;} .meme-grid{grid-template-columns:repeat(3,1fr);} }
+</style>
+
+<div class="flow-shell">
+  <!-- Status bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;" id="uwStatusDot"></span>
+      <span style="font-size:12px;color:rgba(236,243,255,0.5);" id="uwStatusText">Connecting to Unusual Whales...</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span style="font-size:11px;color:rgba(236,243,255,0.3);" id="flowLastUpdate"></span>
+      <button onclick="loadAll()" style="padding:4px 12px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.2);border-radius:6px;color:#38bdf8;font-size:12px;cursor:pointer;">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Market Tide KPIs -->
+  <div class="flow-kpi-grid">
+    <div class="flow-kpi">
+      <div class="flow-kpi-label">Market Tide</div>
+      <div class="flow-kpi-value" id="tideBias" style="color:#22c55e;">--</div>
+      <div class="flow-kpi-sub" id="tideDetail">Loading...</div>
+    </div>
+    <div class="flow-kpi">
+      <div class="flow-kpi-label">Net Call Premium</div>
+      <div class="flow-kpi-value" id="netCallPrem" style="color:#22c55e;">$--</div>
+      <div class="flow-kpi-sub">Today's bullish flow</div>
+    </div>
+    <div class="flow-kpi">
+      <div class="flow-kpi-label">Net Put Premium</div>
+      <div class="flow-kpi-value" id="netPutPrem" style="color:#ef4444;">$--</div>
+      <div class="flow-kpi-sub">Today's bearish flow</div>
+    </div>
+    <div class="flow-kpi">
+      <div class="flow-kpi-label">Flow Alerts Today</div>
+      <div class="flow-kpi-value" id="flowAlertCount">--</div>
+      <div class="flow-kpi-sub" id="flowAlertSub">Unusual activity</div>
+    </div>
+  </div>
+
+  <!-- Market Tide Bar -->
+  <div class="flow-panel">
+    <div class="flow-panel-title">
+      <span>📊 Market Tide — Call vs Put Flow</span>
+      <span id="tideRatio" style="font-size:12px;color:rgba(236,243,255,0.5);">--</span>
+    </div>
+    <div class="tide-bar">
+      <div class="tide-fill" id="tideFill" style="width:50%;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(236,243,255,0.4);">
+      <span>🟢 Calls (Bullish)</span>
+      <span>🔴 Puts (Bearish)</span>
+    </div>
+  </div>
+
+  <!-- Meme Watchlist Flow -->
+  <div class="flow-panel">
+    <div class="flow-panel-title">
+      <span>🎯 Meme Watchlist — Options Flow</span>
+      <span style="font-size:11px;color:rgba(236,243,255,0.35);">GME · AMC · MARA · BBAI · NIO · PLTR · SOFI · HOOD</span>
+    </div>
+    <div class="meme-grid" id="memeGrid">
+      <div style="color:rgba(236,243,255,0.3);font-size:12px;">Loading meme flow...</div>
+    </div>
+  </div>
+
+  <!-- Flow Alerts + Dark Pool side by side -->
+  <div class="flow-grid">
+    <!-- Flow Alerts -->
+    <div class="flow-panel">
+      <div class="flow-panel-title">
+        <span>⚡ Unusual Flow Alerts</span>
+        <span class="flow-refresh" id="alertsCount">--</span>
+      </div>
+      <div id="flowAlertsFeed">
+        <div style="color:rgba(236,243,255,0.3);font-size:12px;">Loading flow alerts...</div>
+      </div>
+    </div>
+
+    <!-- Dark Pool -->
+    <div class="flow-panel">
+      <div class="flow-panel-title">
+        <span>🌑 Dark Pool Prints</span>
+        <span class="flow-refresh" id="dpCount">--</span>
+      </div>
+      <div id="darkpoolFeed">
+        <div style="color:rgba(236,243,255,0.3);font-size:12px;">Loading dark pool...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OI Changes -->
+  <div class="flow-panel">
+    <div class="flow-panel-title">
+      <span>📈 Open Interest Changes — New Positioning</span>
+      <span style="font-size:11px;color:rgba(236,243,255,0.35);">Contracts where institutions are opening new positions</span>
+    </div>
+    <div id="oiChangeFeed" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+      <div style="color:rgba(236,243,255,0.3);font-size:12px;">Loading OI data...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const API_SECRET = {{ api_secret|tojson }};
+
+  function authUrl(path) {
+    if (!API_SECRET) return path;
+    return path + (path.includes("?") ? "&" : "?") + "secret=" + encodeURIComponent(API_SECRET);
+  }
+
+  async function fetchJson(path) {
+    const r = await fetch(authUrl(path), { credentials:"same-origin" });
+    return r.json().catch(() => ({}));
+  }
+
+  function fmtPrem(v) {
+    const n = Number(v || 0);
+    if (n >= 1000000) return "$" + (n/1000000).toFixed(1) + "M";
+    if (n >= 1000) return "$" + (n/1000).toFixed(0) + "K";
+    return "$" + n.toFixed(0);
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return "--";
+    const d = new Date(ts);
+    if (isNaN(d)) return "--";
+    return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  }
+
+  function fmtDate(ts) {
+    if (!ts) return "--";
+    const d = new Date(ts);
+    if (isNaN(d)) return "--";
+    const now = new Date();
+    if (d.toDateString() === now.toDateString()) return "Today " + fmtTime(ts);
+    return d.toLocaleDateString([], {month:"short", day:"numeric"}) + " " + fmtTime(ts);
+  }
+
+  const MEME_LIST = ["GME","AMC","MARA","RIOT","NIO","BBAI","SOFI","HOOD","PLTR","COIN","SOUN","IONQ","RGTI","AFRM","RBLX","SNAP"];
+
+  async function loadMarketTide() {
+    try {
+      const data = await fetchJson("/api/uw/tide");
+      const tide = data.data || [];
+      if (!tide.length) return;
+
+      // Sum today's totals
+      let totalCall = 0, totalPut = 0;
+      tide.forEach(t => {
+        totalCall += Number(t.net_call_premium || 0);
+        totalPut += Number(t.net_put_premium || 0);
+      });
+
+      const total = totalCall + totalPut;
+      const callPct = total > 0 ? (totalCall / total * 100) : 50;
+      const bias = callPct > 55 ? "BULLISH" : callPct < 45 ? "BEARISH" : "NEUTRAL";
+      const biasColor = bias === "BULLISH" ? "#22c55e" : bias === "BEARISH" ? "#ef4444" : "#fbbf24";
+
+      document.getElementById("tideBias").textContent = bias;
+      document.getElementById("tideBias").style.color = biasColor;
+      document.getElementById("tideDetail").textContent = `${callPct.toFixed(0)}% calls vs ${(100-callPct).toFixed(0)}% puts`;
+      document.getElementById("netCallPrem").textContent = fmtPrem(totalCall);
+      document.getElementById("netPutPrem").textContent = fmtPrem(totalPut);
+      document.getElementById("tideFill").style.width = callPct + "%";
+      document.getElementById("tideRatio").textContent = `${callPct.toFixed(0)}% / ${(100-callPct).toFixed(0)}%`;
+    } catch(e) { console.error("tide error", e); }
+  }
+
+  async function loadFlowAlerts() {
+    try {
+      const data = await fetchJson("/api/uw/flow?limit=50");
+      const alerts = data.flow || [];
+      document.getElementById("flowAlertCount").textContent = alerts.length;
+      document.getElementById("flowAlertSub").textContent = alerts.filter(a => a.has_sweep).length + " sweeps";
+      document.getElementById("alertsCount").textContent = alerts.length + " alerts";
+
+      const feed = document.getElementById("flowAlertsFeed");
+      if (!alerts.length) { feed.innerHTML = '<div style="color:rgba(236,243,255,0.3);font-size:12px;">No flow alerts available</div>'; return; }
+
+      feed.innerHTML = alerts.slice(0, 15).map(a => {
+        const isCall = (a.type||"").toLowerCase() === "call";
+        const isSweep = a.has_sweep;
+        const prem = Number(a.total_premium || 0);
+        const premColor = prem > 500000 ? "#fbbf24" : prem > 100000 ? "#a78bfa" : "#ecf3ff";
+        const typeClass = isCall ? "call" : "put";
+        return `<div class="flow-item">
+          <span class="flow-badge ${typeClass}">${isCall ? "CALL" : "PUT"}</span>
+          ${isSweep ? '<span class="flow-badge sweep">SWEEP</span>' : ''}
+          <span class="flow-ticker">${a.ticker || "--"}</span>
+          <div class="flow-detail">
+            $${a.strike} exp ${a.expiry || "--"} · ${Number(a.volume||0).toLocaleString()} vol
+            ${a.iv_end ? `· IV ${(Number(a.iv_end)*100).toFixed(0)}%` : ""}
+          </div>
+          <span class="flow-prem" style="color:${premColor}">${fmtPrem(prem)}</span>
+        </div>`;
+      }).join("");
+    } catch(e) { console.error("flow error", e); }
+  }
+
+  async function loadDarkPool() {
+    try {
+      const data = await fetchJson("/api/uw/darkpool");
+      const prints = data.data || [];
+      document.getElementById("dpCount").textContent = prints.length + " prints";
+
+      const feed = document.getElementById("darkpoolFeed");
+      if (!prints.length) { feed.innerHTML = '<div style="color:rgba(236,243,255,0.3);font-size:12px;">No dark pool data</div>'; return; }
+
+      feed.innerHTML = prints.slice(0, 15).map(p => {
+        const prem = Number(p.premium || 0);
+        const premColor = prem > 1000000 ? "#fbbf24" : prem > 500000 ? "#a78bfa" : "#ecf3ff";
+        return `<div class="flow-item">
+          <span class="flow-badge block">BLOCK</span>
+          <span class="flow-ticker">${p.ticker || "--"}</span>
+          <div class="flow-detail">
+            ${Number(p.size||0).toLocaleString()} @ $${Number(p.price||0).toFixed(2)}
+            · ${fmtDate(p.executed_at)}
+          </div>
+          <span class="flow-prem" style="color:${premColor}">${fmtPrem(prem)}</span>
+        </div>`;
+      }).join("");
+    } catch(e) { console.error("dp error", e); }
+  }
+
+  async function loadMemeFlow() {
+    try {
+      const data = await fetchJson("/api/uw/flow?limit=200");
+      const alerts = data.flow || [];
+
+      // Aggregate by ticker
+      const byTicker = {};
+      alerts.forEach(a => {
+        const t = (a.ticker||"").toUpperCase();
+        if (!MEME_LIST.includes(t)) return;
+        if (!byTicker[t]) byTicker[t] = {calls:0, puts:0, sweeps:0, prem:0};
+        const isCall = (a.type||"").toLowerCase() === "call";
+        byTicker[t][isCall?"calls":"puts"]++;
+        if (a.has_sweep) byTicker[t].sweeps++;
+        byTicker[t].prem += Number(a.total_premium||0);
+      });
+
+      const grid = document.getElementById("memeGrid");
+      const tickers = MEME_LIST.filter(t => byTicker[t]);
+
+      if (!tickers.length) {
+        grid.innerHTML = '<div style="color:rgba(236,243,255,0.3);font-size:12px;grid-column:1/-1;">No meme flow detected today</div>';
+        return;
+      }
+
+      grid.innerHTML = tickers.map(t => {
+        const d = byTicker[t];
+        const total = d.calls + d.puts;
+        const bullish = total > 0 && d.calls > d.puts;
+        const bearish = total > 0 && d.puts > d.calls;
+        const cls = bullish ? "bullish" : bearish ? "bearish" : "";
+        const signal = bullish ? `🟢 ${d.calls}C / ${d.puts}P` : bearish ? `🔴 ${d.puts}P / ${d.calls}C` : `🟡 Mixed`;
+        const signalColor = bullish ? "#22c55e" : bearish ? "#ef4444" : "#fbbf24";
+        return `<div class="meme-card ${cls}" onclick="filterByTicker('${t}')">
+          <div class="meme-ticker">${t}</div>
+          <div class="meme-signal" style="color:${signalColor}">${signal}</div>
+          ${d.sweeps ? `<div style="font-size:10px;color:#fbbf24;">⚡ ${d.sweeps} sweep${d.sweeps>1?"s":""}</div>` : ""}
+          <div class="meme-prem" style="color:#a78bfa;">${fmtPrem(d.prem)}</div>
+        </div>`;
+      }).join("");
+    } catch(e) { console.error("meme flow error", e); }
+  }
+
+  async function loadOIChange() {
+    try {
+      const data = await fetchJson("/api/uw/oi_change?limit=20");
+      const items = data.data || [];
+      const feed = document.getElementById("oiChangeFeed");
+      if (!items.length) { feed.innerHTML = '<div style="color:rgba(236,243,255,0.3);font-size:12px;">No OI data</div>'; return; }
+
+      feed.innerHTML = items.slice(0, 12).map(item => {
+        const sym = item.underlying_symbol || item.option_symbol || "--";
+        const oiChg = Number(item.oi_change || item.oi_diff_plain || 0);
+        const prem = Number(item.prev_total_premium || 0);
+        const color = oiChg > 0 ? "#22c55e" : "#ef4444";
+        return `<div class="oi-item">
+          <span style="font-size:12px;font-weight:700;min-width:55px;">${sym}</span>
+          <div style="flex:1;font-size:11px;color:rgba(236,243,255,0.4);">
+            OI: ${Number(item.curr_oi||0).toLocaleString()} · Vol: ${Number(item.volume||0).toLocaleString()}
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${color};">${oiChg>0?"+":""}${oiChg.toLocaleString()}</span>
+        </div>`;
+      }).join("");
+    } catch(e) { console.error("oi error", e); }
+  }
+
+  window.filterByTicker = function(ticker) {
+    window.open(`/trading?symbol=${ticker}-USD#charts`, "_self");
+  };
+
+  async function loadAll() {
+    const statusDot = document.getElementById("uwStatusDot");
+    const statusText = document.getElementById("uwStatusText");
+
+    try {
+      const status = await fetchJson("/api/uw/status");
+      if (!status.configured) {
+        statusDot.style.background = "#ef4444";
+        statusText.textContent = "Unusual Whales API key not configured";
+        return;
+      }
+      statusDot.style.background = "#22c55e";
+      statusText.textContent = "Unusual Whales — Live";
+      document.getElementById("flowLastUpdate").textContent = "Updated " + new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    } catch(e) {
+      statusDot.style.background = "#fbbf24";
+      statusText.textContent = "Connection issue";
+    }
+
+    await Promise.all([
+      loadMarketTide(),
+      loadFlowAlerts(),
+      loadDarkPool(),
+      loadMemeFlow(),
+      loadOIChange(),
+    ]);
+  }
+
+  // Auto-refresh every 60 seconds
+  loadAll();
+  setInterval(loadAll, 60000);
+})();
+</script>
+{% endblock %}

@@ -152,6 +152,12 @@ def activity_page():
     return render_template("app/trade_history.html", **_page_context("Activity"))
 
 
+@dashboard_bp.route("/flow", methods=["GET"])
+@require_dashboard_auth
+def flow_intelligence():
+    return render_template("app/flow.html", **_page_context("Flow Intelligence"))
+
+
 @dashboard_bp.route("/settings/bot", methods=["GET"])
 @require_dashboard_auth
 def settings_bot():

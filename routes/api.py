@@ -2465,6 +2465,31 @@ def api_uw_darkpool():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@api_bp.route("/api/uw/tide", methods=["GET"])
+@require_api_auth
+def api_uw_tide():
+    try:
+        from unusual_whales import get_market_tide, is_configured
+        if not is_configured():
+            return jsonify({"ok": False, "error": "UW API key not configured"})
+        data = get_market_tide()
+        return jsonify({"ok": True, "data": data})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@api_bp.route("/api/uw/oi_change", methods=["GET"])
+@require_api_auth
+def api_uw_oi_change():
+    try:
+        from unusual_whales import get_oi_change, is_configured
+        if not is_configured():
+            return jsonify({"ok": False, "error": "UW API key not configured"})
+        limit = int(request.args.get("limit", 20))
+        data = get_oi_change(limit=limit)
+        return jsonify({"ok": True, "data": data})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 @api_bp.route("/api/uw/status", methods=["GET"])
 @require_api_auth
 def api_uw_status():

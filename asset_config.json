@@ -200,14 +200,14 @@
     "enabled": true,
     "auto_execute": true,
     "mode": "aggressive_otm",
-    "max_cost_per_contract": 50,
+    "max_cost_per_contract": 100,
     "max_contracts_per_trade": 0,
     "max_open_positions": 5,
-    "min_score": 50,
+    "min_score": 65,
     "delta_min": 0.1,
-    "delta_max": 0.25,
-    "dte_min": 0,
-    "dte_max": 45,
+    "delta_max": 0.35,
+    "dte_min": 14,
+    "dte_max": 60,
     "preferred_strategies": [
       "cheap_otm_calls",
       "cheap_otm_puts"
@@ -217,7 +217,7 @@
       "neutral",
       "bear"
     ],
-    "max_cost_total_per_trade": 1000,
+    "max_cost_total_per_trade": 1500,
     "scan_puts": true,
     "meme_priority": true,
     "meme_watchlist": [

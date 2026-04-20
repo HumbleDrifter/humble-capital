@@ -623,9 +623,13 @@ def _execute_proposal(proposal: dict) -> bool:
                 if key == "options_trading.max_cost_per_contract" and float(value) < 50:
                     _log(f"BLOCKED: max_cost_per_contract={value} too low (min 50)")
                     return False
-                if key == "options_trading.min_score" and float(value) > 90:
-                    _log(f"BLOCKED: min_score={value} too high (max 90)")
-                    return False
+                if key == "options_trading.min_score":
+                    if float(value) < 60:
+                        _log(f"BLOCKED: min_score={value} too low (min 60)")
+                        return False
+                    if float(value) > 90:
+                        _log(f"BLOCKED: min_score={value} too high (max 90)")
+                        return False
                 with open("/root/tradingbot/asset_config.json") as f:
                     cfg = json.load(f)
                 keys = key.split(".")
@@ -658,20 +662,31 @@ def _execute_proposal(proposal: dict) -> bool:
             # Validate contract exists via UW before placing
             if ptype == 'BUY_OPTION':
                 try:
+                    import re as _re
                     from unusual_whales import _get as _uw_get
                     contracts = (_uw_get(f'/api/stock/{symbol}/option-contracts', ttl=60) or {}).get('data', [])
                     if contracts:
-                        valid = any(
-                            abs(float(c.get('nbbo_ask') or 0) - 0) > 0 and
-                            str(strike) in str(c.get('option_symbol','')) and
-                            expiry.replace('-','') in str(c.get('option_symbol',''))
-                            for c in contracts
-                        )
+                        # Parse option_symbol to match strike and expiry
+                        def _match(c):
+                            osym = c.get('option_symbol','')
+                            m = _re.match(r'^([A-Z0-9]+?)(\d{6})([CP])(\d{8})$', osym)
+                            if not m:
+                                return False
+                            _, date6, cp, strike_raw = m.groups()
+                            c_expiry = f"20{date6[:2]}-{date6[2:4]}-{date6[4:]}"
+                            c_strike = int(strike_raw) / 1000
+                            c_type = "call" if cp == "C" else "put"
+                            strike_match = abs(c_strike - float(strike)) < 0.01
+                            expiry_match = c_expiry == expiry
+                            type_match = c_type == opt_type.lower()
+                            has_liquidity = float(c.get('nbbo_ask') or 0) > 0
+                            return strike_match and expiry_match and type_match and has_liquidity
+                        valid = any(_match(c) for c in contracts)
                         if not valid:
                             _log(f'Skipping {symbol} {strike} {expiry} — contract not found in UW')
                             return False
                 except Exception as _ve:
-                    _log(f'Contract validation error: {_ve}')
+                    _log(f'Contract validation error (non-blocking): {_ve}')
                 pass
             qty = abs(int(proposal.get("qty", 1)))
             side = "BUY" if ptype == "BUY_OPTION" else "SELL"

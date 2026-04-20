@@ -422,6 +422,8 @@ Be specific, aggressive, and data-driven. If UW data is not configured, work wit
             timeout=httpx.Timeout(60.0)  # 1 min max
         )
         raw = "{" + response.content[0].text
+        _log(f"Raw response length: {len(raw)} chars, stop_reason: {response.stop_reason}")
+        _log(f"Raw preview: {raw[:200]}")
         # Parse JSON response
         try:
             # Extract JSON if wrapped in markdown

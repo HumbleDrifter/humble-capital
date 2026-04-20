@@ -694,22 +694,40 @@ def _execute_proposal(proposal: dict) -> bool:
                 _log(f"Missing order params: {proposal}")
                 return False
             adapter = WebullAdapter()
-            # Get current bid/ask for limit price
+            # Get limit price from UW contract data (most accurate)
             limit_price = None
             try:
-                from brokers.webull_adapter import WebullAdapter as _WB
-                _info = _WB().get_account_info()
-                _opts = [p for p in (_info.get("positions") or [])
-                        if str(p.get("symbol","")).upper() == symbol
-                        and str(p.get("option_type","")).lower() == opt_type]
-                if _opts:
-                    _p = _opts[0]
-                    if side.upper() == "SELL":
-                        limit_price = float(_p.get("bid_price") or _p.get("mark_price") or _p.get("last_price") or 0.01)
-                    else:
-                        limit_price = float(_p.get("ask_price") or _p.get("mark_price") or _p.get("last_price") or 0)
-            except Exception:
-                pass
+                import re as _re2
+                from unusual_whales import _get as _uw_get2
+                _contracts = (_uw_get2(f'/api/stock/{symbol}/option-contracts', ttl=60) or {}).get('data', [])
+                for _c in _contracts:
+                    _osym = _c.get('option_symbol','')
+                    _m = _re2.match(r'^([A-Z0-9]+?)(\d{6})([CP])(\d{8})$', _osym)
+                    if not _m:
+                        continue
+                    _, _d6, _cp, _sr = _m.groups()
+                    _c_expiry = f"20{_d6[:2]}-{_d6[2:4]}-{_d6[4:]}"
+                    _c_strike = int(_sr) / 1000
+                    _c_type = "call" if _cp == "C" else "put"
+                    if (abs(_c_strike - float(strike)) < 0.01 and
+                        _c_expiry == expiry and
+                        _c_type == opt_type.lower()):
+                        _bid = float(_c.get('nbbo_bid') or 0)
+                        _ask = float(_c.get('nbbo_ask') or 0)
+                        if _bid > 0 and _ask > 0:
+                            # Use mid price for buys, bid for sells
+                            if side.upper() == "BUY":
+                                limit_price = round((_bid + _ask) / 2, 2)
+                            else:
+                                limit_price = round(_bid, 2)
+                        break
+            except Exception as _lpe:
+                _log(f"Limit price lookup error: {_lpe}")
+
+            if not limit_price or limit_price <= 0:
+                _log(f"No limit price found for {symbol} {strike} {expiry} — skipping")
+                return False
+
             order = {
                 "underlying": symbol,
                 "option_type": opt_type,
@@ -718,8 +736,9 @@ def _execute_proposal(proposal: dict) -> bool:
                 "qty": qty,
                 "side": side.lower(),
                 "order_type": "LMT",
-                "limit_price": limit_price if limit_price and limit_price > 0 else 0.01,
+                "limit_price": limit_price,
             }
+            _log(f"Order: {symbol} {opt_type} ${strike} {expiry} x{qty} @ ${limit_price} ({side})")
             result = adapter.place_options_order(order)
             if result.get("ok"):
                 from notify import _send

@@ -270,6 +270,44 @@
     } catch(e) { console.error("toggle save failed", e); }
   }
 
+  function updateAgentBadge() {
+    const enabled = document.getElementById("tog_agent")?.checked;
+    const autoEx = document.getElementById("tog_agent_auto")?.checked;
+    const badge = document.getElementById("agentStatusBadge");
+    if (!badge) return;
+    if (!enabled) {
+      badge.textContent = "Disabled";
+      badge.style.cssText = "font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(239,68,68,0.12);color:#ef4444;";
+    } else if (autoEx) {
+      badge.textContent = "Auto-Execute ✓";
+      badge.style.cssText = "font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(34,197,94,0.12);color:#22c55e;";
+    } else {
+      badge.textContent = "Approval Mode ✓";
+      badge.style.cssText = "font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(139,92,246,0.12);color:#a78bfa;";
+    }
+  }
+
+  window.saveAgentConfig = async () => {
+    try {
+      const schedVal = Number(document.getElementById("agent_schedule")?.value || 30);
+      await fetchJson("/api/config/update", { method:"POST", body: JSON.stringify({ path:"agent.schedule_minutes", value: schedVal }) });
+      const antKey = document.getElementById("agent_api_key")?.value.trim();
+      const uwKey = document.getElementById("uw_api_key")?.value.trim();
+      if (antKey) await fetchJson("/api/config/update", { method:"POST", body: JSON.stringify({ path:"_env.ANTHROPIC_API_KEY", value: antKey }) });
+      if (uwKey) await fetchJson("/api/config/update", { method:"POST", body: JSON.stringify({ path:"_env.UNUSUAL_WHALES_API_KEY", value: uwKey }) });
+      setStatus("agentSaveStatus", "Saved ✓", true);
+      updateAgentBadge();
+    } catch(e) { setStatus("agentSaveStatus", "Error: " + e.message, false); }
+  };
+
+  window.runAgentNow = async () => {
+    setStatus("agentSaveStatus", "Running agent...", true);
+    try {
+      await fetchJson("/api/agent/run", { method:"POST" });
+      setStatus("agentSaveStatus", "Agent started — check Telegram", true);
+    } catch(e) { setStatus("agentSaveStatus", "Error: " + e.message, false); }
+  };
+
   window.saveOptionsConfig = async () => {
     const btn = document.querySelector('[onclick="saveOptionsConfig()"]');
     btn.disabled = true;

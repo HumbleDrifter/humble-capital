@@ -52,9 +52,23 @@ while True:
 
         print(f"[agent_runner] running {mode} cycle", flush=True)
         from agent import run_agent_cycle
+        # Clear any manual trigger flag
+        import os
+        try:
+            os.remove("/tmp/apex_run_now.flag")
+        except Exception:
+            pass
         run_agent_cycle(mode=mode)
         print(f"[agent_runner] cycle complete, sleeping {sleep_mins}min", flush=True)
-        time.sleep(sleep_mins * 60)
+        # Sleep but check for manual trigger every 30s
+        slept = 0
+        total = sleep_mins * 60
+        while slept < total:
+            time.sleep(30)
+            slept += 30
+            if os.path.exists("/tmp/apex_run_now.flag"):
+                print("[agent_runner] manual trigger detected", flush=True)
+                break
 
     except Exception as e:
         print(f"[agent_runner] error: {e}", flush=True)

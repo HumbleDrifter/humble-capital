@@ -125,13 +125,15 @@ def _handle_message(text: str) -> None:
 
     elif upper == "/AGENT" or upper == "AGENT":
         try:
-            from agent import run_agent_cycle, _is_enabled
+            from agent import _is_enabled
             if not _is_enabled():
                 _send("⚠️ Agent is disabled. Enable in Settings → Agent.")
             else:
                 _send("🤖 Running agent analysis cycle...")
-                import threading
-                threading.Thread(target=run_agent_cycle, daemon=True).start()
+                # Signal agent_runner via flag file instead of running inline
+                import os
+                with open("/tmp/apex_run_now.flag", "w") as f:
+                    f.write("1")
         except Exception as e:
             _send(f"❌ Agent error: {e}")
 

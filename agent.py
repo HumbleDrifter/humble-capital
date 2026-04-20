@@ -566,6 +566,22 @@ def _execute_proposal(proposal: dict) -> bool:
                 _log(f"Missing order params: {proposal}")
                 return False
             adapter = WebullAdapter()
+            # Get current bid/ask for limit price
+            limit_price = None
+            try:
+                from brokers.webull_adapter import WebullAdapter as _WB
+                _info = _WB().get_account_info()
+                _opts = [p for p in (_info.get("positions") or [])
+                        if str(p.get("symbol","")).upper() == symbol
+                        and str(p.get("option_type","")).lower() == opt_type]
+                if _opts:
+                    _p = _opts[0]
+                    if side.upper() == "SELL":
+                        limit_price = float(_p.get("bid_price") or _p.get("mark_price") or _p.get("last_price") or 0.01)
+                    else:
+                        limit_price = float(_p.get("ask_price") or _p.get("mark_price") or _p.get("last_price") or 0)
+            except Exception:
+                pass
             order = {
                 "underlying": symbol,
                 "option_type": opt_type,
@@ -573,7 +589,8 @@ def _execute_proposal(proposal: dict) -> bool:
                 "expiration": expiry,
                 "qty": qty,
                 "side": side.lower(),
-                "order_type": "MKT",
+                "order_type": "LMT",
+                "limit_price": limit_price if limit_price and limit_price > 0 else 0.01,
             }
             result = adapter.place_options_order(order)
             if result.get("ok"):
@@ -664,6 +681,8 @@ def _execute_proposal(proposal: dict) -> bool:
             qty = abs(int(pos.get("qty") or 0))
             if qty <= 0:
                 return False
+            # Use LMT at bid price — Webull doesn't support MARKET for options
+            bid = float(pos.get("bid_price") or pos.get("mark_price") or pos.get("last_price") or 0.01)
             order = {
                 "underlying": symbol,
                 "option_type": str(pos.get("option_type","call")).lower(),
@@ -671,7 +690,8 @@ def _execute_proposal(proposal: dict) -> bool:
                 "expiration": str(pos.get("expiration") or ""),
                 "qty": qty,
                 "side": "sell",
-                "order_type": "MKT",
+                "order_type": "LMT",
+                "limit_price": max(0.01, bid),
             }
             result = adapter.place_options_order(order)
             ok = bool(result and result.get("ok"))

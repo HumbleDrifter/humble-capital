@@ -560,6 +560,14 @@ def _execute_proposal(proposal: dict) -> bool:
             opt_type = str(proposal.get("option_type", "call")).lower()
             strike = float(proposal.get("strike", 0))
             expiry = str(proposal.get("expiry", ""))
+            # Reject expired contracts
+            try:
+                from datetime import date as _date
+                if expiry and _date.fromisoformat(expiry) < _date.today():
+                    _log(f'Skipping {ptype} {symbol} — expired: {expiry}')
+                    return False
+            except Exception:
+                pass
             qty = abs(int(proposal.get("qty", 1)))
             side = "BUY" if ptype == "BUY_OPTION" else "SELL"
             if not all([symbol, strike, expiry, qty]):
